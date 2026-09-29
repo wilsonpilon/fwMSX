@@ -1,0 +1,19 @@
+# Binários
+#*.exe
+#*.com
+#*.mob
+#*.hlib
+#*.map
+
+# IDEs e temporários
+.vscode/
+.idea/
+*.tmp
+*.log
+
+# Pacotes de distribuição gerados por build.ps1
+distribute/
+*.zip
+
+# MSXLIB: objetos intermediarios
+lib/obj/

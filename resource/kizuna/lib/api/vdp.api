@@ -1,0 +1,113 @@
+; VDP TMS9918/V9938/V9958 (lib/src/vdp)
+proc VDP_SetScreen(mode: byte in A)               ; 0, 1 ou 2
+proc VDP_InitScreen0()
+proc VDP_InitScreen1()
+proc VDP_InitScreen2()                            ; SCREEN 2 com tabelas limpas
+proc VDP_WriteReg(reg: byte in C, val: byte in B) ; R#reg = val
+proc VDP_SetWriteAddr(addr: word in HL)           ; ponteiro de escrita da VRAM (14 bits)
+proc VDP_SetReadAddr(addr: word in HL)            ; ponteiro de leitura da VRAM (14 bits)
+proc VDP_FillVRAM(addr: word in HL, count: word in BC, val: byte in A)
+proc VDP_WriteVRAM(src: ptr in HL, dst: word in DE, count: word in BC)  ; RAM -> VRAM
+proc VDP_ReadVRAM(src: word in HL, dst: ptr in DE, count: word in BC)   ; VRAM -> RAM
+proc VDP_CopyVRAM(src: word in HL, dst: word in DE, count: word in BC)  ; VRAM -> VRAM
+proc VDP_SetColor(fg: byte in H, bg: byte in L)   ; cor de texto e de fundo (R#7)
+proc VDP_PSet(x: word in BC, y: word in DE, color: byte in A)           ; pixel em SCREEN 2
+proc VDP_SpriteDefine(pattern: byte in A, data: ptr in HL, size: word in BC)
+proc VDP_SpriteSet(index: byte in A, y: byte in H, x: byte in L, pattern: byte in D, color: byte in E)
+proc VDP_SpriteHide(index: byte in A)
+proc VDP_SpriteHideAll()
+proc VDP_SpriteSetSize(r1: byte in A)             ; byte completo do R#1
+
+; --- Fase 2a: registradores com copia sombra, VRAM de 128 KB, paleta, modos ---
+proc VDP_SetReg(reg: byte in C, val: byte in B)   ; R#reg = val, atualiza a copia sombra
+func VDP_GetReg(reg: byte in A): byte out A       ; ultimo valor escrito (copia sombra)
+proc VDP_UpdateReg(reg: byte in C, mask: byte in D, val: byte in E) ; muda so os bits da mascara
+func VDP_ReadStatus(n: byte in A): byte out A     ; S#n (0..9)
+proc VDP_WaitVBlank()
+proc VDP_WaitFrames(n: byte in B)
+proc VDP_DisplayOn()
+proc VDP_DisplayOff()
+proc VDP_VBlankIntOn()
+proc VDP_VBlankIntOff()
+proc VDP_SpritesOn()
+proc VDP_SpritesOff()
+proc VDP_SetLines(lines: byte in A)               ; 192 ou 212
+proc VDP_SetRefresh(hz: byte in A)                ; 50 ou 60
+proc VDP_Backdrop(color: byte in A)
+proc VDP_TextColor(color: byte in A)
+proc VDP_SetDisplayPage(page: byte in A)
+proc VDP_SetMode(mode: byte in A)                 ; 0..9 (SCREEN 0..8 + texto 80 col)
+func VDP_GetMode(): byte out A                    ; 0FFh se nenhum modo foi ajustado
+proc VDP_VramSetWrite(hi: byte in A, addr: word in HL)  ; ponteiro de escrita de 17 bits
+proc VDP_VramSetRead(hi: byte in A, addr: word in HL)   ; ponteiro de leitura de 17 bits
+proc VDP_VramPut(val: byte in A)
+func VDP_VramGet(): byte out A
+proc VDP_VramWriteStream(src: ptr in HL, count: word in BC)
+proc VDP_VramReadStream(dst: ptr in DE, count: word in BC)
+proc VDP_VramFillStream(val: byte in A, count: word in BC)
+proc VDP_VPoke(hi: byte in D, addr: word in HL, val: byte in A)
+func VDP_VPeek(hi: byte in D, addr: word in HL): byte out A
+proc VDP_ClearVRAM(blocks: byte in A)             ; zera A blocos de 16 KB
+proc VDP_SetPaletteEntry(idx: byte in A, r: byte in B, g: byte in C, b: byte in D)
+proc VDP_SetPaletteBlock(src: ptr in HL)          ; 16 cores x 2 bytes
+proc VDP_SetDefaultPalette()
+proc VDP_SetMSX1Palette()
+
+; --- Fase 2b: tabelas, sprites (modos 1 e 2), piscar, rolagem, bits de modo ---
+; (VDP_Get*Table devolvem o endereco de 17 bits em A:HL -- duas saidas, so em Assembly)
+proc VDP_SetNameTable(hi: byte in A, addr: word in HL)
+proc VDP_SetPatternTable(hi: byte in A, addr: word in HL)
+proc VDP_SetColorTable(hi: byte in A, addr: word in HL)
+proc VDP_SetSpriteAttrTable(hi: byte in A, addr: word in HL)
+proc VDP_SetSpritePatternTable(hi: byte in A, addr: word in HL)
+func VDP_IsBitmapMode(): byte out A               ; 1 em SCREEN 5 a 8
+proc VDP_SpriteSetPos(index: byte in A, y: byte in H, x: byte in L)
+proc VDP_SpriteSetY(index: byte in A, y: byte in B)
+proc VDP_SpriteSetX(index: byte in A, x: byte in B)
+proc VDP_SpriteSetPattern(index: byte in A, pattern: byte in B)
+proc VDP_SpriteSetColor(index: byte in A, color: byte in B)              ; modo 1: atributo; modo 2: 16 linhas
+proc VDP_SpriteSetLineColors(index: byte in A, colors: ptr in HL)        ; so modo 2: 16 bytes
+proc VDP_SpriteSetAll(index: byte in A, y: byte in H, x: byte in L, pattern: byte in D, color: byte in E)
+proc VDP_SpriteDisableFrom(index: byte in A)      ; fim da lista de sprites
+proc VDP_SpritePatternLoad(pattern: byte in A, src: ptr in HL, count: word in BC)
+proc VDP_SpriteSize(big: byte in A)               ; 0 = 8x8, outro = 16x16
+proc VDP_SpriteMag(on: byte in A)
+proc VDP_SetBlinkColor(fg: byte in A, bg: byte in B)
+proc VDP_SetBlinkTime(on: byte in A, off: byte in B)
+proc VDP_BlinkOff()
+proc VDP_BlinkFill(val: byte in A)
+proc VDP_BlinkLine(line: byte in A, val: byte in B)
+proc VDP_BlinkCell(x: byte in A, y: byte in B, on: byte in C)
+proc VDP_HBlankInt(on: byte in A)
+proc VDP_Interlace(on: byte in A)
+proc VDP_PageAlternate(on: byte in A)
+proc VDP_Transparency(on: byte in A)
+proc VDP_GrayScale(on: byte in A)
+proc VDP_LeftMask(on: byte in A)
+proc VDP_SetVerticalOffset(line: byte in A)
+proc VDP_SetHScrollCoarse(chars: byte in A)
+proc VDP_SetHScrollFine(dots: byte in A)
+proc VDP_SetAdjustRaw(r18: byte in A)
+proc VDP_SetHBlankLine(line: byte in A)
+func VDP_GetVersion(): byte out A                 ; 0 = V9938, 2 = V9958
+
+; --- Fase 2c: motor de comandos do V9938/V9958 (so SCREEN 5 a 8) ---
+; retangulos/linhas recebem um ponteiro para 8 ou 12 bytes de palavras (x, y, ...) em RAM
+proc VDP_CmdWait()
+func VDP_CmdBusy(): byte out A                    ; 1 = comando em andamento
+proc VDP_CmdStop()
+proc VDP_CmdRun(block: ptr in HL)                 ; 15 bytes = R#32..R#46
+proc VDP_HwPlot(x: word in BC, y: word in DE, color: byte in A, op: byte in H)
+func VDP_HwPoint(x: word in BC, y: word in DE): byte out A
+proc VDP_HwFillRect(rect: ptr in HL, color: byte in A, op: byte in B)    ; x, y, largura, altura
+proc VDP_HwFillRectFast(rect: ptr in HL, color: byte in A)               ; por bytes (HMMV)
+proc VDP_HwBoxFill(corners: ptr in HL, color: byte in A, op: byte in B)  ; x1, y1, x2, y2
+proc VDP_HwBox(corners: ptr in HL, color: byte in A, op: byte in B)      ; contorno
+proc VDP_HwLine(points: ptr in HL, color: byte in A, op: byte in B)      ; x1, y1, x2, y2
+proc VDP_HwCopyRect(block: ptr in HL, dir: byte in A, op: byte in B)     ; sx, sy, dx, dy, larg, alt
+proc VDP_HwMoveRect(block: ptr in HL, dir: byte in A)                    ; por bytes (HMMM)
+proc VDP_HwCopyLines(block: ptr in HL, dir: byte in A)                   ; sy, dx, dy, linhas
+proc VDP_HwLoadRect(rect: ptr in HL, data: ptr in DE, count: word in BC, op: byte in A)
+proc VDP_HwLoadFast(rect: ptr in HL, data: ptr in DE, count: word in BC)
+proc VDP_HwReadRect(rect: ptr in HL, dest: ptr in DE, count: word in BC)
+; VDP_HwSearch devolve X em HL e "achou" no carry -- so em Assembly

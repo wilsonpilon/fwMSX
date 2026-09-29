@@ -1,5 +1,19 @@
 # resource/
 
+> ## ⚠️ AVISO
+> **Tudo neste diretório é material de terceiros usado apenas para
+> ESTUDO e REFERÊNCIA. Nada aqui faz parte do projeto fwMSX/msxdisk.**
+> Nenhum arquivo daqui é compilado pelo build oficial (ver
+> `CMakeLists.txt` na raiz) nem é usado em tempo de execução. Cada
+> subpasta é um projeto de terceiros independente (com sua própria
+> licença, geralmente diferente do BSD-3-Clause do fwMSX — ver o próprio
+> `README`/`LICENSE` de cada um) ou arquivos de sistema/firmware
+> originais do MSX, incluídos aqui só para consulta e portados para o
+> projeto de forma *clean-room* quando aplicável (nunca copiados
+> linha a linha). Inclui, inclusive, **ROMs de BIOS do MSX**
+> (`resource/fMSX/ROMs/`) — firmware original, protegido por copyright,
+> mantido aqui só como referência de estudo.
+
 Codigo-fonte de terceiros usado como material de estudo: o fMSX original
 e outros emuladores/ferramentas de MSX cujo codigo e lido, comparado e,
 quando faz sentido, traduzido (clean-room) ou usado como referencia
