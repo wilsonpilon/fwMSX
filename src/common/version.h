@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 1
-#define FWMSX_VERSION_PATCH 2
+#define FWMSX_VERSION_MINOR 2
+#define FWMSX_VERSION_PATCH 1
 
-#define FWMSX_CODENAME  "Nemesis"
-#define FWMSX_SUBTITLE  "Renomeacao"
+#define FWMSX_CODENAME  "Metal Gear"
+#define FWMSX_SUBTITLE  "Ajustes de Campo"

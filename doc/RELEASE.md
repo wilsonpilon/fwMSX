@@ -13,6 +13,114 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.2.1 -- "Metal Gear: Ajustes de Campo" (2026-09-29)
+
+**Fase:** msxdisk (polimento pós-lançamento). Correções encontradas
+testando a GUI de verdade em janela gráfica, depois da v1.2.0.
+
+### Destaques
+- **Ejetar disco** na GUI (`Arquivo > Ejetar` / `F12`), com confirmação
+  só quando há alterações não salvas.
+- **Novo/Abrir/Salvar Como** na GUI viraram diálogo nativo de arquivo do
+  Windows (navegação de pastas de verdade), em vez de caixa de texto.
+- Dois bugs reais de interface corrigidos: diálogos modais que não
+  abriam (escopo de ID do ImGui) e teclas de função que agiam no
+  painel/item errado depois de marcar por checkbox (painel "ativo"
+  desatualizado). Ambos encontrados e confirmados corrigidos em teste
+  real pelo autor.
+
+### Saida de referencia do esqueleto (`fwMSX.exe` sem argumentos, inalterada)
+
+```
+Copyright (c) 1972-2026 Cybernostra, Inc.
+fwMSX [v 1.2.1]
+----------------------------------------
+Loading module... CPP [v 1.2.1]
+Loading module...C [v 1.2.1]
+Loading module...Assembly [v 1.2.1]
+Loading module Fortran [v 1.2.1]
+----------------------------------------
+Assinaturas dos modulos:
+  C++       0x0001
+  C         0x0002
+  Assembly  0x0003
+  Fortran   0x0004
+```
+
+### Build usado para validar esta release
+
+- `gcc`/`g++`/`gfortran` 16.2.0 (MSYS2 UCRT64)
+- `nasm` 3.02
+- `cmake` 4.4.3 + `ninja` 1.13.2
+- `dist/fwMSX.exe` e `dist/msxdisk.exe`: estaticos, dependencias externas
+  apenas as DLLs base do Windows/UCRT.
+
+### Limitacoes conhecidas
+- Mesmas da v1.2.0 (`create --dos2` não validado num emulador real;
+  nenhuma emulação de MSX ainda).
+
+---
+
+## v1.2.0 -- "Maze of Galious: Gerenciador de Discos" (2026-09-29)
+
+**Fase:** msxdisk (5 fases completas -- ver
+[msxdisk-spec.md](msxdisk-spec.md)). `fwMSX.exe` em si continua na Fase 0
+do emulador (esqueleto multi-linguagem, sem Z80/VDP); o que essa release
+entrega e o utilitario `msxdisk` (standalone e embutido no `fwMSX.exe`).
+
+### Destaques
+- `dist/msxdisk.exe`: um unico executavel para CLI one-shot, shell
+  interativo (FTP-like), TUI (Norton Commander/XTree) e GUI (Dear ImGui,
+  visual moderno proprio) -- manipulacao completa de imagens `.dsk`
+  MSX-DOS 1/2 (criar, listar, adicionar, extrair, renomear, apagar,
+  subdiretorios, copiar disco, salvar como).
+- `fwmsx --msxdisk <argumentos>`: mesmos quatro modos acessiveis direto
+  pelo `fwMSX.exe`, sem precisar do binario separado.
+- Configuracao/temas/metadados de imagem em SQLite
+  (`~/.msxdisk/config.sqlite3`), compartilhado entre TUI e GUI.
+- Novas dependencias externas (buscadas via CMake `FetchContent` no
+  build, nao redistribuidas em `resource/`): CLI11, replxx, FTXUI,
+  Dear ImGui, GLFW, SQLite (amalgamation).
+
+### Saida de referencia do esqueleto (`fwMSX.exe` sem argumentos, inalterada)
+
+```
+Copyright (c) 1972-2026 Cybernostra, Inc.
+fwMSX [v 1.2.0]
+----------------------------------------
+Loading module... CPP [v 1.2.0]
+Loading module...C [v 1.2.0]
+Loading module...Assembly [v 1.2.0]
+Loading module Fortran [v 1.2.0]
+----------------------------------------
+Assinaturas dos modulos:
+  C++       0x0001
+  C         0x0002
+  Assembly  0x0003
+  Fortran   0x0004
+```
+
+### Build usado para validar esta release
+
+- `gcc`/`g++`/`gfortran` 16.2.0 (MSYS2 UCRT64)
+- `nasm` 3.02
+- `cmake` 4.4.3 + `ninja` 1.13.2
+- `dist/fwMSX.exe` e `dist/msxdisk.exe`: estaticos (`-static
+  -static-libgcc -static-libstdc++ -static-libgfortran`), dependencias
+  externas apenas as DLLs base do Windows/UCRT.
+
+### Limitacoes conhecidas
+- Nenhuma emulacao de MSX ainda -- `msxdisk` e um utilitario de
+  ferramental, nao faz parte do core do emulador em si.
+- `create --dos2` (MSX-DOS 2) nao foi validado num emulador/hardware real
+  (o `--dos1` foi, no openMSX, MSX1 e MSX2) -- ver
+  [msxdisk-spec.md](msxdisk-spec.md), secao 6.
+- Varios fluxos interativos da TUI/GUI (dialogos, teclas de funcao,
+  duplo-clique) so foram validados parcialmente por automacao (capturas
+  de tela pontuais); dependem de confirmacao continua de uso real.
+
+---
+
 ## v1.1.2 -- "Nemesis: Renomeacao" (2026-09-28)
 
 **Fase:** 0 -- Esqueleto multi-linguagem (refinamento). Sem mudanca de

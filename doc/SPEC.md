@@ -134,14 +134,54 @@ acompanhamento manual do autor a cada build):
 
 ## 5. Proximas fases (ainda nao iniciadas)
 
-- Trazer para `resource/` os fontes do fMSX original e de outras
-  referencias de MSX para estudo.
+- ~~Trazer para `resource/` os fontes do fMSX original e de outras
+  referencias de MSX para estudo.~~ Feito -- `resource/` ja tem fMSX,
+  fmsxgo, kizuna, msxide, paleobasic, msxDiskUtil, msxdos1/2 etc. (ver
+  `resource/README.md`). O `msxdisk` (ver `doc/msxdisk-spec.md`) e o
+  primeiro fruto direto disso.
 - Iniciar o core de emulacao propriamente dito (CPU Z80, VDP, PSG, etc.),
   decidindo em qual(is) modulo(s)/linguagem(ns) cada parte sera
   implementada, sempre respeitando a regra de ter as quatro linguagens
   representadas em uso real.
 - Definir empacotamento final (alem do ZIP de `dist/`) quando houver uma
   versao executavel do emulador.
+
+### 5.1 Visao registrada: `fwMSX.exe` como ponto de entrada unico do projeto
+
+**Decidido com o autor em 2026-09-29** (ver tambem `doc/msxdisk-spec.md`,
+Fase 5c):
+
+- `fwMSX.exe` deve, no futuro, funcionar como `msxdisk.exe` funciona hoje
+  para o `msxdisk`: um unico binario com varios modos de entrada --
+  linha de comando/REPL proprio, TUI e GUI -- para escolher
+  maquina/extensao/memoria e outras configuracoes do emulador antes de
+  rodar. O emulador propriamente dito (a tela do MSX rodando) e sempre
+  grafico; REPL/TUI servem para configurar/pilotar em volta disso.
+- Sem argumentos, uma vez que exista emulacao de verdade, `fwMSX.exe`
+  deve abrir em modo **GUI** por padrao. Ate la (Fase 0 atual, sem Z80/VDP
+  rodando), continua imprimindo o resumo dos quatro modulos como hoje --
+  **nao faz sentido abrir uma tela de emulador que ainda nao emula nada**,
+  entao essa mudanca de comportamento padrao só acontece quando o core de
+  emulacao existir.
+- **Implementado em 2026-09-29 (v1.2.0)**: `fwMSX.exe` chama o `msxdisk`
+  embutido via `fwmsx --msxdisk <resto dos argumentos>`, repassando para
+  `msxdisk::RunEntryPoint()` (`src/msxdisk/entry.{h,cpp}`) -- a mesma
+  funcao de roteamento usada pelo `msxdisk.exe` standalone
+  (`tools/msxdisk/main.cpp`), cobrindo CLI one-shot, shell, TUI e GUI.
+  Foi uma integracao barata como previsto: os fontes do msxdisk
+  (`MSXDISK_LIB_SOURCES` no `CMakeLists.txt`) sao compilados tanto no
+  alvo `msxdisk` quanto no alvo `fwMSX`, sem lib intermediaria (mesma
+  logica ja usada entre `src`/`asm`/`fortran`). Testado: `fwMSX.exe` sem
+  argumentos continua com a saida do esqueleto **inalterada**;
+  `fwmsx --msxdisk list/info/--tui/--gui` funcionam identico ao
+  `msxdisk.exe` direto.
+- **`msxdisk.exe` continua existindo como binario standalone**, para quem
+  quer soh o utilitario de disco sem instalar/rodar o emulador --
+  requisito original do proprio autor, nao se perde com essa integracao.
+- Esta visao **nao muda nada da Fase 0 atual** nem bloqueia o trabalho em
+  andamento no `msxdisk` (fases 1-5 dele seguem seu proprio ritmo,
+  documentadas em `doc/msxdisk-spec.md`). So entra em jogo quando o core
+  de emulacao (bullet acima) comecar a existir de verdade.
 
 *(Esta secao sera detalhada/movida para itens concluidos conforme o
 projeto avancar.)*

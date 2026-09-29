@@ -41,6 +41,12 @@ if (-not (Test-Path $exe)) {
     exit 1
 }
 
+$msxdiskExe = Join-Path $distDir "msxdisk.exe"
+if (-not (Test-Path $msxdiskExe)) {
+    Write-Error "Build concluido mas $msxdiskExe nao foi gerado."
+    exit 1
+}
+
 # Le a versao corrente diretamente de src\common\version.h para nomear o ZIP.
 $versionHeader = Get-Content (Join-Path $root "src\common\version.h") -Raw
 $major = [regex]::Match($versionHeader, 'FWMSX_VERSION_MAJOR\s+(\d+)').Groups[1].Value
@@ -56,6 +62,7 @@ if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 
 Copy-Item $exe $stageDir
+Copy-Item $msxdiskExe $stageDir
 Copy-Item (Join-Path $root "README.md") $stageDir
 Copy-Item (Join-Path $root "LICENSE") $stageDir
 Copy-Item (Join-Path $root "doc\MANUAL.md") $stageDir
@@ -67,4 +74,5 @@ Remove-Item $stageDir -Recurse -Force
 
 Write-Host "==> Pronto:" -ForegroundColor Green
 Write-Host "    $exe"
+Write-Host "    $msxdiskExe"
 Write-Host "    $zipPath"

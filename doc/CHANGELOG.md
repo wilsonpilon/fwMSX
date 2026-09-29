@@ -7,6 +7,72 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.2.1] - 2026-09-29 - "Metal Gear: Ajustes de Campo"
+
+Correções e polimento na GUI do `msxdisk` (v1.2.0), encontrados testando
+de verdade em janela gráfica.
+
+### Adicionado
+- **Ejetar disco** (`Arquivo > Ejetar` ou `F12`): descarrega a imagem da
+  memória sem apagar o arquivo; confirma antes só se houver alterações
+  não salvas.
+- **Novo/Abrir/Salvar Como** na GUI agora usam o diálogo nativo de
+  arquivo do Windows (`GetOpenFileNameW`/`GetSaveFileNameW`), com
+  navegação de pastas de verdade, em vez de uma caixa de texto simples.
+
+### Corrigido
+- **Diálogos de Novo/Abrir/Salvar/Renomear/Nova Pasta/Excluir não
+  abriam** na GUI: `ImGui::OpenPopup`/`BeginPopupModal` calculam o ID do
+  popup a partir da janela "atual" no momento da chamada — como esses
+  diálogos eram disparados de dentro do menu (uma sub-janela) ou antes da
+  janela principal existir no frame, o ID nunca batia com o que o
+  `BeginPopupModal` esperava. Corrigido centralizando o `OpenPopup` real
+  num único ponto, sempre na mesma janela.
+- **Renomear/Nova Pasta/Excluir agiam no painel ou item errado**: marcar
+  um arquivo só pela caixinha de seleção (sem clicar no nome da linha)
+  não atualizava qual painel estava "ativo" — as teclas de função
+  continuavam operando no painel local por padrão. Agora marcar a
+  caixinha também ativa o painel e seleciona a linha.
+
+## [1.2.0] - 2026-09-29 - "Maze of Galious: Gerenciador de Discos"
+
+### Adicionado
+- **msxdisk**: utilitário completo de manipulação de imagens de disco MSX
+  (`.dsk`, FAT12, MSX-DOS 1 e 2 com subdiretórios), num único executável
+  (`dist/msxdisk.exe`) com quatro modos de uso -- ver
+  [doc/msxdisk-spec.md](msxdisk-spec.md) para o histórico completo de
+  fases:
+  - **CLI one-shot**: `create`, `list`, `add`, `extract`, `delete`,
+    `rename`, `mkdir`, `rmdir`, `copy`, `saveas`, `info`.
+  - **Shell interativo** (`msxdisk` sem argumentos, ou `--cli`): sessão
+    estilo FTP (`load`/`save`/`saveas`), `put`/`get`/`mput`/`mget` com
+    confirmação por arquivo, comandos locais de filesystem (`ls`, `cd`,
+    `md`, `rm`, `pwd`), histórico persistente (replxx).
+  - **TUI** (`--tui`, estilo Norton Commander/XTree, FTXUI): duas colunas
+    (local ↔ imagem), marcar e enviar/receber arquivos, criar/abrir/
+    salvar, renomear/criar pasta/excluir, troca de tema.
+  - **GUI** (`--gui`, Dear ImGui + GLFW + OpenGL3): mesma interface de
+    duas colunas em janela gráfica, com identidade visual moderna própria
+    (paleta escura/clara com acento azul, cantos arredondados, fonte
+    Segoe UI) -- diferente de propósito do visual retrô da TUI.
+  - De dentro do shell, `tui`/`call tui` e `gui`/`call gui` trocam de
+    modo sem sair do processo.
+- Configuração, temas e metadados de imagem do msxdisk guardados num
+  banco SQLite (`~/.msxdisk/config.sqlite3`), compartilhado entre TUI e
+  GUI (tema ativo, último diretório/imagem, notas por disco).
+- `fwmsx --msxdisk <argumentos>`: o `fwMSX.exe` agora também dá acesso a
+  todos os modos do msxdisk embutido, sem precisar do executável
+  separado -- `msxdisk.exe` standalone continua existindo pra quem só
+  quer o utilitário de disco.
+- Nova opção de build `FWMSX_MSXDISK_GUI` (default `ON`) para compilar
+  sem a GUI (sem depender de GLFW/OpenGL) quando não for necessária.
+
+### Corrigido
+- `DiskImage::RenameFile` aceitava renomear um arquivo para um nome
+  diferente do atual normalmente, mas recusava com "já existe" ao
+  renomear para o **próprio nome atual** (a busca por conflito achava a
+  própria entrada). Agora é tratado como no-op bem-sucedido.
+
 ## [1.1.2] - 2026-09-28 - "Nemesis: Renomeacao"
 
 ### Alterado

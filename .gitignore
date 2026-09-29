@@ -138,3 +138,8 @@ dkms.conf
 
 # Configuracoes de IDE (JetBrains/CLion)
 /.idea/
+
+# Layout de janela salvo automaticamente pela GUI do msxdisk (Dear ImGui)
+# no diretorio onde o executavel foi rodado -- preferencia por maquina,
+# nao faz sentido versionar.
+imgui.ini

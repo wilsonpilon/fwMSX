@@ -23,6 +23,11 @@
   **mesmo** grupo UCRT64 -- evita misturar versoes/ABIs de compiladores
   diferentes na mesma build.
 
+- **Acesso à internet na primeira compilação**: o `msxdisk` (ver seção
+  dedicada abaixo) busca CLI11, replxx, FTXUI, Dear ImGui, GLFW e SQLite
+  via CMake `FetchContent` -- baixados uma vez e cacheados em `build/`.
+  Builds seguintes (sem apagar `build/`) não precisam de rede.
+
 ## Compilar
 
 ### Opcao 1 -- script pronto (recomendado)
@@ -111,6 +116,55 @@ Assinaturas dos modulos:
 seja, roda em outra maquina Windows sem precisar instalar o MSYS2 nem
 copiar DLLs. O ZIP gerado em `dist\fwMSX-X.Y.Z.zip` contem tudo o que e
 necessario para rodar (executavel + documentacao + licenca).
+
+## msxdisk -- utilitario de imagens de disco MSX
+
+Documentacao completa (arquitetura, fases, decisoes) em
+[msxdisk-spec.md](msxdisk-spec.md). Aqui so o essencial pra usar.
+
+`.\build.ps1` tambem gera `dist\msxdisk.exe` -- um unico executavel com
+quatro modos:
+
+```powershell
+# CLI one-shot
+.\dist\msxdisk.exe create disco.dsk
+.\dist\msxdisk.exe list disco.dsk
+.\dist\msxdisk.exe add disco.dsk arquivo.bas
+
+# Shell interativo (estilo FTP) -- sem argumentos, ou --cli
+.\dist\msxdisk.exe
+
+# TUI (estilo Norton Commander/XTree)
+.\dist\msxdisk.exe --tui disco.dsk
+
+# GUI (Dear ImGui, visual moderno)
+.\dist\msxdisk.exe --gui disco.dsk
+```
+
+De dentro do shell interativo, os comandos `tui`/`call tui` e `gui`/
+`call gui` abrem a TUI/GUI sem sair do processo.
+
+O mesmo utilitario tambem esta embutido no `fwMSX.exe`:
+
+```powershell
+.\dist\fwMSX.exe --msxdisk create disco.dsk
+.\dist\fwMSX.exe --msxdisk --tui disco.dsk
+```
+
+Configuracao, temas e metadados de imagem ficam em
+`%USERPROFILE%\.msxdisk\config.sqlite3` (compartilhado entre TUI e GUI).
+
+### Compilar sem a GUI (sem GLFW/OpenGL)
+
+A GUI (Dear ImGui + GLFW + OpenGL3) vem ligada por padrao. Pra compilar
+so a versao console (CLI/shell/TUI), sem essa dependencia:
+
+```powershell
+cmake -S . -B build -G Ninja -DFWMSX_MSXDISK_GUI=OFF
+cmake --build build
+```
+
+`--gui`/`call gui` nessa build so avisam que a GUI nao foi compilada.
 
 ## Problemas comuns
 

@@ -17,12 +17,18 @@
 // Ver doc/SPEC.md para a especificacao completa do projeto e
 // doc/MANUAL.md para como compilar e executar.
 //
+// "fwmsx --msxdisk <resto dos argumentos>" repassa direto para o
+// utilitario de disco embutido (msxdisk::RunEntryPoint -- os mesmos
+// pontos de entrada de CLI/shell/TUI/GUI do msxdisk.exe standalone). Ver
+// doc/SPEC.md, secao 5.1, e doc/msxdisk-spec.md, Fase 5c.
+//
 
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <string>
+#include <vector>
 
 #include "version.h"
 
@@ -30,6 +36,8 @@
 #include "init_c.h"
 #include "init_asm.h"
 #include "init_fortran.h"
+
+#include "msxdisk/entry.h"
 
 namespace {
 
@@ -43,6 +51,11 @@ void print_signature(const char* label, std::uint16_t signature) {
 } // namespace
 
 int main(int argc, char* argv[]) {
+    if (argc > 1 && std::string(argv[1]) == "--msxdisk") {
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return msxdisk::RunEntryPoint(tokens);
+    }
+
     std::cout << "Copyright (c) 1972-2026 Cybernostra, Inc." << std::endl;
 
     // main() recebe o nome do produto e os tres inteiros da versao como
