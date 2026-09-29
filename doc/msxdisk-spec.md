@@ -24,8 +24,16 @@ em **C++, C, Assembly e Fortran** — ver a divisão por linguagem na seção 3.
 
 ## 2. Licenciamento e material de referência (regra permanente)
 
-O fwMSX é **BSD-3-Clause**. Em `resource/` (apenas leitura/estudo, nunca
-compilado) temos:
+O código **original** do fwMSX/msxdisk é **BSD-3-Clause**. Isso **não**
+se estende a código incorporado/adaptado de terceiros — o aval do
+Fayzullin (README.md da raiz) cobre *adaptar/estudar* seu código, **não**
+uma autorização para relicenciá-lo sob BSD/GPL/MIT. Detalhamento
+completo em **`LICENSE-THIRD-PARTY.md`** (raiz do projeto) — confirmado
+com o autor deste projeto em 2026-09-29: assumir sempre a leitura mais
+conservadora (só adaptação/estudo) enquanto não houver autorização
+explícita em contrário do Fayzullin.
+
+Em `resource/` (apenas leitura/estudo, nunca compilado) temos:
 
 - `resource/DiskUtilities/` — dois autores distintos, tratados de forma
   diferente:
@@ -34,7 +42,9 @@ compilado) temos:
     adaptação/evolução do fMSX em fwMSX). Por isso o **setor de boot real
     do MSX-DOS 1** foi incorporado verbatim em
     `src/msxdisk/core/msxdos1_boot.cpp` (ver seção 6) — está dentro do
-    escopo já autorizado, ao contrário do restante deste diretório.
+    escopo já autorizado (podemos usá-lo), mas esse arquivo específico
+    **continua sob a licença original do Fayzullin**, não BSD — ver
+    `LICENSE-THIRD-PARTY.md`.
   - `DiskUtil.c/.h`, `rddsk.c`, `wrdsk.c` são de **Arnold Metselaar**, sob
     termos próprios (restringe distribuição comercial, pede notificação
     ao autor em caso de alteração) — **não** cobertos pelo aval de

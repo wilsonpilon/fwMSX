@@ -109,4 +109,19 @@ naquele ponto (ex.: `v1.1.2 -- "Nemesis: Renomeacao"`). Regras completas em
 
 ## Licenca
 
-BSD 3-Clause -- ver [LICENSE](LICENSE).
+O **codigo original do fwMSX e do msxdisk** (tudo escrito para este
+projeto) e licenciado em **BSD 3-Clause** -- ver [LICENSE](LICENSE).
+
+Isso **nao** cobre codigo adaptado/incorporado de terceiros. O fMSX tem
+sua propria licenca, mais restritiva (proibe distribuicao comercial); o
+fwMSX evolui a partir dele com o aval do proprio Fayzullin **para
+adaptar/estudar seu codigo**, mas esse aval nao e uma autorizacao para
+relicenciar o codigo dele sob BSD/GPL/MIT. Por isso, qualquer arquivo
+deste repositorio que incorporar codigo do fMSX diretamente (hoje, so o
+setor de boot em `src/msxdisk/core/msxdos1_boot.cpp`; mais arquivos
+devem se juntar a essa lista quando o core de emulacao -- Z80, VDP, PSG
+-- for adaptado do fMSX) continua sob a licenca original dele, nao BSD.
+Ver **[LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md)** para o
+detalhamento completo (fMSX, DiskUtilities, msxDiskUtil) e
+[resource/README.md](resource/README.md) para o aviso sobre o material
+de terceiros usado so como referencia de estudo.

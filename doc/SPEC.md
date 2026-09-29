@@ -12,6 +12,14 @@ Construir, a partir do [fMSX](https://fms.komkon.org/fMSX/) de Marat
 Fayzullin (com aval do autor para a adaptacao), um emulador de MSX
 reestruturado e modernizado, mantido como projeto de aprendizado.
 
+**Licenciamento**: o aval do Fayzullin cobre adaptar/estudar o codigo
+dele, nao relicencia-lo. Codigo novo do projeto e BSD-3-Clause
+([LICENSE](../LICENSE)); qualquer arquivo que incorporar/adaptar codigo
+do fMSX (Z80, VDP, PSG etc., conforme essas fases avancarem) continua sob
+a licenca original dele -- ver [LICENSE-THIRD-PARTY.md](../LICENSE-THIRD-PARTY.md)
+para o detalhamento e a lista de arquivos afetados (atualizar essa lista
+sempre que um novo arquivo for adaptado do fMSX).
+
 Regra obrigatoria de aprendizado (vale para todas as fases futuras, nao so
 para o esqueleto inicial): **o projeto precisa ter partes reais e uteis em
 C, C++, Assembly e Fortran**, ainda que minimas, para forcar contato
