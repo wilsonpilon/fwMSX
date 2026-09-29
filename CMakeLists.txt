@@ -183,3 +183,25 @@ target_include_directories(fwMSX PRIVATE
 )
 msxdisk_link_target(fwMSX)
 set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)
+
+# --- Nucleo Z80 (Fase 1) -- ver doc/z80-core-spec.md -----------------
+#
+# Motor de despacho em C (adaptado do fMSX, ver LICENSE-THIRD-PARTY.md)
+# + wrapper de orquestracao em C++ (design proprio). Ainda nao integrado
+# a fwMSX/msxdisk (isso e' Fase 4) -- por enquanto so o alvo z80test,
+# para validar o core isoladamente via CTest.
+set(Z80_LIB_SOURCES
+        src/z80/core/z80_tables.c
+        src/z80/core/z80_core.c
+        src/z80/cpp/z80_cpu.cpp
+)
+
+enable_testing()
+
+add_executable(z80test tests/z80/smoke_test.cpp ${Z80_LIB_SOURCES})
+target_include_directories(z80test PRIVATE src/z80)
+if (MINGW)
+    target_link_options(z80test PRIVATE -static -static-libgcc -static-libstdc++)
+endif ()
+
+add_test(NAME z80_smoke COMMAND z80test)

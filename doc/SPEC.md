@@ -150,7 +150,9 @@ acompanhamento manual do autor a cada build):
 - Iniciar o core de emulacao propriamente dito (CPU Z80, VDP, PSG, etc.),
   decidindo em qual(is) modulo(s)/linguagem(ns) cada parte sera
   implementada, sempre respeitando a regra de ter as quatro linguagens
-  representadas em uso real.
+  representadas em uso real. **Analise e design concluidos em 2026-09-29**
+  para a CPU Z80 -- ver [doc/z80-core-spec.md](z80-core-spec.md)
+  (implementacao ainda nao iniciada).
 - Definir empacotamento final (alem do ZIP de `dist/`) quando houver uma
   versao executavel do emulador.
 

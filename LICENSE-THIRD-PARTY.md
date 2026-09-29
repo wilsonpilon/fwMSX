@@ -32,6 +32,27 @@ termos acima:
   copiado verbatim de `resource/DiskUtilities/Boot.h` (contribuicao
   direta do proprio Fayzullin dentro do fMSX -- ver
   `doc/msxdisk-spec.md`, secao 2, para o raciocinio completo).
+- `src/z80/common/z80_state.h` -- estado da CPU (registradores, flags),
+  adaptado de `resource/fMSX/Z80/Z80.h`.
+- `src/z80/core/z80_opcodes.h` -- enums de opcode (nomes e ordem), de
+  `resource/fMSX/Z80/Z80.c` (enums `Codes`/`CodesCB`/`CodesED`).
+- `src/z80/core/z80_tables.{h,c}` -- tabelas de ciclos e de flags
+  pre-computadas (Sign/Zero, Parity/Zero/Sign, correcao DAA), de
+  `resource/fMSX/Z80/Tables.h`.
+- `src/z80/core/opcodes_base.h` -- corpo dos opcodes sem prefixo, de
+  `resource/fMSX/Z80/Codes.h`.
+- `src/z80/core/opcodes_cb.h` -- corpo dos opcodes `CB`, de
+  `resource/fMSX/Z80/CodesCB.h`.
+- `src/z80/core/opcodes_ed.h` -- corpo dos opcodes `ED` (inclui o patch
+  de BIOS `ED FE`), de `resource/fMSX/Z80/CodesED.h`.
+- `src/z80/core/opcodes_xx.h` -- corpo dos opcodes `DD`/`FD` (IX/IY), de
+  `resource/fMSX/Z80/CodesXX.h`.
+- `src/z80/core/opcodes_xcb.h` -- corpo dos opcodes `DD CB`/`FD CB`, de
+  `resource/fMSX/Z80/CodesXCB.h`.
+- `src/z80/core/z80_core.{h,c}` -- motor de despacho/execucao (loop
+  principal, sub-dispatchers por prefixo, tratamento de interrupcao), de
+  `resource/fMSX/Z80/Z80.c`. Ver `doc/z80-core-spec.md`, secao 6 (Fase
+  1), para os desvios/simplificacoes registrados nesta adaptacao.
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

@@ -133,6 +133,12 @@ dkms.conf
 !/dist/*.exe
 !/dist/*.zip
 
+# z80test.exe e' o executavel do smoke test do nucleo Z80 (ver
+# doc/z80-core-spec.md) -- util localmente, mas nao e' um entregavel do
+# projeto como msxdisk.exe/fwMSX.exe, entao fica de fora do versionamento
+# (regra depois do "unignore" acima, que e' a que vale por ultimo).
+/dist/z80test.exe
+
 # Diretorios de build gerados automaticamente pelo CLion
 /cmake-build-*/
 
