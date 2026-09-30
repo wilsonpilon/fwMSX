@@ -22,6 +22,9 @@
 // pontos de entrada de CLI/shell/TUI/GUI do msxdisk.exe standalone). Ver
 // doc/SPEC.md, secao 5.1, e doc/msxdisk-spec.md, Fase 5c.
 //
+// "fwmsx --z80dbg" abre o REPL de depuracao do nucleo Z80 (RAM plana de
+// teste, sem maquina MSX ainda) -- ver doc/z80-core-spec.md, Fase 4.
+//
 
 #include <cstdint>
 #include <cstdlib>
@@ -38,6 +41,7 @@
 #include "init_fortran.h"
 
 #include "msxdisk/entry.h"
+#include "z80/debug/z80_debug_shell.h"
 
 namespace {
 
@@ -54,6 +58,9 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--msxdisk") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return msxdisk::RunEntryPoint(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
+        return z80::debug::RunZ80DebugShell();
     }
 
     std::cout << "Copyright (c) 1972-2026 Cybernostra, Inc." << std::endl;

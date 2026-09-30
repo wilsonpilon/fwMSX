@@ -161,41 +161,29 @@ add_executable(msxdisk tools/msxdisk/main.cpp ${MSXDISK_LIB_SOURCES})
 msxdisk_link_target(msxdisk)
 set_target_properties(msxdisk PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/msxdisk)
 
-# --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
+# --- Nucleo Z80 (Fases 1-3) -- ver doc/z80-core-spec.md --------------
 #
-# "fwmsx --msxdisk ..." repassa pro msxdisk embutido (mesmos
-# MSXDISK_LIB_SOURCES acima) -- ver doc/SPEC.md, secao 5.1.
-add_executable(fwMSX
-        src/cpp/main.cpp
-        src/cpp/init_cpp.cpp
-        src/c/init_c.c
-        src/asm/init_asm.asm
-        src/fortran/init_fortran.f90
-        ${MSXDISK_LIB_SOURCES}
-)
-
-target_include_directories(fwMSX PRIVATE
-        src/cpp
-        src/c
-        src/asm
-        src/fortran
-        src/common
-)
-msxdisk_link_target(fwMSX)
-set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)
-
-# --- Nucleo Z80 (Fase 1) -- ver doc/z80-core-spec.md -----------------
-#
-# Motor de despacho em C (adaptado do fMSX, ver LICENSE-THIRD-PARTY.md)
-# + wrapper de orquestracao em C++ (design proprio). Ainda nao integrado
-# a fwMSX/msxdisk (isso e' Fase 4) -- por enquanto so o alvo z80test,
-# para validar o core isoladamente via CTest.
+# Motor de despacho em C (adaptado do fMSX, ver LICENSE-THIRD-PARTY.md),
+# tabelas de flag geradas em Fortran e aceleracao de LDIR/LDDR em
+# Assembly (dual-ABI Win64/SysV) + wrapper de orquestracao em C++
+# (design proprio). Z80_LIB_SOURCES e' compilado tanto no alvo de teste
+# isolado (z80test) quanto, a partir da Fase 4, no proprio fwMSX.
 set(Z80_LIB_SOURCES
         src/z80/core/z80_tables.c
         src/z80/core/z80_core.c
         src/z80/cpp/z80_cpu.cpp
         src/z80/fortran/flag_tables.f90
         src/z80/asm/block_ops.asm
+)
+
+# Sessao de depuracao do Z80 (Fase 4): RAM plana + Z80Cpu + comandos
+# reset/regs/step/run/break/mem/peek/poke/load/fill, sem nenhuma
+# dependencia de replxx -- testavel isoladamente (ver
+# tests/z80/debug_session_test.cpp). z80_debug_shell.cpp (o REPL
+# interativo em si) fica de fora desta lista de proposito: depende de
+# replxx/stdin, entao so entra no alvo fwMSX, nunca no z80dbgtest.
+set(Z80_DEBUG_SESSION_SOURCES
+        src/z80/debug/z80_debug_session.cpp
 )
 
 enable_testing()
@@ -208,3 +196,42 @@ if (MINGW)
 endif ()
 
 add_test(NAME z80_smoke COMMAND z80test)
+
+add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES})
+target_include_directories(z80dbgtest PRIVATE src/z80)
+set_target_properties(z80dbgtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/z80dbgtest)
+if (MINGW)
+    target_link_options(z80dbgtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME z80_debug_session COMMAND z80dbgtest)
+
+# --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
+#
+# "fwmsx --msxdisk ..." repassa pro msxdisk embutido (mesmos
+# MSXDISK_LIB_SOURCES acima) -- ver doc/SPEC.md, secao 5.1.
+# "fwmsx --z80dbg" abre o REPL de depuracao do Z80 (Fase 4, ver
+# doc/z80-core-spec.md) -- unico lugar que compila z80_debug_shell.cpp
+# (usa replxx, por isso fora de Z80_DEBUG_SESSION_SOURCES).
+add_executable(fwMSX
+        src/cpp/main.cpp
+        src/cpp/init_cpp.cpp
+        src/c/init_c.c
+        src/asm/init_asm.asm
+        src/fortran/init_fortran.f90
+        ${MSXDISK_LIB_SOURCES}
+        ${Z80_LIB_SOURCES}
+        ${Z80_DEBUG_SESSION_SOURCES}
+        src/z80/debug/z80_debug_shell.cpp
+)
+
+target_include_directories(fwMSX PRIVATE
+        src/cpp
+        src/c
+        src/asm
+        src/fortran
+        src/common
+        src/z80
+)
+msxdisk_link_target(fwMSX)
+set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)

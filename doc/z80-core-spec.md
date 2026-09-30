@@ -525,23 +525,74 @@ depois).
     nenhuma flag explicita) -- nao foi preciso adicionar logica nova de
     deteccao de plataforma no `CMakeLists.txt`.
 
-- [ ] **Fase 4 -- Integracao com fwMSX**: expor `Z80Cpu` via comandos de
-      debug na CLI/TUI do `fwMSX.exe` (sem VDP/memoria de maquina real
-      ainda -- so uma RAM de teste), preparando o terreno para quando VDP/
-      PSG/mapeamento de memoria existirem de verdade.
+- [x] **Fase 4 -- Integracao com fwMSX** (concluida em 2026-09-30): REPL
+      de depuracao do `Z80Cpu` embutido em `fwMSX.exe` (`fwmsx --z80dbg`),
+      por tras de uma RAM plana de 64KB sem nenhum mapeamento de maquina
+      (sem VDP/PSG/bank-switch -- isso ainda nao existe) -- exatamente o
+      "so uma RAM de teste" previsto para esta fase.
 
-## 7. Build e teste (Fases 1-3)
+  **Arquivos**: `src/z80/debug/{flat_memory_bus.h, z80_debug_session.h,
+  z80_debug_session.cpp, z80_debug_shell.h, z80_debug_shell.cpp}`;
+  `src/cpp/main.cpp` ganhou a interceptacao de `--z80dbg` (mesmo padrao de
+  `--msxdisk`); `CMakeLists.txt` ganhou `Z80_DEBUG_SESSION_SOURCES`
+  (`z80_debug_session.cpp`, sem dependencia de replxx -- testavel
+  isolado), o alvo `z80dbgtest`, e a inclusao de `Z80_LIB_SOURCES` +
+  `Z80_DEBUG_SESSION_SOURCES` + `z80_debug_shell.cpp` no proprio `fwMSX`
+  (primeira vez que o nucleo Z80 entra no executavel principal).
+  `tests/z80/debug_session_test.cpp` (novo, 11 verificacoes).
+
+  **Design**: `Z80DebugSession::ProcessCommand(tokens) -> string` e' o
+  nucleo testavel (sem replxx/stdin); `z80_debug_shell.cpp` e' so o REPL
+  fino por cima (mesmo estilo de `src/msxdisk/shell/shell.cpp`, historico
+  em `~/.fwmsx_z80dbg_history`). Comandos: `reset`, `regs` (registradores
+  + flags decodificadas letra a letra + IFF/IM/HALT + I/R), `step [n]`
+  (`n` chamadas de `cpu.run(1)` -- cada uma e' genuinamente UM passo de
+  instrucao, ver a nota da API em `z80_cpu.h`), `run [ciclos]` (repete
+  `cpu.run(1)` ate esgotar o orcamento OU acertar um breakpoint --
+  granularidade de 1 instrucao por chamada e' o que permite breakpoint
+  sem tocar no core C), `break`/`clear`/`breaks`, `mem`/`peek`/`poke`,
+  `load <arquivo> <endereco>` (binario cru do host), `fill`, `help`.
+  Enderecos/numeros aceitam decimal, `0x`-hex ou `$`-hex.
+
+  **Adiado de proposito, nao esquecido**: `disasm` (desmontador) --
+  mencionado como aspiracao na secao 3.3, mas uma tabela de mnemonicos
+  para as ~1500 variantes de opcode e' um trabalho a parte que nao
+  bloqueia o valor do resto desta fase (depurar registradores/memoria/
+  breakpoints ja' e' util sem isso). Fica para uma fase futura, junto com
+  a "maquina" de verdade (VDP/PSG/mapa de memoria) que vai dar mais
+  contexto pra decidir o formato de saida do desmontador.
+
+  **Build/teste**: `z80dbgtest` roda isolado (`cmake --build build
+  --target z80dbgtest && ./dist/z80dbgtest.exe`) -- 11/11 passando.
+  `fwMSX.exe` completo compilado limpo (40 alvos, sem warning novo) e
+  verificado de ponta a ponta via stdin nao-interativo (replxx aceita
+  entrada via pipe sem TTY de verdade):
+  `printf 'reset\nregs\npoke 0x1000 0xAB\npeek 0x1000\nexit\n' |
+  ./dist/fwMSX.exe --z80dbg` -- respondeu corretamente a cada comando.
+  Regressao conferida: `fwMSX.exe` sem argumentos continua com a saida
+  do esqueleto inalterada; `fwMSX.exe --msxdisk info` (sem imagem)
+  continua devolvendo o erro de uso esperado do msxdisk, nao quebrou com
+  a integracao do Z80.
+
+  **Arquivos desta fase sao codigo ORIGINAL do fwMSX** (BSD-3-Clause) --
+  nenhum adapta `resource/fMSX/`, entao nada foi adicionado a
+  `LICENSE-THIRD-PARTY.md`.
+
+## 7. Build e teste (Fases 1-4)
 
 ```
 export PATH="/c/msys64/ucrt64/bin:$PATH"   # ver nota na Fase 1 acima
 cmake -S . -B build -G Ninja
 cmake --build build --target z80test
+cmake --build build --target z80dbgtest
+cmake --build build --target fwMSX
 ctest --test-dir build -R z80 --output-on-failure
 ```
 
-Resultado em 2026-09-30: build limpo, `ctest` verde, 168 verificacoes
-passando no `z80test.exe` (8 da Fase 1 + 2 da Fase 2 + 158 da Fase 3 --
-8 casos fixos + 150 da varredura aleatoria de LDIR/LDDR).
+Resultado em 2026-09-30: build limpo, `ctest` verde -- `z80_smoke` (168
+verificacoes: 8 da Fase 1 + 2 da Fase 2 + 158 da Fase 3) e
+`z80_debug_session` (11 verificacoes, Fase 4), mais a verificacao manual
+de `fwMSX.exe --z80dbg` via stdin descrita acima.
 
 *(Cada fase sera detalhada em sub-fases, como aconteceu em
 `doc/msxdisk-spec.md`, no momento em que a implementacao comecar.)*
