@@ -150,9 +150,16 @@ acompanhamento manual do autor a cada build):
 - Iniciar o core de emulacao propriamente dito (CPU Z80, VDP, PSG, etc.),
   decidindo em qual(is) modulo(s)/linguagem(ns) cada parte sera
   implementada, sempre respeitando a regra de ter as quatro linguagens
-  representadas em uso real. **Analise e design concluidos em 2026-09-29**
-  para a CPU Z80 -- ver [doc/z80-core-spec.md](z80-core-spec.md)
-  (implementacao ainda nao iniciada).
+  representadas em uso real. **CPU Z80: Fases 1-4 concluidas em
+  2026-09-30** -- ver [doc/z80-core-spec.md](z80-core-spec.md) para o
+  detalhamento completo. Resumo: motor de despacho em **C** (adaptado do
+  fMSX) + wrapper de orquestracao em **C++**, tabelas de flag geradas em
+  **Fortran**, aceleracao de `LDIR`/`LDDR` em **Assembly** dual-ABI
+  (Win64/SysV, primeiro `.asm` do projeto portavel pra Linux), e um
+  depurador embutido em `fwMSX.exe` (`fwmsx --z80dbg`: registradores,
+  memoria, breakpoints e desmontador) rodando sobre uma RAM plana de
+  teste -- ainda **sem VDP/PSG/mapa de memoria real** (proxima fase, ver
+  5.1 abaixo). Faltam VDP e PSG para ter uma maquina MSX de verdade.
 - Definir empacotamento final (alem do ZIP de `dist/`) quando houver uma
   versao executavel do emulador.
 
@@ -188,6 +195,15 @@ Fase 5c):
 - **`msxdisk.exe` continua existindo como binario standalone**, para quem
   quer soh o utilitario de disco sem instalar/rodar o emulador --
   requisito original do proprio autor, nao se perde com essa integracao.
+- **Implementado em 2026-09-30**: `fwmsx --z80dbg` abre um REPL de
+  depuracao do `Z80Cpu` (registradores, memoria, breakpoints,
+  desmontador) sobre uma RAM plana de 64KB -- ver `doc/z80-core-spec.md`,
+  Fase 4, para o detalhamento completo. E' o primeiro modo de `fwMSX.exe`
+  que expoe o proprio core de emulacao (nao o `msxdisk` embutido), e o
+  primeiro passo concreto na direcao desta visao: quando VDP/PSG/mapa de
+  memoria existirem, o mesmo padrao de "REPL/TUI/GUI escolhendo um unico
+  executavel" se estende para pilotar a maquina completa, nao so a CPU
+  isolada.
 - Esta visao **nao muda nada da Fase 0 atual** nem bloqueia o trabalho em
   andamento no `msxdisk` (fases 1-5 dele seguem seu proprio ritmo,
   documentadas em `doc/msxdisk-spec.md`). So entra em jogo quando o core

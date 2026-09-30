@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "../common/z80_state.h"
+#include "z80_disasm.h"
 
 namespace z80::debug {
 
@@ -81,6 +82,7 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
     if (cmd == "poke") return CmdPoke(tokens);
     if (cmd == "load") return CmdLoad(tokens);
     if (cmd == "fill") return CmdFill(tokens);
+    if (cmd == "disasm") return CmdDisasm(tokens);
     if (cmd == "help" || cmd == "?") return CmdHelp();
 
     return "comando desconhecido: '" + cmd + "' (digite 'help' para a lista)";
@@ -249,6 +251,27 @@ std::string Z80DebugSession::CmdFill(const std::vector<std::string> &tokens) {
     return "preenchido: " + std::to_string(len) + " byte(s) a partir de " + Hex4(addr) + " com " + Hex2(value);
 }
 
+std::string Z80DebugSession::CmdDisasm(const std::vector<std::string> &tokens) const {
+    uint16_t addr = cpu_.pc();
+    if (tokens.size() > 1 && !ParseAddr(tokens[1], addr)) return "disasm: endereco invalido: '" + tokens[1] + "'";
+    uint32_t n = 10;
+    if (tokens.size() > 2 && !ParseU32(tokens[2], n)) return "disasm: quantidade invalida: '" + tokens[2] + "'";
+
+    const auto read = [this](uint16_t a) { return bus_.at(a); };
+
+    std::ostringstream out;
+    for (uint32_t i = 0; i < n; ++i) {
+        const DisasmResult r = Disassemble(read, addr);
+        out << Hex4(addr) << ": ";
+        for (uint16_t k = 0; k < r.length; ++k) out << Hex2(bus_.at(static_cast<uint16_t>(addr + k))) << " ";
+        for (uint16_t k = r.length; k < 4; ++k) out << "   ";
+        out << " " << r.text;
+        if (i + 1 < n) out << "\n";
+        addr = static_cast<uint16_t>(addr + r.length);
+    }
+    return out.str();
+}
+
 std::string Z80DebugSession::CmdHelp() const {
     return "Comandos (enderecos/numeros: decimal, 0x-hex ou $-hex):\n"
            "  reset                 reseta a CPU\n"
@@ -264,11 +287,8 @@ std::string Z80DebugSession::CmdHelp() const {
            "  poke <end> <byte>     escreve um byte\n"
            "  load <arquivo> <end>  carrega um arquivo binario na RAM em <end>\n"
            "  fill <end> <tam> <b>  preenche <tam> bytes com <b> a partir de <end>\n"
-           "  help                  esta mensagem\n"
-           "\n"
-           "Nao ha' 'disasm' ainda -- adiado de proposito (ver doc/z80-core-spec.md,\n"
-           "Fase 4): uma tabela de mnemonicos para ~1500 variantes de opcode e' um\n"
-           "trabalho a parte, que nao bloqueia o resto desta fase.";
+           "  disasm [end] [n]      desmonta n instrucoes (default: PC atual, 10)\n"
+           "  help                  esta mensagem";
 }
 
 } // namespace z80::debug

@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../../src/z80/debug/z80_debug_session.h"
+#include "../../src/z80/debug/z80_disasm.h"
 
 namespace {
 
@@ -123,6 +124,122 @@ int main() {
 
         const std::string result = Cmd(session, {"run", "1000000"});
         check(Contains(result, "breakpoint"), "run: para por breakpoint, nao por esgotar o orcamento (" + result + ")");
+    }
+
+    // --- desassemblador: checagens exatas (Fase 4, disasm) ---------------
+    {
+        using z80::debug::Disassemble;
+        auto make_reader = [](std::vector<uint8_t> bytes) {
+            return [bytes](uint16_t addr) -> uint8_t { return addr < bytes.size() ? bytes[addr] : 0x00; };
+        };
+        auto check_exact = [&](std::vector<uint8_t> bytes, const std::string &expected_text, uint16_t expected_len,
+                                const std::string &label) {
+            const auto r = Disassemble(make_reader(bytes), 0);
+            check(r.text == expected_text && r.length == expected_len,
+                  label + ": esperado '" + expected_text + "' (" + std::to_string(expected_len) +
+                      " bytes), obtido '" + r.text + "' (" + std::to_string(r.length) + " bytes)");
+        };
+
+        check_exact({0x00}, "NOP", 1, "disasm: NOP");
+        check_exact({0x3E, 0x42}, "LD A,42h", 2, "disasm: LD A,42h (imediato de 8 bits, '*')");
+        check_exact({0x01, 0x34, 0x12}, "LD BC,1234h", 3, "disasm: LD BC,1234h (imediato de 16 bits, '#')");
+        check_exact({0x20, 0x05}, "JR NZ,+05h", 2, "disasm: JR NZ,+05h (offset relativo positivo, '@')");
+        check_exact({0x20, 0xFB}, "JR NZ,-05h", 2, "disasm: JR NZ,-05h (offset relativo negativo, '@')");
+        check_exact({0xCB, 0x00}, "RLC B", 2, "disasm: RLC B (tabela CB)");
+        check_exact({0xCB, 0x7E}, "BIT 7,(HL)", 2, "disasm: BIT 7,(HL) (tabela CB)");
+        check_exact({0xED, 0x78}, "IN A,(C)", 2, "disasm: IN A,(C) (tabela ED)");
+        check_exact({0xED, 0xB0}, "LDIR", 2, "disasm: LDIR (tabela ED)");
+        check_exact({0xDD, 0x09}, "ADD IX,BC", 2, "disasm: ADD IX,BC (tabela XX, prefixo DD)");
+        check_exact({0xDD, 0x8F}, "ADC A", 2, "disasm: ADC A com prefixo IX (correcao do typo 'ADC,A' do fMSX)");
+        check_exact({0xFD, 0x8F}, "ADC A", 2, "disasm: ADC A com prefixo IY (mesma correcao, '%' -> Y)");
+        // "LD I%h,I%l" -> ambas ocorrencias de '%' precisam virar X/Y (correcao
+        // do bug do fMSX que so trocava a primeira) -- o sufixo minusculo
+        // "h"/"l" e' o proprio estilo original das tabelas (nao e' erro).
+        check_exact({0xDD, 0x65}, "LD IXh,IXl", 2, "disasm: LD IXh,IXl (dupla substituicao de '%', prefixo DD)");
+        check_exact({0xFD, 0x65}, "LD IYh,IYl", 2, "disasm: LD IYh,IYl (dupla substituicao de '%', prefixo FD)");
+        check_exact({0xDD, 0xCB, 0x03, 0x06}, "RLC (IX+03h)", 4,
+                     "disasm: RLC (IX+03h) (tabela XCB, deslocamento positivo)");
+        check_exact({0xFD, 0xCB, 0xFE, 0x66}, "BIT 4,(IY-02h)", 4,
+                     "disasm: BIT 4,(IY-02h) (tabela XCB, deslocamento negativo)");
+        check_exact({0xDD, 0x34, 0xFF}, "INC (IX-01h)", 3,
+                     "disasm: INC (IX-01h) ('^' com deslocamento negativo -- correcao #3, sinal explicito)");
+    }
+
+    // --- desassemblador: varredura de completude (sem crash em nenhum opcode) ---
+    {
+        using z80::debug::Disassemble;
+        auto reader_over = [](std::vector<uint8_t> buf) {
+            return [buf](uint16_t addr) -> uint8_t { return addr < buf.size() ? buf[addr] : 0x00; };
+        };
+
+        int leading_ok = 0;
+        for (int op = 0; op < 256; ++op) {
+            std::vector<uint8_t> buf(8, 0x00);
+            buf[0] = static_cast<uint8_t>(op);
+            const auto r = Disassemble(reader_over(buf), 0);
+            if (!r.text.empty() && r.length >= 1 && r.length <= 4) ++leading_ok;
+        }
+        check(leading_ok == 256,
+              "disasm: varredura dos 256 valores possiveis do primeiro byte -- sem crash, texto nao-vazio, "
+              "tamanho 1..4 (achou " +
+                  std::to_string(leading_ok) + "/256)");
+
+        int cb_ok = 0;
+        for (int op = 0; op < 256; ++op) {
+            std::vector<uint8_t> buf = {0xCB, static_cast<uint8_t>(op), 0, 0, 0, 0, 0, 0};
+            const auto r = Disassemble(reader_over(buf), 0);
+            if (!r.text.empty() && r.length == 2) ++cb_ok;
+        }
+        check(cb_ok == 256, "disasm: varredura completa da tabela CB -- 256/256 sem crash, tamanho sempre 2 (achou " +
+                                 std::to_string(cb_ok) + "/256)");
+
+        int ed_ok = 0;
+        for (int op = 0; op < 256; ++op) {
+            std::vector<uint8_t> buf = {0xED, static_cast<uint8_t>(op), 0, 0, 0, 0, 0, 0};
+            const auto r = Disassemble(reader_over(buf), 0);
+            if (!r.text.empty() && r.length >= 2 && r.length <= 4) ++ed_ok;
+        }
+        check(ed_ok == 256, "disasm: varredura completa da tabela ED -- 256/256 sem crash, tamanho 2..4 (achou " +
+                                 std::to_string(ed_ok) + "/256)");
+
+        int xx_ok = 0;
+        for (uint8_t prefix : {static_cast<uint8_t>(0xDD), static_cast<uint8_t>(0xFD)}) {
+            for (int op = 0; op < 256; ++op) {
+                if (op == 0xCB) continue;  // esse caso delega pra tabela XCB, testado a parte abaixo
+                std::vector<uint8_t> buf = {prefix, static_cast<uint8_t>(op), 0, 0, 0, 0, 0, 0};
+                const auto r = Disassemble(reader_over(buf), 0);
+                if (!r.text.empty() && r.length >= 2 && r.length <= 4) ++xx_ok;
+            }
+        }
+        check(xx_ok == 255 * 2,
+              "disasm: varredura completa da tabela XX sob DD e FD -- 255/255 * 2 sem crash, tamanho 2..4 "
+              "(opcode 0xCB delega pra XCB, testado a parte -- achou " +
+                  std::to_string(xx_ok) + "/510)");
+
+        int xcb_ok = 0;
+        for (uint8_t prefix : {static_cast<uint8_t>(0xDD), static_cast<uint8_t>(0xFD)}) {
+            for (int op = 0; op < 256; ++op) {
+                std::vector<uint8_t> buf = {prefix, 0xCB, 0x00, static_cast<uint8_t>(op), 0, 0, 0, 0};
+                const auto r = Disassemble(reader_over(buf), 0);
+                if (!r.text.empty() && r.length == 4) ++xcb_ok;
+            }
+        }
+        check(xcb_ok == 256 * 2,
+              "disasm: varredura completa da tabela XCB sob DD CB e FD CB -- 256/256 * 2 sem crash, tamanho "
+              "sempre 4 (achou " +
+                  std::to_string(xcb_ok) + "/512)");
+    }
+
+    // --- comando 'disasm' da sessao (integracao, nao so a funcao pura) -----
+    {
+        Z80DebugSession session;
+        Cmd(session, {"reset"});
+        Cmd(session, {"poke", "0x0000", "0x3E"});
+        Cmd(session, {"poke", "0x0001", "0x05"});
+        Cmd(session, {"poke", "0x0002", "0x76"});
+        const std::string listing = Cmd(session, {"disasm", "0x0000", "2"});
+        check(Contains(listing, "LD A,05h"), "disasm (sessao): mostra LD A,05h na primeira linha");
+        check(Contains(listing, "HALT"), "disasm (sessao): mostra HALT na segunda linha (endereco avancado certo)");
     }
 
     if (g_failures == 0) {

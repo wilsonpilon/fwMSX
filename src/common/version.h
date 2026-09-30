@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 2
-#define FWMSX_VERSION_PATCH 1
+#define FWMSX_VERSION_MINOR 3
+#define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Metal Gear"
-#define FWMSX_SUBTITLE  "Ajustes de Campo"
+#define FWMSX_CODENAME  "SD Snatcher"
+#define FWMSX_SUBTITLE  "Nucleo do Z80"

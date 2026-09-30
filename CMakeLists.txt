@@ -184,6 +184,7 @@ set(Z80_LIB_SOURCES
 # replxx/stdin, entao so entra no alvo fwMSX, nunca no z80dbgtest.
 set(Z80_DEBUG_SESSION_SOURCES
         src/z80/debug/z80_debug_session.cpp
+        src/z80/debug/z80_disasm.cpp
 )
 
 enable_testing()

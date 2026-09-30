@@ -53,6 +53,12 @@ termos acima:
   principal, sub-dispatchers por prefixo, tratamento de interrupcao), de
   `resource/fMSX/Z80/Z80.c`. Ver `doc/z80-core-spec.md`, secao 6 (Fase
   1), para os desvios/simplificacoes registrados nesta adaptacao.
+- `src/z80/debug/z80_disasm.{h,cpp}` -- desmontador (tabelas de
+  mnemonicos e o algoritmo de gabaritos com caracteres-coringa), de
+  `resource/fMSX/Z80/Debug.c` (tabelas `Mnemonics*[]` e a funcao
+  `DAsm()`). Ver `doc/z80-core-spec.md`, secao 6 (Fase 4), para as tres
+  correcoes cosmeticas feitas em relacao ao original (nenhuma afeta
+  execucao/timing da CPU, so o texto mostrado pelo desmontador).
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

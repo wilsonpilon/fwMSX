@@ -532,14 +532,16 @@ depois).
       "so uma RAM de teste" previsto para esta fase.
 
   **Arquivos**: `src/z80/debug/{flat_memory_bus.h, z80_debug_session.h,
-  z80_debug_session.cpp, z80_debug_shell.h, z80_debug_shell.cpp}`;
-  `src/cpp/main.cpp` ganhou a interceptacao de `--z80dbg` (mesmo padrao de
-  `--msxdisk`); `CMakeLists.txt` ganhou `Z80_DEBUG_SESSION_SOURCES`
-  (`z80_debug_session.cpp`, sem dependencia de replxx -- testavel
-  isolado), o alvo `z80dbgtest`, e a inclusao de `Z80_LIB_SOURCES` +
-  `Z80_DEBUG_SESSION_SOURCES` + `z80_debug_shell.cpp` no proprio `fwMSX`
-  (primeira vez que o nucleo Z80 entra no executavel principal).
-  `tests/z80/debug_session_test.cpp` (novo, 11 verificacoes).
+  z80_debug_session.cpp, z80_debug_shell.h, z80_debug_shell.cpp,
+  z80_disasm.h, z80_disasm.cpp}`; `src/cpp/main.cpp` ganhou a
+  interceptacao de `--z80dbg` (mesmo padrao de `--msxdisk`);
+  `CMakeLists.txt` ganhou `Z80_DEBUG_SESSION_SOURCES`
+  (`z80_debug_session.cpp` + `z80_disasm.cpp`, sem dependencia de replxx
+  -- testaveis isolados), o alvo `z80dbgtest`, e a inclusao de
+  `Z80_LIB_SOURCES` + `Z80_DEBUG_SESSION_SOURCES` + `z80_debug_shell.cpp`
+  no proprio `fwMSX` (primeira vez que o nucleo Z80 entra no executavel
+  principal). `tests/z80/debug_session_test.cpp` (11 verificacoes da
+  sessao + 21 do desmontador, ver abaixo).
 
   **Design**: `Z80DebugSession::ProcessCommand(tokens) -> string` e' o
   nucleo testavel (sem replxx/stdin); `z80_debug_shell.cpp` e' so o REPL
@@ -551,32 +553,73 @@ depois).
   `cpu.run(1)` ate esgotar o orcamento OU acertar um breakpoint --
   granularidade de 1 instrucao por chamada e' o que permite breakpoint
   sem tocar no core C), `break`/`clear`/`breaks`, `mem`/`peek`/`poke`,
-  `load <arquivo> <endereco>` (binario cru do host), `fill`, `help`.
-  Enderecos/numeros aceitam decimal, `0x`-hex ou `$`-hex.
+  `load <arquivo> <endereco>` (binario cru do host), `fill`, `disasm
+  [endereco] [n]`, `help`. Enderecos/numeros aceitam decimal, `0x`-hex ou
+  `$`-hex.
 
-  **Adiado de proposito, nao esquecido**: `disasm` (desmontador) --
-  mencionado como aspiracao na secao 3.3, mas uma tabela de mnemonicos
-  para as ~1500 variantes de opcode e' um trabalho a parte que nao
-  bloqueia o valor do resto desta fase (depurar registradores/memoria/
-  breakpoints ja' e' util sem isso). Fica para uma fase futura, junto com
-  a "maquina" de verdade (VDP/PSG/mapa de memoria) que vai dar mais
-  contexto pra decidir o formato de saida do desmontador.
+  **`disasm` -- adicionado em 2026-09-30, depois do resto da Fase 4**:
+  `resource/fMSX/Z80/Debug.c` ja tinha um desmontador completo e testado
+  (cinco tabelas de mnemonicos com gabaritos -- `Mnemonics*[]` -- e a
+  funcao `DAsm()`), entao foi adaptado dali em vez de reescrito do zero
+  (`src/z80/debug/z80_disasm.{h,cpp}`, ver `LICENSE-THIRD-PARTY.md`).
+  `Disassemble(read, addr) -> {text, length}` recebe um callback de
+  leitura de byte (desacoplado de `FlatMemoryBus`/`Z80Cpu`, testavel
+  isolado) e reimplementa o mecanismo de gabaritos original (`^`
+  deslocamento fora do caminho XCB, `%` -> X/Y, `*` imediato de 8 bits,
+  `@` offset relativo OU deslocamento XCB ja consumido, `#` imediato de
+  16 bits). **Tres correcoes cosmeticas** em relacao ao `DAsm()` original
+  (nenhuma muda execucao/timing da CPU -- so o texto do desmontador):
+  1. `%` so trocava a primeira ocorrencia no fMSX original (`strchr`
+     unico); gabaritos com duas ocorrencias (ex.: `"LD I%h,I%l"`) saiam
+     com a segunda `%` literal (`"LD IXh,I%l"`). Corrigido para trocar
+     todas (`"LD IXh,IXl"` -- o sufixo minusculo `h`/`l` e' o proprio
+     estilo original das tabelas, nao faz parte da correcao).
+  2. Typo `"ADC,A"` (virgula a mais) em `MnemonicsXX`, na posicao
+     correspondente a `ADC A` sem operando de IX/IY -- comparado com a
+     entrada equivalente em `Mnemonics` (`"ADC A"`) e corrigido.
+  3. O deslocamento `^` (fora do caminho XCB) mostrava sempre o byte cru
+     em hex sem sinal (deslocamento -1 saia como `"+FFh"`), enquanto o
+     `@` do caminho XCB para o MESMO conceito (deslocamento de IX/IY) ja
+     mostra sinal explicito (`"-01h"`). Normalizado `^` para usar a
+     mesma notacao com sinal do `@`, por consistencia.
+
+     Entradas como `"LD H,(I%+^h)"`/`"LD (I%+^h),H"` (usando H/L reais
+     em vez de IXH/IXL) e o `"HALT"` na posicao 0x76 **nao** sao erros --
+     casam com o comportamento real de hardware ja preservado em
+     `src/z80/core/opcodes_xx.h` -- foram conferidos e deixados como
+     estavam.
+
+  Testado com 21 verificacoes novas em `debug_session_test.cpp`: casos
+  exatos cobrindo cada tipo de gabarito e as tres correcoes (incluindo
+  `ADC A` com DD e FD, `LD IXh,IXl`/`LD IYh,IYl`, deslocamento negativo
+  em `^` e em `@`), mais uma varredura de completude sem crash sobre
+  **todos** os 256 valores do primeiro byte, as 256 entradas de `CB`, as
+  256 de `ED`, as 255x2 de `XX` (DD e FD) e as 256x2 de `XCB` (DD CB e FD
+  CB) -- 2044 combinacoes de opcode no total, todas com texto nao-vazio
+  e tamanho dentro da faixa esperada (base/CB/ED: 1-4 bytes; CB sempre 2;
+  XCB sempre 4).
 
   **Build/teste**: `z80dbgtest` roda isolado (`cmake --build build
-  --target z80dbgtest && ./dist/z80dbgtest.exe`) -- 11/11 passando.
-  `fwMSX.exe` completo compilado limpo (40 alvos, sem warning novo) e
-  verificado de ponta a ponta via stdin nao-interativo (replxx aceita
-  entrada via pipe sem TTY de verdade):
-  `printf 'reset\nregs\npoke 0x1000 0xAB\npeek 0x1000\nexit\n' |
-  ./dist/fwMSX.exe --z80dbg` -- respondeu corretamente a cada comando.
-  Regressao conferida: `fwMSX.exe` sem argumentos continua com a saida
-  do esqueleto inalterada; `fwMSX.exe --msxdisk info` (sem imagem)
-  continua devolvendo o erro de uso esperado do msxdisk, nao quebrou com
-  a integracao do Z80.
+  --target z80dbgtest && ./dist/z80dbgtest.exe`) -- 32/32 passando (11 da
+  sessao + 21 do desmontador). `fwMSX.exe` completo compilado limpo (sem
+  warning novo) e verificado de ponta a ponta via stdin nao-interativo
+  (replxx aceita entrada via pipe sem TTY de verdade), incluindo o
+  `disasm` novo:
+  ```
+  printf 'reset\npoke 0x0000 0x21\npoke 0x0001 0x34\npoke 0x0002 0x12\n
+  poke 0x0003 0xcd\npoke 0x0004 0x00\npoke 0x0005 0x80\npoke 0x0006 0x76\n
+  disasm 0x0000 4\nexit\n' | ./dist/fwMSX.exe --z80dbg
+  ```
+  devolveu `LD HL,1234h` / `CALL 8000h` / `HALT` / `NOP` -- exatamente o
+  esperado para os bytes gravados. Regressao conferida: `fwMSX.exe` sem
+  argumentos continua com a saida do esqueleto inalterada; `fwMSX.exe
+  --msxdisk info` (sem imagem) continua devolvendo o erro de uso esperado
+  do msxdisk.
 
-  **Arquivos desta fase sao codigo ORIGINAL do fwMSX** (BSD-3-Clause) --
-  nenhum adapta `resource/fMSX/`, entao nada foi adicionado a
-  `LICENSE-THIRD-PARTY.md`.
+  **Licenciamento desta fase**: `flat_memory_bus.h`, `z80_debug_session.*`
+  e `z80_debug_shell.*` sao codigo ORIGINAL do fwMSX (BSD-3-Clause).
+  `z80_disasm.{h,cpp}` **e' adaptado de `resource/fMSX/Z80/Debug.c`** --
+  ver `LICENSE-THIRD-PARTY.md` para a entrada completa.
 
 ## 7. Build e teste (Fases 1-4)
 
@@ -591,8 +634,9 @@ ctest --test-dir build -R z80 --output-on-failure
 
 Resultado em 2026-09-30: build limpo, `ctest` verde -- `z80_smoke` (168
 verificacoes: 8 da Fase 1 + 2 da Fase 2 + 158 da Fase 3) e
-`z80_debug_session` (11 verificacoes, Fase 4), mais a verificacao manual
-de `fwMSX.exe --z80dbg` via stdin descrita acima.
+`z80_debug_session` (32 verificacoes: 11 da sessao + 21 do desmontador,
+Fase 4), mais a verificacao manual de `fwMSX.exe --z80dbg` via stdin
+descrita acima (incluindo o `disasm` novo).
 
 *(Cada fase sera detalhada em sub-fases, como aconteceu em
 `doc/msxdisk-spec.md`, no momento em que a implementacao comecar.)*

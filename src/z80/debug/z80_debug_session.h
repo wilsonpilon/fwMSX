@@ -44,6 +44,7 @@ private:
     std::string CmdPoke(const std::vector<std::string> &tokens);
     std::string CmdLoad(const std::vector<std::string> &tokens);
     std::string CmdFill(const std::vector<std::string> &tokens);
+    std::string CmdDisasm(const std::vector<std::string> &tokens) const;
     std::string CmdHelp() const;
 
     FlatMemoryBus bus_;

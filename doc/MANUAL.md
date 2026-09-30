@@ -154,6 +154,47 @@ O mesmo utilitario tambem esta embutido no `fwMSX.exe`:
 Configuracao, temas e metadados de imagem ficam em
 `%USERPROFILE%\.msxdisk\config.sqlite3` (compartilhado entre TUI e GUI).
 
+## Nucleo Z80 -- depurador embutido (`--z80dbg`)
+
+Documentacao completa (arquitetura, fases, decisoes) em
+[z80-core-spec.md](z80-core-spec.md). Aqui so o essencial pra usar.
+
+Ainda **nao existe uma maquina MSX de verdade** (sem VDP/PSG/mapa de
+memoria) -- `--z80dbg` abre um REPL de depuracao do `Z80Cpu` sobre uma
+RAM plana de 64KB, so pra inspecionar/exercitar o core isoladamente:
+
+```powershell
+.\dist\fwMSX.exe --z80dbg
+```
+
+Dentro do REPL (`help` lista tudo):
+
+```
+reset                 reseta a CPU
+regs                  mostra registradores/flags/IFF
+step [n]              executa n instrucoes (default 1), uma por vez
+run [ciclos]          executa ate esgotar o orcamento (default 1000) ou breakpoint
+break/clear/breaks    gerencia breakpoints
+mem/peek/poke         inspeciona/edita a RAM
+load <arquivo> <end>  carrega um binario cru na RAM
+fill <end> <tam> <b>  preenche memoria
+disasm [end] [n]      desmonta n instrucoes (default: PC atual, 10)
+```
+
+Enderecos/numeros aceitam decimal, `0x`-hex ou `$`-hex. Exemplo rapido
+(carrega `LD HL,1234h` / `HALT` a mao e desmonta):
+
+```
+fwMSX - depurador do nucleo Z80 (RAM plana de teste, sem maquina MSX ainda).
+z80dbg> poke 0x0000 0x21
+z80dbg> poke 0x0001 0x34
+z80dbg> poke 0x0002 0x12
+z80dbg> poke 0x0003 0x76
+z80dbg> disasm 0x0000 2
+0000: 21 34 12     LD HL,1234h
+0003: 76           HALT
+```
+
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 
 A GUI (Dear ImGui + GLFW + OpenGL3) vem ligada por padrao. Pra compilar

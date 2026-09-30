@@ -7,6 +7,48 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.3.0] - 2026-09-30 - "SD Snatcher: Núcleo do Z80"
+
+Início do core de emulação propriamente dito: a CPU Z80, fiel ao fMSX,
+usando as quatro linguagens do projeto de verdade (não só simbolicamente)
+-- ver [doc/z80-core-spec.md](z80-core-spec.md) para o histórico completo
+de fases.
+
+### Adicionado
+- **Motor de despacho da CPU Z80 em C** (`src/z80/core/`), adaptado de
+  `resource/fMSX/Z80/` (registradores, tabelas de ciclo/flag, opcodes com
+  e sem prefixo `CB`/`ED`/`DD`/`FD`/`DDCB`/`FDCB`), por trás de um
+  `Z80Bus` próprio (callbacks + contexto, no lugar das funções globais do
+  fMSX -- permite múltiplas instâncias de CPU no mesmo processo).
+- **Wrapper de orquestração em C++** (`Z80Cpu`/`IBus`, `src/z80/cpp/`):
+  `reset()`/`run(ciclos)`/`interrupt()` e acesso a registradores, sem
+  expor a união de par de registrador na API pública.
+- **Tabelas de flag geradas em Fortran** (`src/z80/fortran/flag_tables.f90`):
+  `ZSTable`/`PZSTable` calculadas com `POPCNT`, chamadas uma única vez no
+  reset da CPU -- nunca no caminho quente do despachante.
+- **Aceleração de `LDIR`/`LDDR` em Assembly** (`src/z80/asm/block_ops.asm`):
+  primeiro `.asm` do projeto com Win64 **e** SysV AMD64 (Linux) no mesmo
+  arquivo-fonte (`%ifidn __OUTPUT_FORMAT__`), usada só quando o bloco
+  inteiro cai em RAM plana do host -- o loop byte-a-byte original do
+  fMSX continua como caminho de reserva sempre que isso não vale.
+- **Depurador embutido em `fwMSX.exe`** (`fwmsx --z80dbg`): REPL
+  (replxx) com `reset`/`regs`/`step`/`run`/`break`/`clear`/`breaks`/
+  `mem`/`peek`/`poke`/`load`/`fill`/`disasm`, rodando sobre uma RAM
+  plana de 64KB de teste -- ainda sem VDP/PSG/mapa de memória real.
+- **Desmontador Z80** (`src/z80/debug/z80_disasm.*`), adaptado do
+  desmontador já existente em `resource/fMSX/Z80/Debug.c`, com três
+  correções cosméticas documentadas (nenhuma afeta execução/timing da
+  CPU) em relação ao original.
+- 200 verificações automatizadas novas (`ctest -R z80`): 168 no motor
+  (`z80_smoke`) e 32 no depurador/desmontador (`z80_debug_session`),
+  incluindo uma varredura de completude sobre 2044 combinações de opcode
+  do desmontador.
+
+### Notas
+- Ainda não existe VDP, PSG nem mapa de memória de uma máquina MSX real
+  -- o núcleo roda isolado sobre RAM de teste. Ver `doc/z80-core-spec.md`
+  para o que falta.
+
 ## [1.2.1] - 2026-09-29 - "Metal Gear: Ajustes de Campo"
 
 Correções e polimento na GUI do `msxdisk` (v1.2.0), encontrados testando
