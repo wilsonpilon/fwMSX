@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "../common/memmap_types.h"
@@ -22,6 +23,14 @@ struct SlotDescriptor {
     // switch) existir -- campo presente desde ja para nao mudar a forma
     // do struct depois (ver doc/memory-map-spec.md, secao 3.3).
     const char *mapper_name = "";
+    // CRC32 dos bytes da ROM (Fase 2, ver doc/memory-map-spec.md, secao
+    // 3.4) -- valido SO quando kind == MEMMAP_KIND_ROM; 0 (nao "nenhum
+    // CRC calculado") para Empty/Ram, onde o campo nao tem sentido.
+    // Conveniencia do depurador para identificar qual imagem exata esta
+    // carregada -- NAO e' deteccao de mapper/cartucho (isso usaria SHA1
+    // contra resource/fMSX/ROMs/CARTS.SHA, como o fMSX faz -- ver a nota
+    // em src/memmap/fortran/rom_checksum.f90).
+    uint32_t crc32 = 0;
 };
 
 struct PageView {
@@ -34,9 +43,9 @@ struct PageView {
     bool writable = false;
 };
 
-// Dona do SlotState (C) e dos buffers de RAM alocados via AllocateRam().
-// Fase 1: so RAM (sem carregamento de ROM/mapper -- isso e' Fase 2/3, ver
-// doc/memory-map-spec.md, secao 6).
+// Dona do SlotState (C) e dos buffers de RAM/ROM alocados via
+// AllocateRam()/LoadRom(). Bank-switch (mappers MegaROM) ainda nao existe
+// -- isso e' Fase 3, ver doc/memory-map-spec.md, secao 6.
 class MemorySystem {
 public:
     MemorySystem();
@@ -49,6 +58,25 @@ public:
     // existir. Chamar de novo na mesma combinacao substitui o que havia
     // antes (o buffer antigo e' liberado).
     void AllocateRam(int primary, int secondary, std::size_t size);
+
+    // Carrega uma imagem de ROM plana (SEM bank-switch -- isso e' Fase 3,
+    // ver doc/memory-map-spec.md, secao 6) na combinacao (primary,
+    // secondary). `size` deve ser multiplo de MEMMAP_CHUNK_SIZE (8KB) e
+    // estar entre 8KB e 64KB (0x2000..0x10000) -- tamanhos reais de ROM
+    // MSX (8/16/24/32/48/64KB) sempre respeitam isso, entao a checagem e'
+    // generica, nao uma lista de tamanhos aceitos. A ROM sempre comeca no
+    // pedaco 0 da combinacao (endereco relativo 0x0000 do slot) -- mesma
+    // convencao ja usada por AllocateRam()/memmap_attach() desde a Fase 1;
+    // pedacos de 8KB alem do tamanho da imagem ficam vazios (ver
+    // memmap_attach() em slot_state.c). Copia `data` para um buffer
+    // proprio (o buffer do chamador pode ser liberado logo depois da
+    // chamada) e marca todos os pedacos como NAO-graviaveis -- uma
+    // escrita ali e' descartada em silencio, mesma regra de um slot vazio
+    // (ver PokeSlot/SlotMemoryBus::write). Calcula o CRC32 da imagem (via
+    // Fortran, src/memmap/fortran/rom_checksum.f90) para Describe()
+    // reportar. Devolve false e preenche `error` (se nao-nulo) em caso de
+    // tamanho invalido ou combinacao de slot invalida; nunca lanca.
+    bool LoadRom(int primary, int secondary, const uint8_t *data, std::size_t size, std::string *error = nullptr);
 
     // Le/escreve numa combinacao de slot especifica, independente do que
     // esta na vista ativa da CPU agora -- a API de inspecao "por fora"
@@ -68,6 +96,10 @@ private:
     // Mantem vivos os buffers passados para memmap_attach() -- SlotState
     // em C so guarda ponteiros crus, nao possui memoria.
     std::vector<std::unique_ptr<uint8_t[]>> owned_buffers_;
+    // CRC32 por combinacao de slot (so relevante para MEMMAP_KIND_ROM) --
+    // vive aqui em vez de em SlotState (C) porque e' metadado de
+    // depurador, nao algo que o motor de troca de slot precisa conhecer.
+    uint32_t rom_crc32_[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS] = {};
 };
 
 } // namespace memmap

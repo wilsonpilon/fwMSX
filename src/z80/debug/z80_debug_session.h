@@ -62,6 +62,7 @@ private:
     std::string CmdSlotMem(const std::vector<std::string> &tokens) const;
     std::string CmdSlotPeek(const std::vector<std::string> &tokens) const;
     std::string CmdSlotPoke(const std::vector<std::string> &tokens);
+    std::string CmdLoadRom(const std::vector<std::string> &tokens);
     std::string CmdHelp() const;
 
     z80::IBus &bus_;

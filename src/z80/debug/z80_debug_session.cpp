@@ -99,6 +99,7 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
     if (cmd == "slotmem") return CmdSlotMem(tokens);
     if (cmd == "slotpeek") return CmdSlotPeek(tokens);
     if (cmd == "slotpoke") return CmdSlotPoke(tokens);
+    if (cmd == "loadrom") return CmdLoadRom(tokens);
     if (cmd == "help" || cmd == "?") return CmdHelp();
 
     return "comando desconhecido: '" + cmd + "' (digite 'help' para a lista)";
@@ -309,9 +310,12 @@ std::string Z80DebugSession::CmdSlots() const {
                 case MEMMAP_KIND_RAM:
                     out << "RAM (" << d.size << " bytes)";
                     break;
-                case MEMMAP_KIND_ROM:
-                    out << "ROM (" << d.size << " bytes)";
+                case MEMMAP_KIND_ROM: {
+                    char crc_buf[16];
+                    std::snprintf(crc_buf, sizeof(crc_buf), "%08X", d.crc32);
+                    out << "ROM (" << d.size << " bytes, CRC32 " << crc_buf << ")";
                     break;
+                }
                 case MEMMAP_KIND_EMPTY:
                 default:
                     out << "vazio";
@@ -391,6 +395,35 @@ std::string Z80DebugSession::CmdSlotPoke(const std::vector<std::string> &tokens)
     return prefix + " <- " + Hex2(value) + " (nao gravado -- slot nao gravavel; continua " + Hex2(actual) + ")";
 }
 
+std::string Z80DebugSession::CmdLoadRom(const std::vector<std::string> &tokens) {
+    if (!memory_system_) return "loadrom: requer 'fwmsx --z80dbg --slots' (esta sessao nao tem mapa de memoria)";
+    if (tokens.size() < 4) return "uso: loadrom <primario> <secundario> <arquivo>";
+    int primary = 0, secondary = 0;
+    if (!ParseSlotIndex(tokens[1], primary)) return "loadrom: slot primario invalido: '" + tokens[1] + "'";
+    if (!ParseSlotIndex(tokens[2], secondary)) return "loadrom: slot secundario invalido: '" + tokens[2] + "'";
+
+    std::ifstream file(tokens[3], std::ios::binary | std::ios::ate);
+    if (!file) return "loadrom: nao foi possivel abrir '" + tokens[3] + "'";
+    const std::streamsize size = file.tellg();
+    if (size < 0) return "loadrom: falha ao ler tamanho de '" + tokens[3] + "'";
+    file.seekg(0, std::ios::beg);
+
+    std::vector<uint8_t> data(static_cast<size_t>(size));
+    if (size > 0 && !file.read(reinterpret_cast<char *>(data.data()), size)) {
+        return "loadrom: erro de leitura em '" + tokens[3] + "'";
+    }
+
+    std::string error;
+    if (!memory_system_->LoadRom(primary, secondary, data.data(), data.size(), &error)) {
+        return "loadrom: " + error;
+    }
+    const memmap::SlotDescriptor desc = memory_system_->Describe(primary, secondary);
+    char crc_buf[16];
+    std::snprintf(crc_buf, sizeof(crc_buf), "%08X", desc.crc32);
+    return "carregado em " + std::to_string(primary) + ":" + std::to_string(secondary) + ": " +
+           std::to_string(data.size()) + " byte(s), CRC32 " + crc_buf;
+}
+
 std::string Z80DebugSession::CmdHelp() const {
     return "Comandos (enderecos/numeros: decimal, 0x-hex ou $-hex):\n"
            "  reset                 reseta a CPU\n"
@@ -412,6 +445,7 @@ std::string Z80DebugSession::CmdHelp() const {
            "  slotmem <p> <s> <end> [tam]    dump de uma combinacao especifica (requer --slots)\n"
            "  slotpeek <p> <s> <end>         le um byte de uma combinacao especifica (requer --slots)\n"
            "  slotpoke <p> <s> <end> <byte>  escreve numa combinacao especifica (requer --slots)\n"
+           "  loadrom <p> <s> <arquivo>      carrega uma ROM plana (8..64KB) na combinacao (requer --slots)\n"
            "  help                  esta mensagem";
 }
 

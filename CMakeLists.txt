@@ -189,19 +189,21 @@ set(Z80_DEBUG_SESSION_SOURCES
         src/z80/debug/z80_disasm.cpp
 )
 
-# --- Mapa de memoria MSX (slots/subslots, Fase 1) -- ver
+# --- Mapa de memoria MSX (slots/subslots, Fases 1-2) -- ver
 # doc/memory-map-spec.md ---
 #
 # Motor de slots em C (adaptado do fMSX, ver LICENSE-THIRD-PARTY.md) +
 # MemorySystem/SlotMemoryBus em C++ (design proprio) -- API de inspecao
 # de qualquer combinacao de slot independente da vista atual da CPU
-# (requisito vital do autor para o depurador). Sem ASM/Fortran nesta fase
-# -- ver doc/memory-map-spec.md, secao 3.1 (troca de slot e' busca em
-# tabela de ponteiros, nao ha' loop quente para acelerar; Fortran entra
-# na Fase 2 com carregamento de ROM).
+# (requisito vital do autor para o depurador). Fase 2 (LoadRom) soma um
+# CRC32 em Fortran (rom_checksum.f90) -- conveniencia do depurador, nao
+# deteccao de mapper (ver a nota no proprio arquivo .f90). Sem ASM -- ver
+# doc/memory-map-spec.md, secao 3.1 (troca de slot e' busca em tabela de
+# ponteiros, nao ha' loop quente para acelerar).
 set(MEMMAP_LIB_SOURCES
         src/memmap/core/slot_state.c
         src/memmap/cpp/memory_system.cpp
+        src/memmap/fortran/rom_checksum.f90
 )
 
 enable_testing()
@@ -226,6 +228,11 @@ add_test(NAME z80_debug_session COMMAND z80dbgtest)
 
 add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES})
 target_include_directories(memmaptest PRIVATE src/z80 src/memmap)
+# FWMSX_SOURCE_DIR: caminho absoluto da raiz do repositorio, para o teste
+# de aceitacao com a BIOS real (resource/fMSX/ROMs/MSX.ROM) achar o
+# arquivo independente de qual seja o diretorio de trabalho do CTest ao
+# rodar o executavel (nao e' garantido ser a raiz do repo).
+target_compile_definitions(memmaptest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(memmaptest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/memmaptest)
 if (MINGW)
     target_link_options(memmaptest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)

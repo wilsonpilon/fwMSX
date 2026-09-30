@@ -5,8 +5,8 @@
 > onde parou. Nao remova secoes de fases concluidas -- marque como feitas
 > e adicione as novas por baixo.
 
-Estado desta secao: **Fase 1 concluida em 2026-09-30** (ver secao 6). Fases
-2-4 ainda nao iniciadas.
+Estado desta secao: **Fases 1-2 concluidas em 2026-09-30** (ver secao 6).
+Fases 3-4 ainda nao iniciadas.
 
 ## 1. Objetivo
 
@@ -182,17 +182,30 @@ certo):
     16KB do Z80, `{ primary, secondary, writable }` -- "o que a CPU
     enxerga agora", equivalente a `PSL`/`SSL`/`EnWrite` legíveis de fora.
 
-### 3.4 Fortran -- checksum/detecção de mapper
+### 3.4 Fortran -- CRC32 (conveniência do depurador, NÃO detecção de mapper)
 
-`src/memmap/fortran/rom_checksum.f90`: calcula um checksum/CRC simples
-sobre os bytes de uma ROM recém-carregada, uma única vez no momento do
-`LoadRom()` -- trabalho numérico sobre um array de bytes, exatamente o
-tipo de tarefa que já justificou Fortran na Fase 2 do núcleo Z80
-(cálculo pontual, fora do caminho quente, sem regressão de desempenho
-possível já que roda uma vez por carga de arquivo, não por instrução
-Z80 executada). Usado para ajudar a heurística `MAP_GUESS` (detecção
-automática de tipo de mapper) a decidir com mais confiança do que só
-tamanho de arquivo.
+**Correção de escopo em relação à versão original deste parágrafo**
+(decidida durante a implementação da Fase 2, ver seção 6): checado
+`resource/fMSX/fMSX/MSX.c` e `resource/fMSX/ROMs/CARTS.SHA` -- a
+detecção automática de cartucho/mapper do fMSX usa **SHA1** contra um
+banco de assinaturas (`CARTS.SHA`, via `EMULib/SHA1.*`), não um
+checksum simples. Reimplementar SHA1 é um algoritmo real, sensível a
+bugs sutis, e nem é necessário ainda: a Fase 2 é ROM plana sem
+bank-switch, então não há "qual mapper?" para adivinhar.
+
+`src/memmap/fortran/rom_checksum.f90` calcula, em vez disso, um
+**CRC32 padrão** (polinômio `0xEDB88320`, reflected -- o mesmo do
+zlib/PKZIP/Ethernet) sobre os bytes de uma ROM recém-carregada, uma
+única vez no momento do `LoadRom()` -- trabalho numérico sobre um array
+de bytes via tabela de 256 entradas, mesmo padrão de `flag_tables.f90`
+(Fase 2 do núcleo Z80): cálculo pontual, fora do caminho quente. Serve
+**só** como conveniência do depurador -- "qual imagem exata é essa"
+(ex.: distinguir uma BIOS padrão de uma remendada), verificável contra
+o vetor de teste padrão de qualquer CRC32 (`CRC32("123456789") ==
+0xCBF43926`, checado em `tests/z80/memmap_test.cpp`). Detecção de
+mapper via SHA1/`CARTS.SHA` fica para quando a Fase 3 (bank-switch)
+precisar de verdade -- este CRC32 **não** cobre esse caso de uso, para
+não confundir quem for implementar a Fase 3 depois.
 
 ### 3.5 Depurador (`--z80dbg`) -- comandos novos, Fase 1
 
@@ -326,12 +339,59 @@ elas embutidas, o que nunca deve acontecer.
   (Fase 2). Fase 1 deste módulo é C + C++ apenas -- registrado aqui com a
   mesma transparência que o núcleo Z80 já usa para justificar decisões de
   linguagem por fase.
-- [ ] **Fase 2 -- Carregamento de ROM real**: `LoadRom()`, suporte a ROM
-      plana de 16/32KB sem bank-switch, checksum em Fortran
-      (`rom_checksum.f90`). Testar contra a BIOS do fMSX em
-      `resource/fMSX/ROMs/` (se o autor confirmar posse legal -- ver
-      seção 5) para validar que o Z80 executa código real de BIOS por
-      alguns milhares de ciclos sem travar.
+- [x] **Fase 2 -- Carregamento de ROM real** (concluída em 2026-09-30):
+      `MemorySystem::LoadRom(primary, secondary, data, size, error)` --
+      ROM plana (8..64KB, múltiplo de 8KB, sem bank-switch -- isso é
+      Fase 3), reaproveitando `memmap_attach()` já existente da Fase 1
+      (o parâmetro `kind`/`writable` já estava preparado para isso,
+      nenhuma mudança no motor em C foi necessária). CRC32 em Fortran
+      (`rom_checksum.f90`, ver seção 3.4 -- e sua correção de escopo em
+      relação à ideia original de "ajudar `MAP_GUESS`"). Novo campo
+      `SlotDescriptor::crc32`. Comando `loadrom <primario> <secundario>
+      <arquivo>` no `--z80dbg --slots`; `slots` passou a mostrar o CRC32
+      de entradas ROM.
+
+  **Decisão explícita**: a ROM sempre começa no pedaço 0 da combinação
+  de slot (endereço relativo `0x0000`) -- pedaços de 8KB além do
+  tamanho da imagem ficam vazios. Mesma convenção que `AllocateRam()`
+  já usava desde a Fase 1 (via `memmap_attach()`), escolhida por ser o
+  caso normal de uma BIOS/ROM que ocupa o slot inteiro a partir do
+  início; carregar uma ROM num deslocamento diferente de 0 dentro do
+  slot não é um caso de uso real conhecido, então não foi exposto.
+
+  **Teste de aceitação com BIOS real** (o critério mais importante desta
+  fase): carrega `resource/fMSX/ROMs/MSX.ROM` (BIOS MSX1 real, 32KB, já
+  presente no repositório como material de estudo/referência -- ver
+  seção 5 -- só LIDO pelo teste, nunca copiado/redistribuído) em 0:0,
+  reseta o Z80 e roda 100.000 ciclos. Critério concreto (não só "não
+  travou"): `PC != 0x0000` ao final, **e** o número de endereços de PC
+  distintos visitados durante a execução é maior que 50. Resultado real
+  (2026-09-30): 192 endereços distintos visitados, `PC` terminou em
+  `0x0365` -- evidência de que o núcleo Z80 está de fato buscando e
+  executando instruções reais da BIOS em sequência, não preso num loop
+  trivial ou travado num opcode inválido logo de cara. Resiliente à
+  ausência do arquivo (`[SKIP]`, não falha o suite) caso alguém clone o
+  repositório sem esse arquivo de `resource/`.
+
+  **Build/teste**: `cmake --build build --target memmaptest z80dbgtest
+  fwMSX` seguido de `ctest --test-dir build -R "z80|memmap"` -- verde
+  (168 + 35 + 56 = 259 verificações; `memmaptest` sozinho foi de 29 para
+  56, as 27 novas cobrindo CRC32 isolado, `LoadRom` em 3 tamanhos válidos
+  com CRC32 cruzado contra uma segunda implementação independente (sem
+  tabela, ver `tests/z80/memmap_test.cpp`), rejeição de tamanho inválido,
+  somente-leitura nos dois caminhos -- `PokeSlot` e
+  `SlotMemoryBus::write` --, o comando `loadrom` via
+  `Z80DebugSession::ProcessCommand`, e o teste de aceitação com BIOS
+  real). Verificação manual: `fwMSX.exe --z80dbg --slots` com
+  `loadrom 0 0 resource/fMSX/ROMs/MSX.ROM` seguido de `slots`/`pages`/
+  `reset`/`run 5000`/`regs` -- PC foi de `0000` para `0365` em 5003
+  ciclos, páginas mostraram corretamente "somente leitura" para a ROM.
+
+  **Sem mudanças no motor em C (`slot_state.c`/`.h`) nesta fase** --
+  `memmap_attach()` já suportava `MEMMAP_KIND_ROM`/`writable=0` desde a
+  Fase 1 (o campo existia "desde já" exatamente para isso, ver seção
+  3.2/6); `LoadRom()` só precisou alocar um buffer próprio, copiar os
+  bytes, calcular o CRC32 e chamar a função já existente.
 - [ ] **Fase 3 -- MegaROM (bank switch)**: `MAP_KONAMI5`/`MAP_KONAMI4`/
       `MAP_ASCII8`/`MAP_ASCII16`/`MAP_GMASTER2`/`MAP_FMPAC`, decodificação
       de escrita em endereço de ROM (`MapROM()` equivalente), heurística
