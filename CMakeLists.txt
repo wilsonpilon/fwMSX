@@ -194,14 +194,17 @@ set(Z80_LIB_SOURCES
         src/z80/core/z80_tables.c
         src/z80/core/z80_core.c
         src/z80/cpp/z80_cpu.cpp
+        src/z80/fortran/flag_tables.f90
+        src/z80/asm/block_ops.asm
 )
 
 enable_testing()
 
 add_executable(z80test tests/z80/smoke_test.cpp ${Z80_LIB_SOURCES})
 target_include_directories(z80test PRIVATE src/z80)
+set_target_properties(z80test PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/z80test)
 if (MINGW)
-    target_link_options(z80test PRIVATE -static -static-libgcc -static-libstdc++)
+    target_link_options(z80test PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 
 add_test(NAME z80_smoke COMMAND z80test)

@@ -1,0 +1,23 @@
+// Aceleracao em Assembly para o bloco de transferencia LDIR/LDDR -- design
+// proprio (BSD-3-Clause), nao adaptado do fMSX. Ver
+// src/z80/asm/block_ops.asm para a implementacao (NASM, dual-ABI Win64/
+// SysV AMD64) e doc/z80-core-spec.md, secao 3.4, para o raciocinio.
+#pragma once
+
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+// Copia `len` bytes entre `dst` e `src`. `reverse == 0` copia em ordem
+// crescente de endereco (LDIR); `reverse != 0` copia em ordem decrescente
+// (LDDR) -- ATENCAO: no caso reverse!=0, `dst`/`src` devem apontar para o
+// ULTIMO byte de cada regiao (isto e', `base + len - 1`), nao o primeiro.
+// Ver o comentario detalhado no topo de block_ops.asm antes de chamar
+// este caso.
+void z80_fast_block_move(uint8_t *dst, const uint8_t *src, uint16_t len, int reverse);
+
+#ifdef __cplusplus
+}
+#endif

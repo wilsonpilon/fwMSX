@@ -22,6 +22,7 @@
 
 #include "z80_opcodes.h"
 #include "z80_tables.h"
+#include "../asm/block_ops.h"
 
 // --- Macros auxiliares --------------------------------------------
 // Adaptadas dos macros M_*/S/R/FLAGS/INCR de Z80.c. Esperam variaveis
@@ -393,6 +394,8 @@ static void z80_exec_fd(Z80State *state, const Z80Bus *bus) {
 // --- API publica -----------------------------------------------------
 
 void z80_reset(Z80State *state, const Z80Bus *bus) {
+    z80_tables_init();
+
     state->pc.w = 0x0000;
     state->sp.w = 0xF000;
     state->af.w = 0x0000;

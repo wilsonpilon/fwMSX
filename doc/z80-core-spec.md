@@ -375,19 +375,173 @@ depois).
     `case`); a porta adicionou esse invólucro por seguranca de macro em
     C, sem mudar a logica de nenhuma delas -- risco baixo, ganho de
     robustez contra uso futuro em contextos com `if`/`else` sem chaves.
-- [ ] **Fase 2 -- Fortran para tabelas de flag**: mover geracao de
-      `ZSTable`/`PZSTable` (e DAA, se aplicavel) para `flag_tables.f90`,
-      chamado uma vez no `reset()`/construtor do `Z80Cpu`.
-- [ ] **Fase 3 -- Assembly para block-ops**: `z80_fast_block_move`/
-      `z80_fast_block_cmp` em NASM, dual-ABI (`%ifidn __OUTPUT_FORMAT__`),
-      acionados pelo core em C so no caso "bloco inteiro em RAM plana do
-      host"; generalizar a deteccao de plataforma no `CMakeLists.txt` para
-      escolher `-f win64`/`-f elf64` (hoje so Win64 existe, para
-      `init_asm.asm`/`name_match.asm`).
+- [x] **Fase 2 -- Fortran para tabelas de flag** (concluida em
+      2026-09-30): geracao de `g_z80_zs_table`/`g_z80_pzs_table` movida
+      para `src/z80/fortran/flag_tables.f90` (`z80_build_flag_tables`,
+      `bind(c)`), chamada uma vez (idempotente, guardada por flag
+      estatica) de dentro de `z80_tables_init()`
+      (`src/z80/core/z80_tables.c`), por sua vez chamada no inicio de
+      `z80_reset()` -- garante que as tabelas existem antes de qualquer
+      opcode rodar, sem exigir que o host chame nada na mao.
+      `g_z80_daa_table` **continua literal em C**, de proposito (ver
+      "Notas de implementacao" abaixo).
+
+  **Arquivos**: `src/z80/fortran/flag_tables.f90` (novo); `z80_tables.h`/
+  `.c` (as duas tabelas deixaram de ser `const`/literais, ganharam
+  `z80_tables_init()`); `z80_core.c` (`z80_reset()` chama
+  `z80_tables_init()`); `CMakeLists.txt` (`flag_tables.f90` em
+  `Z80_LIB_SOURCES`, `Fortran_MODULE_DIRECTORY` proprio pro alvo
+  `z80test`, `-static-libgfortran` adicionado ao link).
+
+  **Notas de implementacao**:
+  - **Escopo deliberadamente menor que "toda tabela de flag"**: so
+    `zs_table`/`pzs_table` foram para Fortran. `g_z80_daa_table` (2048
+    entradas, correcao BCD do `DAA`) ficou de fora -- regenera-la por
+    formula tem risco real de erro (a logica de correcao decimal do Z80
+    tem varios casos especiais) para ganho de desempenho zero (nao e'
+    hot path de qualquer jeito, e' uma tabela de 2048 entradas lida uma
+    vez por `DAA` executado). Nao e' uma lacuna esquecida, e' uma troca
+    risco/beneficio que nao compensava.
+  - **Flags passados como parametro, nao hard-coded no `.f90`**: a
+    sub-rotina Fortran recebe `Z80_S_FLAG`/`Z80_Z_FLAG`/`Z80_P_FLAG`
+    como argumentos vindos do lado C -- `z80_state.h` continua sendo a
+    unica fonte de verdade sobre qual bit e' qual; o Fortran so faz a
+    aritmetica de preenchimento do array.
+  - **Cuidado com `INT()` fora de faixa**: `IOR` de ate tres flags de 1
+    byte pode passar de 127 (ex.: `0x80|0x04=0x84=132`), que nao cabe no
+    intervalo do kind `c_int8_t` (-128..127). Converter um valor fora de
+    faixa com `INT(x, kind)` e' processor-dependent pelo padrao Fortran
+    -- normalizamos explicitamente pra faixa -128..127 (`if (v>127) v =
+    v-256`) antes de converter, em vez de confiar no comportamento do
+    compilador.
+  - **`POPCNT`** (intrinseco Fortran 2008) foi usado para o calculo de
+    paridade, em vez de um loop manual de contagem de bits -- forma
+    idiomatica em Fortran, testada e funcionando com gfortran 16.2.0.
+  - **Verificacao**: o smoke test ganhou uma checagem que recalcula as
+    256 posicoes esperadas de `zs`/`pzs` com uma TERCEIRA implementacao
+    (C++, bit a bit, sem nenhum intrinseco de contagem de bits) e
+    compara contra o que `z80_build_flag_tables()` realmente gerou --
+    nao e' so comparar duas copias da mesma formula. As 256/256
+    posicoes bateram de primeira.
+
+- [x] **Fase 3 -- Assembly para block-ops (LDIR/LDDR)** (concluida em
+      2026-09-30, escopo reduzido -- ver abaixo): `z80_fast_block_move`
+      em NASM (`src/z80/asm/block_ops.asm`), **primeiro `.asm` do
+      projeto com duas ABIs no mesmo arquivo-fonte** (Win64 e SysV
+      AMD64/Linux, via `%ifidn __OUTPUT_FORMAT__, win64` / `%else`).
+      Acionado pelo despachante em C (`opcodes_ed.h`, casos `Z80_LDIR`/
+      `Z80_LDDR`) apenas quando `Z80Bus::ram_ptr` (campo novo, opcional)
+      devolve ponteiro direto de RAM plana para a fatia de bytes que
+      sera' movida NAQUELA chamada -- fora isso, cai no loop
+      byte-a-byte original (adaptado do fMSX), que continua intacto como
+      fallback. Corretude nunca depende do caminho rapido ser tomado.
+
+  **Escopo reduzido, decisao deliberada**: **so `LDIR`/`LDDR`** ganharam
+  aceleracao. `CPIR`/`CPDR` (comparacao/busca) ficaram de fora desta
+  passada -- as flags resultantes de `CPIR`/`CPDR` dependem do VALOR do
+  ultimo byte comparado (nao so de BC chegar a zero, como em
+  `LDIR`/`LDDR`), o que tornaria o "corte" entre o que foi
+  processado-em-lote e o que ainda falta processar bem mais delicado de
+  acertar com seguranca; preferimos nao arriscar uma tabela de flags
+  errada num caminho "rapido" silencioso a entregar isso sem o mesmo
+  nivel de verificacao dado a `LDIR`/`LDDR`. Fica registrado como
+  trabalho futuro, se algum dia houver motivo de desempenho real pra
+  isso (compras/buscas por string nao costumam ser hot path em software
+  MSX). `INIR`/`INDR`/`OTIR`/`OTDR` nunca entraram no escopo -- tocam
+  porta de I/O a cada iteracao (`bus->in`/`bus->out`), que por definicao
+  nunca pode ter ponteiro direto de RAM.
+
+  **Arquivos**: `src/z80/asm/block_ops.asm` + `block_ops.h` (novos);
+  `z80_bus.h` (C) e `cpp/z80_bus.h` (`IBus`) ganharam o campo/metodo
+  opcional `ram_ptr` (contrato: ponteiro direto pra `len` bytes de RAM
+  plana do host cobrindo `[addr, addr+len)`, ou `NULL`; pode nao existir
+  -- correcao nunca depende dele); `z80_cpu.h`/`.cpp` (trampolim
+  `ram_ptr`); `opcodes_ed.h` (fast path prepended aos casos `Z80_LDIR`/
+  `Z80_LDDR`, loop lento original preservado como fallback logo abaixo);
+  `tests/z80/smoke_test.cpp` (`FlatRamBus::ram_ptr` real + teste
+  diferencial); `CMakeLists.txt` (`block_ops.asm` em
+  `Z80_LIB_SOURCES`).
+
+  **Notas de implementacao**:
+  - **Convencao de ponteiros no caso `reverse!=0` (LDDR)**: documentada
+    em detalhe no cabecalho de `block_ops.asm` -- `dst`/`src` tem que
+    apontar para o **ultimo** byte da regiao (ordem decrescente), nao o
+    primeiro, espelhando como `REP MOVSB` com `DF=1` endereca memoria.
+    Foi o ponto mais delicado desta fase (o lugar mais facil de
+    introduzir um off-by-one); o lado C (`opcodes_ed.h`) pede a
+    `bus->ram_ptr()` exatamente a fatia de `n` bytes que sera movida
+    nesta chamada e desloca o ponteiro devolvido para o topo dessa
+    fatia antes de chamar `z80_fast_block_move`.
+  - **`REP MOVSB` faz a coisa certa "por acidente feliz"**: LDIR sobre
+    regioes sobrepostas (com destino > origem) e' um truque real usado
+    por software MSX para preencher memoria ("smear") -- depende da
+    copia ser literalmente byte-a-byte em ordem crescente, lendo bytes
+    ja sobrescritos. `REP MOVSB`/`STD;REP MOVSB` fazem exatamente isso
+    (nao sao um `memmove` "seguro" que detecta sobreposicao), entao a
+    aceleracao preserva esse comportamento sem esforco extra -- foi
+    verificado explicitamente no teste diferencial (casos "sobreposto",
+    ver abaixo).
+  - **`BC==0` na entrada nao tenta o caminho rapido**: e' um quirk
+    conhecido do Z80 real (`--BC` vira `0xFFFF` e o loop continua om
+    mais 65536 iteracoes) que nao cabe num contador `uint16_t` do jeito
+    como o caminho rapido foi desenhado; deixado para o loop lento
+    resolver o primeiro byte, e a partir dai' (BC ja' nao-zero) o
+    caminho rapido volta a valer no proximo redespacho.
+  - **Simplificacao proposital na divisao de orcamento de ciclos**: o
+    numero de bytes movidos por chamada e' `min(remaining, icount/21)`
+    -- nao existe um branch separado pra "aproveitar o ultimo byte mais
+    barato (16 ciclos) quando da' pra terminar exatamente no limite do
+    orcamento". Isso significa que, numa janela estreita de 5 ciclos
+    perto do fim de um bloco, o caminho rapido pode fazer 1 byte a
+    menos nesta chamada do que teoricamente caberia, terminando na
+    chamada seguinte -- **nunca afeta o estado final** (flags/
+    registradores/memoria), so quantas chamadas de `run()` o bloco leva
+    pra terminar, o que nenhum teste de estado-final consegue observar
+    como erro. Trocamos uma otimizacao de ultimo grau por uma formula
+    muito mais simples de verificar.
+  - **Verificacao no Linux foi so parcial**: esta maquina e' Windows, so
+    da' pra testar o link/execucao real do lado Win64. O lado `elf64`
+    foi verificado com `nasm -f elf64 src/z80/asm/block_ops.asm -o
+    <tmp>.o` (monta sem erro), mas **nao foi linkado nem executado** --
+    isso so podera' ser confirmado numa maquina Linux de verdade.
+  - **Teste diferencial obrigatorio**: `tests/z80/smoke_test.cpp` ganhou
+    `run_block_case()`, que roda o MESMO programa Z80 (LD HL,nn/LD
+    DE,nn/LD BC,nn/LDIR-ou-LDDR/HALT) a partir do MESMO estado inicial
+    de memoria em duas instancias de `Z80Cpu` -- uma com
+    `bus->ram_ptr` habilitado, outra forcada a `nullptr` (so loop
+    lento) -- via `FlatRamBus::allow_fast_path`. Cobre: conclusao numa
+    unica chamada de `run()`, conclusao so apos varias chamadas com
+    orcamento minusculo (forcando o rebobinamento de PC no meio do
+    bloco), `len==1`, LDIR e LDDR, e casos com sobreposicao proposital
+    de origem/destino (o cenario de "smear" citado acima) -- mais uma
+    varredura aleatoria de 150 combinacoes (semente fixa, reprodutivel)
+    de tamanho/orcamento/enderecos por cima dos casos fixos. Todos os
+    casos bateram (registradores E memoria inteira identicos entre
+    caminho rapido e lento).
+  - **`CMAKE_ASM_NASM_OBJECT_FORMAT` nao precisou ser setado na mao**:
+    o suporte `ASM_NASM` do CMake ja' escolhe o formato de objeto certo
+    pra plataforma de build sozinho (confirmado: os alvos existentes
+    `init_asm.asm`/`name_match.asm` ja' compilavam certo em Win64 sem
+    nenhuma flag explicita) -- nao foi preciso adicionar logica nova de
+    deteccao de plataforma no `CMakeLists.txt`.
+
 - [ ] **Fase 4 -- Integracao com fwMSX**: expor `Z80Cpu` via comandos de
       debug na CLI/TUI do `fwMSX.exe` (sem VDP/memoria de maquina real
       ainda -- so uma RAM de teste), preparando o terreno para quando VDP/
       PSG/mapeamento de memoria existirem de verdade.
+
+## 7. Build e teste (Fases 1-3)
+
+```
+export PATH="/c/msys64/ucrt64/bin:$PATH"   # ver nota na Fase 1 acima
+cmake -S . -B build -G Ninja
+cmake --build build --target z80test
+ctest --test-dir build -R z80 --output-on-failure
+```
+
+Resultado em 2026-09-30: build limpo, `ctest` verde, 168 verificacoes
+passando no `z80test.exe` (8 da Fase 1 + 2 da Fase 2 + 158 da Fase 3 --
+8 casos fixos + 150 da varredura aleatoria de LDIR/LDDR).
 
 *(Cada fase sera detalhada em sub-fases, como aconteceu em
 `doc/msxdisk-spec.md`, no momento em que a implementacao comecar.)*

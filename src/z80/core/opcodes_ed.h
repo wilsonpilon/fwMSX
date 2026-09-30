@@ -8,6 +8,12 @@
 // Corpo dos opcodes prefixados por ED -- incluso dentro do switch(I) de
 // z80_exec_ed() em z80_core.c. Ver opcodes_base.h para a nota completa
 // sobre as variaveis locais esperadas (`state`, `bus`, `I`, `J`).
+//
+// Nota (Fase 3, ver doc/z80-core-spec.md secao 3.4/6): LDIR/LDDR abaixo
+// ganharam um caminho rapido em Assembly (src/z80/asm/block_ops.asm),
+// alem da adaptacao original do fMSX -- essa parte e' extensao propria do
+// fwMSX (BSD-3-Clause, ver z80_bus.h/block_ops.h), nao fMSX; o loop
+// byte-a-byte original continua intacto logo abaixo como fallback.
 
 // Patch especial para emular chamadas de BIOS (ED FE) -- ver z80_bus.h.
 case Z80_DB_FE: if (bus->patch) bus->patch(bus->ctx, state); break;
@@ -202,7 +208,49 @@ case Z80_LDI:
     state->af.b.lo = (uint8_t)((state->af.b.lo & (uint8_t)~(Z80_N_FLAG | Z80_H_FLAG | Z80_P_FLAG)) | (state->bc.w ? Z80_P_FLAG : 0));
     break;
 
-case Z80_LDIR:
+case Z80_LDIR: {
+    // Caminho rapido (Fase 3, Assembly) -- so entra em jogo quando `bus`
+    // consegue dar ponteiro direto de RAM plana para os `n` bytes que vao
+    // ser movidos NESTA chamada (n limitado pelo orcamento de ciclos
+    // restante, nunca mais que `remaining`). Quando nao da (bus->ram_ptr
+    // e' NULL, ou devolve NULL para o intervalo pedido), cai
+    // silenciosamente no loop byte-a-byte original abaixo -- a corretude
+    // nunca depende deste caminho ser tomado, so o desempenho. Ver
+    // doc/z80-core-spec.md, secao 3.4/6 (Fase 3).
+    //
+    // BC==0 na entrada e' um quirk conhecido do Z80 real (--BC vira
+    // 0xFFFF e o loop continua) -- de proposito NAO tentamos o caminho
+    // rapido nesse caso (nao da' pra representar uma contagem de 65536
+    // num uint16_t), deixamos o loop lento original resolver o primeiro
+    // byte, e a partir da proxima vez que este opcode for redespachado
+    // (com BC=0xFFFF, ja' nao-zero) o caminho rapido volta a valer.
+    uint16_t remaining = state->bc.w;
+    uint16_t n = 0;
+    if (remaining != 0) {
+        n = remaining;
+        if (21 * (int)remaining > state->icount) n = (uint16_t)(state->icount / 21);
+    }
+    if (n > 0 && bus->ram_ptr) {
+        uint8_t *src_ptr = bus->ram_ptr(bus->ctx, state->hl.w, n);
+        uint8_t *dst_ptr = src_ptr ? bus->ram_ptr(bus->ctx, state->de.w, n) : NULL;
+        if (src_ptr && dst_ptr) {
+            z80_fast_block_move(dst_ptr, src_ptr, n, 0);
+            state->hl.w = (uint16_t)(state->hl.w + n);
+            state->de.w = (uint16_t)(state->de.w + n);
+            state->bc.w = (uint16_t)(remaining - n);
+            if (state->bc.w != 0) {
+                state->af.b.lo = (uint8_t)((state->af.b.lo & (uint8_t)~(Z80_H_FLAG | Z80_P_FLAG)) | Z80_N_FLAG);
+                state->icount -= 21 * n;
+                state->pc.w -= 2;
+            } else {
+                state->af.b.lo &= (uint8_t)~(Z80_N_FLAG | Z80_H_FLAG | Z80_P_FLAG);
+                state->icount -= 21 * (n - 1) + 16;
+            }
+            break;
+        }
+    }
+
+    // Caminho lento (original, adaptado do fMSX) -- move um byte por vez.
     Z80_WR(state->de.w++, Z80_RD(state->hl.w++));
     if (--state->bc.w) {
         state->af.b.lo = (uint8_t)((state->af.b.lo & (uint8_t)~(Z80_H_FLAG | Z80_P_FLAG)) | Z80_N_FLAG);
@@ -213,6 +261,7 @@ case Z80_LDIR:
         state->icount -= 16;
     }
     break;
+}
 
 case Z80_LDD:
     Z80_WR(state->de.w--, Z80_RD(state->hl.w--));
@@ -220,7 +269,44 @@ case Z80_LDD:
     state->af.b.lo = (uint8_t)((state->af.b.lo & (uint8_t)~(Z80_N_FLAG | Z80_H_FLAG | Z80_P_FLAG)) | (state->bc.w ? Z80_P_FLAG : 0));
     break;
 
-case Z80_LDDR:
+case Z80_LDDR: {
+    // Mesma logica de LDIR (comentada em detalhe acima), com HL/DE
+    // decrescendo em vez de crescer -- por isso o intervalo pedido a
+    // bus->ram_ptr() e' [hl.w-(n-1), hl.w] (os `n` bytes mais proximos do
+    // HL/DE atual, ja' que LDDR comeca no topo e desce), e o ponteiro
+    // passado para z80_fast_block_move() e' o do TOPO dessa fatia (a
+    // convencao de reverse!=0 documentada em block_ops.asm).
+    uint16_t remaining = state->bc.w;
+    uint16_t n = 0;
+    if (remaining != 0) {
+        n = remaining;
+        if (21 * (int)remaining > state->icount) n = (uint16_t)(state->icount / 21);
+    }
+    if (n > 0 && bus->ram_ptr) {
+        uint16_t src_base = (uint16_t)(state->hl.w - (n - 1));
+        uint16_t dst_base = (uint16_t)(state->de.w - (n - 1));
+        uint8_t *src_region = bus->ram_ptr(bus->ctx, src_base, n);
+        uint8_t *dst_region = src_region ? bus->ram_ptr(bus->ctx, dst_base, n) : NULL;
+        if (src_region && dst_region) {
+            uint8_t *src_top = src_region + (n - 1);
+            uint8_t *dst_top = dst_region + (n - 1);
+            z80_fast_block_move(dst_top, src_top, n, 1);
+            state->hl.w = (uint16_t)(state->hl.w - n);
+            state->de.w = (uint16_t)(state->de.w - n);
+            state->bc.w = (uint16_t)(remaining - n);
+            if (state->bc.w != 0) {
+                state->af.b.lo = (uint8_t)((state->af.b.lo & (uint8_t)~(Z80_H_FLAG | Z80_P_FLAG)) | Z80_N_FLAG);
+                state->icount -= 21 * n;
+                state->pc.w -= 2;
+            } else {
+                state->af.b.lo &= (uint8_t)~(Z80_N_FLAG | Z80_H_FLAG | Z80_P_FLAG);
+                state->icount -= 21 * (n - 1) + 16;
+            }
+            break;
+        }
+    }
+
+    // Caminho lento (original, adaptado do fMSX) -- move um byte por vez.
     Z80_WR(state->de.w--, Z80_RD(state->hl.w--));
     state->af.b.lo &= (uint8_t)~(Z80_N_FLAG | Z80_H_FLAG | Z80_P_FLAG);
     if (--state->bc.w) {
@@ -232,6 +318,7 @@ case Z80_LDDR:
         state->icount -= 16;
     }
     break;
+}
 
 case Z80_CPI:
     I = Z80_RD(state->hl.w++);

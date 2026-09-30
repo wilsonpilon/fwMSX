@@ -13,6 +13,7 @@ Z80Cpu::Z80Cpu(IBus &bus) : bus_(bus) {
     c_bus_.out = &Z80Cpu::trampoline_out;
     c_bus_.patch = &Z80Cpu::trampoline_patch;
     c_bus_.jump = &Z80Cpu::trampoline_jump;
+    c_bus_.ram_ptr = &Z80Cpu::trampoline_ram_ptr;
 }
 
 void Z80Cpu::reset() { z80_reset(&state_, &c_bus_); }
@@ -45,6 +46,10 @@ void Z80Cpu::trampoline_patch(void *ctx, Z80State *state) {
 
 void Z80Cpu::trampoline_jump(void *ctx, uint16_t pc) {
     static_cast<Z80Cpu *>(ctx)->bus_.on_jump(pc);
+}
+
+uint8_t *Z80Cpu::trampoline_ram_ptr(void *ctx, uint16_t addr, uint16_t len) {
+    return static_cast<Z80Cpu *>(ctx)->bus_.ram_ptr(addr, len);
 }
 
 } // namespace z80

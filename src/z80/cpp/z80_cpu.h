@@ -54,6 +54,7 @@ private:
     static void trampoline_out(void *ctx, uint16_t port, uint8_t value);
     static void trampoline_patch(void *ctx, Z80State *state);
     static void trampoline_jump(void *ctx, uint16_t pc);
+    static uint8_t *trampoline_ram_ptr(void *ctx, uint16_t addr, uint16_t len);
 
     IBus &bus_;
     Z80State state_{};

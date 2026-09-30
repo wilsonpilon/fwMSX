@@ -29,6 +29,17 @@ public:
     // Gancho opcional chamado em todo JP/JR/CALL/RST/RET. Default:
     // nao faz nada.
     virtual void on_jump(uint16_t pc) { (void)pc; }
+
+    // Gancho opcional (Fase 3) para acelerar LDIR/LDDR via Assembly. Ver
+    // o contrato completo em src/z80/core/z80_bus.h (campo `ram_ptr` de
+    // Z80Bus) -- este metodo e' convertido para aquele campo em
+    // Z80Cpu::Z80Cpu(). Default: nullptr (sem caminho rapido, sempre
+    // correto, so mais lento).
+    virtual uint8_t *ram_ptr(uint16_t addr, uint16_t len) {
+        (void)addr;
+        (void)len;
+        return nullptr;
+    }
 };
 
 } // namespace z80

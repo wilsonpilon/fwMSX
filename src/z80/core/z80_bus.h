@@ -32,6 +32,20 @@ typedef struct Z80Bus {
     // JumpZ80 do fMSX), usado por um host que precise trocar mapeamento
     // de banco de memoria ao mudar de PC. Pode ser NULL.
     void (*jump)(void *ctx, uint16_t pc);
+
+    // Gancho opcional (Fase 3, ver doc/z80-core-spec.md secao 3.4) usado
+    // pelo despachante para acelerar LDIR/LDDR via Assembly
+    // (src/z80/asm/block_ops.asm). Deve devolver um ponteiro direto para
+    // `len` bytes de RAM do host que respaldem, de forma plana e sem
+    // efeito colateral (sem I/O, sem cruzar fronteira de banco), os
+    // enderecos Z80 [addr, addr+len), tanto para leitura quanto escrita;
+    // ou NULL se nao existir esse mapeamento direto para o intervalo
+    // pedido. O proprio ponteiro de funcao pode ser NULL, se o host nunca
+    // suportar isso -- quem chama tem que checar as DUAS coisas (ponteiro
+    // de funcao nao-nulo E retorno nao-nulo) antes de usar o caminho
+    // rapido; a corretude do core nunca pode depender deste caminho ser
+    // tomado, so o desempenho.
+    uint8_t *(*ram_ptr)(void *ctx, uint16_t addr, uint16_t len);
 } Z80Bus;
 
 #ifdef __cplusplus
