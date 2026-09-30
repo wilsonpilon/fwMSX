@@ -24,6 +24,8 @@
 //
 // "fwmsx --z80dbg" abre o REPL de depuracao do nucleo Z80 (RAM plana de
 // teste, sem maquina MSX ainda) -- ver doc/z80-core-spec.md, Fase 4.
+// "fwmsx --z80dbg --slots" liga o mapa de memoria de verdade (slots/
+// subslots) em vez da RAM plana -- ver doc/memory-map-spec.md, Fase 1.
 //
 
 #include <cstdint>
@@ -60,7 +62,8 @@ int main(int argc, char* argv[]) {
         return msxdisk::RunEntryPoint(tokens);
     }
     if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
-        return z80::debug::RunZ80DebugShell();
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return z80::debug::RunZ80DebugShell(tokens);
     }
 
     std::cout << "Copyright (c) 1972-2026 Cybernostra, Inc." << std::endl;

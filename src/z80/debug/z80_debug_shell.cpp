@@ -7,11 +7,15 @@
 #include <cctype>
 #include <cstdlib>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include <replxx.hxx>
 
+#include "../../memmap/cpp/memory_system.h"
+#include "../../memmap/cpp/slot_memory_bus.h"
+#include "flat_memory_bus.h"
 #include "z80_debug_session.h"
 
 namespace z80::debug {
@@ -65,14 +69,40 @@ std::string HistoryFilePath() {
 
 } // namespace
 
-int RunZ80DebugShell() {
+int RunZ80DebugShell(const std::vector<std::string> &args) {
+    bool use_slots = false;
+    for (const std::string &arg : args) {
+        if (arg == "--slots") use_slots = true;
+    }
+
     replxx::Replxx rx;
     const std::string history_path = HistoryFilePath();
     rx.history_load(history_path);
 
-    Z80DebugSession session;
+    // Sem --slots: RAM plana de 64KB, exatamente como na Fase 4 original
+    // (FlatMemoryBus). Com --slots: mapa de memoria real (Fase 1, ver
+    // doc/memory-map-spec.md) -- RAM alocada na combinacao 0:0, que ja'
+    // e' a que fica visivel por padrao logo apos memmap_init() (todo
+    // psl[pagina]/ssl[pagina] comeca em 0), entao o usuario pode
+    // poke/run direto sem precisar trocar de slot primeiro. Decisao
+    // documentada em doc/memory-map-spec.md, Fase 1 (notas de
+    // implementacao): 64KB inteiros (o maximo possivel numa combinacao)
+    // em vez de um tamanho menor, pra nao impor um limite arbitrario de
+    // RAM de teste.
+    z80::debug::FlatMemoryBus flat_bus;
+    std::unique_ptr<memmap::MemorySystem> memory_system;
+    std::unique_ptr<memmap::SlotMemoryBus> slot_bus;
+    if (use_slots) {
+        memory_system = std::make_unique<memmap::MemorySystem>();
+        memory_system->AllocateRam(0, 0, 0x10000);
+        slot_bus = std::make_unique<memmap::SlotMemoryBus>(*memory_system);
+    }
 
-    std::cout << "fwMSX - depurador do nucleo Z80 (RAM plana de teste, sem maquina MSX ainda)."
+    z80::IBus &bus = use_slots ? static_cast<z80::IBus &>(*slot_bus) : static_cast<z80::IBus &>(flat_bus);
+    Z80DebugSession session(bus, memory_system.get());
+
+    std::cout << "fwMSX - depurador do nucleo Z80 ("
+               << (use_slots ? "mapa de memoria real (slots/subslots)" : "RAM plana de teste") << ", sem maquina MSX ainda)."
                << std::endl;
     std::cout << "Digite 'help' para a lista de comandos, 'exit' ou Ctrl-D para sair." << std::endl;
 

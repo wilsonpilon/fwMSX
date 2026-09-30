@@ -163,6 +163,16 @@ acompanhamento manual do autor a cada build):
   memoria, breakpoints e desmontador) rodando sobre uma RAM plana de
   teste -- ainda **sem VDP/PSG/mapa de memoria real** (proxima fase, ver
   5.1 abaixo). Faltam VDP e PSG para ter uma maquina MSX de verdade.
+  **Mapa de memoria (slots/subslots): Fase 1 concluida em 2026-09-30**
+  -- ver [doc/memory-map-spec.md](memory-map-spec.md) para o
+  detalhamento completo (motor de slots em C, `MemorySystem`/
+  `SlotMemoryBus` em C++, comandos `slots`/`pages`/`slotmem`/`slotpeek`/
+  `slotpoke` em `fwmsx --z80dbg --slots`; ainda so RAM, sem
+  carregamento de ROM/BIOS -- isso e' Fase 2). Requisito explicito do
+  autor, tratado como vital desde a primeira fase deste modulo: o
+  depurador precisa enxergar todos os slots/subslots, nao so o que esta
+  visivel
+  para a CPU no momento.
 - Definir empacotamento final (alem do ZIP de `dist/`) quando houver uma
   versao executavel do emulador.
 

@@ -176,15 +176,32 @@ set(Z80_LIB_SOURCES
         src/z80/asm/block_ops.asm
 )
 
-# Sessao de depuracao do Z80 (Fase 4): RAM plana + Z80Cpu + comandos
-# reset/regs/step/run/break/mem/peek/poke/load/fill, sem nenhuma
-# dependencia de replxx -- testavel isoladamente (ver
-# tests/z80/debug_session_test.cpp). z80_debug_shell.cpp (o REPL
-# interativo em si) fica de fora desta lista de proposito: depende de
-# replxx/stdin, entao so entra no alvo fwMSX, nunca no z80dbgtest.
+# Sessao de depuracao do Z80 (Fase 4; comandos de slot da Fase 1 do mapa
+# de memoria, ver doc/memory-map-spec.md): RAM plana ou mapa de memoria
+# real + Z80Cpu + comandos reset/regs/step/run/break/mem/peek/poke/load/
+# fill/slots/pages/slotmem/slotpeek/slotpoke, sem nenhuma dependencia de
+# replxx -- testavel isoladamente (ver tests/z80/debug_session_test.cpp e
+# tests/z80/memmap_test.cpp). z80_debug_shell.cpp (o REPL interativo em
+# si) fica de fora desta lista de proposito: depende de replxx/stdin,
+# entao so entra no alvo fwMSX, nunca nos alvos de teste.
 set(Z80_DEBUG_SESSION_SOURCES
         src/z80/debug/z80_debug_session.cpp
         src/z80/debug/z80_disasm.cpp
+)
+
+# --- Mapa de memoria MSX (slots/subslots, Fase 1) -- ver
+# doc/memory-map-spec.md ---
+#
+# Motor de slots em C (adaptado do fMSX, ver LICENSE-THIRD-PARTY.md) +
+# MemorySystem/SlotMemoryBus em C++ (design proprio) -- API de inspecao
+# de qualquer combinacao de slot independente da vista atual da CPU
+# (requisito vital do autor para o depurador). Sem ASM/Fortran nesta fase
+# -- ver doc/memory-map-spec.md, secao 3.1 (troca de slot e' busca em
+# tabela de ponteiros, nao ha' loop quente para acelerar; Fortran entra
+# na Fase 2 com carregamento de ROM).
+set(MEMMAP_LIB_SOURCES
+        src/memmap/core/slot_state.c
+        src/memmap/cpp/memory_system.cpp
 )
 
 enable_testing()
@@ -198,8 +215,8 @@ endif ()
 
 add_test(NAME z80_smoke COMMAND z80test)
 
-add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES})
-target_include_directories(z80dbgtest PRIVATE src/z80)
+add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES})
+target_include_directories(z80dbgtest PRIVATE src/z80 src/memmap)
 set_target_properties(z80dbgtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/z80dbgtest)
 if (MINGW)
     target_link_options(z80dbgtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
@@ -207,13 +224,24 @@ endif ()
 
 add_test(NAME z80_debug_session COMMAND z80dbgtest)
 
+add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES})
+target_include_directories(memmaptest PRIVATE src/z80 src/memmap)
+set_target_properties(memmaptest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/memmaptest)
+if (MINGW)
+    target_link_options(memmaptest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME memmap_slots COMMAND memmaptest)
+
 # --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
 #
 # "fwmsx --msxdisk ..." repassa pro msxdisk embutido (mesmos
 # MSXDISK_LIB_SOURCES acima) -- ver doc/SPEC.md, secao 5.1.
 # "fwmsx --z80dbg" abre o REPL de depuracao do Z80 (Fase 4, ver
 # doc/z80-core-spec.md) -- unico lugar que compila z80_debug_shell.cpp
-# (usa replxx, por isso fora de Z80_DEBUG_SESSION_SOURCES).
+# (usa replxx, por isso fora de Z80_DEBUG_SESSION_SOURCES). "--z80dbg
+# --slots" liga o mapa de memoria de verdade (Fase 1, ver
+# doc/memory-map-spec.md) em vez da RAM plana default.
 add_executable(fwMSX
         src/cpp/main.cpp
         src/cpp/init_cpp.cpp
@@ -223,6 +251,7 @@ add_executable(fwMSX
         ${MSXDISK_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}
+        ${MEMMAP_LIB_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 
@@ -233,6 +262,7 @@ target_include_directories(fwMSX PRIVATE
         src/fortran
         src/common
         src/z80
+        src/memmap
 )
 msxdisk_link_target(fwMSX)
 set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)

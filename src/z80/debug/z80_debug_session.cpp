@@ -4,6 +4,7 @@
 #include <fstream>
 #include <sstream>
 
+#include "../../memmap/cpp/memory_system.h"
 #include "../common/z80_state.h"
 #include "z80_disasm.h"
 
@@ -50,6 +51,15 @@ bool ParseU32(const std::string &s, uint32_t &out) {
     return true;
 }
 
+// Indice de slot (primario ou secundario): sempre 0..3 -- ver
+// doc/memory-map-spec.md, secao 2.
+bool ParseSlotIndex(const std::string &s, int &out) {
+    unsigned long v = 0;
+    if (!ParseNumber(s, v) || v > 3) return false;
+    out = static_cast<int>(v);
+    return true;
+}
+
 std::string Hex4(uint16_t v) {
     char buf[8];
     std::snprintf(buf, sizeof(buf), "%04X", v);
@@ -64,7 +74,8 @@ std::string Hex2(uint8_t v) {
 
 } // namespace
 
-Z80DebugSession::Z80DebugSession() : cpu_(bus_) {}
+Z80DebugSession::Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system)
+    : bus_(bus), cpu_(bus_), memory_system_(memory_system) {}
 
 std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &tokens) {
     if (tokens.empty()) return "";
@@ -83,6 +94,11 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
     if (cmd == "load") return CmdLoad(tokens);
     if (cmd == "fill") return CmdFill(tokens);
     if (cmd == "disasm") return CmdDisasm(tokens);
+    if (cmd == "slots") return CmdSlots();
+    if (cmd == "pages") return CmdPages();
+    if (cmd == "slotmem") return CmdSlotMem(tokens);
+    if (cmd == "slotpeek") return CmdSlotPeek(tokens);
+    if (cmd == "slotpoke") return CmdSlotPoke(tokens);
     if (cmd == "help" || cmd == "?") return CmdHelp();
 
     return "comando desconhecido: '" + cmd + "' (digite 'help' para a lista)";
@@ -190,7 +206,7 @@ std::string Z80DebugSession::CmdMem(const std::vector<std::string> &tokens) cons
             if (i != 0) out << "\n";
             out << Hex4(a) << ": ";
         }
-        out << Hex2(bus_.at(a)) << " ";
+        out << Hex2(bus_.read(a)) << " ";
         if (a == 0xFFFF && i + 1 < len) break; // nao envolve alem de 0xFFFF
     }
     return out.str();
@@ -200,7 +216,7 @@ std::string Z80DebugSession::CmdPeek(const std::vector<std::string> &tokens) con
     if (tokens.size() < 2) return "uso: peek <endereco>";
     uint16_t addr = 0;
     if (!ParseAddr(tokens[1], addr)) return "peek: endereco invalido: '" + tokens[1] + "'";
-    return Hex4(addr) + ": " + Hex2(bus_.at(addr));
+    return Hex4(addr) + ": " + Hex2(bus_.read(addr));
 }
 
 std::string Z80DebugSession::CmdPoke(const std::vector<std::string> &tokens) {
@@ -209,8 +225,17 @@ std::string Z80DebugSession::CmdPoke(const std::vector<std::string> &tokens) {
     uint8_t value = 0;
     if (!ParseAddr(tokens[1], addr)) return "poke: endereco invalido: '" + tokens[1] + "'";
     if (!ParseByte(tokens[2], value)) return "poke: byte invalido: '" + tokens[2] + "'";
-    bus_.at(addr) = value;
-    return Hex4(addr) + " <- " + Hex2(value);
+    bus_.write(addr, value);
+    // Le de volta em vez de so ecoar `value`: numa sessao com mapa de
+    // memoria real (--slots), a pagina atual pode nao ser gravavel (ex.:
+    // ROM, ou um slot vazio) e a escrita e' descartada silenciosamente
+    // (mesma regra do memmap_write) -- ler de volta revela isso em vez de
+    // reportar um sucesso que nao aconteceu. Achado testando --z80dbg
+    // --slots na mao (ver doc/memory-map-spec.md, Fase 1).
+    const uint8_t actual = bus_.read(addr);
+    if (actual == value) return Hex4(addr) + " <- " + Hex2(value);
+    return Hex4(addr) + " <- " + Hex2(value) + " (nao gravado -- pagina atual nao e' gravavel; continua " +
+           Hex2(actual) + ")";
 }
 
 std::string Z80DebugSession::CmdLoad(const std::vector<std::string> &tokens) {
@@ -232,7 +257,7 @@ std::string Z80DebugSession::CmdLoad(const std::vector<std::string> &tokens) {
     for (std::streamsize i = 0; i < size; ++i) {
         char byte = 0;
         if (!file.get(byte)) return "load: erro de leitura em '" + tokens[1] + "' apos " + std::to_string(i) + " bytes";
-        bus_.at(static_cast<uint16_t>(addr + i)) = static_cast<uint8_t>(byte);
+        bus_.write(static_cast<uint16_t>(addr + i), static_cast<uint8_t>(byte));
     }
     return "carregado: " + std::to_string(size) + " byte(s) em " + Hex4(addr);
 }
@@ -247,7 +272,7 @@ std::string Z80DebugSession::CmdFill(const std::vector<std::string> &tokens) {
     if (!ParseByte(tokens[3], value)) return "fill: byte invalido: '" + tokens[3] + "'";
     if (static_cast<uint32_t>(addr) + len > 0x10000u) return "fill: intervalo passa de FFFF";
 
-    for (uint32_t i = 0; i < len; ++i) bus_.at(static_cast<uint16_t>(addr + i)) = value;
+    for (uint32_t i = 0; i < len; ++i) bus_.write(static_cast<uint16_t>(addr + i), value);
     return "preenchido: " + std::to_string(len) + " byte(s) a partir de " + Hex4(addr) + " com " + Hex2(value);
 }
 
@@ -257,19 +282,113 @@ std::string Z80DebugSession::CmdDisasm(const std::vector<std::string> &tokens) c
     uint32_t n = 10;
     if (tokens.size() > 2 && !ParseU32(tokens[2], n)) return "disasm: quantidade invalida: '" + tokens[2] + "'";
 
-    const auto read = [this](uint16_t a) { return bus_.at(a); };
+    const auto read = [this](uint16_t a) { return bus_.read(a); };
 
     std::ostringstream out;
     for (uint32_t i = 0; i < n; ++i) {
         const DisasmResult r = Disassemble(read, addr);
         out << Hex4(addr) << ": ";
-        for (uint16_t k = 0; k < r.length; ++k) out << Hex2(bus_.at(static_cast<uint16_t>(addr + k))) << " ";
+        for (uint16_t k = 0; k < r.length; ++k) out << Hex2(bus_.read(static_cast<uint16_t>(addr + k))) << " ";
         for (uint16_t k = r.length; k < 4; ++k) out << "   ";
         out << " " << r.text;
         if (i + 1 < n) out << "\n";
         addr = static_cast<uint16_t>(addr + r.length);
     }
     return out.str();
+}
+
+std::string Z80DebugSession::CmdSlots() const {
+    if (!memory_system_) return "slots: requer 'fwmsx --z80dbg --slots' (esta sessao nao tem mapa de memoria)";
+    std::ostringstream out;
+    out << "Slots (primario:secundario -> conteudo):";
+    for (int primary = 0; primary < 4; ++primary) {
+        for (int secondary = 0; secondary < 4; ++secondary) {
+            const memmap::SlotDescriptor d = memory_system_->Describe(primary, secondary);
+            out << "\n  " << primary << ":" << secondary << " -> ";
+            switch (d.kind) {
+                case MEMMAP_KIND_RAM:
+                    out << "RAM (" << d.size << " bytes)";
+                    break;
+                case MEMMAP_KIND_ROM:
+                    out << "ROM (" << d.size << " bytes)";
+                    break;
+                case MEMMAP_KIND_EMPTY:
+                default:
+                    out << "vazio";
+                    break;
+            }
+        }
+    }
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdPages() const {
+    if (!memory_system_) return "pages: requer 'fwmsx --z80dbg --slots' (esta sessao nao tem mapa de memoria)";
+    static const char *const kRanges[4] = {"0000-3FFF", "4000-7FFF", "8000-BFFF", "C000-FFFF"};
+    const auto view = memory_system_->CurrentView();
+    std::ostringstream out;
+    out << "Paginas visiveis para a CPU agora:";
+    for (int page = 0; page < 4; ++page) {
+        out << "\n  " << kRanges[page] << ": slot " << view[page].primary << ":" << view[page].secondary
+            << (view[page].writable ? " (gravavel)" : " (somente leitura)");
+    }
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdSlotMem(const std::vector<std::string> &tokens) const {
+    if (!memory_system_) return "slotmem: requer 'fwmsx --z80dbg --slots' (esta sessao nao tem mapa de memoria)";
+    if (tokens.size() < 4) return "uso: slotmem <primario> <secundario> <endereco> [tamanho]";
+    int primary = 0, secondary = 0;
+    if (!ParseSlotIndex(tokens[1], primary)) return "slotmem: slot primario invalido: '" + tokens[1] + "'";
+    if (!ParseSlotIndex(tokens[2], secondary)) return "slotmem: slot secundario invalido: '" + tokens[2] + "'";
+    uint16_t addr = 0;
+    if (!ParseAddr(tokens[3], addr)) return "slotmem: endereco invalido: '" + tokens[3] + "'";
+    uint32_t len = 16;
+    if (tokens.size() > 4 && !ParseU32(tokens[4], len)) return "slotmem: tamanho invalido: '" + tokens[4] + "'";
+
+    std::ostringstream out;
+    for (uint32_t i = 0; i < len; ++i) {
+        const uint16_t a = static_cast<uint16_t>(addr + i);
+        if (i % 16 == 0) {
+            if (i != 0) out << "\n";
+            out << primary << ":" << secondary << " " << Hex4(a) << ": ";
+        }
+        out << Hex2(memory_system_->PeekSlot(primary, secondary, a)) << " ";
+        if (a == 0xFFFF && i + 1 < len) break; // nao envolve alem de 0xFFFF
+    }
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdSlotPeek(const std::vector<std::string> &tokens) const {
+    if (!memory_system_) return "slotpeek: requer 'fwmsx --z80dbg --slots' (esta sessao nao tem mapa de memoria)";
+    if (tokens.size() < 4) return "uso: slotpeek <primario> <secundario> <endereco>";
+    int primary = 0, secondary = 0;
+    if (!ParseSlotIndex(tokens[1], primary)) return "slotpeek: slot primario invalido: '" + tokens[1] + "'";
+    if (!ParseSlotIndex(tokens[2], secondary)) return "slotpeek: slot secundario invalido: '" + tokens[2] + "'";
+    uint16_t addr = 0;
+    if (!ParseAddr(tokens[3], addr)) return "slotpeek: endereco invalido: '" + tokens[3] + "'";
+    return std::to_string(primary) + ":" + std::to_string(secondary) + " " + Hex4(addr) + ": " +
+           Hex2(memory_system_->PeekSlot(primary, secondary, addr));
+}
+
+std::string Z80DebugSession::CmdSlotPoke(const std::vector<std::string> &tokens) {
+    if (!memory_system_) return "slotpoke: requer 'fwmsx --z80dbg --slots' (esta sessao nao tem mapa de memoria)";
+    if (tokens.size() < 5) return "uso: slotpoke <primario> <secundario> <endereco> <byte>";
+    int primary = 0, secondary = 0;
+    if (!ParseSlotIndex(tokens[1], primary)) return "slotpoke: slot primario invalido: '" + tokens[1] + "'";
+    if (!ParseSlotIndex(tokens[2], secondary)) return "slotpoke: slot secundario invalido: '" + tokens[2] + "'";
+    uint16_t addr = 0;
+    if (!ParseAddr(tokens[3], addr)) return "slotpoke: endereco invalido: '" + tokens[3] + "'";
+    uint8_t value = 0;
+    if (!ParseByte(tokens[4], value)) return "slotpoke: byte invalido: '" + tokens[4] + "'";
+    memory_system_->PokeSlot(primary, secondary, addr, value);
+    // Mesma logica de CmdPoke: le de volta em vez de so ecoar `value`,
+    // porque um slot vazio ou nao-gravavel descarta a escrita em
+    // silencio (memmap_poke_slot) -- ver o comentario em CmdPoke.
+    const uint8_t actual = memory_system_->PeekSlot(primary, secondary, addr);
+    const std::string prefix = std::to_string(primary) + ":" + std::to_string(secondary) + " " + Hex4(addr);
+    if (actual == value) return prefix + " <- " + Hex2(value);
+    return prefix + " <- " + Hex2(value) + " (nao gravado -- slot nao gravavel; continua " + Hex2(actual) + ")";
 }
 
 std::string Z80DebugSession::CmdHelp() const {
@@ -288,6 +407,11 @@ std::string Z80DebugSession::CmdHelp() const {
            "  load <arquivo> <end>  carrega um arquivo binario na RAM em <end>\n"
            "  fill <end> <tam> <b>  preenche <tam> bytes com <b> a partir de <end>\n"
            "  disasm [end] [n]      desmonta n instrucoes (default: PC atual, 10)\n"
+           "  slots                 lista as 16 combinacoes de slot (requer --slots)\n"
+           "  pages                 mostra o que a CPU enxerga agora em cada pagina (requer --slots)\n"
+           "  slotmem <p> <s> <end> [tam]    dump de uma combinacao especifica (requer --slots)\n"
+           "  slotpeek <p> <s> <end>         le um byte de uma combinacao especifica (requer --slots)\n"
+           "  slotpoke <p> <s> <end> <byte>  escreve numa combinacao especifica (requer --slots)\n"
            "  help                  esta mensagem";
 }
 

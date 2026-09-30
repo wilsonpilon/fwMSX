@@ -133,13 +133,15 @@ dkms.conf
 !/dist/*.exe
 !/dist/*.zip
 
-# z80test.exe/z80dbgtest.exe sao os executaveis de teste do nucleo Z80
-# (ver doc/z80-core-spec.md) -- uteis localmente, mas nao sao entregaveis
-# do projeto como msxdisk.exe/fwMSX.exe, entao ficam de fora do
+# z80test.exe/z80dbgtest.exe/memmaptest.exe sao os executaveis de teste
+# do nucleo Z80/mapa de memoria (ver doc/z80-core-spec.md,
+# doc/memory-map-spec.md) -- uteis localmente, mas nao sao entregaveis do
+# projeto como msxdisk.exe/fwMSX.exe, entao ficam de fora do
 # versionamento (regra depois do "unignore" acima, que e' a que vale por
 # ultimo).
 /dist/z80test.exe
 /dist/z80dbgtest.exe
+/dist/memmaptest.exe
 
 # Diretorios de build gerados automaticamente pelo CLion
 /cmake-build-*/

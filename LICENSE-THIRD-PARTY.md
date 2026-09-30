@@ -59,6 +59,16 @@ termos acima:
   `DAsm()`). Ver `doc/z80-core-spec.md`, secao 6 (Fase 4), para as tres
   correcoes cosmeticas feitas em relacao ao original (nenhuma afeta
   execucao/timing da CPU, so o texto mostrado pelo desmontador).
+- `src/memmap/core/slot_state.{h,c}` -- motor do mapa de memoria MSX
+  (topologia de slots/subslots, troca de slot primario/secundario), de
+  `resource/fMSX/fMSX/MSX.c` e `resource/fMSX/fMSX/MSX.h` (tabela
+  `MemMap[4][4][8]`, `PSL`/`SSL`/`SSLReg`, funcoes `PSlot()`/`SSlot()`,
+  trecho de `RdZ80`/`WrZ80` relativo a mapeamento de memoria -- **nao** a
+  parte de controlador de disquete dessas funcoes, que fica de fora de
+  proposito, ver `doc/memory-map-spec.md`, secao 3.2). Ver
+  `doc/memory-map-spec.md`, secao 6 (Fase 1), para as diferencas
+  deliberadas em relacao ao original (permissao de escrita explicita por
+  pedaco de 8KB, em vez de inferida por uma regra hardcoded).
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

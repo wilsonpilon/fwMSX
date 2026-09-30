@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "../../src/z80/debug/flat_memory_bus.h"
 #include "../../src/z80/debug/z80_debug_session.h"
 #include "../../src/z80/debug/z80_disasm.h"
 
@@ -40,7 +41,8 @@ int main() {
 
     // --- reset / regs ---------------------------------------------------
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         Cmd(session, {"reset"});
         const std::string regs = Cmd(session, {"regs"});
         check(Contains(regs, "PC=0000"), "reset+regs: PC=0000");
@@ -49,7 +51,8 @@ int main() {
 
     // --- poke/peek round-trip -------------------------------------------
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         Cmd(session, {"poke", "0x1234", "0xAB"});
         const std::string peeked = Cmd(session, {"peek", "0x1234"});
         check(Contains(peeked, "AB"), "poke+peek: round-trip em 0x1234");
@@ -57,7 +60,8 @@ int main() {
 
     // --- fill + mem -------------------------------------------------------
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         Cmd(session, {"fill", "0x2000", "8", "0x55"});
         const std::string dump = Cmd(session, {"mem", "0x2000", "8"});
         bool all_55 = true;
@@ -73,7 +77,8 @@ int main() {
 
     // --- load: arquivo existente ------------------------------------------
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         const auto tmp_path = std::filesystem::temp_directory_path() / "fwmsx_z80dbg_test_load.bin";
         {
             std::ofstream f(tmp_path, std::ios::binary);
@@ -89,7 +94,8 @@ int main() {
 
     // --- load: arquivo inexistente (nao pode travar) -----------------------
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         const std::string result = Cmd(session, {"load", "C:/caminho/que/nao/existe/arquivo.bin", "0x0000"});
         check(!result.empty(), "load (inexistente): devolve mensagem de erro, nao trava");
         check(Contains(result, "load"), "load (inexistente): mensagem menciona o comando");
@@ -98,7 +104,8 @@ int main() {
     // --- step/run sobre um programa pequeno ---------------------------------
     // LD A,5 / LD B,3 / ADD A,B / HALT
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         Cmd(session, {"reset"});
         Cmd(session, {"poke", "0x0000", "0x3E"});
         Cmd(session, {"poke", "0x0001", "0x05"});
@@ -114,7 +121,8 @@ int main() {
 
     // --- breakpoint interrompe 'run' antes do orcamento esgotar --------------
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         Cmd(session, {"reset"});
         // JR $ (0x18 0xFE) em 0x0000 -- loop infinito de 1 instrucao (13 T-states
         // por iteracao: 12 quando tomado -- nao importa o valor exato aqui).
@@ -232,7 +240,8 @@ int main() {
 
     // --- comando 'disasm' da sessao (integracao, nao so a funcao pura) -----
     {
-        Z80DebugSession session;
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus);
         Cmd(session, {"reset"});
         Cmd(session, {"poke", "0x0000", "0x3E"});
         Cmd(session, {"poke", "0x0001", "0x05"});
