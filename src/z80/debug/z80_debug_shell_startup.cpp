@@ -12,14 +12,23 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
 
     // Regra de sintaxe (ver z80_debug_shell_startup.h): so o token
     // IMEDIATAMENTE seguinte a "--slots" (se existir) vira caminho de ROM
-    // de boot.
+    // de boot. "--vdp" e' um token independente (qualquer posicao).
     for (std::size_t i = 0; i < args.size(); ++i) {
+        if (args[i] == "--vdp") {
+            startup.use_vdp = true;
+            continue;
+        }
         if (args[i] != "--slots") continue;
         startup.use_slots = true;
-        if (i + 1 < args.size()) {
+        if (i + 1 < args.size() && args[i + 1] != "--vdp") {
             startup.boot_rom_path = args[i + 1];
             startup.boot_rom_requested = true;
         }
+    }
+
+    if (startup.use_vdp && !startup.use_slots) {
+        startup.vdp_error = "--vdp requer --slots (ignorado nesta sessao)";
+        startup.use_vdp = false;
     }
 
     if (!startup.use_slots) return startup;
@@ -63,6 +72,17 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
     }
 
     startup.slot_bus = std::make_unique<memmap::SlotMemoryBus>(*startup.memory_system);
+
+    if (startup.use_vdp) {
+        startup.vdp_device = std::make_unique<vdp::VdpDevice>();
+        startup.composite_bus = std::make_unique<z80::CompositeBus>(*startup.slot_bus);
+        // Porta A8h (slot primario) -- mesmo dispositivo de memoria, ja
+        // que SlotMemoryBus::out() ja trata essa porta. Portas 98h-9Bh
+        // (VDP) -- ver doc/vdp-spec.md, secao 3.3/6 (Fase 0.5/1).
+        startup.composite_bus->RegisterPort(0xA8, startup.slot_bus.get());
+        startup.composite_bus->RegisterPortRange(0x98, 0x9B, startup.vdp_device.get());
+    }
+
     return startup;
 }
 

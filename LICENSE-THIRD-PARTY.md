@@ -76,6 +76,20 @@ termos acima:
   por primario/secundario em vez de um indice de slot de cartucho;
   estado inicial de MegaROM simplificado -- todos os quartos comecam no
   banco 0, em vez da heuristica de assinatura 'AB' do fMSX).
+- `src/vdp/core/vdp_state.{h,c}` -- motor "digital" do VDP (registradores,
+  protocolo de porta 98h-9Bh, maquina de estados de scanline/
+  interrupcao), de `resource/fMSX/fMSX/MSX.c` e `resource/fMSX/fMSX/
+  MSX.h` (trechos de `InZ80`/`WrZ80` relativos as portas 98h-9Bh,
+  `VDPOut()`, `SetScreen()`, `SetIRQ()`, e a fatia de `LoopZ80()`
+  referente a VBlank/HBlank/coincidencia de linha -- **nao** a
+  renderizacao de pixel, som, sprites, teclado/joystick/mouse ou o
+  motor de comando V9938 dessa mesma funcao, todos fora de escopo ate'
+  agora, ver `doc/vdp-spec.md`, secao 4/6). Diferencas deliberadas: uma
+  unica pagina de VRAM (16KB, ver `VDP_VRAM_PAGES` em
+  `src/vdp/common/vdp_types.h`); deslocamentos de tabela em vez de
+  ponteiros crus (o buffer de VRAM e' um array de tamanho fixo dentro do
+  struct, nao alocado separadamente como no fMSX). Ver
+  `doc/vdp-spec.md`, secao 6 (Fase 0.5/1), para o detalhamento completo.
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

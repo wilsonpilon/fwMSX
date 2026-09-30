@@ -215,6 +215,21 @@ set(MEMMAP_LIB_SOURCES
         src/memmap/fortran/rom_checksum.f90
 )
 
+# --- VDP (V9938/TMS9918, Fases 0.5-1) -- ver doc/vdp-spec.md ----------
+#
+# Motor "digital" do VDP em C (adaptado do fMSX, ver
+# LICENSE-THIRD-PARTY.md): registradores, protocolo de porta 98h-9Bh,
+# maquina de estados de scanline/interrupcao -- SEM renderizar nenhum
+# pixel ainda (isso e' Fase 2). VdpDevice (C++, design proprio) adapta
+# isso para z80::IBus; z80::CompositeBus (Fase 0.5, src/z80/cpp/,
+# tambem design proprio) e' o que permite o VDP e o mapa de memoria
+# coexistirem no mesmo barramento do Z80Cpu. Tabela de conversao de
+# paleta em Fortran -- ainda sem consumidor (Fase 2+).
+set(VDP_LIB_SOURCES
+        src/vdp/core/vdp_state.c
+        src/vdp/fortran/palette_table.f90
+)
+
 enable_testing()
 
 add_executable(z80test tests/z80/smoke_test.cpp ${Z80_LIB_SOURCES})
@@ -226,8 +241,8 @@ endif ()
 
 add_test(NAME z80_smoke COMMAND z80test)
 
-add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES})
-target_include_directories(z80dbgtest PRIVATE src/z80 src/memmap)
+add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES})
+target_include_directories(z80dbgtest PRIVATE src/z80 src/memmap src/vdp)
 set_target_properties(z80dbgtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/z80dbgtest)
 if (MINGW)
     target_link_options(z80dbgtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
@@ -235,8 +250,8 @@ endif ()
 
 add_test(NAME z80_debug_session COMMAND z80dbgtest)
 
-add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES})
-target_include_directories(memmaptest PRIVATE src/z80 src/memmap)
+add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES})
+target_include_directories(memmaptest PRIVATE src/z80 src/memmap src/vdp)
 # FWMSX_SOURCE_DIR: caminho absoluto da raiz do repositorio, para o teste
 # de aceitacao com a BIOS real (resource/fMSX/ROMs/MSX.ROM) achar o
 # arquivo independente de qual seja o diretorio de trabalho do CTest ao
@@ -249,6 +264,19 @@ endif ()
 
 add_test(NAME memmap_slots COMMAND memmaptest)
 
+# vdptest: VDP "digital" (Fase 1) + Fase 0.5 (CompositeBus) -- ver
+# doc/vdp-spec.md. Mesmo padrao de memmaptest (FWMSX_SOURCE_DIR para o
+# teste de aceitacao com a BIOS real).
+add_executable(vdptest tests/z80/vdp_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES})
+target_include_directories(vdptest PRIVATE src/z80 src/memmap src/vdp)
+target_compile_definitions(vdptest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(vdptest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/vdptest)
+if (MINGW)
+    target_link_options(vdptest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME vdp_digital COMMAND vdptest)
+
 # --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
 #
 # "fwmsx --msxdisk ..." repassa pro msxdisk embutido (mesmos
@@ -257,7 +285,8 @@ add_test(NAME memmap_slots COMMAND memmaptest)
 # doc/z80-core-spec.md) -- unico lugar que compila z80_debug_shell.cpp
 # (usa replxx, por isso fora de Z80_DEBUG_SESSION_SOURCES). "--z80dbg
 # --slots" liga o mapa de memoria de verdade (Fase 1, ver
-# doc/memory-map-spec.md) em vez da RAM plana default.
+# doc/memory-map-spec.md) em vez da RAM plana default. "--z80dbg --slots
+# --vdp" liga tambem o VDP "digital" (Fase 0.5/1, ver doc/vdp-spec.md).
 add_executable(fwMSX
         src/cpp/main.cpp
         src/cpp/init_cpp.cpp
@@ -268,6 +297,7 @@ add_executable(fwMSX
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
+        ${VDP_LIB_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 
@@ -279,6 +309,7 @@ target_include_directories(fwMSX PRIVATE
         src/common
         src/z80
         src/memmap
+        src/vdp
 )
 msxdisk_link_target(fwMSX)
 set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)

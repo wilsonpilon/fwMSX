@@ -197,7 +197,13 @@ para quando o trabalho for retomado:
 1. **VDP** (TMS9918/V9938) -- o que da tela de verdade pela primeira vez;
    maior payoff visivel, mas tambem o componente mais complexo depois da
    CPU. Precisa de acesso a VRAM (separada da RAM principal) e aos
-   registradores de porta `98h`-`9Bh`.
+   registradores de porta `98h`-`9Bh`. **Analise e design concluidos em
+   2026-09-30** -- ver [doc/vdp-spec.md](vdp-spec.md) (implementacao
+   ainda nao iniciada). Achado importante: o VDP e' a "maquina" que da'
+   uso real ao gancho de interrupcao periodica deliberadamente deixado
+   de fora da Fase 1 do nucleo Z80 (ver `doc/z80-core-spec.md`, secao
+   3.2) -- as interrupcoes de VBlank/HBlank que ele gera sao o que faz
+   software MSX real (a propria BIOS) funcionar de verdade.
 2. **PSG** (AY-3-8910) -- som; mais simples que o VDP. Uma vez que exista,
    o SCC do mapa de memoria (adiado na Fase 3, ver
    `doc/memory-map-spec.md`) passa a fazer sentido de verdade.

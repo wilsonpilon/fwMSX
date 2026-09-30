@@ -78,16 +78,19 @@ int RunZ80DebugShell(const std::vector<std::string> &args) {
     const std::string history_path = HistoryFilePath();
     rx.history_load(history_path);
 
-    Z80DebugSession session(startup.Bus(), startup.memory_system.get());
+    Z80DebugSession session(startup.Bus(), startup.memory_system.get(), startup.vdp_device.get());
 
     std::cout << "fwMSX - depurador do nucleo Z80 ("
                << (startup.use_slots ? "mapa de memoria real (slots/subslots)" : "RAM plana de teste")
-               << ", sem maquina MSX ainda)." << std::endl;
+               << (startup.use_vdp ? " + VDP" : "") << ", sem maquina MSX ainda)." << std::endl;
     if (startup.boot_rom_loaded) {
         std::cout << "ROM de boot carregada em 0:0: " << startup.boot_rom_path << std::endl;
     } else if (startup.boot_rom_requested) {
         std::cout << "Aviso: nao foi possivel carregar a ROM de boot '" << startup.boot_rom_path << "' ("
                    << startup.boot_rom_error << ") -- iniciando com RAM vazia em 0:0." << std::endl;
+    }
+    if (!startup.vdp_error.empty()) {
+        std::cout << "Aviso: " << startup.vdp_error << "." << std::endl;
     }
     std::cout << "Digite 'help' para a lista de comandos, 'exit' ou Ctrl-D para sair." << std::endl;
 

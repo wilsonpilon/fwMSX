@@ -29,11 +29,22 @@ namespace memmap {
 class MemorySystem;
 } // namespace memmap
 
+namespace vdp {
+class VdpDevice;
+} // namespace vdp
+
 namespace z80::debug {
 
 class Z80DebugSession {
 public:
-    explicit Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system = nullptr);
+    // `vdp_device` (Fase 0.5/1 do VDP, ver doc/vdp-spec.md): quando
+    // presente, `run`/`step` tambem avancam a maquina de estados do VDP
+    // e entregam interrupcoes de verdade ao Z80Cpu (ver DriveVdp() na
+    // implementacao) -- sem ele, os comandos vdp* respondem pedindo
+    // `--z80dbg --slots --vdp` em vez de travar, mesmo padrao ja usado
+    // para `memory_system` (mapa de memoria).
+    explicit Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system = nullptr,
+                              vdp::VdpDevice *vdp_device = nullptr);
 
     // Executa um comando (primeiro token = nome do comando) e devolve o
     // texto de resposta (sem newline final). Nunca lanca excecao por
@@ -63,12 +74,32 @@ private:
     std::string CmdSlotPeek(const std::vector<std::string> &tokens) const;
     std::string CmdSlotPoke(const std::vector<std::string> &tokens);
     std::string CmdLoadRom(const std::vector<std::string> &tokens);
+    std::string CmdVdpRegs() const;
+    std::string CmdVdpMem(const std::vector<std::string> &tokens) const;
+    std::string CmdVdpPeek(const std::vector<std::string> &tokens) const;
+    std::string CmdVdpPoke(const std::vector<std::string> &tokens);
+    std::string CmdVdpStep(const std::vector<std::string> &tokens);
     std::string CmdHelp() const;
+
+    // Avanca a maquina de estados do VDP o quanto for necessario para
+    // "consumir" `cycles_consumed` ciclos de Z80 que acabaram de rodar,
+    // entregando cpu_.interrupt(Z80_INT_IRQ) sempre que um passo reportar
+    // irq_pending -- ver doc/vdp-spec.md, secao 3.3, para o raciocinio
+    // completo (isto e' o que substitui o papel de LoopZ80()/IRequest do
+    // fMSX no nosso modelo "host decide quando" de execucao). Sem
+    // vdp_device_, e' um no-op.
+    void DriveVdp(int cycles_consumed);
 
     z80::IBus &bus_;
     Z80Cpu cpu_;
     std::set<uint16_t> breakpoints_;
     memmap::MemorySystem *memory_system_;
+    vdp::VdpDevice *vdp_device_;
+    // Ciclos restantes ate' a proxima vez que o VDP precisa ser avancado
+    // -- ver DriveVdp(). Comeca em 0 (avanca o VDP uma vez antes de
+    // qualquer instrucao rodar, pegando o primeiro next_period_cycles de
+    // verdade).
+    int vdp_pending_cycles_ = 0;
 };
 
 } // namespace z80::debug

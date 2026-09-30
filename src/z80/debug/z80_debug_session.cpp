@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "../../memmap/cpp/memory_system.h"
+#include "../../vdp/cpp/vdp_device.h"
 #include "../common/z80_state.h"
 #include "z80_disasm.h"
 
@@ -88,8 +89,18 @@ std::string Hex2(uint8_t v) {
 
 } // namespace
 
-Z80DebugSession::Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system)
-    : bus_(bus), cpu_(bus_), memory_system_(memory_system) {}
+Z80DebugSession::Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system, vdp::VdpDevice *vdp_device)
+    : bus_(bus), cpu_(bus_), memory_system_(memory_system), vdp_device_(vdp_device) {}
+
+void Z80DebugSession::DriveVdp(int cycles_consumed) {
+    if (!vdp_device_) return;
+    vdp_pending_cycles_ -= cycles_consumed;
+    while (vdp_pending_cycles_ <= 0) {
+        const VdpStepResult r = vdp_device_->Step();
+        vdp_pending_cycles_ += r.next_period_cycles;
+        if (r.irq_pending) cpu_.interrupt(Z80_INT_IRQ);
+    }
+}
 
 std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &tokens) {
     if (tokens.empty()) return "";
@@ -114,6 +125,11 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
     if (cmd == "slotpeek") return CmdSlotPeek(tokens);
     if (cmd == "slotpoke") return CmdSlotPoke(tokens);
     if (cmd == "loadrom") return CmdLoadRom(tokens);
+    if (cmd == "vdpregs") return CmdVdpRegs();
+    if (cmd == "vdpmem") return CmdVdpMem(tokens);
+    if (cmd == "vdppeek") return CmdVdpPeek(tokens);
+    if (cmd == "vdppoke") return CmdVdpPoke(tokens);
+    if (cmd == "vdpstep") return CmdVdpStep(tokens);
     if (cmd == "help" || cmd == "?") return CmdHelp();
 
     return "comando desconhecido: '" + cmd + "' (digite 'help' para a lista)";
@@ -152,7 +168,8 @@ std::string Z80DebugSession::CmdStep(const std::vector<std::string> &tokens) {
 
     std::ostringstream out;
     for (uint32_t i = 0; i < n; ++i) {
-        cpu_.run(1);
+        const int leftover = cpu_.run(1);
+        DriveVdp(1 - leftover);
         out << "step " << (i + 1) << ": PC=" << Hex4(cpu_.pc());
         if (breakpoints_.count(cpu_.pc())) {
             out << "  <-- breakpoint";
@@ -171,7 +188,9 @@ std::string Z80DebugSession::CmdRun(const std::vector<std::string> &tokens) {
     const char *reason = "orcamento de ciclos esgotado";
     while (consumed < budget) {
         const int leftover = cpu_.run(1);
-        consumed += static_cast<uint32_t>(1 - leftover);
+        const int step_cycles = 1 - leftover;
+        consumed += static_cast<uint32_t>(step_cycles);
+        DriveVdp(step_cycles);
         if (breakpoints_.count(cpu_.pc())) {
             reason = "breakpoint atingido";
             break;
@@ -461,6 +480,83 @@ std::string Z80DebugSession::CmdLoadRom(const std::vector<std::string> &tokens) 
     return result;
 }
 
+std::string Z80DebugSession::CmdVdpRegs() const {
+    if (!vdp_device_) return "vdpregs: requer 'fwmsx --z80dbg --slots --vdp' (esta sessao nao tem VDP)";
+    const VdpState &v = vdp_device_->state();
+    std::ostringstream out;
+    out << "Registradores (R#0-R#46):\n";
+    for (int r = 0; r <= 46; ++r) {
+        out << Hex2(v.regs[r]) << (r == 46 ? "" : " ");
+        if (r % 16 == 15) out << "\n";
+    }
+    out << "\nStatus (S#0-S#9): ";
+    for (int s = 0; s <= 9; ++s) out << Hex2(v.status[s]) << " ";
+    out << "\nModo de tela (ScrMode): " << static_cast<int>(v.scr_mode)
+        << "  IE0 (VBlank) habilitado: " << ((v.regs[1] & 0x20) ? 1 : 0)
+        << "  IE1 (HBlank/coincidencia) habilitado: " << ((v.regs[0] & 0x10) ? 1 : 0)
+        << "\nInterrupcao pendente (VDP): " << (v.irq_pending ? "sim" : "nao") << " (bits " << Hex2(v.irq_pending)
+        << ")\nScanLine=" << v.scanline << " Drawing=" << v.drawing;
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdVdpMem(const std::vector<std::string> &tokens) const {
+    if (!vdp_device_) return "vdpmem: requer 'fwmsx --z80dbg --slots --vdp' (esta sessao nao tem VDP)";
+    if (tokens.size() < 2) return "uso: vdpmem <endereco> [tamanho]";
+    uint16_t addr = 0;
+    if (!ParseAddr(tokens[1], addr)) return "vdpmem: endereco invalido: '" + tokens[1] + "'";
+    uint32_t len = 16;
+    if (tokens.size() > 2 && !ParseU32(tokens[2], len)) return "vdpmem: tamanho invalido: '" + tokens[2] + "'";
+
+    const VdpState &v = vdp_device_->state();
+    std::ostringstream out;
+    for (uint32_t i = 0; i < len && (addr + i) < VDP_VRAM_SIZE; ++i) {
+        const uint16_t a = static_cast<uint16_t>(addr + i);
+        if (i % 16 == 0) {
+            if (i != 0) out << "\n";
+            out << Hex4(a) << ": ";
+        }
+        out << Hex2(v.vram[a]) << " ";
+    }
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdVdpPeek(const std::vector<std::string> &tokens) const {
+    if (!vdp_device_) return "vdppeek: requer 'fwmsx --z80dbg --slots --vdp' (esta sessao nao tem VDP)";
+    if (tokens.size() < 2) return "uso: vdppeek <endereco>";
+    uint16_t addr = 0;
+    if (!ParseAddr(tokens[1], addr)) return "vdppeek: endereco invalido: '" + tokens[1] + "'";
+    if (addr >= VDP_VRAM_SIZE) return "vdppeek: endereco alem da VRAM (" + std::to_string(VDP_VRAM_SIZE) + " bytes)";
+    return Hex4(addr) + ": " + Hex2(vdp_device_->state().vram[addr]);
+}
+
+std::string Z80DebugSession::CmdVdpPoke(const std::vector<std::string> &tokens) {
+    if (!vdp_device_) return "vdppoke: requer 'fwmsx --z80dbg --slots --vdp' (esta sessao nao tem VDP)";
+    if (tokens.size() < 3) return "uso: vdppoke <endereco> <byte>";
+    uint16_t addr = 0;
+    uint8_t value = 0;
+    if (!ParseAddr(tokens[1], addr)) return "vdppoke: endereco invalido: '" + tokens[1] + "'";
+    if (!ParseByte(tokens[2], value)) return "vdppoke: byte invalido: '" + tokens[2] + "'";
+    if (addr >= VDP_VRAM_SIZE) return "vdppoke: endereco alem da VRAM (" + std::to_string(VDP_VRAM_SIZE) + " bytes)";
+    vdp_device_->state().vram[addr] = value;
+    return Hex4(addr) + " <- " + Hex2(value);
+}
+
+std::string Z80DebugSession::CmdVdpStep(const std::vector<std::string> &tokens) {
+    if (!vdp_device_) return "vdpstep: requer 'fwmsx --z80dbg --slots --vdp' (esta sessao nao tem VDP)";
+    uint32_t n = 1;
+    if (tokens.size() > 1 && !ParseU32(tokens[1], n)) return "vdpstep: numero de passos invalido: '" + tokens[1] + "'";
+    if (n == 0) return "vdpstep: nada a fazer (n=0)";
+
+    std::ostringstream out;
+    for (uint32_t i = 0; i < n; ++i) {
+        const VdpStepResult r = vdp_device_->Step();
+        out << "vdpstep " << (i + 1) << ": ScanLine=" << vdp_device_->state().scanline
+            << " proximo periodo=" << r.next_period_cycles << " irq_pending=" << (r.irq_pending ? "sim" : "nao");
+        if (i + 1 < n) out << "\n";
+    }
+    return out.str();
+}
+
 std::string Z80DebugSession::CmdHelp() const {
     return "Comandos (enderecos/numeros: decimal, 0x-hex ou $-hex):\n"
            "  reset                 reseta a CPU\n"
@@ -487,6 +583,12 @@ std::string Z80DebugSession::CmdHelp() const {
            "      com [mapper]: MegaROM com bank-switch (ate 2MB) -- gen8, gen16,\n"
            "      konami5, konami4, ascii8 ou ascii16 (so a troca de banco de ROM;\n"
            "      SCC/SRAM nao suportados nesses dois ultimos, ver doc/memory-map-spec.md)\n"
+           "  vdpregs               registradores/status/modo de tela do VDP (requer --vdp)\n"
+           "  vdpmem <end> [tam]    dump da VRAM do VDP (requer --vdp)\n"
+           "  vdppeek <end>         le um byte da VRAM do VDP (requer --vdp)\n"
+           "  vdppoke <end> <byte>  escreve um byte na VRAM do VDP (requer --vdp)\n"
+           "  vdpstep [n]           avanca a maquina de estados do VDP manualmente, sem "
+           "rodar o Z80 (requer --vdp)\n"
            "  help                  esta mensagem";
 }
 

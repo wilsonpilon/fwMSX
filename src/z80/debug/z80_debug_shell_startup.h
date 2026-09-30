@@ -15,6 +15,8 @@
 
 #include "../../memmap/cpp/memory_system.h"
 #include "../../memmap/cpp/slot_memory_bus.h"
+#include "../../vdp/cpp/vdp_device.h"
+#include "../cpp/composite_bus.h"
 #include "../cpp/z80_bus.h"
 #include "flat_memory_bus.h"
 
@@ -45,6 +47,15 @@ struct Z80DebugShellStartup {
     // ver a nota "warn, don't crash" em memory-map-spec.md.
     std::string boot_rom_error;
 
+    // "--vdp" (Fase 0.5/1 do VDP, ver doc/vdp-spec.md): so' tem efeito
+    // combinado com "--slots" (o VDP precisa do barramento composto, que
+    // so' faz sentido quando ha' um MemorySystem de verdade). "--vdp" sem
+    // "--slots" e' ignorado (nao liga o VDP, sessao continua em RAM
+    // plana) com o motivo registrado em vdp_error -- "avisa, nao trava",
+    // mesmo espirito de boot_rom_error.
+    bool use_vdp = false;
+    std::string vdp_error;
+
     // Sempre construido (mesmo quando use_slots==false, so' fica sem uso
     // nesse caso) -- mais simples do que um ponteiro opcional, e o custo
     // de 64KB e' irrelevante.
@@ -52,9 +63,15 @@ struct Z80DebugShellStartup {
     // So construidos quando use_slots==true.
     std::unique_ptr<memmap::MemorySystem> memory_system;
     std::unique_ptr<memmap::SlotMemoryBus> slot_bus;
+    // So construidos quando use_vdp==true.
+    std::unique_ptr<vdp::VdpDevice> vdp_device;
+    std::unique_ptr<z80::CompositeBus> composite_bus;
 
-    // O IBus que a sessao deve usar, de acordo com use_slots.
+    // O IBus que a sessao deve usar: CompositeBus (slots+VDP) quando
+    // use_vdp, SlotMemoryBus quando so' use_slots, FlatMemoryBus caso
+    // contrario.
     z80::IBus &Bus() const {
+        if (use_vdp) return *composite_bus;
         return use_slots ? static_cast<z80::IBus &>(*slot_bus) : static_cast<z80::IBus &>(*flat_bus);
     }
 };
