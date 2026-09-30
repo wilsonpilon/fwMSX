@@ -1,0 +1,4 @@
+# Scripts Bash/shell precisam de fim-de-linha LF sempre, independente do
+# core.autocrlf de quem commita no Windows -- CRLF num shebang quebra a
+# execucao no Linux ("bad interpreter"). Ver build.sh.
+*.sh text eol=lf

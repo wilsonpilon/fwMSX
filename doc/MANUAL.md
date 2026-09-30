@@ -59,6 +59,24 @@ cmake --build build
 
 O executavel fica em `dist/fwMSX.exe`.
 
+### Linux
+
+O projeto tambem compila em Linux (gcc/g++/gfortran/nasm/cmake/ninja
+"de sistema", sem MSYS2) -- em particular para validar de verdade a
+branch `elf64`/SysV AMD64 do `.asm` dual-ABI do nucleo Z80
+(`src/z80/asm/block_ops.asm`), que no desenvolvimento original (Windows)
+so pode ser montada (`nasm -f elf64`), nunca linkada/executada. Use
+`build.sh` (equivalente ao `build.ps1`):
+
+```bash
+sudo apt install build-essential gfortran nasm cmake ninja-build   # Debian/Ubuntu
+./build.sh              # configura, compila, roda ctest e empacota
+./build.sh --no-gui     # sem Dear ImGui/GLFW/OpenGL3 (evita libs de X11/OpenGL)
+```
+
+Executaveis em `dist/fwMSX` e `dist/msxdisk`; pacote em
+`dist/fwMSX-X.Y.Z-linux.tar.gz`.
+
 ## Executar
 
 ```powershell
