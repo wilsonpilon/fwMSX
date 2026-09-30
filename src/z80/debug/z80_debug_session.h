@@ -79,6 +79,7 @@ private:
     std::string CmdVdpPeek(const std::vector<std::string> &tokens) const;
     std::string CmdVdpPoke(const std::vector<std::string> &tokens);
     std::string CmdVdpStep(const std::vector<std::string> &tokens);
+    std::string CmdVdpShot(const std::vector<std::string> &tokens) const;
     std::string CmdHelp() const;
 
     // Avanca a maquina de estados do VDP o quanto for necessario para

@@ -90,6 +90,15 @@ termos acima:
   ponteiros crus (o buffer de VRAM e' um array de tamanho fixo dentro do
   struct, nao alocado separadamente como no fMSX). Ver
   `doc/vdp-spec.md`, secao 6 (Fase 0.5/1), para o detalhamento completo.
+  Desde a Fase 2, tambem contem a correcao da paleta padrao (`PalInit[16]`
+  de `MSX.c`, ~linha 687), portada para dentro de `vdp_reset()`.
+- `src/vdp/core/vdp_render.{h,c}` -- decodificacao de pixel para SCREEN
+  0/1/2, de `resource/fMSX/fMSX/Common.h` (`RefreshLine0()`,
+  `RefreshLine1()`, `RefreshLine2()`) -- **nao** a borda/overscan
+  (`RefreshBorder()`), sprites (`Sprites()`), `ScreenON`/blank ou
+  `FontBuf`/`MSX_FIXEDFONT`, todos fora de escopo (ver
+  `doc/vdp-spec.md`, secao 6, Fase 2, para o detalhamento completo das
+  simplificacoes e das dimensoes de framebuffer resultantes).
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

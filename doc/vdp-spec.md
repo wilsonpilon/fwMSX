@@ -318,12 +318,78 @@ com precisao em `LICENSE-THIRD-PARTY.md` (dois autores, nao um).
     espirito "avisa, nao trava" ja usado para ROM de boot invalida.
   - **`step` tambem avanca o VDP** (nao so' `run`) -- decisao tomada por
     consistencia (os dois usam a mesma logica de `DriveVdp()`).
-- [ ] **Fase 2 -- Renderizacao MSX1**: decodificacao de pixel de
-      verdade para os modos mais simples (SCREEN 0 texto, SCREEN 1
-      texto colorido, SCREEN 2 grafico) num framebuffer em memoria,
-      exportavel como imagem (ex. PPM/PNG) para testes automatizados --
-      ainda sem janela de verdade. Tabela de paleta em Fortran (secao
-      3.4).
+- [x] **Fase 2 -- Renderizacao MSX1** (concluida em 2026-09-30):
+      decodificacao de pixel de verdade para SCREEN 0 (TEXT 40x24),
+      SCREEN 1 (TEXT 32x24 com cor) e SCREEN 2 (256x192 bitmap),
+      adaptada de `RefreshLine0/1/2` em `resource/fMSX/fMSX/Common.h`.
+      Exportacao PPM (P6 binario, sem biblioteca externa) para
+      inspecao/testes -- comando `vdpshot <arquivo> [linha_ini]
+      [linha_fim]` no `--z80dbg --slots --vdp`.
+
+  **Arquivos**: `src/vdp/core/vdp_render.{h,c}` (renderizacao, adaptada
+  de `Common.h`), `src/vdp/core/vdp_tables.{h,c}` (tabela global de
+  paleta, ate' agora sem consumidor -- ver abaixo), `src/vdp/cpp/
+  ppm_writer.{h,cpp}` (exportacao PPM, design proprio); `vdp_state.c`
+  ganhou o comando `vdpshot` em `z80_debug_session.cpp`.
+
+  **Dimensoes de framebuffer** (verificadas contra `Common.h`, nao
+  adivinhadas): SCREEN 0 = **240x192** (40 colunas * 6px/caractere --
+  `RefreshLine0` so' escreve 6 dos 8 bits do glifo por caractere, bits
+  7..2; os outros 16px que o original preenche com a cor de fundo sao
+  preenchimento de BORDA do "slot" de video de 256px, fora de escopo
+  aqui). SCREEN 1/2 = **256x192** (32 colunas * 8px/caractere, os 8
+  bits completos do glifo).
+
+  **Simplificacoes deliberadas** (ver secao 4 e a nota de topo de
+  `vdp_render.h`): SEM borda/overscan (`RefreshBorder()` inteiro fica
+  de fora -- so' a area ativa e' desenhada); SEM sprites
+  (`Sprites()`, Fase 3); SEM tratamento de `ScreenON=0` alem de mostrar
+  a cor de fundo solida; SEM `FontBuf`/`MSX_FIXEDFONT` (recurso de
+  conveniencia do fMSX pra substituir a fonte por uma do host, nao
+  existe no hardware real); `VScroll` = `regs[23]`, ja' portado desde a
+  Fase 1 (usado tal qual). Modos fora de {0,1,2}: preenchem a linha
+  inteira com a cor de fundo em vez de decodificar pixels errados ou
+  deixar memoria nao-inicializada.
+
+  **Bug real encontrado e corrigido nesta fase**: `vdp_reset()` zerava
+  `palette_r/g/b[]` (Fase 1 nunca tinha um consumidor pra notar isso).
+  Como software SCREEN 0/1/2 real quase nunca escreve os registradores
+  de paleta (recurso do V9938+, nao existe no TMS9918/MSX1), sem essa
+  correcao TODO pixel renderizado sairia preto. Corrigido portando
+  `PalInit[16]` de `MSX.c` (~linha 687) para o reset -- testado contra
+  as 16 entradas completas, nao so' uma amostra.
+
+  **Tabela de paleta em Fortran, finalmente consumida**: a Fase 1
+  construiu `palette_table.f90` (512 entradas) sem nenhum consumidor;
+  a escrita de paleta via porta `9Ah` agora usa essa tabela (busca por
+  indice) em vez de recalcular a formula de escala inline a cada
+  escrita -- mesmos valores, calculados uma unica vez. Verificado que
+  os testes de paleta da Fase 1 continuam passando byte-a-byte
+  identicos apos essa troca.
+
+  **Testes**: 16 novas verificacoes (38 -> 54 no total de `vdptest`) --
+  as 16 entradas de paleta padrao; um glifo conhecido em SCREEN 0
+  (pixels exatos, nao so' "nao esta tudo preto"); o quirk de cor
+  compartilhada por GRUPO DE 8 CODIGOS de caractere em SCREEN 1 (dois
+  codigos diferentes no mesmo grupo devem renderizar com a MESMA cor,
+  contrastado com enderecos de tabela de cor "por posicao" que dariam
+  cores diferentes se a formula estivesse errada); a mascara `Y&0xC0`
+  de SCREEN 2 (dois "tercos" da tabela de cor/padrao devem dar
+  enderecos DIFERENTES quando a config de registrador permite tabela
+  unica por terco -- achado depurando: a config inicial escolhida por
+  engano selecionava o modo "tabela compartilhada/espelhada" do
+  hardware real, onde os dois tercos leem o MESMO endereco de
+  proposito, o que fazia o teste falhar por causa da configuracao de
+  teste errada, nao por bug no renderizador -- corrigido ajustando os
+  registradores do teste, nao a formula); fallback de modo nao
+  suportado; round-trip completo de exportacao PPM (escreve, le de
+  volta, compara byte a byte).
+
+  **Build/teste**: `cmake --build build --target vdptest z80dbgtest
+  memmaptest z80test fwMSX && ctest --test-dir build` -- 4 suites, 382
+  verificacoes no total (168+58+102+54), todas passando. Verificacao
+  manual via `fwMSX.exe --z80dbg --slots --vdp` (`vdpshot` gerando um
+  PPM real, cabecalho conferido byte a byte).
 - [ ] **Fase 3 -- Sprites**: modos de sprite 1 e 2 (colisao, prioridade,
       "5 sprites por linha" e o flag de overflow).
 - [ ] **Fase 4 -- Modos MSX2 + janela real**: SCREEN 5-8, paleta de 512

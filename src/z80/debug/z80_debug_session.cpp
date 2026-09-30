@@ -5,7 +5,9 @@
 #include <sstream>
 
 #include "../../memmap/cpp/memory_system.h"
+#include "../../vdp/cpp/ppm_writer.h"
 #include "../../vdp/cpp/vdp_device.h"
+#include "../../vdp/core/vdp_render.h"
 #include "../common/z80_state.h"
 #include "z80_disasm.h"
 
@@ -130,6 +132,7 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
     if (cmd == "vdppeek") return CmdVdpPeek(tokens);
     if (cmd == "vdppoke") return CmdVdpPoke(tokens);
     if (cmd == "vdpstep") return CmdVdpStep(tokens);
+    if (cmd == "vdpshot") return CmdVdpShot(tokens);
     if (cmd == "help" || cmd == "?") return CmdHelp();
 
     return "comando desconhecido: '" + cmd + "' (digite 'help' para a lista)";
@@ -557,6 +560,38 @@ std::string Z80DebugSession::CmdVdpStep(const std::vector<std::string> &tokens) 
     return out.str();
 }
 
+std::string Z80DebugSession::CmdVdpShot(const std::vector<std::string> &tokens) const {
+    if (!vdp_device_) return "vdpshot: requer 'fwmsx --z80dbg --slots --vdp' (esta sessao nao tem VDP)";
+    if (tokens.size() < 2) return "uso: vdpshot <arquivo.ppm> [linha_inicial] [linha_final]";
+
+    const VdpState &v = vdp_device_->state();
+    const int width = vdp_render_width(&v);
+    const int height = VDP_RENDER_HEIGHT;
+
+    uint32_t start = 0;
+    uint32_t end = static_cast<uint32_t>(height - 1);
+    if (tokens.size() > 2) {
+        if (!ParseU32(tokens[2], start) || start >= static_cast<uint32_t>(height))
+            return "vdpshot: linha inicial invalida: '" + tokens[2] + "'";
+    }
+    if (tokens.size() > 3) {
+        if (!ParseU32(tokens[3], end) || end >= static_cast<uint32_t>(height))
+            return "vdpshot: linha final invalida: '" + tokens[3] + "'";
+    }
+    if (start > end) return "vdpshot: linha inicial maior que a linha final";
+
+    const int out_height = static_cast<int>(end - start) + 1;
+    std::vector<VdpRgb888> pixels(static_cast<size_t>(width) * static_cast<size_t>(out_height));
+    for (uint32_t y = start; y <= end; ++y) {
+        vdp_render_line(&v, static_cast<int>(y), pixels.data() + static_cast<size_t>(y - start) * static_cast<size_t>(width));
+    }
+
+    std::string error;
+    if (!vdp::WritePpm(tokens[1], pixels.data(), width, out_height, &error)) return "vdpshot: " + error;
+    return "escrito " + tokens[1] + " (" + std::to_string(width) + "x" + std::to_string(out_height) +
+           ", modo de tela " + std::to_string(static_cast<int>(v.scr_mode)) + ")";
+}
+
 std::string Z80DebugSession::CmdHelp() const {
     return "Comandos (enderecos/numeros: decimal, 0x-hex ou $-hex):\n"
            "  reset                 reseta a CPU\n"
@@ -589,6 +624,8 @@ std::string Z80DebugSession::CmdHelp() const {
            "  vdppoke <end> <byte>  escreve um byte na VRAM do VDP (requer --vdp)\n"
            "  vdpstep [n]           avanca a maquina de estados do VDP manualmente, sem "
            "rodar o Z80 (requer --vdp)\n"
+           "  vdpshot <arq.ppm> [linha_ini] [linha_fim]  renderiza o quadro atual (SCREEN\n"
+           "      0/1/2) num arquivo PPM (P6) -- sem linhas: todas as 192 (requer --vdp)\n"
            "  help                  esta mensagem";
 }
 

@@ -5,6 +5,22 @@
 
 #include <string.h>
 
+#include "vdp_tables.h"
+
+// PalInit[] do fMSX (resource/fMSX/fMSX/MSX.c, ~linha 687, dentro da
+// rotina de reset/troca de modelo) -- a paleta padrao de 16 cores do
+// TMS9918/MSX1, formato 0x00RRGGBB. Software SCREEN 0/1/2 real quase
+// nunca escreve os registradores de paleta (9Ah e' recurso do V9938+):
+// ele conta com essa paleta fixa existir desde o power-on. Achado nesta
+// Fase 2 (renderizacao): a Fase 1 zerava palette_r/g/b[] no reset, o que
+// faria QUALQUER pixel renderizado sair preto -- corrigido aqui.
+static const uint32_t kPalInit[16] = {
+    0x00000000, 0x00000000, 0x0020C020, 0x0060E060,
+    0x002020E0, 0x004060E0, 0x00A02020, 0x0040C0E0,
+    0x00E02020, 0x00E06060, 0x00C0C020, 0x00C0C080,
+    0x00208020, 0x00C040A0, 0x00A0A0A0, 0x00E0E0E0,
+};
+
 // Constantes de tempo do fMSX (resource/fMSX/fMSX/MSX.h), derivadas do
 // clock do VDP (6x o clock da CPU) -- valores factuais de hardware,
 // citados aqui por transparencia (nao "estilo de codigo" do fMSX):
@@ -160,9 +176,12 @@ void vdp_reset(VdpState *v) {
     v->alatch = 0;
     v->pkey = 1;
     v->platch = 0;
-    memset(v->palette_r, 0, sizeof(v->palette_r));
-    memset(v->palette_g, 0, sizeof(v->palette_g));
-    memset(v->palette_b, 0, sizeof(v->palette_b));
+    vdp_tables_init();
+    for (int j = 0; j < 16; ++j) {
+        v->palette_r[j] = (uint8_t)((kPalInit[j] >> 16) & 0xFF);
+        v->palette_g[j] = (uint8_t)((kPalInit[j] >> 8) & 0xFF);
+        v->palette_b[j] = (uint8_t)(kPalInit[j] & 0xFF);
+    }
     v->scr_mode = 0;
     v->scanline = 0;
     v->drawing = 0;
@@ -252,10 +271,23 @@ void vdp_out(VdpState *v, uint16_t port, uint8_t value) {
                 return;
             }
             {
+                // Formula exata do fMSX (ver o comentario de topo de
+                // src/vdp/fortran/palette_table.f90 para a prova de
+                // equivalencia): R vem de PLatch bits 6-4, G de value
+                // bits 2-0, B de PLatch bits 2-0 -- cada um um
+                // componente de 3 bits (0-7). Fase 1 calculava isso
+                // inline a cada escrita; Fase 2 troca para a tabela de
+                // 512 entradas pre-computada em Fortran (antes sem
+                // nenhum consumidor) -- mesmos valores, calculados uma
+                // unica vez em vez de a cada escrita de paleta.
                 const int j = v->regs[16] & 0x0F;
-                v->palette_r[j] = (uint8_t)((v->platch & 0x70) * 255 / 112);
-                v->palette_g[j] = (uint8_t)((value & 0x07) * 255 / 7);
-                v->palette_b[j] = (uint8_t)((v->platch & 0x07) * 255 / 7);
+                const int r3 = (v->platch >> 4) & 0x07;
+                const int g3 = value & 0x07;
+                const int b3 = v->platch & 0x07;
+                const int idx = r3 * 64 + g3 * 8 + b3;
+                v->palette_r[j] = g_vdp_palette_table_r[idx];
+                v->palette_g[j] = g_vdp_palette_table_g[idx];
+                v->palette_b[j] = g_vdp_palette_table_b[idx];
                 v->pkey = 1;
                 v->regs[16] = (uint8_t)((j + 1) & 0x0F);
             }

@@ -215,18 +215,23 @@ set(MEMMAP_LIB_SOURCES
         src/memmap/fortran/rom_checksum.f90
 )
 
-# --- VDP (V9938/TMS9918, Fases 0.5-1) -- ver doc/vdp-spec.md ----------
+# --- VDP (V9938/TMS9918, Fases 0.5-2) -- ver doc/vdp-spec.md ----------
 #
 # Motor "digital" do VDP em C (adaptado do fMSX, ver
 # LICENSE-THIRD-PARTY.md): registradores, protocolo de porta 98h-9Bh,
-# maquina de estados de scanline/interrupcao -- SEM renderizar nenhum
-# pixel ainda (isso e' Fase 2). VdpDevice (C++, design proprio) adapta
-# isso para z80::IBus; z80::CompositeBus (Fase 0.5, src/z80/cpp/,
-# tambem design proprio) e' o que permite o VDP e o mapa de memoria
-# coexistirem no mesmo barramento do Z80Cpu. Tabela de conversao de
-# paleta em Fortran -- ainda sem consumidor (Fase 2+).
+# maquina de estados de scanline/interrupcao. VdpDevice (C++, design
+# proprio) adapta isso para z80::IBus; z80::CompositeBus (Fase 0.5,
+# src/z80/cpp/, tambem design proprio) e' o que permite o VDP e o mapa
+# de memoria coexistirem no mesmo barramento do Z80Cpu. Tabela de
+# conversao de paleta em Fortran, consumida desde a Fase 2 (escrita de
+# paleta via porta 9Ah). Fase 2 acrescenta renderizacao de pixel de
+# verdade para SCREEN 0/1/2 (vdp_render.c, adaptado de Common.h) e
+# exportacao PPM (ppm_writer.cpp, design proprio) para inspecao/testes.
 set(VDP_LIB_SOURCES
         src/vdp/core/vdp_state.c
+        src/vdp/core/vdp_tables.c
+        src/vdp/core/vdp_render.c
+        src/vdp/cpp/ppm_writer.cpp
         src/vdp/fortran/palette_table.f90
 )
 

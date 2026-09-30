@@ -15,7 +15,9 @@
 #include "../../src/z80/cpp/composite_bus.h"
 #include "../../src/z80/cpp/z80_bus.h"
 #include "../../src/z80/cpp/z80_cpu.h"
+#include "../../src/vdp/cpp/ppm_writer.h"
 #include "../../src/vdp/cpp/vdp_device.h"
+#include "../../src/vdp/core/vdp_render.h"
 
 namespace {
 
@@ -56,6 +58,17 @@ public:
 void WriteRegisterViaPort99(VdpState &v, int reg, uint8_t value) {
     vdp_out(&v, 0x99, value);       // 1o byte: ALatch = value
     vdp_out(&v, 0x99, 0x80 | reg);  // 2o byte: 10RRRRRR -> escreve regs[reg]=ALatch
+}
+
+// Escreve um byte na VRAM via o protocolo real de porta (99h para
+// definir o endereco em modo ESCRITA -- bit 0x40 do 2o byte -- depois
+// 98h para o dado), em vez de tocar v.vram[] diretamente -- exercita o
+// mesmo caminho que software real usaria (Fase 2, testes de
+// renderizacao).
+void WriteVramViaPort98(VdpState &v, uint16_t addr, uint8_t value) {
+    vdp_out(&v, 0x99, (uint8_t)(addr & 0xFF));
+    vdp_out(&v, 0x99, (uint8_t)(((addr >> 8) & 0x3F) | 0x40));
+    vdp_out(&v, 0x98, value);
 }
 
 // Roda `cycle_budget` ciclos de Z80, opcionalmente avancando o VDP e
@@ -451,6 +464,206 @@ int main() {
                         genuine > 0 ? "chegou a atender uma interrupcao" : "presa antes de habilitar interrupcoes",
                         genuine, cpu.pc());
         }
+    }
+
+    // --- Fase 2: renderizacao de pixel (SCREEN 0/1/2) ----------------------
+
+    // --- 10. Paleta padrao (bug real encontrado nesta fase: Fase 1 zerava
+    // isso, o que faria QUALQUER pixel renderizado sair preto) ------------
+    {
+        VdpState v;
+        vdp_reset(&v);
+        static const uint32_t kPalInit[16] = {
+            0x00000000, 0x00000000, 0x0020C020, 0x0060E060, 0x002020E0, 0x004060E0, 0x00A02020, 0x0040C0E0,
+            0x00E02020, 0x00E06060, 0x00C0C020, 0x00C0C080, 0x00208020, 0x00C040A0, 0x00A0A0A0, 0x00E0E0E0,
+        };
+        bool all_ok = true;
+        for (int j = 0; j < 16 && all_ok; ++j) {
+            const uint8_t r = (uint8_t)((kPalInit[j] >> 16) & 0xFF);
+            const uint8_t g = (uint8_t)((kPalInit[j] >> 8) & 0xFF);
+            const uint8_t b = (uint8_t)(kPalInit[j] & 0xFF);
+            all_ok = v.palette_r[j] == r && v.palette_g[j] == g && v.palette_b[j] == b;
+        }
+        check(all_ok, "vdp_reset: as 16 entradas da paleta padrao batem com PalInit do fMSX (todas, nao so' algumas)");
+    }
+
+    // --- 11. SCREEN 0 (TEXT 40x24): um glifo conhecido --------------------
+    {
+        VdpState v;
+        vdp_reset(&v);
+        WriteRegisterViaPort99(v, 0, 0x00);
+        WriteRegisterViaPort99(v, 1, 0x10); // (regs0&0x0E)>>1 | (regs1&0x18) == 0x10 -> SCR0
+        WriteRegisterViaPort99(v, 2, 0x01); // chr_tab = 1<<10 = 0x400
+        WriteRegisterViaPort99(v, 4, 0x00); // chr_gen = 0
+        WriteRegisterViaPort99(v, 7, 0x21); // FG=idx2 BG=idx1
+        check(v.scr_mode == 0, "SCREEN0: modo de tela decodificado como 0");
+        check(vdp_render_width(&v) == VDP_RENDER_WIDTH_TEXT40, "SCREEN0: largura de renderizacao = 240 (40 colunas * 6px, sem borda)");
+
+        WriteVramViaPort98(v, 0x400, 0x41);  // nome[0] = codigo 0x41 ('A')
+        WriteVramViaPort98(v, 0x208, 0xB4);  // padrao do codigo 0x41, linha 0 = 1011_0100
+
+        std::vector<VdpRgb888> row(VDP_RENDER_WIDTH_TEXT40);
+        vdp_render_line(&v, 0, row.data());
+        const VdpRgb888 fc{32, 192, 32}; // paleta idx2 = PalInit[2] = 0x0020C020
+        const VdpRgb888 bc{0, 0, 0};     // paleta idx1 = PalInit[1] = 0x00000000
+        auto same = [](const VdpRgb888 &a, const VdpRgb888 &b) { return a.r == b.r && a.g == b.g && a.b == b.b; };
+        // 0xB4 = 1011_0100 -> bits 7..2 (SCREEN0 so' usa 6 bits, nao 8)
+        check(same(row[0], fc) && same(row[1], bc) && same(row[2], fc) && same(row[3], fc) && same(row[4], bc) &&
+                  same(row[5], fc),
+              "SCREEN0: os 6 pixels do primeiro caractere batem com o glifo 0xB4 (bits 7..2) e a paleta FG=2/BG=1");
+    }
+
+    // --- 12. SCREEN 1 (TEXT 32x24 com cor): cor compartilhada por grupo de
+    // 8 codigos de caractere (quirk real do "Graphics 1") -----------------
+    {
+        VdpState v;
+        vdp_reset(&v);
+        WriteRegisterViaPort99(v, 0, 0x00);
+        WriteRegisterViaPort99(v, 1, 0x00); // composite 0x00 -> SCR1
+        WriteRegisterViaPort99(v, 2, 0x02); // chr_tab = 2<<10 = 0x800
+        WriteRegisterViaPort99(v, 3, 0x01); // col_tab = 1<<6 = 0x40
+        WriteRegisterViaPort99(v, 4, 0x00); // chr_gen = 0
+        check(v.scr_mode == 1, "SCREEN1: modo de tela decodificado como 1");
+        check(vdp_render_width(&v) == VDP_RENDER_WIDTH_STD, "SCREEN1: largura de renderizacao = 256 (32 colunas * 8px)");
+
+        // Dois codigos de caractere DIFERENTES (0x10 e 0x11), ambos no
+        // MESMO grupo de cor (code>>3 == 2 para os dois) -- se a
+        // implementacao indexasse ColTab pela POSICAO na tela (x) em vez
+        // do codigo (code>>3), leria enderecos 0x40/0x41 (errado) em vez
+        // de 0x42 (correto) para os dois, e pegaria cores DIFERENTES uma
+        // da outra em vez da mesma.
+        WriteVramViaPort98(v, 0x800, 0x10); // nome[0] = codigo 0x10 (grupo 2)
+        WriteVramViaPort98(v, 0x801, 0x11); // nome[1] = codigo 0x11 (mesmo grupo 2)
+        WriteVramViaPort98(v, 0x40, 0x11);  // ColTab[0] (indice por POSICAO, errado) = FG1/BG1
+        WriteVramViaPort98(v, 0x41, 0x22);  // ColTab[1] (indice por POSICAO, errado) = FG2/BG2
+        WriteVramViaPort98(v, 0x42, 0x31);  // ColTab[2] (indice por CODIGO>>3, correto) = FG3/BG1
+        WriteVramViaPort98(v, 0x80, 0xF0);  // padrao do codigo 0x10: 1111_0000
+        WriteVramViaPort98(v, 0x88, 0x0F);  // padrao do codigo 0x11: 0000_1111 (invertido de proposito)
+
+        std::vector<VdpRgb888> row(VDP_RENDER_WIDTH_STD);
+        vdp_render_line(&v, 0, row.data());
+        const VdpRgb888 fc3{96, 224, 96}; // paleta idx3 = PalInit[3] = 0x0060E060
+        const VdpRgb888 bc1{0, 0, 0};     // paleta idx1 = PalInit[1] = 0x00000000
+        auto same = [](const VdpRgb888 &a, const VdpRgb888 &b) { return a.r == b.r && a.g == b.g && a.b == b.b; };
+        // Caractere 0 (0xF0=1111_0000): pixels 0-3=FC, 4-7=BC.
+        const bool char0_ok = same(row[0], fc3) && same(row[1], fc3) && same(row[2], fc3) && same(row[3], fc3) &&
+                               same(row[4], bc1) && same(row[5], bc1) && same(row[6], bc1) && same(row[7], bc1);
+        // Caractere 1 (0x0F=0000_1111, padrao INVERTIDO do caractere 0):
+        // pixels 0-3=BC, 4-7=FC -- MESMA cor FG3/BG1 do caractere 0,
+        // mesmo com codigo/glifo diferentes.
+        const bool char1_ok = same(row[8], bc1) && same(row[9], bc1) && same(row[10], bc1) && same(row[11], bc1) &&
+                               same(row[12], fc3) && same(row[13], fc3) && same(row[14], fc3) && same(row[15], fc3);
+        check(char0_ok && char1_ok,
+              "SCREEN1: dois codigos de caractere diferentes (0x10/0x11) no MESMO grupo de cor "
+              "(code>>3==2) usam a MESMA cor FG3/BG1 -- prova que a cor e' indexada por codigo, nao por posicao");
+    }
+
+    // --- 13. SCREEN 2 (256x192 bitmap): mascara de tabela dependente de
+    // Y&0xC0 ("qual terco" da tabela de cor/padrao) ------------------------
+    {
+        VdpState v;
+        vdp_reset(&v);
+        WriteRegisterViaPort99(v, 0, 0x02); // (2&0x0E)>>1=1 | (regs1&0x18)=0 -> composite 0x01 -> SCR2
+        WriteRegisterViaPort99(v, 1, 0x00);
+        WriteRegisterViaPort99(v, 2, 0x00); // chr_tab = 0
+        // col_tab BASE so' usa o bit7 de regs[3] (r3=0x80 -- aqui 0x7F
+        // deixa o bit7 zerado, base=0), mas o bit0 dele participa da
+        // MASCARA (m3=0x7F, ~m3=0x80 -- regs[3] com os bits baixos
+        // setados abre a mascara pra "tabela de cor unica por terco", em
+        // vez do modo "espelhado/compartilhado" que 0x00 selecionaria).
+        // Achado depurando este teste na primeira tentativa (regs[3]=0x00
+        // dava o modo compartilhado, onde os dois tercos leem o MESMO
+        // endereco -- nao era bug no renderizador, era a config de
+        // registrador errada pro que eu queria testar).
+        WriteRegisterViaPort99(v, 3, 0x7F); // col_tab = 0, mascara ampla (tabela por terco)
+        WriteRegisterViaPort99(v, 4, 0x05); // chr_gen = (5&0x3C)<<11 = 0x2000, mascara ampla (bit0 extra)
+        check(v.scr_mode == 2, "SCREEN2: modo de tela decodificado como 2");
+        check(vdp_render_width(&v) == VDP_RENDER_WIDTH_STD, "SCREEN2: largura de renderizacao = 256");
+
+        // Mesmo codigo de caractere (0x05) nas linhas de nome de Y=0 e
+        // Y=64 (t_base muda com Y>>3, entao precisam de posicoes
+        // diferentes na tabela de nomes) -- o que queremos testar e' o
+        // termo (Y&0xC0)<<5 dentro de `i_val`, que desloca ColTab/ChrGen
+        // para um "terco" DIFERENTE da tabela quando Y cruza 64. Se essa
+        // conta estiver errada (deslocamento/mascara), os enderecos
+        // calculados para Y=0 e Y=64 nao baterião com 0x28/0x2028 (Y=0) e
+        // 0x828/0x2828 (Y=64), e o teste pegaria cores erradas.
+        WriteVramViaPort98(v, 0x000, 0x05); // nome, linha Y=0..7,  coluna 0
+        WriteVramViaPort98(v, 0x100, 0x05); // nome, linha Y=64..71, coluna 0
+        WriteVramViaPort98(v, 0x028, 0x41); // ColTab no "terco" de Y=0:  FG4/BG1
+        WriteVramViaPort98(v, 0x828, 0x51); // ColTab no "terco" de Y=64: FG5/BG1
+        WriteVramViaPort98(v, 0x2028, 0x80); // ChrGen no "terco" de Y=0:  so' bit7
+        WriteVramViaPort98(v, 0x2828, 0x80); // ChrGen no "terco" de Y=64: so' bit7
+
+        std::vector<VdpRgb888> row0(VDP_RENDER_WIDTH_STD), row64(VDP_RENDER_WIDTH_STD);
+        vdp_render_line(&v, 0, row0.data());
+        vdp_render_line(&v, 64, row64.data());
+        const VdpRgb888 fc4{32, 32, 224};  // paleta idx4 = PalInit[4] = 0x002020E0
+        const VdpRgb888 fc5{64, 96, 224};  // paleta idx5 = PalInit[5] = 0x004060E0
+        auto same = [](const VdpRgb888 &a, const VdpRgb888 &b) { return a.r == b.r && a.g == b.g && a.b == b.b; };
+        check(same(row0[0], fc4), "SCREEN2: Y=0 (primeiro terco) usa a cor do endereco 0x28/0x2028 (FG4)");
+        check(same(row64[0], fc5), "SCREEN2: Y=64 (segundo terco) usa a cor do endereco 0x828/0x2828 (FG5) -- "
+                                    "prova que (Y&0xC0)<<5 desloca corretamente para outro terco da tabela");
+    }
+
+    // --- 14. Modo de tela ainda nao suportado: fallback de cor solida -----
+    {
+        VdpState v;
+        vdp_reset(&v);
+        v.scr_mode = 5; // SCREEN 5 (MSX2) -- fora de escopo desta fase
+        WriteRegisterViaPort99(v, 7, 0x31); // BG = idx1 (preto, ver PalInit[1])
+        check(vdp_render_width(&v) == VDP_RENDER_WIDTH_STD, "modo nao suportado: largura de fallback = 256");
+        std::vector<VdpRgb888> row(VDP_RENDER_WIDTH_STD);
+        vdp_render_line(&v, 0, row.data());
+        bool all_bg = true;
+        for (const VdpRgb888 &px : row) {
+            if (px.r != 0 || px.g != 0 || px.b != 0) { all_bg = false; break; }
+        }
+        check(all_bg, "modo nao suportado (SCREEN5): renderiza cor de fundo solida em vez de pixels errados/lixo");
+    }
+
+    // --- 15. Exportacao PPM: round-trip byte-a-byte -----------------------
+    {
+        const int width = 4, height = 2;
+        std::vector<VdpRgb888> pixels(static_cast<size_t>(width * height));
+        pixels[0] = {255, 0, 0};
+        pixels[1] = {0, 255, 0};
+        pixels[2] = {0, 0, 255};
+        pixels[3] = {255, 255, 255};
+        pixels[4] = {0, 0, 0};
+        pixels[5] = {10, 20, 30};
+        pixels[6] = {40, 50, 60};
+        pixels[7] = {70, 80, 90};
+
+        const std::string path = "vdp_test_roundtrip.ppm";
+        std::string error;
+        const bool wrote = vdp::WritePpm(path, pixels.data(), width, height, &error);
+        check(wrote, "PPM: escrita bem-sucedida (" + (wrote ? std::string("ok") : error) + ")");
+
+        std::ifstream in(path, std::ios::binary);
+        std::string magic;
+        int read_w = 0, read_h = 0, maxval = 0;
+        in >> magic >> read_w >> read_h >> maxval;
+        in.get(); // consome o \n unico depois de "255"
+        check(magic == "P6" && read_w == width && read_h == height && maxval == 255,
+              "PPM: cabecalho (P6, largura, altura, maxval) bate com o esperado");
+
+        std::vector<unsigned char> raw(static_cast<size_t>(width * height * 3));
+        in.read(reinterpret_cast<char *>(raw.data()), static_cast<std::streamsize>(raw.size()));
+        bool bytes_ok = true;
+        for (int i = 0; i < width * height && bytes_ok; ++i) {
+            bytes_ok = raw[static_cast<size_t>(i) * 3 + 0] == pixels[static_cast<size_t>(i)].r &&
+                       raw[static_cast<size_t>(i) * 3 + 1] == pixels[static_cast<size_t>(i)].g &&
+                       raw[static_cast<size_t>(i) * 3 + 2] == pixels[static_cast<size_t>(i)].b;
+        }
+        check(bytes_ok, "PPM: bytes RGB lidos de volta do arquivo batem exatamente com o que foi renderizado");
+        // Fecha explicitamente ANTES de remover -- no Windows (ao
+        // contrario de POSIX), remove() falha em silencio enquanto o
+        // arquivo ainda esta aberto por um ifstream vivo (achado rodando
+        // este teste repetidas vezes: o .ppm ficava para tras no
+        // diretorio de trabalho a cada execucao).
+        in.close();
+        std::remove(path.c_str());
     }
 
     if (g_failures == 0) {
