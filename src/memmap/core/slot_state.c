@@ -1,6 +1,6 @@
-// Adaptado de fMSX (resource/fMSX/fMSX/MSX.c), Copyright (C) Marat
-// Fayzullin 1994-2021 -- ver slot_state.h para a nota de atribuicao
-// completa.
+// Adaptado de fMSX (resource/fMSX/fMSX/MSX.c -- inclui MapROM(), Fase 3),
+// Copyright (C) Marat Fayzullin 1994-2021 -- ver slot_state.h para a nota
+// de atribuicao completa.
 #include "slot_state.h"
 
 #include <string.h>
@@ -132,9 +132,22 @@ void memmap_write(SlotState *state, uint16_t addr, uint8_t value) {
     // TODO(FDC): mesma observacao de memmap_read() acima, para o lado de
     // escrita do WrZ80 do fMSX (comandos do FDC em 7FF8h/BFF8h/etc.).
     const int chunk_idx = addr >> 13;
-    if (!state->active_writable[chunk_idx]) return;
-    const int offset = addr & (MEMMAP_CHUNK_SIZE - 1);
-    state->active_view[chunk_idx][offset] = value;
+    if (state->active_writable[chunk_idx]) {
+        const int offset = addr & (MEMMAP_CHUNK_SIZE - 1);
+        state->active_view[chunk_idx][offset] = value;
+        return;
+    }
+
+    // Nao gravavel diretamente -- pode ser uma troca de banco MegaROM
+    // (Fase 3). primary/secondary sao SEMPRE os da pagina que a propria
+    // escrita esta acessando (mesmo raciocinio do MapROM() do fMSX: PS/SS
+    // vem de PSL[A>>14]/SSL[A>>14], nao de uma combinacao escolhida a
+    // parte) -- ver doc/memory-map-spec.md, secao 6.
+    const int page = addr >> 14;
+    if (memmap_try_bank_switch(state, state->psl[page], state->ssl[page], addr, value)) return;
+
+    // Nem RAM gravavel nem troca de banco reconhecida -- descartada em
+    // silencio, mesmo comportamento de antes da Fase 3.
 }
 
 uint8_t memmap_peek_slot(const SlotState *state, int primary, int secondary, uint16_t addr) {
@@ -150,4 +163,170 @@ void memmap_poke_slot(SlotState *state, int primary, int secondary, uint16_t add
     if (!state->chunk_writable[primary][secondary][chunk_idx]) return;
     const int offset = addr & (MEMMAP_CHUNK_SIZE - 1);
     state->chunk[primary][secondary][chunk_idx][offset] = value;
+}
+
+void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t *data, size_t size,
+                            MemMapMapperType mapper) {
+    if (!ValidSlot(primary, secondary)) return;
+
+    // Pedacos 0,1 (0000h-3FFFh) e 6,7 (C000h-FFFFh) ficam vazios --
+    // hardware real de cartucho MSX classico (Konami/ASCII) so responde
+    // em 4000h-BFFFh; nao ha nada plugado no restante do espaco de
+    // enderecos dessa combinacao. Ver doc/memory-map-spec.md, secao 6.
+    for (int chunk_idx = 0; chunk_idx < MEMMAP_CHUNKS; ++chunk_idx) {
+        state->chunk[primary][secondary][chunk_idx] = g_empty_chunk;
+        state->chunk_writable[primary][secondary][chunk_idx] = 0;
+    }
+
+    const size_t bank_count = size / MEMMAP_CHUNK_SIZE;
+
+    state->slot_kind[primary][secondary] = MEMMAP_KIND_ROM;
+    state->slot_size[primary][secondary] = size;
+    state->slot_mapper[primary][secondary] = mapper;
+    state->rom_base[primary][secondary] = data;
+    state->rom_bank_mask[primary][secondary] = (uint8_t)(bank_count - 1);
+
+    // Estado inicial: todos os 4 quartos de 16KB (enderecos
+    // 4000h/6000h/8000h/A000h) mostram o banco 0 -- simplificacao
+    // deliberada em vez da heuristica de assinatura 'AB' do fMSX (ver
+    // doc/memory-map-spec.md, secao 6): simples, deterministico, e o
+    // codigo de inicializacao real de um cartucho sempre troca os bancos
+    // que precisa antes de depender de conteudo especifico em outro lugar.
+    for (int quarter = 0; quarter < 4; ++quarter) {
+        state->rom_bank[primary][secondary][quarter] = 0;
+        const int chunk_idx = quarter + 2;
+        state->chunk[primary][secondary][chunk_idx] = data; /* banco 0 */
+        state->chunk_writable[primary][secondary][chunk_idx] = 0;
+    }
+
+    // Recomputa a vista ativa se essa combinacao ja estiver visivel agora
+    // -- mesmo raciocinio de memmap_attach() (ver comentario la').
+    memmap_switch_primary(state, state->psl_reg);
+}
+
+// Atualiza chunk[primary][secondary][chunk_idx] (sempre) e, so quando a
+// pagina de chunk_idx atualmente mostra essa MESMA combinacao, tambem
+// active_view/active_writable -- ver o comentario de
+// memmap_try_bank_switch() em slot_state.h sobre por que essa checagem e'
+// necessaria pra ASCII8/ASCII16 e inofensiva (sempre verdadeira) pros
+// outros mappers.
+static void RefreshChunk(SlotState *state, int primary, int secondary, int chunk_idx, uint8_t *ptr) {
+    state->chunk[primary][secondary][chunk_idx] = ptr;
+    state->chunk_writable[primary][secondary][chunk_idx] = 0;
+
+    const int page = chunk_idx / 2;
+    if (state->psl[page] != primary || state->ssl[page] != secondary) return;
+    state->active_view[chunk_idx] = ptr;
+    state->active_writable[chunk_idx] = 0;
+}
+
+int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_t addr, uint8_t value) {
+    if (!ValidSlot(primary, secondary)) return 0;
+    const MemMapMapperType mapper = state->slot_mapper[primary][secondary];
+    if (mapper == MEMMAP_MAPPER_NONE) return 0;
+    if (addr < 0x4000 || addr > 0xBFFF) return 0;
+
+    const uint8_t mask = state->rom_bank_mask[primary][secondary];
+    uint8_t *const rom = state->rom_base[primary][secondary];
+    int quarter = -1; /* 0..3 -- indexa rom_bank[...][quarter] e chunk[...][quarter+2] */
+    int bank = -1;    /* novo numero de banco de 8KB para 'quarter' */
+    int wide = 0;     /* 1 = mapper de granularidade 16KB (atualiza quarter e quarter+1 juntos) */
+
+    switch (mapper) {
+        case MEMMAP_MAPPER_GEN8:
+            /* Adaptado de MAP_GEN8 em MapROM() -- SCC (linha "if(J==2)
+               SCCOn...") deliberadamente omitida, ver doc/
+               memory-map-spec.md, secao 6. */
+            if (addr < 0x4000 || addr > 0xBFFF) return 0;
+            quarter = (addr - 0x4000) >> 13;
+            bank = value & mask;
+            break;
+
+        case MEMMAP_MAPPER_GEN16:
+            /* Adaptado de MAP_GEN16. J = (A&0x8000)>>14 da' 0 OU 2 (nao 0
+               ou 1!) -- indexa diretamente rom_bank[quarter]/
+               chunk[quarter+2], por isso o deslocamento por 14 bits em
+               vez de 15. */
+            if (addr < 0x4000 || addr > 0xBFFF) return 0;
+            quarter = (addr & 0x8000) >> 14;
+            bank = (value << 1) & mask;
+            wide = 1;
+            break;
+
+        case MEMMAP_MAPPER_KONAMI5:
+            /* Adaptado de MAP_KONAMI5 -- enderecos EXATOS 5000h/7000h/
+               9000h/B000h, nenhum outro (condicao replicada tal qual o
+               fMSX: (A&0x1FFF)!=0x1000 rejeita qualquer coisa fora
+               desses 4 enderecos). SCC deliberadamente omitida. */
+            if (addr < 0x5000 || addr > 0xB000 || (addr & 0x1FFF) != 0x1000) return 0;
+            quarter = (addr - 0x5000) >> 13;
+            bank = value & mask;
+            break;
+
+        case MEMMAP_MAPPER_KONAMI4:
+            /* Adaptado de MAP_KONAMI4 -- so 6000h/8000h/A000h (8KB-
+               alinhados); 4000h fica de fora de proposito (pagina fixa,
+               nao trocavel, igual comentario original do fMSX). */
+            if (addr < 0x6000 || addr > 0xA000 || (addr & 0x1FFF) != 0) return 0;
+            quarter = (addr - 0x4000) >> 13;
+            bank = value & mask;
+            break;
+
+        case MEMMAP_MAPPER_ASCII8:
+            /* Adaptado de MAP_ASCII8 -- SO a troca de banco de ROM; a
+               selecao de SRAM (bit V&(mask+1)) e a escrita em SRAM em
+               8000h-BFFFh ficam de fora (ver doc/memory-map-spec.md,
+               secao 6) -- uma tentativa de selecionar SRAM e' RECONHECIDA
+               (devolve 1, nao cai no descarte generico) mas nao faz
+               nada, pra nao travar/corromper nada. */
+            if (addr < 0x6000 || addr >= 0x8000) return 0;
+            quarter = (addr & 0x1800) >> 11;
+            if (value & (uint8_t)(mask + 1)) return 1; /* SRAM nao suportada -- ignorada */
+            bank = value & mask;
+            break;
+
+        case MEMMAP_MAPPER_ASCII16: {
+            /* Adaptado de MAP_ASCII16 -- mesma omissao de SRAM que
+               ASCII8. A condicao de aceitacao extra
+               ((V<=mask+1)||!(A&0xFFF)) e' fidelidade real de hardware
+               (fMSX a mantem por compatibilidade com cartuchos que
+               escrevem lixo em enderecos vizinhos) -- portada tal qual,
+               nao removida como "complexidade desnecessaria". */
+            if (addr < 0x6000 || addr >= 0x8000) return 0;
+            const int accepted = (value <= (uint8_t)(mask + 1)) || ((addr & 0x0FFF) == 0);
+            if (!accepted) return 0;
+            quarter = (addr & 0x1000) >> 11; /* 0 ou 2 */
+            if (value & (uint8_t)(mask + 1)) return 1; /* SRAM nao suportada -- ignorada */
+            bank = (value << 1) & mask;
+            wide = 1;
+            break;
+        }
+
+        default:
+            return 0;
+    }
+
+    if (quarter < 0 || bank < 0) return 0;
+
+    // NOTA: ao contrario do MapROM() do fMSX (que pula o trabalho quando
+    // `V==ROMMapper[I][J]`, um bookkeeping que so' e' um espelho fiel do
+    // que esta' de fato mapeado porque o proprio fMSX inicializa
+    // ROMMapper[] com SetMegaROM(0,1,2,3) -- bancos DISTINTOS de verdade),
+    // aqui SEMPRE aplicamos a troca. Motivo: o estado inicial deste fwMSX
+    // e' mais simples (todos os quartos comecam no banco 0 -- ver
+    // memmap_attach_megarom()), o que quebra esse invariante para mappers
+    // "wide" (GEN16/ASCII16): o quarto emparelhado (quarter+1) tambem
+    // comeca apontando pro banco 0 em vez de banco 1, entao um "sem
+    // mudanca" na leitura de rom_bank[quarter] deixaria o par
+    // inconsistente (chunk[quarter+2] correto, chunk[quarter+3] preso no
+    // banco errado). Sem essa otimizacao (que nao tem valor real de
+    // desempenho aqui -- troca de banco e' rarissima comparada a
+    // instrucoes de Z80 executadas), o codigo fica mais simples E correto.
+    state->rom_bank[primary][secondary][quarter] = (uint8_t)bank;
+    RefreshChunk(state, primary, secondary, quarter + 2, rom + ((size_t)bank << 13));
+    if (wide) {
+        state->rom_bank[primary][secondary][quarter + 1] = (uint8_t)(bank | 1);
+        RefreshChunk(state, primary, secondary, quarter + 3, rom + (((size_t)bank + 1) << 13));
+    }
+    return 1;
 }

@@ -60,6 +60,20 @@ bool ParseSlotIndex(const std::string &s, int &out) {
     return true;
 }
 
+// Nomes aceitos no 4o argumento opcional de 'loadrom' -- Fase 3 do mapa
+// de memoria (bank-switch), ver doc/memory-map-spec.md, secao 6. Sem
+// esse argumento, 'loadrom' continua carregando ROM plana (comportamento
+// da Fase 2, inalterado).
+bool ParseMapperType(const std::string &s, MemMapMapperType &out) {
+    if (s == "gen8") { out = MEMMAP_MAPPER_GEN8; return true; }
+    if (s == "gen16") { out = MEMMAP_MAPPER_GEN16; return true; }
+    if (s == "konami5") { out = MEMMAP_MAPPER_KONAMI5; return true; }
+    if (s == "konami4") { out = MEMMAP_MAPPER_KONAMI4; return true; }
+    if (s == "ascii8") { out = MEMMAP_MAPPER_ASCII8; return true; }
+    if (s == "ascii16") { out = MEMMAP_MAPPER_ASCII16; return true; }
+    return false;
+}
+
 std::string Hex4(uint16_t v) {
     char buf[8];
     std::snprintf(buf, sizeof(buf), "%04X", v);
@@ -233,10 +247,21 @@ std::string Z80DebugSession::CmdPoke(const std::vector<std::string> &tokens) {
     // (mesma regra do memmap_write) -- ler de volta revela isso em vez de
     // reportar um sucesso que nao aconteceu. Achado testando --z80dbg
     // --slots na mao (ver doc/memory-map-spec.md, Fase 1).
+    //
+    // Fase 3 (MegaROM): o valor tambem pode diferir do escrito quando a
+    // pagina e' um mapper com bank-switch -- nesse caso a escrita foi
+    // INTERPRETADA como comando de troca de banco (nao descartada!), e o
+    // byte lido de volta e' o conteudo do banco recem-selecionado, nao o
+    // numero de banco em si. A mensagem generica abaixo nao distingue os
+    // dois casos (IBus::write() nao devolve essa informacao) -- redigida
+    // de proposito pra nao afirmar "nao gravado" quando pode muito bem ter
+    // sido um comando de mapper com efeito. Achado testando --z80dbg
+    // --slots na mao apos a Fase 3 (ver doc/memory-map-spec.md).
     const uint8_t actual = bus_.read(addr);
     if (actual == value) return Hex4(addr) + " <- " + Hex2(value);
-    return Hex4(addr) + " <- " + Hex2(value) + " (nao gravado -- pagina atual nao e' gravavel; continua " +
-           Hex2(actual) + ")";
+    return Hex4(addr) + " <- " + Hex2(value) + " (byte na pagina agora: " + Hex2(actual) +
+           " -- ou a escrita foi descartada por pagina nao-gravavel, ou foi interpretada como comando "
+           "de mapper/bank-switch; use 'slots'/'pages' pra checar)";
 }
 
 std::string Z80DebugSession::CmdLoad(const std::vector<std::string> &tokens) {
@@ -313,7 +338,9 @@ std::string Z80DebugSession::CmdSlots() const {
                 case MEMMAP_KIND_ROM: {
                     char crc_buf[16];
                     std::snprintf(crc_buf, sizeof(crc_buf), "%08X", d.crc32);
-                    out << "ROM (" << d.size << " bytes, CRC32 " << crc_buf << ")";
+                    out << "ROM (" << d.size << " bytes";
+                    if (d.mapper_name[0] != '\0') out << ", " << d.mapper_name;
+                    out << ", CRC32 " << crc_buf << ")";
                     break;
                 }
                 case MEMMAP_KIND_EMPTY:
@@ -397,10 +424,18 @@ std::string Z80DebugSession::CmdSlotPoke(const std::vector<std::string> &tokens)
 
 std::string Z80DebugSession::CmdLoadRom(const std::vector<std::string> &tokens) {
     if (!memory_system_) return "loadrom: requer 'fwmsx --z80dbg --slots' (esta sessao nao tem mapa de memoria)";
-    if (tokens.size() < 4) return "uso: loadrom <primario> <secundario> <arquivo>";
+    if (tokens.size() < 4) return "uso: loadrom <primario> <secundario> <arquivo> [mapper]";
     int primary = 0, secondary = 0;
     if (!ParseSlotIndex(tokens[1], primary)) return "loadrom: slot primario invalido: '" + tokens[1] + "'";
     if (!ParseSlotIndex(tokens[2], secondary)) return "loadrom: slot secundario invalido: '" + tokens[2] + "'";
+
+    // Argumento opcional de mapper (Fase 3, bank-switch) -- sem ele,
+    // carrega ROM plana (comportamento da Fase 2, inalterado).
+    MemMapMapperType mapper = MEMMAP_MAPPER_NONE;
+    if (tokens.size() > 4 && !ParseMapperType(tokens[4], mapper)) {
+        return "loadrom: mapper desconhecido: '" + tokens[4] +
+               "' (use gen8, gen16, konami5, konami4, ascii8 ou ascii16)";
+    }
 
     std::ifstream file(tokens[3], std::ios::binary | std::ios::ate);
     if (!file) return "loadrom: nao foi possivel abrir '" + tokens[3] + "'";
@@ -414,14 +449,16 @@ std::string Z80DebugSession::CmdLoadRom(const std::vector<std::string> &tokens) 
     }
 
     std::string error;
-    if (!memory_system_->LoadRom(primary, secondary, data.data(), data.size(), &error)) {
+    if (!memory_system_->LoadRom(primary, secondary, data.data(), data.size(), &error, mapper)) {
         return "loadrom: " + error;
     }
     const memmap::SlotDescriptor desc = memory_system_->Describe(primary, secondary);
     char crc_buf[16];
     std::snprintf(crc_buf, sizeof(crc_buf), "%08X", desc.crc32);
-    return "carregado em " + std::to_string(primary) + ":" + std::to_string(secondary) + ": " +
-           std::to_string(data.size()) + " byte(s), CRC32 " + crc_buf;
+    std::string result = "carregado em " + std::to_string(primary) + ":" + std::to_string(secondary) + ": " +
+                          std::to_string(data.size()) + " byte(s), CRC32 " + crc_buf;
+    if (mapper != MEMMAP_MAPPER_NONE) result += std::string(", mapper ") + desc.mapper_name;
+    return result;
 }
 
 std::string Z80DebugSession::CmdHelp() const {
@@ -445,7 +482,11 @@ std::string Z80DebugSession::CmdHelp() const {
            "  slotmem <p> <s> <end> [tam]    dump de uma combinacao especifica (requer --slots)\n"
            "  slotpeek <p> <s> <end>         le um byte de uma combinacao especifica (requer --slots)\n"
            "  slotpoke <p> <s> <end> <byte>  escreve numa combinacao especifica (requer --slots)\n"
-           "  loadrom <p> <s> <arquivo>      carrega uma ROM plana (8..64KB) na combinacao (requer --slots)\n"
+           "  loadrom <p> <s> <arquivo> [mapper]  carrega uma ROM na combinacao (requer --slots)\n"
+           "      sem [mapper]: ROM plana (8..64KB, sem bank-switch)\n"
+           "      com [mapper]: MegaROM com bank-switch (ate 2MB) -- gen8, gen16,\n"
+           "      konami5, konami4, ascii8 ou ascii16 (so a troca de banco de ROM;\n"
+           "      SCC/SRAM nao suportados nesses dois ultimos, ver doc/memory-map-spec.md)\n"
            "  help                  esta mensagem";
 }
 

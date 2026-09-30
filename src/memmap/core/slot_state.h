@@ -9,10 +9,12 @@
 // Motor do mapa de memoria MSX (slots primarios/secundarios). Adapta a
 // topologia MemMap[4][4][8] + PSL/SSL/SSLReg + PSlot()/SSlot() de
 // MSX.c/MSX.h -- ver doc/memory-map-spec.md, secao 2 e 3.2, para o
-// raciocinio completo.
+// raciocinio completo. Desde a Fase 3, tambem adapta a parte de troca de
+// banco (ROM apenas, sem SCC/SRAM) de MapROM() -- ver secao 6 do design
+// doc para o escopo exato e o raciocinio de cada mapper.
 //
 // Diferencas deliberadas em relacao ao fMSX (documentadas em detalhe na
-// secao 3.2 do design doc, nao repetidas aqui):
+// secao 3.2/6 do design doc, nao repetidas aqui):
 //   - chunk_writable[][][chunks] e' explicito por pedaco de 8KB, em vez
 //     de inferido de uma regra hardcoded ("RAM mora em 3:2", como o
 //     EnWrite do fMSX assume).
@@ -20,6 +22,13 @@
 //     7FF8h/BFF8h/etc. do RdZ80/WrZ80 do fMSX) -- esse hardware nao
 //     existe ainda no fwMSX. TODO explicito, nao omissao silenciosa: ver
 //     doc/memory-map-spec.md, secao 3.2.
+//   - MegaROM (Fase 3): so a troca de banco de ROM de MAP_GEN8/GEN16/
+//     KONAMI5/KONAMI4/ASCII8/ASCII16 -- sem SCC, sem SRAM (ASCII8/16 sem
+//     ela), sem MAP_GMASTER2/MAP_FMPAC/MAP_GUESS. Ver doc/
+//     memory-map-spec.md, secao 6, para a justificativa de cada omissao.
+//   - Indexado por (primario,secundario) direto, nao por um indice de
+//     "slot de cartucho" como o CartMap[PS][SS] do fMSX -- o fwMSX ainda
+//     nao tem o conceito de slot fisico de cartucho separado do logico.
 #pragma once
 
 #include <stddef.h>
@@ -56,6 +65,20 @@ typedef struct SlotState {
        original -- granularidade mais fina, ver nota de topo do arquivo. */
     uint8_t *active_view[MEMMAP_CHUNKS];
     uint8_t active_writable[MEMMAP_CHUNKS];
+
+    /* MegaROM (bank-switch), Fase 3 -- ver doc/memory-map-spec.md, secao
+       6. Chaveado por (primario,secundario) como o resto do struct, ao
+       contrario do fMSX (que indexa por um numero de "slot de cartucho"
+       via CartMap[PS][SS] -- indirecao que existe la' pra suportar
+       hardware fisico de slot de cartucho, conceito que o fwMSX ainda nao
+       tem; indexar direto por (primario,secundario) e' a simplificacao
+       correta aqui). rom_base pode apontar pra um buffer MAIOR que 64KB
+       (varios bancos de 8KB) -- diferente de chunk[][][], que so guarda
+       ponteiros pro que esta VISIVEL agora em cada pedaco de 8KB. */
+    MemMapMapperType slot_mapper[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
+    uint8_t *rom_base[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
+    uint8_t rom_bank_mask[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
+    uint8_t rom_bank[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS][4];
 } SlotState;
 
 /* Inicializa todas as 16 combinacoes como vazias (leitura =
@@ -70,6 +93,43 @@ void memmap_init(SlotState *state);
    Fase 2 com o mesmo mecanismo, so com chunk_writable=0. */
 void memmap_attach(SlotState *state, int primary, int secondary, uint8_t *data, size_t size, MemMapKind kind,
                     int writable);
+
+/* Conecta uma ROM com bank-switch (MegaROM) na combinacao (primario,
+   secundario) -- Fase 3, ver doc/memory-map-spec.md, secao 6. Ao
+   contrario de memmap_attach(), `data` pode ser MAIOR que 64KB (varios
+   bancos de 8KB agrupados no mesmo buffer); so os 4 pedacos de 8KB
+   enderecaveis por bank-switch (indices 2-5, enderecos 4000h-BFFFh) sao
+   afetados -- os pedacos 0,1 (0000h-3FFFh) e 6,7 (C000h-FFFFh) ficam
+   vazios, replicando hardware real de cartucho MSX classico (que so
+   responde em 4000h-BFFFh). `size` deve ser multiplo de
+   MEMMAP_CHUNK_SIZE; `mask = size/MEMMAP_CHUNK_SIZE - 1` precisa caber
+   num uint8_t (ate 256 bancos = 2MB), o chamador (MemorySystem::LoadRom)
+   valida isso antes de chamar. Estado inicial: todos os 4 quartos
+   mostram o banco 0 -- simplificacao deliberada em vez da heuristica de
+   assinatura 'AB' do fMSX (ver doc/memory-map-spec.md, secao 6). */
+void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t *data, size_t size,
+                            MemMapMapperType mapper);
+
+/* Tenta tratar uma escrita em (primario,secundario,endereco) como troca de
+   banco MegaROM, conforme o protocolo do mapper dessa combinacao (ver
+   MapROM() em resource/fMSX/fMSX/MSX.c, e a nota de atribuicao no topo
+   deste arquivo). Devolve 1 se a escrita foi RECONHECIDA pelo protocolo
+   (inclusive quando nao muda nada, ex.: mesmo banco de novo, ou uma
+   selecao de SRAM ignorada por estar fora do escopo desta fase -- ver
+   doc/memory-map-spec.md, secao 6) -- nesse caso o chamador (memmap_write)
+   NAO deve tratar como descarte padrao de escrita em pedaco nao-gravavel.
+   Devolve 0 se o endereco/mapper nao e' reconhecido (combinacao sem
+   mapper, ou escrita fora do protocolo esperado) -- cai no descarte
+   padrao. Atualiza SEMPRE chunk[primario][secundario][...] (a tabela de
+   apoio); so atualiza active_view/active_writable da pagina afetada
+   quando essa pagina atualmente mostra a MESMA combinacao
+   (primario,secundario) -- replica um detalhe real do MapROM() do fMSX
+   em MAP_ASCII8/MAP_ASCII16, onde o endereco de controle (sempre na
+   pagina 1) pode afetar um pedaco que vive na pagina 2; para os outros
+   mappers essa checagem e' sempre verdadeira por construcao (o endereco
+   de controle sempre cai na mesma pagina que o pedaco afetado), entao
+   aplicar a mesma checagem pra todos os mappers e' seguro e uniforme. */
+int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_t addr, uint8_t value);
 
 /* Troca de slot primario (porta A8h do PPI) / secundario (endereco
    FFFFh) -- portados de PSlot()/SSlot(). O endereco FFFFh em si (leitura

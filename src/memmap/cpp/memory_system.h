@@ -19,9 +19,8 @@ namespace memmap {
 struct SlotDescriptor {
     MemMapKind kind = MEMMAP_KIND_EMPTY;
     std::size_t size = 0;
-    // Nome do tipo de mapper (ex.: "ASCII8"), vazio ate a Fase 3 (bank
-    // switch) existir -- campo presente desde ja para nao mudar a forma
-    // do struct depois (ver doc/memory-map-spec.md, secao 3.3).
+    // Nome do tipo de mapper (ex.: "ASCII8"), vazio para ROM plana
+    // (MEMMAP_MAPPER_NONE) -- Fase 3, ver doc/memory-map-spec.md, secao 6.
     const char *mapper_name = "";
     // CRC32 dos bytes da ROM (Fase 2, ver doc/memory-map-spec.md, secao
     // 3.4) -- valido SO quando kind == MEMMAP_KIND_ROM; 0 (nao "nenhum
@@ -44,8 +43,10 @@ struct PageView {
 };
 
 // Dona do SlotState (C) e dos buffers de RAM/ROM alocados via
-// AllocateRam()/LoadRom(). Bank-switch (mappers MegaROM) ainda nao existe
-// -- isso e' Fase 3, ver doc/memory-map-spec.md, secao 6.
+// AllocateRam()/LoadRom(). Bank-switch (mappers MegaROM) -- Fase 3, ver
+// doc/memory-map-spec.md, secao 6 -- cobre so a troca de banco de ROM de
+// MAP_GEN8/GEN16/KONAMI5/KONAMI4/ASCII8/ASCII16 (sem SCC/SRAM/GMASTER2/
+// FMPAC/MAP_GUESS, ver a justificativa no design doc).
 class MemorySystem {
 public:
     MemorySystem();
@@ -76,7 +77,18 @@ public:
     // Fortran, src/memmap/fortran/rom_checksum.f90) para Describe()
     // reportar. Devolve false e preenche `error` (se nao-nulo) em caso de
     // tamanho invalido ou combinacao de slot invalida; nunca lanca.
-    bool LoadRom(int primary, int secondary, const uint8_t *data, std::size_t size, std::string *error = nullptr);
+    // `mapper` (Fase 3, ver doc/memory-map-spec.md, secao 6): MEMMAP_MAPPER_NONE
+    // (default) preserva o comportamento da Fase 2 exatamente -- ROM plana,
+    // sempre comecando no pedaco 0, tamanho entre 8KB e 64KB. Qualquer
+    // outro valor liga bank-switch: `data` pode entao ter ATE 256 bancos
+    // de 8KB (2MB, limite do uint8_t que guarda a mascara de banco -- ver
+    // slot_state.h), e so os 4 pedacos enderecaveis por bank-switch
+    // (4000h-BFFFh) sao ocupados -- 0000h-3FFFh e C000h-FFFFh ficam
+    // vazios, igual um cartucho MSX classico de verdade (que so responde
+    // em 4000h-BFFFh). Estado inicial: todos os 4 quartos mostram o banco
+    // 0 (ver memmap_attach_megarom() em slot_state.c).
+    bool LoadRom(int primary, int secondary, const uint8_t *data, std::size_t size, std::string *error = nullptr,
+                 MemMapMapperType mapper = MEMMAP_MAPPER_NONE);
 
     // Le/escreve numa combinacao de slot especifica, independente do que
     // esta na vista ativa da CPU agora -- a API de inspecao "por fora"

@@ -14,6 +14,23 @@ namespace {
 bool ValidSlotIndex(int primary, int secondary) {
     return primary >= 0 && primary < MEMMAP_PRIMARY_SLOTS && secondary >= 0 && secondary < MEMMAP_SECONDARY_SLOTS;
 }
+
+// Nome legivel do tipo de mapper (Fase 3) -- usado por Describe()/'slots'.
+// "" para MEMMAP_MAPPER_NONE (ROM plana, Fase 2) e para Empty/Ram, onde o
+// campo nao tem sentido.
+const char *MapperName(MemMapMapperType mapper) {
+    switch (mapper) {
+        case MEMMAP_MAPPER_GEN8: return "Gen8";
+        case MEMMAP_MAPPER_GEN16: return "Gen16";
+        case MEMMAP_MAPPER_KONAMI5: return "Konami5";
+        case MEMMAP_MAPPER_KONAMI4: return "Konami4";
+        case MEMMAP_MAPPER_ASCII8: return "ASCII8";
+        case MEMMAP_MAPPER_ASCII16: return "ASCII16";
+        case MEMMAP_MAPPER_NONE:
+        default:
+            return "";
+    }
+}
 } // namespace
 
 MemorySystem::MemorySystem() { memmap_init(&state_); }
@@ -30,12 +47,22 @@ void MemorySystem::AllocateRam(int primary, int secondary, std::size_t size) {
     owned_buffers_.push_back(std::move(buffer));
 }
 
-bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std::size_t size, std::string *error) {
+bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std::size_t size, std::string *error,
+                            MemMapMapperType mapper) {
     if (!ValidSlotIndex(primary, secondary)) {
         if (error) *error = "combinacao de slot invalida: " + std::to_string(primary) + ":" + std::to_string(secondary);
         return false;
     }
-    const std::size_t max_size = static_cast<std::size_t>(MEMMAP_PAGES) * MEMMAP_PAGE_SIZE;
+
+    // Tamanho maximo depende do modo: ROM plana (Fase 2) cabe inteira no
+    // espaco de enderecos do Z80 (64KB); MegaROM (Fase 3) pode ter varios
+    // bancos de 8KB num buffer maior, mas a mascara de banco
+    // (rom_bank_mask, um uint8_t em SlotState) so representa ate 256
+    // bancos = 2MB -- ver slot_state.h.
+    const std::size_t plain_max = static_cast<std::size_t>(MEMMAP_PAGES) * MEMMAP_PAGE_SIZE;
+    const std::size_t megarom_max = static_cast<std::size_t>(256) * MEMMAP_CHUNK_SIZE;
+    const std::size_t max_size = (mapper == MEMMAP_MAPPER_NONE) ? plain_max : megarom_max;
+
     if (size < MEMMAP_CHUNK_SIZE || size > max_size || (size % MEMMAP_CHUNK_SIZE) != 0) {
         if (error) {
             *error = "tamanho de ROM invalido (" + std::to_string(size) + " bytes) -- precisa ser multiplo de " +
@@ -54,10 +81,18 @@ bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std:
     auto buffer = std::make_unique<uint8_t[]>(size);
     std::copy(data, data + size, buffer.get());
 
-    // ROM sempre comeca no pedaco 0 da combinacao (endereco relativo
-    // 0x0000 do slot) -- mesma convencao de AllocateRam()/memmap_attach()
-    // desde a Fase 1 (ver o comentario em LoadRom() no .h).
-    memmap_attach(&state_, primary, secondary, buffer.get(), size, MEMMAP_KIND_ROM, /*writable=*/0);
+    if (mapper == MEMMAP_MAPPER_NONE) {
+        // ROM plana (Fase 2, comportamento inalterado): sempre comeca no
+        // pedaco 0 da combinacao (endereco relativo 0x0000 do slot) --
+        // mesma convencao de AllocateRam()/memmap_attach() desde a Fase 1
+        // (ver o comentario em LoadRom() no .h).
+        memmap_attach(&state_, primary, secondary, buffer.get(), size, MEMMAP_KIND_ROM, /*writable=*/0);
+    } else {
+        // MegaROM (Fase 3): so os 4 pedacos enderecaveis por bank-switch
+        // (4000h-BFFFh) sao ocupados, com todos os quartos comecando no
+        // banco 0 -- ver memmap_attach_megarom() em slot_state.c.
+        memmap_attach_megarom(&state_, primary, secondary, buffer.get(), size, mapper);
+    }
     owned_buffers_.push_back(std::move(buffer));
     rom_crc32_[primary][secondary] = crc;
     return true;
@@ -78,7 +113,10 @@ SlotDescriptor MemorySystem::Describe(int primary, int secondary) const {
     }
     desc.kind = state_.slot_kind[primary][secondary];
     desc.size = state_.slot_size[primary][secondary];
-    if (desc.kind == MEMMAP_KIND_ROM) desc.crc32 = rom_crc32_[primary][secondary];
+    if (desc.kind == MEMMAP_KIND_ROM) {
+        desc.crc32 = rom_crc32_[primary][secondary];
+        desc.mapper_name = MapperName(state_.slot_mapper[primary][secondary]);
+    }
     return desc;
 }
 

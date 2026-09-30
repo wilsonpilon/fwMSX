@@ -5,8 +5,8 @@
 > onde parou. Nao remova secoes de fases concluidas -- marque como feitas
 > e adicione as novas por baixo.
 
-Estado desta secao: **Fases 1-2 concluidas em 2026-09-30** (ver secao 6).
-Fases 3-4 ainda nao iniciadas.
+Estado desta secao: **Fases 1-3 concluidas em 2026-09-30** (ver secao 6).
+Fase 4 ainda nao iniciada.
 
 ## 1. Objetivo
 
@@ -392,10 +392,133 @@ elas embutidas, o que nunca deve acontecer.
   Fase 1 (o campo existia "desde já" exatamente para isso, ver seção
   3.2/6); `LoadRom()` só precisou alocar um buffer próprio, copiar os
   bytes, calcular o CRC32 e chamar a função já existente.
-- [ ] **Fase 3 -- MegaROM (bank switch)**: `MAP_KONAMI5`/`MAP_KONAMI4`/
-      `MAP_ASCII8`/`MAP_ASCII16`/`MAP_GMASTER2`/`MAP_FMPAC`, decodificação
-      de escrita em endereço de ROM (`MapROM()` equivalente), heurística
-      `MAP_GUESS`.
+- [x] **Fase 3 -- MegaROM (bank switch)** (concluída em 2026-09-30):
+      troca de banco de ROM (só a parte de ROM, sem SCC/SRAM) para
+      `MAP_GEN8`/`MAP_GEN16`/`MAP_KONAMI5`/`MAP_KONAMI4`/`MAP_ASCII8`/
+      `MAP_ASCII16`, adaptado de `MapROM()` em
+      `resource/fMSX/fMSX/MSX.c`.
+
+  **Escopo reduzido em relação ao item original desta fase** (decidido
+  ao ler `MapROM()` por completo antes de portar, não antes): o texto
+  original listava também `MAP_GMASTER2`/`MAP_FMPAC`/`MAP_GUESS`.
+  Deixados de fora, com justificativa:
+  - **SCC** (chip de som, interação em `9800h-9FFFh` quando ligado) --
+    aparece em `MAP_GEN8`/`MAP_KONAMI5`. Não existe PSG/som no fwMSX
+    ainda (fase futura própria, ver `doc/SPEC.md`), então não há nada
+    pra uma escrita de SCC acionar -- só a troca de banco de ROM desses
+    dois mappers foi portada, o trecho de SCC foi omitido.
+  - **SRAM** (bateria, selecionada por um bit no valor de troca de
+    banco, persistida em arquivo) em `MAP_ASCII8`/`MAP_ASCII16` --
+    exige infraestrutura de save-state que não existe ainda. Portada só
+    a metade de troca de banco de ROM de cada um; uma tentativa de
+    selecionar SRAM é **reconhecida** (a escrita não cai no descarte
+    genérico) mas **ignorada** -- sem crash, sem corrupção, só sem
+    efeito.
+  - **`MAP_GMASTER2` e `MAP_FMPAC`** -- ambos só são interessantes por
+    causa de SRAM (GameMaster2) ou SRAM+som FM (FMPAC); sem isso,
+    degeneram pra uma troca de banco trivial não muito diferente do
+    `MAP_KONAMI4`. Não implementados.
+  - **`MAP_GUESS`** (detecção automática de mapper via `GuessROM()` --
+    tenta `CARTS.CRC`/`CARTS.SHA` primeiro, depois varre a ROM por
+    padrões de bytes característicos) -- feature separada com
+    dependências de formato de arquivo próprias; exigir o tipo de
+    mapper explícito em `loadrom` é mais simples e suficiente por
+    enquanto.
+
+  **Arquivos**: `src/memmap/core/slot_state.{h,c}` (extensão: campos
+  `slot_mapper`/`rom_base`/`rom_bank_mask`/`rom_bank` em `SlotState`;
+  novas funções `memmap_attach_megarom()` e `memmap_try_bank_switch()`;
+  `memmap_write()` agora tenta bank-switch antes de descartar uma
+  escrita não-gravável). `src/memmap/cpp/memory_system.{h,cpp}`
+  (`LoadRom()` ganhou um parâmetro `mapper` opcional -- default
+  `MEMMAP_MAPPER_NONE` preserva o comportamento da Fase 2 exatamente;
+  `SlotDescriptor::mapper_name` populado). `src/memmap/common/
+  memmap_types.h` (`enum MemMapMapperType`). `src/z80/debug/
+  z80_debug_session.cpp` (`loadrom` ganhou um 4º argumento opcional de
+  mapper; `slots` mostra o nome do mapper; mensagem de `poke`/`slotpoke`
+  ajustada -- ver "achado" abaixo). `tests/z80/memmap_test.cpp` (46
+  verificações novas).
+
+  **Decisões explícitas**:
+  - **Endereçamento**: chaveado direto por `(primário,secundário)`, não
+    por um índice de "slot de cartucho" como o `CartMap[PS][SS]` do
+    fMSX -- o fwMSX ainda não tem o conceito de slot físico de cartucho
+    separado do lógico (simplificação já registrada na seção 3.2).
+  - **Estado inicial de uma MegaROM recém-carregada**: todos os 4
+    quartos de 16KB começam mostrando o banco 0 -- mais simples e
+    determinístico que a heurística de assinatura `'A','B'` do fMSX
+    (que inicializa como `0,1,2,3` ou `N-2,N-1,N-2,N-1` dependendo de
+    onde encontra a assinatura). O código de inicialização real de um
+    cartucho sempre troca os bancos que precisa antes de depender de
+    conteúdo específico em outro lugar, então a escolha do banco
+    inicial não é observável na prática.
+  - **Tamanho válido de MegaROM**: múltiplo de 8KB, entre 8KB e 2MB (256
+    bancos) -- o teto vem de `rom_bank_mask` ser um `uint8_t` (mesmo
+    tipo `byte ROMMask[MAXSLOTS]` do fMSX, que tem a mesma limitação
+    real). ROM plana (Fase 2, `mapper` omitido) continua limitada a
+    64KB, comportamento inalterado.
+
+  **A sutileza central desta fase, implementada e testada**: a vista
+  ativa da CPU (`active_view`/`active_writable`) precisa refletir a
+  troca de banco **na hora**, sem esperar por um slot-switch separado --
+  `memmap_try_bank_switch()` sempre atualiza `chunk[primário][secundário]`
+  (a tabela de apoio) e, quando a página afetada atualmente mostra essa
+  mesma combinação, também a vista ativa. Para `GEN8`/`GEN16`/`KONAMI4`/
+  `KONAMI5` essa checagem é sempre verdadeira por construção (o endereço
+  de controle sempre cai na mesma página que o pedaço afetado); só
+  `ASCII8`/`ASCII16` de fato precisam dela (o endereço de controle mora
+  sempre na página 1, `6000h-7FFFh`, mas pode afetar um pedaço da
+  página 2) -- replicado fielmente do `MapROM()` original, que faz
+  exatamente essa distinção (`if((PSL[(J>>1)+1]==PS)&&...)`). Testado
+  explicitamente na seção "vista-ativa" de `memmap_test.cpp`: escreve a
+  troca de banco através de `SlotMemoryBus::write` (como o Z80 faria de
+  verdade) e confirma que `IBus::read` já mostra o novo banco, sem
+  nenhuma chamada de troca de slot no meio.
+
+  **Dois bugs reais encontrados e corrigidos durante a implementação**
+  (nenhum estava previsto no design original):
+  1. **Bug de estado obsoleto (corrigido no motor)**: a primeira versão
+     tinha uma otimização "pula se o banco não mudou" (`if
+     (rom_bank[quarto]==novo_banco) return;`), copiada do padrão
+     `if(V!=ROMMapper[I][J])` do fMSX. Só que o estado inicial
+     simplificado desta fase (todos os quartos = banco 0, ver decisão
+     acima) quebra o invariante que essa otimização pressupõe pros
+     mappers de granularidade 16KB (`GEN16`/`ASCII16`): o quarto
+     "parceiro" (`quarto+1`) também começa apontando pro banco 0 em vez
+     de banco 1, então uma escrita legítima de "banco 0" no quarto
+     principal batia com o bookkeeping obsoleto e pulava a atualização
+     do parceiro, deixando-o preso mostrando o banco errado
+     indefinidamente. Como essa otimização não tem valor real de
+     desempenho aqui (troca de banco é um evento raríssimo comparado a
+     instruções de Z80 executadas), a correção foi **remover a
+     otimização inteira** em vez de tentar reparar o invariante -- mais
+     simples e sem essa classe de bug. Pego pelos próprios testes
+     automatizados (não precisou de teste manual).
+  2. **Mensagem enganosa do `poke` (corrigido na UX do depurador,
+     achado testando `--z80dbg --slots` na mão)**: depois da Fase 3,
+     escrever num endereço de MegaROM via `poke` mostrava "(não gravado
+     -- página atual não é gravável...)", que é **factualmente errado**
+     nesse caso -- a escrita foi reconhecida e interpretada como
+     comando de troca de banco (nunca descartada), só que o byte lido
+     de volta é o conteúdo do banco recém-selecionado, não o número de
+     banco escrito, então batia com a heurística antiga de "byte lido
+     ≠ byte escrito = descartado". Como `IBus::write()` não devolve
+     informação sobre o que aconteceu (descarte vs. comando de mapper),
+     a mensagem foi reescrita pra não afirmar qual dos dois casos
+     ocorreu, só descrever o estado observável e sugerir `slots`/`pages`
+     pra investigar. `slotpoke` (que usa `PokeSlot`, o backdoor cru do
+     depurador que nunca aciona bank-switch por design) não tinha esse
+     problema -- mensagem original mantida, continua correta.
+
+  **Build/teste**: `cmake --build build --target memmaptest z80dbgtest
+  fwMSX` seguido de `ctest --test-dir build -R "z80|memmap"` -- verde
+  (168 + 35 + 102 = 305 verificações; `memmaptest` foi de 56 para 102).
+  Verificação manual: `fwMSX.exe --z80dbg --slots` com uma ROM sintética
+  de 4 bancos (`gen8`) carregada em 0:0 -- `loadrom`/`slots` mostram o
+  mapper corretamente, `poke 4000 2` troca de banco de verdade (`peek
+  4000` confirma o novo conteúdo), mensagem de `poke` revisada exibida
+  corretamente. Regressão confirmada em `fwMSX.exe` (sem argumentos),
+  `fwMSX.exe --z80dbg` (sem `--slots`) e `fwMSX.exe --msxdisk info`.
 - [ ] **Fase 4 -- Decisão de comportamento default do `--z80dbg`**: uma
       vez que carregar uma BIOS seja possível, decidir se `--z80dbg` sem
       argumentos passa a usar `SlotMemoryBus` com a BIOS pré-carregada em

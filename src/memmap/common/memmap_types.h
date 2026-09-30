@@ -34,6 +34,23 @@ typedef enum MemMapKind {
     MEMMAP_KIND_ROM = 2
 } MemMapKind;
 
+/* Tipos de mapper MegaROM (bank-switch) suportados -- Fase 3, ver
+   doc/memory-map-spec.md, secao 6. Escopo deliberadamente menor que o
+   fMSX (MAP_GEN8/MAP_GEN16/MAP_KONAMI5/MAP_KONAMI4/MAP_ASCII8/
+   MAP_ASCII16 -- so a parte de troca de banco de ROM de cada um, sem
+   SCC/SRAM): MAP_GMASTER2, MAP_FMPAC e MAP_GUESS ficam de fora, ver a
+   justificativa detalhada no design doc. Nomes espelham as constantes
+   MAP_* de resource/fMSX/fMSX/MSX.h. */
+typedef enum MemMapMapperType {
+    MEMMAP_MAPPER_NONE = 0,
+    MEMMAP_MAPPER_GEN8,
+    MEMMAP_MAPPER_GEN16,
+    MEMMAP_MAPPER_KONAMI5,
+    MEMMAP_MAPPER_KONAMI4,
+    MEMMAP_MAPPER_ASCII8,
+    MEMMAP_MAPPER_ASCII16
+} MemMapMapperType;
+
 #ifdef __cplusplus
 }
 #endif

@@ -65,10 +65,17 @@ termos acima:
   `MemMap[4][4][8]`, `PSL`/`SSL`/`SSLReg`, funcoes `PSlot()`/`SSlot()`,
   trecho de `RdZ80`/`WrZ80` relativo a mapeamento de memoria -- **nao** a
   parte de controlador de disquete dessas funcoes, que fica de fora de
-  proposito, ver `doc/memory-map-spec.md`, secao 3.2). Ver
-  `doc/memory-map-spec.md`, secao 6 (Fase 1), para as diferencas
+  proposito, ver `doc/memory-map-spec.md`, secao 3.2). Desde a Fase 3,
+  tambem adapta a parte de troca de banco (SO ROM, sem SCC/SRAM) de
+  `MapROM()` para os mappers `MAP_GEN8`/`MAP_GEN16`/`MAP_KONAMI5`/
+  `MAP_KONAMI4`/`MAP_ASCII8`/`MAP_ASCII16` -- `MAP_GMASTER2`/`MAP_FMPAC`/
+  `MAP_GUESS` ficam de fora, ver `doc/memory-map-spec.md`, secao 6. Ver
+  `doc/memory-map-spec.md`, secao 6 (Fases 1 e 3), para as diferencas
   deliberadas em relacao ao original (permissao de escrita explicita por
-  pedaco de 8KB, em vez de inferida por uma regra hardcoded).
+  pedaco de 8KB em vez de inferida por regra hardcoded; indexacao direta
+  por primario/secundario em vez de um indice de slot de cartucho;
+  estado inicial de MegaROM simplificado -- todos os quartos comecam no
+  banco 0, em vez da heuristica de assinatura 'AB' do fMSX).
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

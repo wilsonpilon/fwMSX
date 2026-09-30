@@ -324,6 +324,290 @@ int main() {
         std::remove(tmp_path.c_str());
     }
 
+    // === Fase 3 -- MegaROM (bank-switch), ver doc/memory-map-spec.md, ======
+    //     secao 6. Escopo: so a troca de banco de ROM de GEN8/GEN16/
+    //     KONAMI5/KONAMI4/ASCII8/ASCII16 (sem SCC/SRAM/GMASTER2/FMPAC/
+    //     MAP_GUESS -- ver a justificativa no design doc). ==================
+
+    // Monta uma ROM sintetica de `banks` bancos de 8KB, cada um preenchido
+    // com um byte distinto (0x10+indice do banco) -- basta ler o primeiro
+    // byte de uma janela pra saber qual banco esta visivel ali agora.
+    auto MakeBankedRom = [](int banks) {
+        std::vector<uint8_t> rom(static_cast<size_t>(banks) * 0x2000);
+        for (int b = 0; b < banks; ++b) {
+            std::fill(rom.begin() + static_cast<long>(b) * 0x2000, rom.begin() + static_cast<long>(b + 1) * 0x2000,
+                       static_cast<uint8_t>(0x10 + b));
+        }
+        return rom;
+    };
+
+    // Bank-switch so acontece atraves da VISTA ATIVA da CPU (memmap_write
+    // deriva primary/secondary de psl[pagina]/ssl[pagina], nunca de qual
+    // combinacao recebeu o LoadRom) -- entao todo teste de bank-switch
+    // precisa primeiro tornar a combinacao carregada visivel em TODAS as
+    // paginas, ou a escrita de troca de banco (via bus.write) acaba caindo
+    // na combinacao 0:0 (a vista ativa default), nao na combinacao
+    // pretendida. Helper: forca (primary,secondary) em todas as 4 paginas.
+    auto SelectEverywhere = [](memmap::SlotMemoryBus &bus, int primary, int secondary) {
+        const uint8_t p = static_cast<uint8_t>(primary | (primary << 2) | (primary << 4) | (primary << 6));
+        bus.out(0xA8, p);
+        const uint8_t s = static_cast<uint8_t>(secondary | (secondary << 2) | (secondary << 4) | (secondary << 6));
+        bus.write(0xFFFF, s);
+    };
+
+    // --- 15. MAP_GEN8: qualquer endereco em 4000h-BFFFh escolhe o banco --
+    //      do quarto correspondente (J=(A-4000h)>>13); escrita fora dessa
+    //      faixa nao troca nada. ------------------------------------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4); // mask=3
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(0, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_GEN8), "GEN8: LoadRom aceita (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        bus.write(0x4000, 2); // quarto 0 (4000h-5FFFh) -> banco 2
+        bus.write(0x6000, 1); // quarto 1 (6000h-7FFFh) -> banco 1
+        bus.write(0x9FFF, 3); // quarto 2 (8000h-9FFFh) -> banco 3 (qualquer endereco na janela serve)
+        bus.write(0xB000, 0); // quarto 3 (A000h-BFFFh) -> banco 0
+
+        check(mem.PeekSlot(0, 0, 0x4000) == 0x12, "GEN8: quarto 0 mostra banco 2 apos escrita em 4000h");
+        check(mem.PeekSlot(0, 0, 0x6000) == 0x11, "GEN8: quarto 1 mostra banco 1 apos escrita em 6000h");
+        check(mem.PeekSlot(0, 0, 0x8000) == 0x13, "GEN8: quarto 2 mostra banco 3 apos escrita em 9FFFh");
+        check(mem.PeekSlot(0, 0, 0xA000) == 0x10, "GEN8: quarto 3 mostra banco 0 apos escrita em B000h");
+
+        // Negativo: escrita fora de 4000h-BFFFh nao afeta nada (cai no
+        // descarte padrao) -- pedacos 0/1/6/7 continuam vazios (0xFF).
+        bus.write(0x3FFF, 1);
+        bus.write(0xC000, 1);
+        check(mem.PeekSlot(0, 0, 0x0000) == MEMMAP_EMPTY_BYTE, "GEN8: escrita em 3FFFh nao cria conteudo em 0000h-3FFFh");
+        check(mem.PeekSlot(0, 0, 0xC000) == MEMMAP_EMPTY_BYTE, "GEN8: escrita em C000h nao cria conteudo em C000h-FFFFh");
+    }
+
+    // --- 16. MAP_GEN16: J=(A&8000h)>>14 da' 0 OU 2 (granularidade de -----
+    //      16KB, dois pedacos de 8KB trocados juntos). ---------------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4); // mask=3 (2 "bancos" de 16KB: 0-1 e 2-3)
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(0, 1, rom.data(), rom.size(), &error, MEMMAP_MAPPER_GEN16), "GEN16: LoadRom aceita (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 0, 1); // 0:1 nao e' a vista ativa default -- precisa disso antes de escrever
+        bus.write(0x4000, 1); // metade baixa (4000h-7FFFh) -> banco 16KB #1 = bancos 8KB {2,3}
+        check(mem.PeekSlot(0, 1, 0x4000) == 0x12, "GEN16: metade baixa mostra banco 8KB 2 apos escrita com V=1");
+        check(mem.PeekSlot(0, 1, 0x6000) == 0x13, "GEN16: metade baixa (segundo pedaco) mostra banco 8KB 3");
+
+        bus.write(0x9000, 0); // metade alta (8000h-BFFFh) -> banco 16KB #0 = bancos 8KB {0,1}
+        check(mem.PeekSlot(0, 1, 0x8000) == 0x10, "GEN16: metade alta mostra banco 8KB 0 apos escrita com V=0");
+        check(mem.PeekSlot(0, 1, 0xA000) == 0x11, "GEN16: metade alta (segundo pedaco) mostra banco 8KB 1");
+    }
+
+    // --- 17. MAP_KONAMI5: SO enderecos exatos 5000h/7000h/9000h/B000h; ---
+    //      qualquer outro endereco (ex. 6000h) e' ignorado. ----------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4);
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(1, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_KONAMI5),
+              "KONAMI5: LoadRom aceita (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 1, 0);
+        bus.write(0x5000, 2); // quarto 0 -> banco 2
+        bus.write(0x7000, 3); // quarto 1 -> banco 3
+        bus.write(0x9000, 1); // quarto 2 -> banco 1
+        bus.write(0xB000, 0); // quarto 3 -> banco 0
+        check(mem.PeekSlot(1, 0, 0x4000) == 0x12, "KONAMI5: 5000h troca quarto 0 para banco 2");
+        check(mem.PeekSlot(1, 0, 0x6000) == 0x13, "KONAMI5: 7000h troca quarto 1 para banco 3");
+        check(mem.PeekSlot(1, 0, 0x8000) == 0x11, "KONAMI5: 9000h troca quarto 2 para banco 1");
+        check(mem.PeekSlot(1, 0, 0xA000) == 0x10, "KONAMI5: B000h troca quarto 3 para banco 0");
+
+        // Negativo: 6000h nao e' um endereco de controle valido do KONAMI5
+        // (nem 5000h/7000h/9000h/B000h) -- nao deve trocar nada.
+        bus.write(0x6000, 3);
+        check(mem.PeekSlot(1, 0, 0x6000) == 0x13,
+              "KONAMI5: escrita em 6000h (endereco invalido) nao troca o quarto 1 (continua banco 3)");
+    }
+
+    // --- 18. MAP_KONAMI4: SO 6000h/8000h/A000h (8KB-alinhados); 4000h -----
+    //      e' fixo (nao trocavel). ------------------------------------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4);
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(1, 1, rom.data(), rom.size(), &error, MEMMAP_MAPPER_KONAMI4),
+              "KONAMI4: LoadRom aceita (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 1, 1);
+        bus.write(0x6000, 2); // quarto 1 -> banco 2
+        bus.write(0x8000, 3); // quarto 2 -> banco 3
+        bus.write(0xA000, 1); // quarto 3 -> banco 1
+        check(mem.PeekSlot(1, 1, 0x6000) == 0x12, "KONAMI4: 6000h troca quarto 1 para banco 2");
+        check(mem.PeekSlot(1, 1, 0x8000) == 0x13, "KONAMI4: 8000h troca quarto 2 para banco 3");
+        check(mem.PeekSlot(1, 1, 0xA000) == 0x11, "KONAMI4: A000h troca quarto 3 para banco 1");
+
+        // Negativo: 4000h e' fixo -- continua banco 0 (estado inicial),
+        // mesmo escrevendo la'.
+        bus.write(0x4000, 2);
+        check(mem.PeekSlot(1, 1, 0x4000) == 0x10, "KONAMI4: quarto 0 (4000h) e' fixo, escrita ali e' ignorada");
+    }
+
+    // --- 19. MAP_ASCII8: 4 "portas" em 6000h-7FFFh (6000/6800/7000/7800h) -
+    //      escolhem os quartos 0/1/2/3; selecao de SRAM e' reconhecida mas
+    //      ignorada (sem crash, sem corrupcao). -----------------------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4); // mask=3, mask+1=4 = bit de SRAM
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(2, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_ASCII8),
+              "ASCII8: LoadRom aceita (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 2, 0);
+        bus.write(0x6000, 2); // porta 0 -> quarto 0
+        bus.write(0x6800, 3); // porta 1 -> quarto 1
+        bus.write(0x7000, 1); // porta 2 -> quarto 2
+        bus.write(0x7800, 0); // porta 3 -> quarto 3
+        check(mem.PeekSlot(2, 0, 0x4000) == 0x12, "ASCII8: porta 6000h troca quarto 0 para banco 2");
+        check(mem.PeekSlot(2, 0, 0x6000) == 0x13, "ASCII8: porta 6800h troca quarto 1 para banco 3");
+        check(mem.PeekSlot(2, 0, 0x8000) == 0x11, "ASCII8: porta 7000h troca quarto 2 para banco 1");
+        check(mem.PeekSlot(2, 0, 0xA000) == 0x10, "ASCII8: porta 7800h troca quarto 3 para banco 0");
+
+        // Selecao de SRAM (bit mask+1 = 0x04) reconhecida mas ignorada --
+        // quarto 0 continua no banco 2 de antes, sem crash/corrupcao.
+        bus.write(0x6000, 0x04);
+        check(mem.PeekSlot(2, 0, 0x4000) == 0x12,
+              "ASCII8: selecao de SRAM (V=04h) e' ignorada -- quarto 0 continua banco 2");
+    }
+
+    // --- 20. MAP_ASCII16: granularidade de 16KB; quirk de rejeicao de -----
+    //      escrita "lixo" em endereco nao-alinhado a 4KB (Vauxall/etc.),
+    //      portado tal qual do fMSX. -----------------------------------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4); // mask=3, mask+1=4
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(2, 1, rom.data(), rom.size(), &error, MEMMAP_MAPPER_ASCII16),
+              "ASCII16: LoadRom aceita (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 2, 1);
+        // V=1 (valido, <=mask+1) e' aceito em QUALQUER endereco da janela,
+        // alinhado ou nao -- 6001h nao e' 4KB-alinhado, mas o valor e'
+        // "plausivel" o bastante pra ser aceito (primeira clausula do OR).
+        bus.write(0x6001, 1); // metade baixa -> banco 16KB #1 = bancos 8KB {2,3}
+        check(mem.PeekSlot(2, 1, 0x4000) == 0x12, "ASCII16: V=1 em endereco nao-alinhado (6001h) e' aceito");
+
+        // V=200 (bem maior que mask+1=4, "lixo") em endereco NAO-alinhado a
+        // 4KB (6001h) e' REJEITADO -- nao muda nada (continua banco 2 de
+        // antes).
+        bus.write(0x6001, 200);
+        check(mem.PeekSlot(2, 1, 0x4000) == 0x12,
+              "ASCII16: V=200 (lixo) em endereco nao-alinhado (6001h) e' rejeitado, sem mudanca");
+
+        // O MESMO V=200 numa posicao alinhada a 4KB DENTRO DA MESMA janela
+        // de quarto (6000h, ainda quarto 0 -- bit12=0) e' ACEITO (segunda
+        // clausula do OR) -- o valor e' entao mascarado pra um banco
+        // valido (200<<1=400, 400&mask(3)=0). NAO usar 7000h aqui: 7000h
+        // tem bit12=1, controla o OUTRO quarto (metade ALTA, 8000h-BFFFh)
+        // -- protocolo real do ASCII16 (dois registradores de controle
+        // distintos em 6000h/7000h, cada um pra uma metade diferente),
+        // ver o teste em separado logo abaixo.
+        bus.write(0x6000, 200);
+        check(mem.PeekSlot(2, 1, 0x4000) == 0x10,
+              "ASCII16: V=200 (lixo) em endereco alinhado a 4KB (6000h) e' aceito e mascarado para banco 0");
+
+        // Selecao de SRAM (V=mask+1=4, alinhado ou nao) reconhecida mas
+        // ignorada -- sem crash, sem mudanca de banco (continua o que o
+        // 6000h deixou acima).
+        bus.write(0x6000, 4);
+        check(mem.PeekSlot(2, 1, 0x4000) == 0x10, "ASCII16: selecao de SRAM (V=04h) e' ignorada -- banco inalterado");
+
+        // Registrador de controle da metade ALTA (7000h, bit12=1) --
+        // protocolo real do ASCII16: 6000h e 7000h controlam metades
+        // DIFERENTES, nao a mesma. V=1 -> banco 16KB #1 = bancos 8KB{2,3}.
+        bus.write(0x7000, 1);
+        check(mem.PeekSlot(2, 1, 0x8000) == 0x12, "ASCII16: 7000h controla a metade ALTA (8000h-BFFFh), nao a baixa");
+        check(mem.PeekSlot(2, 1, 0x4000) == 0x10,
+              "ASCII16: escrita em 7000h nao afeta a metade baixa (continua banco 0 de antes)");
+    }
+
+    // --- 21. Vista ativa da CPU precisa refletir a troca de banco NA HORA -
+    //      (via SlotMemoryBus::write, como o Z80 faria de verdade), sem
+    //      nenhum slot-switch adicional depois -- a sutileza central desta
+    //      fase (ver doc/memory-map-spec.md, secao 6). --------------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4);
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(1, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_GEN8),
+              "vista-ativa: LoadRom (GEN8) aceita (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        // Poe a combinacao 1:0 na pagina 1 (4000h-7FFFh) da vista ativa da
+        // CPU: bits 2-3 do registrador de slot primario = 1 (demais
+        // paginas continuam em 0). ssl_reg[1] comeca zerado, entao
+        // secundario tambem fica 0 sem precisar escrever em FFFFh.
+        bus.out(0xA8, 0x04);
+
+        check(bus.read(0x4000) == 0x10, "vista-ativa: 1:0 visivel na pagina 1, banco inicial 0 (0x10)");
+
+        // Escrita de troca de banco atraves do BARRAMENTO (como o Z80
+        // faria) -- NAO por PeekSlot/PokeSlot, que sao so o backdoor do
+        // depurador.
+        bus.write(0x4000, 2);
+
+        check(bus.read(0x4000) == 0x12,
+              "vista-ativa: IBus::read reflete o novo banco IMEDIATAMENTE, sem troca de slot adicional");
+        check(mem.PeekSlot(1, 0, 0x4000) == 0x12, "vista-ativa: PeekSlot concorda com o que a vista ativa mostra");
+    }
+
+    // --- 22. ROM plana (mapper=None, Fase 2) continua inalterada: escrita -
+    //      num endereco tipico de controle de mapper NAO troca banco
+    //      nenhum (nao ha' mapper pra trocar) -- so descarta, como antes. --
+    {
+        std::vector<uint8_t> rom(0x8000, 0x7A); // 32KB, plana, sem bank-switch
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(3, 3, rom.data(), rom.size(), &error), "ROM plana: LoadRom (mapper=None) aceita ainda");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 3, 3); // precisa estar na vista ativa, senao a escrita nem chega nessa combinacao
+        bus.write(0x4000, 2); // pareceria um MAP_GEN8, mas essa combinacao nao tem mapper
+        bus.write(0x7000, 3); // pareceria um MAP_KONAMI5
+        check(mem.PeekSlot(3, 3, 0x4000) == 0x7A, "ROM plana: escrita em 4000h nao troca nada (mapper=None)");
+        check(mem.PeekSlot(3, 3, 0x6000) == 0x7A, "ROM plana: escrita em 7000h nao troca nada (mapper=None)");
+    }
+
+    // --- 23. Comando 'loadrom' com mapper explicito + rejeicao de mapper --
+    //      desconhecido. ---------------------------------------------------
+    {
+        const std::vector<uint8_t> rom = MakeBankedRom(4);
+        const std::string tmp_path = "memmap_test_megarom.bin";
+        {
+            std::ofstream out(tmp_path, std::ios::binary);
+            out.write(reinterpret_cast<const char *>(rom.data()), static_cast<std::streamsize>(rom.size()));
+        }
+
+        memmap::MemorySystem mem;
+        memmap::SlotMemoryBus bus(mem);
+        z80::debug::Z80DebugSession session(bus, &mem);
+
+        const std::string ok = session.ProcessCommand({"loadrom", "0", "2", tmp_path, "gen8"});
+        check(ok.find("mapper Gen8") != std::string::npos, "loadrom com mapper: resposta menciona 'mapper Gen8'");
+
+        const std::string slots = session.ProcessCommand({"slots"});
+        check(slots.find("0:2 -> ROM") != std::string::npos && slots.find("Gen8") != std::string::npos,
+              "'slots' apos loadrom com mapper mostra 'Gen8' na descricao");
+
+        const std::string bad = session.ProcessCommand({"loadrom", "1", "2", tmp_path, "bogus"});
+        check(bad.find("mapper desconhecido") != std::string::npos,
+              "loadrom com nome de mapper invalido reporta erro claro, nao trava");
+
+        std::remove(tmp_path.c_str());
+    }
+
     // --- 14. Aceitacao com BIOS real (resource/fMSX/ROMs/MSX.ROM) ----------
     //      So' LE o arquivo ja existente no repositorio (material de
     //      estudo/referencia, ver resource/README.md) -- nunca copia/
