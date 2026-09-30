@@ -7,6 +7,55 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.4.1] - 2026-09-30 - "Salamander: Compilando em Linux"
+
+Primeira validação real (build + link + execução, não só montagem) do
+projeto numa máquina Linux (WSL2) -- ver [doc/SPEC.md](SPEC.md), seção
+5.0. Sem features novas; dois bugs reais de portabilidade corrigidos em
+código Assembly que nunca tinha sido testado fora do Windows.
+
+### Corrigido
+- **`src/asm/init_asm.asm`** (módulo Assembly da Fase 0 do projeto,
+  desde 2026-09-28) era Win64-only -- montava sem erro para `elf64`
+  (NASM não valida convenção de chamada), mas rodando de verdade no
+  Linux os argumentos chegariam nos registradores errados (SysV entrega
+  major/minor/patch em EDI/ESI/EDX, não ECX/EDX/R8D da Win64), e o
+  *link* falhava (`relocation ... can not be used when making a PIE
+  object`) por causa de uma chamada direta a `printf` incompatível com
+  executável PIE (padrão em distros Linux modernas). Corrigido com a
+  mesma técnica `%ifidn __OUTPUT_FORMAT__` do núcleo Z80
+  (`src/z80/asm/block_ops.asm`) e `call printf wrt ..plt` (chamada
+  PLT-relativa, funciona com ou sem PIE).
+- **`src/msxdisk/asm/name_match.asm`** (msxdisk, Win64-only desde a
+  Fase 2 dele) tinha o mesmo problema de registradores errados no
+  Linux -- mais sutil que o de cima, porque não chama nenhuma função
+  externa: o build **não falhava**, só o resultado ficaria errado em
+  tempo de execução (`list`/`extract` com padrão de coringa). Corrigido
+  com a mesma técnica de troca de registrador de entrada por ABI.
+- `src/msxdisk/gui/file_dialog.cpp` incluía `<windows.h>` sem nenhuma
+  guarda de plataforma, quebrando a compilação inteira fora do Windows.
+  Guardado atrás de `#ifdef _WIN32`; noutras plataformas os diálogos
+  nativos de arquivo devolvem "cancelado" por enquanto (um seletor
+  nativo para Linux fica para uma tarefa à parte).
+- `comdlg32` (biblioteca de diálogo nativo do Windows) era linkada sem
+  condição no `CMakeLists.txt`, quebrando o link fora do Windows.
+  Agora só entra quando `WIN32` é verdadeiro.
+
+### Adicionado
+- `build.sh` agora usa `build-linux/` como diretório de build (não
+  `build/`, que é onde `build.ps1` grava o cache do CMake) -- evita o
+  erro "`CMakeCache.txt` directory is different" ao alternar entre
+  compilar pelo Windows nativo e pelo WSL no mesmo checkout.
+- Pacote de distribuição Linux (`dist/fwMSX-X.Y.Z-linux.tar.gz`) agora
+  versionado no repositório, igual ao `.zip` do Windows.
+
+### Validado
+- `./build.sh` rodado numa máquina Linux real (WSL2): build completo +
+  `ctest -R "z80|memmap"` com as **328 verificações passando** --
+  primeira confirmação de que o núcleo Z80 (incluindo a aceleração
+  `LDIR`/`LDDR` em Assembly, branch `elf64`) e o mapa de memória
+  funcionam de verdade fora do Windows, não só compilam.
+
 ## [1.4.0] - 2026-09-30 - "Illusion City: Mapa de Memória"
 
 Mapa de memória MSX (slots/subslots/MegaROM) sobre o núcleo Z80 da

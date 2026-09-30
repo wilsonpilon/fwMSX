@@ -203,12 +203,18 @@ para quando o trabalho for retomado:
    `doc/memory-map-spec.md`) passa a fazer sentido de verdade.
 3. Itens menores registrados e conscientemente adiados, sem bloquear
    nada do acima:
+   - ~~Validacao em execucao real (nao so montagem) da branch `elf64`/
+     Linux do `.asm` dual-ABI.~~ **Feito na v1.4.1** (2026-09-30) --
+     `build.sh` rodado de verdade numa maquina Linux (WSL2) pelo autor:
+     build completo + `ctest` com as 328 verificacoes passando. Duas
+     correcoes de portabilidade reais foram necessarias em modulos
+     Assembly antigos (`src/asm/init_asm.asm`, `src/msxdisk/asm/
+     name_match.asm`, ambos Win64-only desde antes do nucleo Z80
+     existir) -- ver `doc/RELEASE.md`, v1.4.1, e `doc/z80-core-spec.md`,
+     secao 6 (Fase 3), para o relato completo.
    - `CPIR`/`CPDR` em Assembly (nucleo Z80, Fase 3) -- so `LDIR`/`LDDR`
      foram acelerados; as flags de `CPIR`/`CPDR` dependem do byte
      comparado, tornando o corte de lote mais arriscado.
-   - Validacao em execucao real (nao so montagem) da branch `elf64`/
-     Linux do `.asm` dual-ABI -- precisa rodar `build.sh` numa maquina
-     Linux de verdade (o autor pretende fazer isso).
    - `MAP_GMASTER2`/`MAP_FMPAC`/SRAM persistente/`MAP_GUESS` no mapa de
      memoria (ver `doc/memory-map-spec.md`, secao 6) -- dependem de
      som/save-state, que ainda nao existem.

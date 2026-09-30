@@ -19,7 +19,7 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 4
-#define FWMSX_VERSION_PATCH 0
+#define FWMSX_VERSION_PATCH 1
 
-#define FWMSX_CODENAME  "Illusion City"
-#define FWMSX_SUBTITLE  "Mapa de Memoria"
+#define FWMSX_CODENAME  "Salamander"
+#define FWMSX_SUBTITLE  "Compilando em Linux"

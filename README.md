@@ -49,6 +49,14 @@ troca de banco (Konami/ASCII/generic). `fwmsx --z80dbg --slots
 resource/fMSX/ROMs/MSX.ROM` roda a **BIOS MSX1 real** no nucleo Z80. Ver
 [doc/memory-map-spec.md](doc/memory-map-spec.md).
 
+A v1.4.1 **validou o build em Linux de verdade** (WSL2): build completo
++ `ctest` (328 verificacoes) passando, incluindo a branch `elf64`/SysV
+do Assembly dual-ABI do nucleo Z80 -- so tinha sido montada antes, nunca
+linkada/executada. Duas correcoes reais de portabilidade em modulos
+Assembly mais antigos do projeto (`src/asm/init_asm.asm`,
+`src/msxdisk/asm/name_match.asm`, Win64-only desde antes do nucleo Z80
+existir). Pacote Linux (`.tar.gz`) disponivel, gerado por `build.sh`.
+
 **O trabalho no core de emulacao esta pausado por ora** (decisao
 deliberada, nao abandono) -- faltam VDP e PSG para existir uma maquina
 MSX completa. Ver [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos

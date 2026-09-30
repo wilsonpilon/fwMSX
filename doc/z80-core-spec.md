@@ -499,11 +499,29 @@ depois).
     pra terminar, o que nenhum teste de estado-final consegue observar
     como erro. Trocamos uma otimizacao de ultimo grau por uma formula
     muito mais simples de verificar.
-  - **Verificacao no Linux foi so parcial**: esta maquina e' Windows, so
-    da' pra testar o link/execucao real do lado Win64. O lado `elf64`
-    foi verificado com `nasm -f elf64 src/z80/asm/block_ops.asm -o
-    <tmp>.o` (monta sem erro), mas **nao foi linkado nem executado** --
-    isso so podera' ser confirmado numa maquina Linux de verdade.
+  - **Verificacao no Linux -- ATUALIZADO em 2026-09-30 (v1.4.1)**: na
+    epoca desta fase, so' dava pra verificar a montagem (`nasm -f elf64`,
+    sem link/execucao, maquina de desenvolvimento e' Windows). Com
+    `build.sh` (ver `doc/SPEC.md`) e o autor rodando numa maquina Linux
+    de verdade (WSL2), o lado `elf64`/SysV foi **linkado e executado de
+    verdade** pela primeira vez -- `ctest` completo (`z80_smoke`,
+    `z80_debug_session`, `memmap_slots`, as mesmas 328 verificacoes desta
+    especificacao) passou 100% no Linux, incluindo o teste diferencial
+    de `LDIR`/`LDDR` que exercita `block_ops.asm` de verdade. A
+    limitacao "so' verificado no Windows" desta secao esta' resolvida.
+    Duas correcoes de portabilidade genuinas foram necessarias nos
+    modulos Assembly **mais antigos** do projeto (nao neste
+    `block_ops.asm`, que ja' nasceu dual-ABI e funcionou de primeira) --
+    ver `doc/RELEASE.md`, v1.4.1, para o relato completo:
+    `src/asm/init_asm.asm` (Fase 0 do projeto) e
+    `src/msxdisk/asm/name_match.asm` (msxdisk) eram Win64-only e nunca
+    tinham sido testados fora do Windows; ambos monstavam sem erro para
+    `elf64` (NASM nao valida convencao de chamada), mas so' agora,
+    rodando de verdade no Linux, ficou provado que precisavam da mesma
+    tecnica `%ifidn __OUTPUT_FORMAT__` -- `init_asm.asm` tambem quebrava
+    o *link* (chamada direta a `printf` incompativel com executavel PIE,
+    padrao em distros Linux modernas), corrigido com `call printf wrt
+    ..plt`.
   - **Teste diferencial obrigatorio**: `tests/z80/smoke_test.cpp` ganhou
     `run_block_case()`, que roda o MESMO programa Z80 (LD HL,nn/LD
     DE,nn/LD BC,nn/LDIR-ou-LDDR/HALT) a partir do MESMO estado inicial

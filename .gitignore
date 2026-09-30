@@ -122,16 +122,32 @@ dkms.conf
 
 
 ### fwMSX (projeto)
-# Diretorio de build intermediario do CMake/Ninja (nao e o pacote final)
+# Diretorio de build intermediario do CMake/Ninja (nao e o pacote final).
+# /build/ e' usado pelo build.ps1 (Windows); /build-linux/ pelo build.sh
+# (Linux/WSL) -- diretorios SEPARADOS de proposito, senao alternar entre
+# compilar pelo Windows nativo e pelo WSL no mesmo checkout quebra o
+# CMakeCache.txt (ele grava caminho absoluto, e /mnt/c/... vs C:/... para
+# o mesmo diretorio conta como "cache de outro lugar" pro CMake).
 /build/
+/build-linux/
 
-# dist/ e um entregavel do projeto: o executavel e o ZIP de distribuicao
-# sao gerados por build.ps1 e devem permanecer versionados, mesmo com as
-# regras genericas *.exe/*.zip acima. Regras de unignore precisam vir
-# por ultimo no arquivo (a ultima regra que casa e a que vale).
+# dist/ e um entregavel do projeto: os executaveis e os pacotes de
+# distribuicao (ZIP do build.ps1/Windows, tar.gz do build.sh/Linux) devem
+# permanecer versionados, mesmo com as regras genericas *.exe/*.zip
+# acima. Regras de unignore precisam vir por ultimo no arquivo (a ultima
+# regra que casa e a que vale).
 !/dist/
 !/dist/*.exe
 !/dist/*.zip
+!/dist/*.tar.gz
+
+# Os binarios ELF "crus" do Linux (sem extensao -- fwMSX/msxdisk, gerados
+# por build.sh) NAO sao versionados, ao contrario do .exe do Windows: nao
+# rodam fora de Linux e o tar.gz ja' os empacota, entao mante-los tambem
+# soltos aqui so' duplicaria o binario sem beneficio (regra depois do
+# "unignore" acima, que e' a que vale por ultimo).
+/dist/fwMSX
+/dist/msxdisk
 
 # z80test.exe/z80dbgtest.exe/memmaptest.exe sao os executaveis de teste
 # do nucleo Z80/mapa de memoria (ver doc/z80-core-spec.md,
@@ -142,6 +158,9 @@ dkms.conf
 /dist/z80test.exe
 /dist/z80dbgtest.exe
 /dist/memmaptest.exe
+/dist/z80test
+/dist/z80dbgtest
+/dist/memmaptest
 
 # Diretorios de build gerados automaticamente pelo CLion
 /cmake-build-*/

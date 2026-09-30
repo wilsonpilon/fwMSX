@@ -27,7 +27,16 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-build_dir="$root/build"
+# build-linux/ (NAO build/) de proposito: build/ e' onde o build.ps1
+# (Windows) grava o CMakeCache.txt dele. Num checkout compartilhado entre
+# Windows nativo e WSL (ex.: repo em C:\... acessado tambem como
+# /mnt/c/... de dentro do WSL), o MESMO diretorio fisico apareceria com
+# dois caminhos absolutos diferentes pro CMake -- que entao recusa
+# reconfigurar ("CMakeCache.txt directory is different than the directory
+# ... where CMakeCache.txt was created"). Diretorios separados evitam
+# esse conflito por completo, sem precisar apagar cache na mao toda vez
+# que se alterna de ambiente.
+build_dir="$root/build-linux"
 dist_dir="$root/dist"
 
 gui_flag=()

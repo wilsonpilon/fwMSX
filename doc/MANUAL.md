@@ -62,11 +62,13 @@ O executavel fica em `dist/fwMSX.exe`.
 ### Linux
 
 O projeto tambem compila em Linux (gcc/g++/gfortran/nasm/cmake/ninja
-"de sistema", sem MSYS2) -- em particular para validar de verdade a
-branch `elf64`/SysV AMD64 do `.asm` dual-ABI do nucleo Z80
-(`src/z80/asm/block_ops.asm`), que no desenvolvimento original (Windows)
-so pode ser montada (`nasm -f elf64`), nunca linkada/executada. Use
-`build.sh` (equivalente ao `build.ps1`):
+"de sistema", sem MSYS2) -- **validado de verdade numa maquina Linux
+(WSL2) na v1.4.1**: build completo + `ctest` com as 328 verificacoes
+passando, incluindo a branch `elf64`/SysV AMD64 do `.asm` dual-ABI do
+nucleo Z80 (`src/z80/asm/block_ops.asm`), que no desenvolvimento
+original (Windows) so podia ser montada (`nasm -f elf64`), nunca
+linkada/executada de verdade. Use `build.sh` (equivalente ao
+`build.ps1`):
 
 ```bash
 sudo apt install build-essential gfortran nasm cmake ninja-build   # Debian/Ubuntu
@@ -76,6 +78,15 @@ sudo apt install build-essential gfortran nasm cmake ninja-build   # Debian/Ubun
 
 Executaveis em `dist/fwMSX` e `dist/msxdisk`; pacote em
 `dist/fwMSX-X.Y.Z-linux.tar.gz`.
+
+**Se `build.sh` estiver rodando num checkout compartilhado com Windows**
+(ex.: mesmo repositorio acessado como `/mnt/c/...` de dentro do WSL) e
+o CMake reclamar de `CMakeCache.txt` de outro diretorio: isso e'
+esperado e ja' tratado -- `build.sh` usa `build-linux/` (nao `build/`,
+que e' onde o `build.ps1` do Windows grava o cache dele), exatamente
+para evitar esse conflito. Se ver esse erro mesmo assim, confira se
+esta' numa copia antiga do `build.sh` (versoes anteriores usavam
+`build/` e colidiam de verdade).
 
 ## Executar
 

@@ -150,7 +150,15 @@ function(msxdisk_link_target target)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/src)
     target_link_libraries(${target} PRIVATE CLI11::CLI11 replxx ftxui::component ftxui::dom ftxui::screen sqlite3)
     if (FWMSX_MSXDISK_GUI)
-        target_link_libraries(${target} PRIVATE imgui OpenGL::GL comdlg32)
+        target_link_libraries(${target} PRIVATE imgui OpenGL::GL)
+        # comdlg32 (dialogos nativos de arquivo) so existe no Windows --
+        # descoberto validando o build no Linux/WSL2 pela primeira vez
+        # (2026-09-30), junto com a guarda de _WIN32 em
+        # src/msxdisk/gui/file_dialog.cpp (que ja' cobre o lado de
+        # compilacao; isto cobre o lado de link).
+        if (WIN32)
+            target_link_libraries(${target} PRIVATE comdlg32)
+        endif ()
     endif ()
     if (MINGW)
         target_link_options(${target} PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)

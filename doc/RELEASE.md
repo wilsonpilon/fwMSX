@@ -13,6 +13,115 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.4.1 -- "Salamander: Compilando em Linux" (2026-09-30)
+
+**Fase:** validação de portabilidade, sem features novas -- primeira vez
+que o projeto foi de fato compilado, linkado e executado (não só
+compilado no papel) numa máquina Linux real. Nome escolhido por
+"Salamander" ser um dos jogos mais emblemáticos de portar entre
+plataformas diferentes (arcade, MSX e outros sistemas japoneses),
+exatamente o que esta versão prova sobre o próprio projeto.
+
+### O que motivou esta versão
+
+A v1.4.0 já tinha `build.sh` (equivalente Linux do `build.ps1`), mas
+nunca tinha sido rodado numa máquina Linux de verdade -- a branch
+`elf64`/SysV do `.asm` dual-ABI do núcleo Z80 só tinha sido *montada*
+(`nasm -f elf64`), nunca linkada/executada, por falta de ambiente Linux
+no desenvolvimento original (só Windows). O autor rodou `build.sh` pela
+primeira vez numa máquina Linux real (WSL2) e encontramos, juntos, três
+problemas reais de portabilidade -- nenhum deles no código novo do
+núcleo Z80/mapa de memória (que já nasceu multiplataforma), todos em
+código **mais antigo**, nunca antes testado fora do Windows.
+
+### Bugs corrigidos
+
+1. **`src/asm/init_asm.asm`** (módulo Assembly da própria Fase 0 do
+   projeto, de 2026-09-28) -- Win64-only. Montava sem erro para `elf64`
+   (o NASM não valida convenção de chamada, só gera bytes), mas tinha
+   dois problemas reais rodando de verdade: os argumentos chegariam nos
+   registradores errados (SysV entrega major/minor/patch em
+   `EDI/ESI/EDX`, não `ECX/EDX/R8D` da Win64), e o **link falhava**:
+   ```
+   relocation R_X86_64_PC32 against symbol `printf@@GLIBC_2.2.5' can
+   not be used when making a PIE object; recompile with -fPIE
+   ```
+   porque uma chamada direta a `printf` é incompatível com executável
+   PIE (posição-independente), o padrão em toda distro Linux moderna.
+   Corrigido com a mesma técnica `%ifidn __OUTPUT_FORMAT__` já usada em
+   `src/z80/asm/block_ops.asm`, mais `call printf wrt ..plt` (chamada
+   relativa à PLT, que funciona com ou sem PIE).
+2. **`src/msxdisk/asm/name_match.asm`** (msxdisk) -- mesmo problema de
+   registrador errado, mas **mais perigoso** porque não chama nenhuma
+   função externa: o build **não falhava**, só o resultado da
+   comparação de nome de arquivo (`list`/`extract` com coringa, ex.
+   `*.COM`) ficaria silenciosamente errado em tempo de execução no
+   Linux. Corrigido com a mesma técnica de mapeamento de registrador de
+   entrada por ABI.
+3. **`src/msxdisk/gui/file_dialog.cpp`** incluía `<windows.h>` sem
+   nenhuma guarda de plataforma -- quebrava a compilação inteira
+   (`msxdisk` e `fwMSX`, que compilam os mesmos fontes) fora do
+   Windows. Guardado atrás de `#ifdef _WIN32`; fora do Windows, os
+   diálogos nativos de Novo/Abrir/Salvar Como devolvem "cancelado" por
+   enquanto (a GUI continua funcionando normalmente, só sem seletor de
+   arquivo nativo fora do Windows ainda). `comdlg32` (a biblioteca de
+   diálogo do Windows, linkada sem condição no `CMakeLists.txt`) também
+   corrigida para só entrar quando `WIN32` é verdadeiro.
+4. `build.sh` compartilhava `build/` com `build.ps1` -- num checkout
+   acessado tanto nativamente pelo Windows quanto via WSL (`/mnt/c/...`
+   para o mesmo diretório), o CMake recusava reconfigurar
+   (`CMakeCache.txt` "de outro diretório"). `build.sh` agora usa
+   `build-linux/`, diretório próprio, resolvendo o conflito de raiz.
+
+### Resultado
+
+```
+$ ./build.sh
+[...]
+==> Rodando testes (ctest)...
+Test project /mnt/c/dos/fwMSX/build-linux
+    Start 1: z80_smoke
+1/3 Test #1: z80_smoke ........................   Passed
+    Start 2: z80_debug_session
+2/3 Test #2: z80_debug_session ................   Passed
+    Start 3: memmap_slots
+3/3 Test #3: memmap_slots .....................   Passed
+100% tests passed, 0 tests failed out of 3
+==> Empacotando fwMSX-1.4.1-linux.tar.gz...
+==> Pronto:
+    /mnt/c/dos/fwMSX/dist/fwMSX
+    /mnt/c/dos/fwMSX/dist/msxdisk
+    /mnt/c/dos/fwMSX/dist/fwMSX-1.4.1-linux.tar.gz
+```
+
+As mesmas **328 verificações automatizadas** do núcleo Z80 e do mapa de
+memória, incluindo o teste diferencial de `LDIR`/`LDDR` que exercita a
+aceleração em Assembly de verdade, passaram no Linux.
+
+### Build usado para validar esta release
+
+- **Windows**: `gcc`/`g++`/`gfortran` 16.2.0 (MSYS2 UCRT64), `nasm`
+  3.02, `cmake` 4.4.3 + `ninja` 1.13.2 -- `dist/fwMSX.exe` e
+  `dist/msxdisk.exe` estáticos.
+- **Linux (novo nesta versão)**: WSL2, toolchain de sistema
+  (gcc/g++/gfortran/nasm/cmake/ninja via `apt`) -- `dist/fwMSX` e
+  `dist/msxdisk`, dinamicamente ligados ao runtime padrão da distro
+  (sem o link estático usado no Windows). Pacote:
+  `dist/fwMSX-1.4.1-linux.tar.gz`.
+
+### Limitações conhecidas
+- Diálogos nativos de arquivo (Novo/Abrir/Salvar Como na GUI do
+  msxdisk) só funcionam no Windows por enquanto -- um seletor nativo
+  para Linux (ex. GTK) fica para uma tarefa à parte, se fizer sentido.
+- Mesmas limitações de escopo já registradas na v1.4.0 (SCC/SRAM/
+  `MAP_GMASTER2`/`MAP_FMPAC`/`MAP_GUESS` no mapa de memória,
+  `CPIR`/`CPDR` sem aceleração em Assembly) -- ver `SPEC.md`, seção 5.0.
+- Ainda não existe VDP, PSG nem uma máquina MSX completa -- trabalho no
+  core de emulação continua pausado deliberadamente (ver `SPEC.md`,
+  seção 5.0).
+
+---
+
 ## v1.4.0 -- "Illusion City: Mapa de Memória" (2026-09-30)
 
 **Fase:** mapa de memória MSX (slots/subslots/MegaROM), sobre o núcleo

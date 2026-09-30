@@ -2,8 +2,21 @@
 // msxdisk (fwMSX): dialogos nativos de arquivo do Windows -- ver
 // file_dialog.h.
 //
+// So' existe implementacao nativa para Windows (GetOpenFileName/
+// GetSaveFileName). Descoberto ao validar o build no Linux (WSL2) pela
+// primeira vez (2026-09-30): este arquivo incluia <windows.h> sem
+// nenhuma guarda de plataforma, quebrando a compilacao inteira do
+// msxdisk (e por tabela do fwMSX, que compila os mesmos fontes) fora do
+// Windows. Guardado atras de _WIN32; em outras plataformas, as duas
+// funcoes devolvem nullopt (sem dialogo nativo ainda) -- os itens de
+// menu Novo/Abrir/Salvar Como continuam existindo, so' nao abrem um
+// seletor de arquivo de verdade fora do Windows por enquanto. Um
+// seletor nativo multiplataforma (ex.: GTK no Linux) fica para uma
+// tarefa a parte, se/quando fizer sentido.
 
 #include "file_dialog.h"
+
+#ifdef _WIN32
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
@@ -103,3 +116,15 @@ std::optional<std::string> ShowSaveDskDialog(GLFWwindow *window, const std::stri
 }
 
 } // namespace msxdisk::gui
+
+#else // !_WIN32
+
+namespace msxdisk::gui {
+
+std::optional<std::string> ShowOpenDskDialog(GLFWwindow *) { return std::nullopt; }
+
+std::optional<std::string> ShowSaveDskDialog(GLFWwindow *, const std::string &) { return std::nullopt; }
+
+} // namespace msxdisk::gui
+
+#endif // _WIN32
