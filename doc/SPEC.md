@@ -32,13 +32,16 @@ Todos os diretorios de primeiro nivel em minusculas:
 
 | Diretorio   | Conteudo |
 |-------------|----------|
-| `src/`      | Codigo-fonte do projeto, organizado por linguagem: `src/cpp/`, `src/c/`, `src/asm/`, `src/fortran/`, e `src/common/` para cabecalhos compartilhados entre linguagens. |
-| `doc/`      | Documentacao: `SPEC.md` (este arquivo), `MANUAL.md`, `CHANGELOG.md`, `RELEASE.md`. |
-| `dist/`     | Pacote pronto para execucao: `fwMSX.exe` (gerado pelo build) e `fwMSX-X.Y.Z.zip` (tudo o que e necessario para rodar em outra maquina). |
-| `resource/` | Codigos-fonte de terceiros (outros emuladores/ferramentas de MSX, incluindo o fMSX original) usados como referencia de estudo, para futura traducao/incorporacao ao projeto. Vazio por enquanto. |
+| `src/`      | Codigo-fonte do projeto: `src/cpp/`, `src/c/`, `src/asm/`, `src/fortran/` e `src/common/` (esqueleto multi-linguagem da Fase 0); `src/msxdisk/` (utilitario de disco, ver `doc/msxdisk-spec.md`); `src/z80/` (nucleo da CPU Z80 -- `core/cpp/asm/fortran/common/debug`, ver `doc/z80-core-spec.md`). |
+| `tools/`    | Pontos de entrada de executaveis standalone (hoje: `tools/msxdisk/main.cpp`). |
+| `tests/`    | Testes automatizados (CTest) fora do escopo de `src/` -- hoje `tests/z80/` (`z80test`, `z80dbgtest`). |
+| `doc/`      | Documentacao: `SPEC.md` (este arquivo), `msxdisk-spec.md`, `z80-core-spec.md`, `MANUAL.md`, `CHANGELOG.md`, `RELEASE.md`. |
+| `dist/`     | Pacote pronto para execucao: `fwMSX.exe`, `msxdisk.exe` (gerados pelo build) e `fwMSX-X.Y.Z.zip` (tudo o que e necessario para rodar em outra maquina). |
+| `resource/` | Codigos-fonte de terceiros (fMSX original, outros emuladores/ferramentas de MSX) usados como referencia de estudo/adaptacao -- ver `resource/README.md` (aviso: nao faz parte do projeto compilado, so estudo/referencia). |
 
-Arquivos na raiz: `README.md`, `LICENSE`, `.gitignore`, `CMakeLists.txt`
-(build raiz) e `build.ps1` (script de build para PowerShell).
+Arquivos na raiz: `README.md`, `LICENSE`, `LICENSE-THIRD-PARTY.md`,
+`.gitignore`, `CMakeLists.txt` (build raiz) e `build.ps1` (script de
+build para PowerShell).
 
 ## 3. Fase 0 -- Esqueleto multi-linguagem (CONCLUIDA em v1.1.1, refinada em v1.1.2)
 

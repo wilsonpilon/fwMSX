@@ -65,6 +65,7 @@ Copy-Item $exe $stageDir
 Copy-Item $msxdiskExe $stageDir
 Copy-Item (Join-Path $root "README.md") $stageDir
 Copy-Item (Join-Path $root "LICENSE") $stageDir
+Copy-Item (Join-Path $root "LICENSE-THIRD-PARTY.md") $stageDir
 Copy-Item (Join-Path $root "doc\MANUAL.md") $stageDir
 Copy-Item (Join-Path $root "doc\RELEASE.md") $stageDir
 

@@ -13,6 +13,105 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.3.0 -- "SD Snatcher: Núcleo do Z80" (2026-09-30)
+
+**Fase:** núcleo de emulação, primeiro pedaço real (CPU Z80) -- ver
+[z80-core-spec.md](z80-core-spec.md) para a especificação completa e o
+histórico de todas as fases (1 a 4). `fwMSX.exe` em si continua sem
+VDP/PSG/mapa de memória de uma máquina MSX real; esta release entrega a
+CPU isolada, exercitada sobre uma RAM plana de teste via o depurador
+embutido.
+
+### Destaques
+- **Motor de despacho do Z80 em C** (`src/z80/core/`), adaptado de
+  `resource/fMSX/Z80/` (registradores, tabelas de ciclo/flag, opcodes com
+  e sem prefixo `CB`/`ED`/`DD`/`FD`/`DDCB`/`FDCB`), por trás de um
+  `Z80Bus` próprio (callbacks + contexto, permitindo múltiplas instâncias
+  de CPU no mesmo processo -- o fMSX original usa funções globais).
+- **Wrapper de orquestração em C++** (`Z80Cpu`/`IBus`): `reset()`,
+  `run(ciclos)`, `interrupt()`, acesso a registradores -- sem expor a
+  união de par de registrador na API pública.
+- **Tabelas de flag geradas em Fortran** (`ZSTable`/`PZSTable`, usando o
+  intrínseco `POPCNT` para paridade), calculadas uma única vez no reset
+  da CPU, nunca no caminho quente do despachante.
+- **Aceleração de `LDIR`/`LDDR` em Assembly**: primeiro `.asm` do projeto
+  com Win64 **e** SysV AMD64 (Linux) no mesmo arquivo-fonte (`%ifidn
+  __OUTPUT_FORMAT__`), usada só quando o bloco inteiro cai em RAM plana
+  do host -- o loop byte-a-byte original do fMSX continua como caminho
+  de reserva sempre que isso não vale (correção nunca depende do caminho
+  rápido, só o desempenho).
+- **Depurador embutido em `fwMSX.exe`** -- `fwmsx --z80dbg`: REPL
+  (replxx) com `reset`/`regs`/`step`/`run`/`break`/`clear`/`breaks`/
+  `mem`/`peek`/`poke`/`load`/`fill`/`disasm`, rodando sobre uma RAM plana
+  de 64KB de teste.
+- **Desmontador Z80**, adaptado do desmontador já existente em
+  `resource/fMSX/Z80/Debug.c` (tabelas de mnemônicos + algoritmo de
+  substituição de gabarito) em vez de reescrito do zero -- com três
+  correções cosméticas documentadas em relação ao original (nenhuma
+  afeta execução/timing da CPU, só o texto exibido pelo desmontador).
+- 203 verificações automatizadas novas (`ctest -R z80`): 168 no motor
+  (`z80_smoke`) e 35 no depurador/desmontador (`z80_debug_session`),
+  incluindo uma varredura de completude sem crash sobre 2044 combinações
+  de opcode do desmontador e um fuzz diferencial de 150+ casos
+  comparando o caminho rápido de `LDIR`/`LDDR` contra o loop lento.
+
+### Saida de referencia do esqueleto (`fwMSX.exe` sem argumentos, inalterada)
+
+```
+Copyright (c) 1972-2026 Cybernostra, Inc.
+fwMSX [v 1.3.0]
+----------------------------------------
+Loading module... CPP [v 1.3.0]
+Loading module...C [v 1.3.0]
+Loading module...Assembly [v 1.3.0]
+Loading module Fortran [v 1.3.0]
+----------------------------------------
+Assinaturas dos modulos:
+  C++       0x0001
+  C         0x0002
+  Assembly  0x0003
+  Fortran   0x0004
+```
+
+### Exemplo rápido do depurador (`fwmsx --z80dbg`)
+
+```
+z80dbg> poke 0x0000 0x21
+z80dbg> poke 0x0001 0x34
+z80dbg> poke 0x0002 0x12
+z80dbg> poke 0x0003 0x76
+z80dbg> disasm 0x0000 2
+0000: 21 34 12     LD HL,1234h
+0003: 76           HALT
+```
+
+### Build usado para validar esta release
+
+- `gcc`/`g++`/`gfortran` 16.2.0 (MSYS2 UCRT64)
+- `nasm` 3.02
+- `cmake` 4.4.3 + `ninja` 1.13.2
+- `dist/fwMSX.exe` e `dist/msxdisk.exe`: estáticos, dependências externas
+  apenas as DLLs base do Windows/UCRT.
+- A branch `elf64` do `.asm` dual-ABI foi verificada só até a montagem
+  (`nasm -f elf64`, sem link/execução -- não há máquina Linux disponível
+  nesta sessão de desenvolvimento); a branch `win64` foi validada
+  completa (build + link + execução + testes).
+
+### Limitações conhecidas
+- Ainda não existe VDP, PSG nem mapa de memória de uma máquina MSX real
+  -- o núcleo roda isolado sobre RAM de teste via `--z80dbg`.
+- `CPIR`/`CPDR` não têm aceleração em Assembly (só `LDIR`/`LDDR`) --
+  decisão deliberada: as flags dessas instruções dependem do byte
+  comparado, não só do contador chegar a zero, tornando o corte de lote
+  mais arriscado de acertar sob o mesmo padrão de verificação usado para
+  `LDIR`/`LDDR`. Ver `z80-core-spec.md`, Fase 3.
+- O caminho rápido em Assembly (`elf64`/Linux) não foi testado em
+  execução real, só montagem -- ver acima.
+- Mesmas limitações do `msxdisk` já registradas nas releases anteriores
+  (`create --dos2` não validado num emulador real).
+
+---
+
 ## v1.2.1 -- "Metal Gear: Ajustes de Campo" (2026-09-29)
 
 **Fase:** msxdisk (polimento pós-lançamento). Correções encontradas

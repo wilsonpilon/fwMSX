@@ -634,9 +634,11 @@ ctest --test-dir build -R z80 --output-on-failure
 
 Resultado em 2026-09-30: build limpo, `ctest` verde -- `z80_smoke` (168
 verificacoes: 8 da Fase 1 + 2 da Fase 2 + 158 da Fase 3) e
-`z80_debug_session` (32 verificacoes: 11 da sessao + 21 do desmontador,
-Fase 4), mais a verificacao manual de `fwMSX.exe --z80dbg` via stdin
-descrita acima (incluindo o `disasm` novo).
+`z80_debug_session` (35 verificacoes: 11 da sessao + 24 do desmontador
+(casos exatos + varreduras de completude), Fase 4), mais a verificacao
+manual de `fwMSX.exe --z80dbg` via stdin descrita acima (incluindo o
+`disasm` novo). Total re-contado e confirmado em 2026-09-30 ao preparar
+a release v1.3.0 (`./dist/z80dbgtest.exe | grep -c '^\[PASS\]'`).
 
 *(Cada fase sera detalhada em sub-fases, como aconteceu em
 `doc/msxdisk-spec.md`, no momento em que a implementacao comecar.)*

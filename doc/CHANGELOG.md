@@ -39,8 +39,8 @@ de fases.
   desmontador já existente em `resource/fMSX/Z80/Debug.c`, com três
   correções cosméticas documentadas (nenhuma afeta execução/timing da
   CPU) em relação ao original.
-- 200 verificações automatizadas novas (`ctest -R z80`): 168 no motor
-  (`z80_smoke`) e 32 no depurador/desmontador (`z80_debug_session`),
+- 203 verificações automatizadas novas (`ctest -R z80`): 168 no motor
+  (`z80_smoke`) e 35 no depurador/desmontador (`z80_debug_session`),
   incluindo uma varredura de completude sobre 2044 combinações de opcode
   do desmontador.
 
