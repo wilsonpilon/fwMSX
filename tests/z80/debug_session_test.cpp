@@ -11,6 +11,7 @@
 
 #include "../../src/z80/debug/flat_memory_bus.h"
 #include "../../src/z80/debug/z80_debug_session.h"
+#include "../../src/z80/debug/z80_debug_shell_startup.h"
 #include "../../src/z80/debug/z80_disasm.h"
 
 namespace {
@@ -249,6 +250,74 @@ int main() {
         const std::string listing = Cmd(session, {"disasm", "0x0000", "2"});
         check(Contains(listing, "LD A,05h"), "disasm (sessao): mostra LD A,05h na primeira linha");
         check(Contains(listing, "HALT"), "disasm (sessao): mostra HALT na segunda linha (endereco avancado certo)");
+    }
+
+    // --- Fase 4 do mapa de memoria: BuildZ80DebugShellStartup() -------------
+    // (logica de inicializacao de "fwmsx --z80dbg [--slots [<rom>]]",
+    // separada do loop replxx -- ver z80_debug_shell.h/.cpp e
+    // doc/memory-map-spec.md, secao 6, Fase 4.)
+    using z80::debug::BuildZ80DebugShellStartup;
+
+    // --- "--slots" sem caminho: RAM vazia em 0:0 (regressao da Fase 1) -----
+    {
+        const auto startup = BuildZ80DebugShellStartup({"--slots"});
+        check(startup.use_slots, "startup --slots (sem rom): use_slots == true");
+        check(!startup.boot_rom_requested, "startup --slots (sem rom): boot_rom_requested == false");
+        check(!startup.boot_rom_loaded, "startup --slots (sem rom): boot_rom_loaded == false");
+        check(startup.memory_system != nullptr, "startup --slots (sem rom): MemorySystem existe");
+        const memmap::SlotDescriptor desc = startup.memory_system->Describe(0, 0);
+        check(desc.kind == MEMMAP_KIND_RAM, "startup --slots (sem rom): 0:0 e' RAM");
+        check(desc.size == 0x10000, "startup --slots (sem rom): 0:0 tem 64KB");
+    }
+
+    // --- "--slots <rom valida>": ROM carregada em 0:0, vista ativa ---------
+    {
+        const auto tmp_path = std::filesystem::temp_directory_path() / "fwmsx_z80dbg_test_bootrom.bin";
+        {
+            std::ofstream f(tmp_path, std::ios::binary);
+            std::vector<unsigned char> data(0x4000, 0x7A); // 16KB, byte 7Ah
+            f.write(reinterpret_cast<const char *>(data.data()), static_cast<std::streamsize>(data.size()));
+        }
+        const auto startup = BuildZ80DebugShellStartup({"--slots", tmp_path.string()});
+        check(startup.use_slots, "startup --slots <rom>: use_slots == true");
+        check(startup.boot_rom_requested, "startup --slots <rom>: boot_rom_requested == true");
+        check(startup.boot_rom_loaded, "startup --slots <rom>: boot_rom_loaded == true");
+        check(startup.boot_rom_error.empty(), "startup --slots <rom>: sem mensagem de erro");
+        const memmap::SlotDescriptor desc = startup.memory_system->Describe(0, 0);
+        check(desc.kind == MEMMAP_KIND_ROM, "startup --slots <rom>: 0:0 e' ROM");
+        check(desc.size == 0x4000, "startup --slots <rom>: tamanho bate (16KB)");
+        check(startup.memory_system->PeekSlot(0, 0, 0x0000) == 0x7A,
+              "startup --slots <rom>: PeekSlot(0,0,0) le o conteudo carregado");
+        // A ROM tambem precisa ser a vista ativa da CPU -- via IBus::read,
+        // nao so PeekSlot (que enxerga por fora, independente do que esta
+        // visivel -- aqui queremos confirmar que ALEM disso esta' visivel).
+        check(startup.Bus().read(0x0000) == 0x7A,
+              "startup --slots <rom>: IBus::read(0) tambem le a ROM (e' a vista ativa)");
+        std::filesystem::remove(tmp_path);
+    }
+
+    // --- "--slots <rom inexistente>": nao trava, cai pra RAM vazia --------
+    {
+        const auto startup = BuildZ80DebugShellStartup({"--slots", "C:/caminho/que/nao/existe/boot.rom"});
+        check(startup.use_slots, "startup --slots <rom inexistente>: use_slots == true (sessao ainda inicia)");
+        check(startup.boot_rom_requested, "startup --slots <rom inexistente>: boot_rom_requested == true");
+        check(!startup.boot_rom_loaded, "startup --slots <rom inexistente>: boot_rom_loaded == false");
+        check(!startup.boot_rom_error.empty(), "startup --slots <rom inexistente>: boot_rom_error preenchido");
+        const memmap::SlotDescriptor desc = startup.memory_system->Describe(0, 0);
+        check(desc.kind == MEMMAP_KIND_RAM, "startup --slots <rom inexistente>: cai para RAM em 0:0 (fallback limpo)");
+        check(desc.size == 0x10000, "startup --slots <rom inexistente>: RAM de fallback tem 64KB");
+    }
+
+    // --- "--z80dbg" simples (sem --slots): comportamento da Fase 4 original,
+    // inalterado -- FlatMemoryBus, sem MemorySystem. ------------------------
+    {
+        const auto startup = BuildZ80DebugShellStartup({});
+        check(!startup.use_slots, "startup sem argumentos: use_slots == false");
+        check(startup.memory_system == nullptr, "startup sem argumentos: sem MemorySystem (FlatMemoryBus puro)");
+        Z80DebugSession session(startup.Bus());
+        Cmd(session, {"poke", "0x1234", "0x99"});
+        check(Contains(Cmd(session, {"peek", "0x1234"}), "99"),
+              "startup sem argumentos: sessao funciona normalmente sobre FlatMemoryBus (regressao)");
     }
 
     if (g_failures == 0) {

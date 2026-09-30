@@ -153,23 +153,73 @@ acompanhamento manual do autor a cada build):
 - Iniciar o core de emulacao propriamente dito (CPU Z80, VDP, PSG, etc.),
   decidindo em qual(is) modulo(s)/linguagem(ns) cada parte sera
   implementada, sempre respeitando a regra de ter as quatro linguagens
-  representadas em uso real. **CPU Z80: Fases 1-4 concluidas em
-  2026-09-30** -- ver [doc/z80-core-spec.md](z80-core-spec.md) para o
-  detalhamento completo. Resumo: motor de despacho em **C** (adaptado do
-  fMSX) + wrapper de orquestracao em **C++**, tabelas de flag geradas em
-  **Fortran**, aceleracao de `LDIR`/`LDDR` em **Assembly** dual-ABI
-  (Win64/SysV, primeiro `.asm` do projeto portavel pra Linux), e um
-  depurador embutido em `fwMSX.exe` (`fwmsx --z80dbg`: registradores,
-  memoria, breakpoints e desmontador) rodando sobre uma RAM plana de
-  teste -- ainda **sem VDP/PSG/mapa de memoria real** (proxima fase, ver
-  5.1 abaixo). Faltam VDP e PSG para ter uma maquina MSX de verdade.
-  **Mapa de memoria (slots/subslots): Fases 1-2 concluidas em
-  2026-09-30** -- ver [doc/memory-map-spec.md](memory-map-spec.md) para
-  o detalhamento completo (motor de slots em C, `MemorySystem`/
-  `SlotMemoryBus` em C++, comandos `slots`/`pages`/`slotmem`/`slotpeek`/
-  `slotpoke`/`loadrom` em `fwmsx --z80dbg --slots`; ROM plana real
-  (`LoadRom`, CRC32 em Fortran) desde a Fase 2, validada contra a BIOS
-  MSX1 real do fMSX -- ainda sem bank-switch/MegaROM, isso e' Fase 3).
+  representadas em uso real.
+
+  **CPU Z80: Fases 1-4 concluidas em 2026-09-30** -- ver
+  [doc/z80-core-spec.md](z80-core-spec.md) para o detalhamento completo.
+  Resumo: motor de despacho em **C** (adaptado do fMSX) + wrapper de
+  orquestracao em **C++**, tabelas de flag geradas em **Fortran**,
+  aceleracao de `LDIR`/`LDDR` em **Assembly** dual-ABI (Win64/SysV,
+  primeiro `.asm` do projeto portavel pra Linux), e um depurador
+  embutido em `fwMSX.exe` (`fwmsx --z80dbg`: registradores, memoria,
+  breakpoints e desmontador).
+
+  **Mapa de memoria MSX (slots/subslots): Fases 1-4 concluidas em
+  2026-09-30, modulo pausado aqui por ora** -- ver
+  [doc/memory-map-spec.md](memory-map-spec.md) para o detalhamento
+  completo. Resumo: motor de slots/subslots em **C** fiel ao fMSX
+  (`MemMap`/`PSL`/`SSL`/`SSLReg`, incluindo o quirk real de hardware do
+  registrador de slot secundario), `MemorySystem`/`SlotMemoryBus` em
+  **C++** com API de inspecao que enxerga qualquer slot independente do
+  que a CPU ve agora (requisito vital do autor, atendido desde a Fase 1
+  deste modulo), carregamento de ROM real com checksum **CRC32** em
+  **Fortran**, seis mappers MegaROM de troca de banco (Gen8/Gen16/
+  Konami5/Konami4/ASCII8/ASCII16, so' a parte de ROM) adaptados de
+  `MapROM()` do fMSX, e `fwmsx --z80dbg --slots [rom]` como comando
+  completo de depuracao com mapa de memoria real -- **validado contra a
+  BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
+  100 mil ciclos de execucao real de codigo de BIOS).
+
+  **Ainda faltam VDP e PSG para existir uma maquina MSX completa** --
+  ver a nota de "proximos passos" logo abaixo. SCC, SRAM persistente,
+  `MAP_GMASTER2`/`MAP_FMPAC` e a heuristica `MAP_GUESS` do mapa de
+  memoria ficaram deliberadamente de fora por dependerem de subsistemas
+  que ainda nao existem (som, save-state) -- ver
+  `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
+  item adiado.
+
+### 5.0 Proximos passos (para retomar sem se perder -- projeto pausado aqui em 2026-09-30, v1.4.0)
+
+O trabalho no core de emulacao foi pausado deliberadamente neste ponto
+(pedido do autor, "vamos parar de mexer nele por hora"). Ordem sugerida
+para quando o trabalho for retomado:
+
+1. **VDP** (TMS9918/V9938) -- o que da tela de verdade pela primeira vez;
+   maior payoff visivel, mas tambem o componente mais complexo depois da
+   CPU. Precisa de acesso a VRAM (separada da RAM principal) e aos
+   registradores de porta `98h`-`9Bh`.
+2. **PSG** (AY-3-8910) -- som; mais simples que o VDP. Uma vez que exista,
+   o SCC do mapa de memoria (adiado na Fase 3, ver
+   `doc/memory-map-spec.md`) passa a fazer sentido de verdade.
+3. Itens menores registrados e conscientemente adiados, sem bloquear
+   nada do acima:
+   - `CPIR`/`CPDR` em Assembly (nucleo Z80, Fase 3) -- so `LDIR`/`LDDR`
+     foram acelerados; as flags de `CPIR`/`CPDR` dependem do byte
+     comparado, tornando o corte de lote mais arriscado.
+   - Validacao em execucao real (nao so montagem) da branch `elf64`/
+     Linux do `.asm` dual-ABI -- precisa rodar `build.sh` numa maquina
+     Linux de verdade (o autor pretende fazer isso).
+   - `MAP_GMASTER2`/`MAP_FMPAC`/SRAM persistente/`MAP_GUESS` no mapa de
+     memoria (ver `doc/memory-map-spec.md`, secao 6) -- dependem de
+     som/save-state, que ainda nao existem.
+   - Decidir, quando VDP/PSG existirem, se `fwMSX.exe` sem argumentos
+     passa a abrir em modo GUI/maquina completa por padrao (visao
+     registrada na secao 5.1 abaixo, ainda nao implementada).
+
+**Para retomar rapido**: leia esta secao, depois `doc/z80-core-spec.md`
+e `doc/memory-map-spec.md` (ambos documentos vivos, com todas as fases
+e decisoes registradas). O `--z80dbg --slots resource/fMSX/ROMs/MSX.ROM`
+e' o jeito mais rapido de ver o que ja funciona de verdade hoje.
   Requisito explicito do autor, tratado como vital desde a primeira
   fase deste modulo: o depurador precisa enxergar todos os
   slots/subslots, nao so o que esta visivel para a CPU no momento.

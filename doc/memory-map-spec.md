@@ -5,8 +5,10 @@
 > onde parou. Nao remova secoes de fases concluidas -- marque como feitas
 > e adicione as novas por baixo.
 
-Estado desta secao: **Fases 1-3 concluidas em 2026-09-30** (ver secao 6).
-Fase 4 ainda nao iniciada.
+Estado desta secao: **Fases 1-4 concluidas em 2026-09-30** (ver secao 6).
+Este modulo fica **pausado aqui por enquanto** -- proximos passos do
+projeto ficam registrados em `doc/SPEC.md`, nao aqui (nao ha mais fases
+deste modulo planejadas no momento).
 
 ## 1. Objetivo
 
@@ -230,11 +232,15 @@ Novos comandos em `Z80DebugSession` (não substituem os existentes --
 pelos testes já escritos (`z80test`, `debug_session_test`) -- trocar a
 base desses testes para o novo `SlotMemoryBus` só porque ele existe
 adicionaria uma dependência de slot/ROM a testes que hoje só precisam de
-uma RAM plana simples, sem ganho real de cobertura. `--z80dbg` passa a
-aceitar **as duas** (`--flat`, comportamento atual, e o novo padrão
-slot-aware quando um mapa de memória for carregado), decisão a refinar na
-Fase 4 deste módulo (ver seção 6) quando houver um caso de uso real (ex.:
-carregar uma BIOS) para decidir o comportammento default sem argumentos.
+uma RAM plana simples, sem ganho real de cobertura.
+
+**Decisão final (Fase 4 deste módulo, ver seção 6)**: `--z80dbg` sem
+argumento nenhum continua usando `FlatMemoryBus` -- não existe (nem
+existiu) uma flag `--flat` separada, essa ideia inicial foi descartada
+em favor de algo mais simples: `--slots` liga o mapa de memória real
+(opcionalmente com `--slots <rom>` pra já carregar uma ROM de boot em
+0:0), e a ausência de `--slots` é, ela mesma, o "modo flat". Nenhum
+caso de uso real apareceu para justificar trocar esse default.
 
 ## 5. Licenciamento
 
@@ -519,10 +525,64 @@ elas embutidas, o que nunca deve acontecer.
   4000` confirma o novo conteúdo), mensagem de `poke` revisada exibida
   corretamente. Regressão confirmada em `fwMSX.exe` (sem argumentos),
   `fwMSX.exe --z80dbg` (sem `--slots`) e `fwMSX.exe --msxdisk info`.
-- [ ] **Fase 4 -- Decisão de comportamento default do `--z80dbg`**: uma
-      vez que carregar uma BIOS seja possível, decidir se `--z80dbg` sem
-      argumentos passa a usar `SlotMemoryBus` com a BIOS pré-carregada em
-      vez de `FlatMemoryBus` vazio -- ver seção 4.
+- [x] **Fase 4 -- Decisão de comportamento default do `--z80dbg`**
+      (concluída em 2026-09-30, **última fase deste módulo por enquanto**).
 
-*(Cada fase será detalhada em sub-fases, como aconteceu em
-`doc/z80-core-spec.md`, no momento em que a implementação começar.)*
+  **Decisão**: o `--z80dbg` **sem argumentos continua exatamente como
+  era** -- `FlatMemoryBus`, RAM plana de 64KB, nada de slots/BIOS. O
+  caso de uso mais simples (poke de alguns bytes, `step` num programa
+  de teste escrito na mão) não ganha uma dependência de achar/carregar
+  uma ROM só pra iniciar; quem quer o mapa de memória real continua
+  pedindo `--slots` explicitamente. Isso não muda nada da seção 4 --
+  a decisão ali registrada (não substituir `FlatMemoryBus` por padrão)
+  se manteve.
+
+  **O que a Fase 4 de fato adicionou**: uma conveniência para não
+  precisar de um `loadrom` manual toda vez que `--slots` é usado com
+  uma ROM de boot. `fwmsx --z80dbg --slots <rom>` carrega `<rom>` em
+  0:0 (ROM plana, `mapper=None`, igual uma BIOS carregada na mão)
+  **antes** de entrar no REPL, e já deixa essa combinação como vista
+  ativa da CPU. `fwmsx --z80dbg --slots` sem caminho nenhum continua
+  igual (RAM vazia em 0:0). Se o caminho dado falhar (arquivo
+  inexistente, tamanho inválido), a sessão **ainda inicia** -- mensagem
+  de aviso na tela, RAM vazia em 0:0 como se nenhum caminho tivesse
+  sido passado (mesmo espírito "avisa, não trava" de todo comando de
+  arquivo já existente no `--z80dbg`).
+
+  **Regra de sintaxe** (deliberadamente simples, não um parser de
+  argumentos genérico): só o token **imediatamente seguinte** a
+  `--slots` (se houver) é tratado como caminho de ROM -- `--z80dbg
+  --slots caminho.rom`. Nenhuma outra ordem de argumento é suportada.
+
+  **Arquivos**: `src/z80/debug/z80_debug_shell_startup.{h,cpp}` (novo)
+  -- `Z80DebugShellStartup`/`BuildZ80DebugShellStartup()`, a lógica de
+  montagem em si, **sem** depender de replxx (permite testar sem TTY).
+  `src/z80/debug/z80_debug_shell.{h,cpp}` simplificado para só o loop
+  replxx, chamando a função acima. `tests/z80/debug_session_test.cpp`
+  ganhou 23 verificações novas (58 no total, de 35): `--slots` sem
+  caminho (regressão), `--slots <rom válida>` (ROM carregada, virou
+  vista ativa -- checado via `IBus::read`, não só `PeekSlot`), `--slots
+  <rom inexistente>` (não trava, cai pra RAM vazia, mensagem de erro
+  preenchida), e `--z80dbg` puro (sem `--slots`, comportamento
+  inalterado). `CMakeLists.txt`: `z80_debug_shell_startup.cpp` entrou em
+  `Z80_DEBUG_SESSION_SOURCES` (compilado em `z80dbgtest`/`memmaptest`
+  também, não só `fwMSX`) -- é exatamente a separação que evita
+  arrastar replxx pros alvos de teste (achada e corrigida durante a
+  implementação: a primeira tentativa colocou a função nova dentro do
+  próprio `z80_debug_shell.cpp`, que já inclui `<replxx.hxx>`, e o link
+  de `z80dbgtest` quebrou por falta do símbolo -- `z80dbgtest` nunca
+  linkou replxx, de propósito).
+
+  **Build/teste**: `cmake --build build --target z80dbgtest fwMSX
+  memmaptest z80test` seguido de `ctest --test-dir build -R
+  "z80|memmap"` -- verde (168 + 58 + 102 = 328 verificações;
+  `z80dbgtest` foi de 35 para 58). Verificação manual: `fwMSX.exe
+  --z80dbg --slots resource/fMSX/ROMs/MSX.ROM` carrega a BIOS
+  automaticamente e roda igual ao teste manual da Fase 2 (PC sai de
+  `0000` pra `0365` em 5003 ciclos); `--slots naoexiste.rom` mostra o
+  aviso e inicia normalmente com RAM vazia. Regressão confirmada em
+  `fwMSX.exe` (sem argumentos), `fwMSX.exe --z80dbg` (sem `--slots`) e
+  `fwMSX.exe --msxdisk info`.
+
+*(Este módulo fica pausado aqui por enquanto -- ver `doc/SPEC.md` para
+os próximos passos do projeto como um todo.)*

@@ -19,12 +19,12 @@ name mangling, calling conventions, linkedicao).
 
 ## Estado atual
 
-Ainda **nao existe emulacao de MSX completa** (sem VDP/PSG/mapa de
-memoria real ainda). O `main()` de `fwMSX.exe` continua "inicializando"
-um modulo de cada linguagem (C++, C, Assembly e Fortran) via
-`init_cpp()`/`init_c()`/`init_asm()`/`init_fortran()` quando rodado sem
-argumentos, exatamente como no esqueleto original -- essa e a base sobre
-a qual o emulador de fato foi sendo construido nas fases seguintes.
+Ainda **nao existe emulacao de MSX completa** (sem VDP/PSG ainda). O
+`main()` de `fwMSX.exe` continua "inicializando" um modulo de cada
+linguagem (C++, C, Assembly e Fortran) via `init_cpp()`/`init_c()`/
+`init_asm()`/`init_fortran()` quando rodado sem argumentos, exatamente
+como no esqueleto original -- essa e a base sobre a qual o emulador de
+fato foi sendo construido nas fases seguintes.
 
 A v1.2.x entregou o primeiro utilitario "de verdade" construido nesse
 processo de aprendizado: o **msxdisk**, um manipulador completo de
@@ -34,14 +34,25 @@ interativo, TUI (Norton Commander/XTree) e GUI (Dear ImGui) -- tambem
 acessivel embutido via `fwmsx --msxdisk`. Ver
 [doc/msxdisk-spec.md](doc/msxdisk-spec.md) para a especificacao completa.
 
-O trabalho atual e o **nucleo da CPU Z80**: motor de despacho fiel ao
-fMSX (Fase 1, C + wrapper C++), tabelas de flag geradas em Fortran (Fase
-2), aceleracao de `LDIR`/`LDDR` em Assembly dual-ABI Win64/SysV -- o
-primeiro `.asm` do projeto portavel pra Linux (Fase 3), e um depurador
-embutido em `fwMSX.exe` -- `fwmsx --z80dbg`, com registradores, memoria,
-breakpoints e desmontador -- sobre uma RAM plana de teste (Fase 4). Ver
-[doc/z80-core-spec.md](doc/z80-core-spec.md) para a especificacao
-completa; faltam VDP e PSG para existir uma maquina MSX de verdade.
+A v1.3.0 trouxe o **nucleo da CPU Z80**: motor de despacho fiel ao fMSX
+(C + wrapper C++), tabelas de flag geradas em Fortran, aceleracao de
+`LDIR`/`LDDR` em Assembly dual-ABI Win64/SysV (primeiro `.asm` do
+projeto portavel pra Linux -- ver `build.sh`), e um depurador embutido
+em `fwMSX.exe` (`fwmsx --z80dbg`: registradores, memoria, breakpoints e
+desmontador). Ver [doc/z80-core-spec.md](doc/z80-core-spec.md).
+
+A v1.4.0 trouxe o **mapa de memoria MSX** (slots/subslots): motor fiel
+ao fMSX em C, `MemorySystem`/`SlotMemoryBus` em C++ com uma API de
+depuracao que enxerga qualquer slot independente do que a CPU ve agora,
+carregamento de ROM real com CRC32 em Fortran, e seis mappers MegaROM de
+troca de banco (Konami/ASCII/generic). `fwmsx --z80dbg --slots
+resource/fMSX/ROMs/MSX.ROM` roda a **BIOS MSX1 real** no nucleo Z80. Ver
+[doc/memory-map-spec.md](doc/memory-map-spec.md).
+
+**O trabalho no core de emulacao esta pausado por ora** (decisao
+deliberada, nao abandono) -- faltam VDP e PSG para existir uma maquina
+MSX completa. Ver [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos
+passos registrados, pra retomar sem se perder.
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico
 de fases (documento vivo, atualizado a cada mudanca relevante).
@@ -58,21 +69,26 @@ fwMSX/
 │   ├── common/     cabecalhos compartilhados (versao, etc.)
 │   ├── msxdisk/    utilitario de imagens de disco MSX (core/cli/shell/
 │   │               tui/gui/config -- ver doc/msxdisk-spec.md)
-│   └── z80/        nucleo da CPU Z80 (core/cpp/asm/fortran/debug --
-│                   ver doc/z80-core-spec.md)
+│   ├── z80/        nucleo da CPU Z80 (core/cpp/asm/fortran/debug --
+│   │               ver doc/z80-core-spec.md)
+│   └── memmap/     mapa de memoria MSX -- slots/subslots/MegaROM
+│                   (core/cpp/fortran -- ver doc/memory-map-spec.md)
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
-├── tests/z80/      testes do nucleo Z80 (CTest -- z80test/z80dbgtest)
+├── tests/z80/      testes do nucleo Z80 e do mapa de memoria (CTest --
+│                   z80test/z80dbgtest/memmaptest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk
 │   ├── z80-core-spec.md especificacao + fases do nucleo Z80
+│   ├── memory-map-spec.md especificacao + fases do mapa de memoria
 │   ├── MANUAL.md       como compilar e executar
 │   ├── CHANGELOG.md    resumo das alteracoes entre versoes
 │   └── RELEASE.md       detalhes de cada release
 ├── dist/           pacote pronto para execucao (.exe + .zip)
 ├── resource/       codigo-fonte de terceiros usado como referencia/estudo
 ├── CMakeLists.txt  build raiz (CMake + Ninja)
-└── build.ps1       script de build (PowerShell)
+├── build.ps1       script de build (PowerShell/Windows)
+└── build.sh        script de build (Bash/Linux)
 ```
 
 ## Compilar e executar
@@ -106,7 +122,10 @@ naquele ponto (ex.: `v1.1.2 -- "Nemesis: Renomeacao"`). Regras completas em
   dele (`resource/DiskUtilities/Boot.h`). O motor de despacho, tabelas e
   desmontador da CPU Z80 (`src/z80/core/`, `src/z80/debug/z80_disasm.*`)
   sao adaptados de `resource/fMSX/Z80/` (`Z80.c`, `Tables.h`, `Codes*.h`,
-  `Debug.c`) -- ver `doc/z80-core-spec.md` e `LICENSE-THIRD-PARTY.md`.
+  `Debug.c`) -- ver `doc/z80-core-spec.md` e `LICENSE-THIRD-PARTY.md`. O
+  motor de slots/subslots e os mappers MegaROM (`src/memmap/core/`) sao
+  adaptados de `resource/fMSX/fMSX/MSX.c`/`MSX.h` -- ver
+  `doc/memory-map-spec.md`.
 - **Arnold Metselaar** -- autor do utilitario original de manipulacao de
   discos MSX (`resource/DiskUtilities/DiskUtil.c` e correlatos), usado
   como referencia de estudo do formato FAT12/MSX-DOS para o `msxdisk`
@@ -133,10 +152,11 @@ fwMSX evolui a partir dele com o aval do proprio Fayzullin **para
 adaptar/estudar seu codigo**, mas esse aval nao e uma autorizacao para
 relicenciar o codigo dele sob BSD/GPL/MIT. Por isso, qualquer arquivo
 deste repositorio que incorporar codigo do fMSX diretamente (o setor de
-boot em `src/msxdisk/core/msxdos1_boot.cpp`, e o motor/tabelas/desmontador
-da CPU Z80 em `src/z80/core/` e `src/z80/debug/z80_disasm.*`; mais
-arquivos devem se juntar a essa lista quando VDP/PSG forem adaptados do
-fMSX) continua sob a licenca original dele, nao BSD. Ver
+boot em `src/msxdisk/core/msxdos1_boot.cpp`; o motor/tabelas/desmontador
+da CPU Z80 em `src/z80/core/` e `src/z80/debug/z80_disasm.*`; o motor de
+slots/subslots e mappers MegaROM em `src/memmap/core/`; mais arquivos
+devem se juntar a essa lista quando VDP/PSG forem adaptados do fMSX)
+continua sob a licenca original dele, nao BSD. Ver
 **[LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md)** para o
 detalhamento completo (fMSX, DiskUtilities, msxDiskUtil) e
 [resource/README.md](resource/README.md) para o aviso sobre o material

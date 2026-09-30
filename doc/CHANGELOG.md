@@ -7,6 +7,61 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.4.0] - 2026-09-30 - "Illusion City: Mapa de Memória"
+
+Mapa de memória MSX (slots/subslots/MegaROM) sobre o núcleo Z80 da
+v1.3.0 -- ver [doc/memory-map-spec.md](memory-map-spec.md) para o
+histórico completo de fases. **Trabalho no core de emulação pausado
+deliberadamente a partir daqui** -- ver [SPEC.md, seção 5.0](SPEC.md)
+para os próximos passos registrados.
+
+### Adicionado
+- **Motor de slots/subslots em C** (`src/memmap/core/`), adaptado de
+  `resource/fMSX/fMSX/MSX.c`/`MSX.h` (`MemMap[4][4][8]`, `PSL`/`SSL`/
+  `SSLReg`, incluindo o quirk real de hardware onde o registrador de
+  slot secundário é indexado pelo slot primário que ocupa a página
+  `C000h-FFFFh`, não um registrador global único).
+- **`MemorySystem`/`SlotMemoryBus` em C++** (design próprio), implementa
+  o `IBus` do núcleo Z80 e expõe uma API de inspeção
+  (`PeekSlot`/`PokeSlot`/`Describe`/`CurrentView`) que enxerga qualquer
+  uma das 16 combinações de slot **independente** do que está
+  atualmente visível para a CPU -- tratado como requisito vital desde a
+  primeira fase deste módulo, por pedido explícito do autor.
+- **Carregamento de ROM real** (`LoadRom`) com **CRC32 em Fortran**
+  (tabela de 256 entradas, verificado contra o vetor de teste padrão
+  `CRC32("123456789") == 0xCBF43926`) como conveniência do depurador.
+- **Seis mappers MegaROM de troca de banco** (`Gen8`/`Gen16`/`Konami5`/
+  `Konami4`/`ASCII8`/`ASCII16`, só a parte de ROM -- sem SCC/SRAM),
+  adaptados de `MapROM()` do fMSX com as condições exatas de
+  endereço/máscara de cada protocolo, incluindo o quirk de
+  compatibilidade do ASCII16 para escrita "lixo" em endereço alinhado.
+- **`fwmsx --z80dbg --slots [rom]`**: comandos `slots`/`pages`/
+  `slotmem`/`slotpeek`/`slotpoke`/`loadrom` (com mapper opcional), e
+  carregamento automático de uma ROM de boot no slot 0:0 na abertura.
+  `--z80dbg` sem `--slots` continua exatamente como antes (RAM plana),
+  decisão deliberada para não exigir localizar uma BIOS no caso de uso
+  mais simples.
+- **Validado contra a BIOS MSX1 real do fMSX**
+  (`resource/fMSX/ROMs/MSX.ROM`, já presente no repositório para
+  estudo): 192 endereços de PC distintos visitados em 100 mil ciclos de
+  execução real de código de BIOS.
+- **`build.sh`**: equivalente Linux do `build.ps1`, para compilar/testar
+  também fora do Windows -- em particular para validar em execução real
+  (não só montagem) a branch `elf64`/SysV AMD64 do `.asm` dual-ABI do
+  núcleo Z80.
+- 328 verificações automatizadas novas desde a v1.3.0 (`ctest -R
+  "z80|memmap"`): 168 no motor Z80 (inalterado), 58 no depurador
+  (+23 desde a v1.3.0), 102 no mapa de memória.
+
+### Adiado, com motivo registrado (ver `doc/memory-map-spec.md`, seção 6)
+- Chip de som SCC e SRAM persistente (`ASCII8`/`ASCII16`) -- dependem de
+  subsistemas (áudio, save-state) que ainda não existem.
+- `MAP_GMASTER2`/`MAP_FMPAC` inteiros -- só interessantes por causa de
+  SRAM/som, sem isso viram um `Konami4` trivial.
+- Heurística `MAP_GUESS` de auto-detecção de mapper -- precisaria de
+  bancos de assinatura SHA1/CRC externos (`CARTS.SHA`/`CARTS.CRC`);
+  `loadrom` exige o tipo de mapper explícito por enquanto.
+
 ## [1.3.0] - 2026-09-30 - "SD Snatcher: Núcleo do Z80"
 
 Início do core de emulação propriamente dito: a CPU Z80, fiel ao fMSX,

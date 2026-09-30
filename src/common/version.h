@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 3
+#define FWMSX_VERSION_MINOR 4
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "SD Snatcher"
-#define FWMSX_SUBTITLE  "Nucleo do Z80"
+#define FWMSX_CODENAME  "Illusion City"
+#define FWMSX_SUBTITLE  "Mapa de Memoria"

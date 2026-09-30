@@ -213,6 +213,47 @@ z80dbg> disasm 0x0000 2
 0003: 76           HALT
 ```
 
+### Mapa de memoria real (`--z80dbg --slots`)
+
+Documentacao completa em [memory-map-spec.md](memory-map-spec.md). Por
+cima da RAM plana acima, `--slots` liga o mapa de memoria MSX de
+verdade -- 4 slots primarios x 4 secundarios x 8 paginas de 8KB, fiel ao
+fMSX, com comandos que enxergam qualquer slot **independente** do que a
+CPU ve agora:
+
+```
+slots                             lista as 16 combinacoes (vazio/RAM/ROM)
+pages                              o que esta visivel para a CPU agora
+slotmem/slotpeek/slotpoke <p> <s> ...  inspeciona um slot especifico
+loadrom <p> <s> <arquivo> [mapper]     carrega ROM (plana ou MegaROM)
+```
+
+Mappers MegaROM suportados no `loadrom`: `gen8`, `gen16`, `konami5`,
+`konami4`, `ascii8`, `ascii16` (so a troca de banco de ROM -- sem SCC/
+SRAM, ver `memory-map-spec.md` secao 6 pro motivo). Sem o parametro,
+carrega como ROM plana (sem bank-switch), o mesmo usado para a BIOS.
+
+`--z80dbg --slots [rom]` aceita um caminho de ROM opcional logo depois
+de `--slots`, carregado automaticamente no slot 0:0 na abertura -- util
+pra nao ter que digitar `loadrom` toda vez. Exemplo rodando a **BIOS
+MSX1 real** (ja incluida em `resource/` para estudo -- ver
+`resource/README.md`):
+
+```powershell
+.\dist\fwMSX.exe --z80dbg --slots resource\fMSX\ROMs\MSX.ROM
+```
+
+```
+ROM de boot carregada em 0:0: resource/fMSX/ROMs/MSX.ROM
+z80dbg> reset
+z80dbg> run 5000
+parado: orcamento de ciclos esgotado (ciclos consumidos: 5003, PC=0365)
+```
+
+Isso e' codigo real de BIOS executando no nucleo Z80 do fwMSX -- ainda
+sem VDP/PSG, entao a BIOS eventualmente trava esperando hardware que
+nao existe, mas a CPU em si esta rodando software MSX de verdade.
+
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 
 A GUI (Dear ImGui + GLFW + OpenGL3) vem ligada por padrao. Pra compilar

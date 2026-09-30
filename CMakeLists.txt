@@ -187,6 +187,7 @@ set(Z80_LIB_SOURCES
 set(Z80_DEBUG_SESSION_SOURCES
         src/z80/debug/z80_debug_session.cpp
         src/z80/debug/z80_disasm.cpp
+        src/z80/debug/z80_debug_shell_startup.cpp
 )
 
 # --- Mapa de memoria MSX (slots/subslots, Fases 1-2) -- ver

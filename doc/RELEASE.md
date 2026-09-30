@@ -13,6 +13,89 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.4.0 -- "Illusion City: Mapa de Memória" (2026-09-30)
+
+**Fase:** mapa de memória MSX (slots/subslots/MegaROM), sobre o núcleo
+Z80 da v1.3.0 -- ver [memory-map-spec.md](memory-map-spec.md) para a
+especificação completa e o histórico de todas as 4 fases. **Trabalho no
+core de emulação pausado deliberadamente a partir desta versão** (não
+abandono) -- ver [SPEC.md, seção 5.0](SPEC.md) para os próximos passos
+já registrados, pensados para retomar sem se perder.
+
+Nome escolhido por ser um dos MegaROMs mais emblemáticos do MSX2+ --
+uma aventura gigante (16 Mbit) que depende pesadamente de troca de
+slot/subslot e bank-switch pra caber no espaço de 64KB do Z80,
+exatamente o que este módulo constrói.
+
+### Destaques
+- **Motor de slots/subslots em C**, adaptado de
+  `resource/fMSX/fMSX/MSX.c`/`MSX.h` -- topologia real de 4 slots
+  primários x 4 secundários x 8 páginas de 8KB, incluindo o quirk de
+  hardware onde o registrador de slot secundário é indexado pelo slot
+  primário que ocupa a página `C000h-FFFFh`, não um registrador global
+  único.
+- **`MemorySystem`/`SlotMemoryBus`** (C++, design próprio) com uma API
+  de depuração (`PeekSlot`/`PokeSlot`/`Describe`/`CurrentView`) que
+  enxerga qualquer slot **independente** do que a CPU vê agora --
+  requisito vital do autor, atendido desde a primeira fase deste
+  módulo, não deixado para uma fase final como aconteceu com o
+  depurador do núcleo Z80.
+- **Carregamento de ROM real** com checksum **CRC32 em Fortran**
+  (verificado contra o vetor de teste padrão de qualquer CRC32).
+- **Seis mappers MegaROM** (`Gen8`/`Gen16`/`Konami5`/`Konami4`/
+  `ASCII8`/`ASCII16`, só a troca de banco de ROM) -- cobrem a grande
+  maioria dos cartuchos MegaROM reais do MSX.
+- **`fwmsx --z80dbg --slots [rom]`**: depurador completo com mapa de
+  memória real -- `slots`/`pages`/`slotmem`/`slotpeek`/`slotpoke`/
+  `loadrom`, com carregamento automático de ROM de boot na abertura.
+- **A BIOS MSX1 real do fMSX rodou de verdade** no núcleo Z80 deste
+  projeto: 192 endereços de PC distintos visitados em 100 mil ciclos de
+  execução real de código de BIOS -- a primeira prova concreta de
+  compatibilidade com software MSX real, não só casos de teste
+  escritos à mão.
+- **`build.sh`**: equivalente Linux do `build.ps1`.
+- 328 verificações automatizadas (`ctest -R "z80|memmap"`, até 168 +
+  58 + 102), todas passando.
+
+### Exemplo rápido (BIOS real rodando)
+
+```
+> .\dist\fwMSX.exe --z80dbg --slots resource\fMSX\ROMs\MSX.ROM
+ROM de boot carregada em 0:0: resource/fMSX/ROMs/MSX.ROM
+z80dbg> reset
+z80dbg> run 5000
+parado: orcamento de ciclos esgotado (ciclos consumidos: 5003, PC=0365)
+```
+
+### Build usado para validar esta release
+
+- `gcc`/`g++`/`gfortran` 16.2.0 (MSYS2 UCRT64)
+- `nasm` 3.02
+- `cmake` 4.4.3 + `ninja` 1.13.2
+- `dist/fwMSX.exe` e `dist/msxdisk.exe`: estáticos, dependências externas
+  apenas as DLLs base do Windows/UCRT.
+- `build.sh` (Linux) criado nesta versão, mas ainda **não validado em
+  execução real** -- só sintaxe (`bash -n`) e a extração de versão via
+  `sed`, sem toolchain Linux disponível nesta máquina de
+  desenvolvimento. Fica para quando o autor compilar na própria máquina
+  Linux.
+
+### Limitações conhecidas
+- Ainda não existe VDP, PSG nem uma máquina MSX completa -- ver
+  `SPEC.md`, seção 5.0, para os próximos passos.
+- SCC, SRAM persistente, `MAP_GMASTER2`/`MAP_FMPAC` e a heurística
+  `MAP_GUESS` ficaram deliberadamente de fora do mapa de memória (ver
+  `memory-map-spec.md`, seção 6) -- dependem de som/save-state, que
+  ainda não existem.
+- `CPIR`/`CPDR` continuam sem aceleração em Assembly (só `LDIR`/`LDDR`)
+  -- limitação já registrada na v1.3.0.
+- A branch `elf64`/Linux do `.asm` dual-ABI do núcleo Z80 continua só
+  montada, nunca linkada/executada de verdade (mesma limitação da
+  v1.3.0) -- `build.sh` existe agora especificamente para resolver isso
+  quando houver uma máquina Linux disponível.
+
+---
+
 ## v1.3.0 -- "SD Snatcher: Núcleo do Z80" (2026-09-30)
 
 **Fase:** núcleo de emulação, primeiro pedaço real (CPU Z80) -- ver
