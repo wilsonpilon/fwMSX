@@ -261,9 +261,43 @@ z80dbg> run 5000
 parado: orcamento de ciclos esgotado (ciclos consumidos: 5003, PC=0365)
 ```
 
-Isso e' codigo real de BIOS executando no nucleo Z80 do fwMSX -- ainda
-sem VDP/PSG, entao a BIOS eventualmente trava esperando hardware que
-nao existe, mas a CPU em si esta rodando software MSX de verdade.
+Isso e' codigo real de BIOS executando no nucleo Z80 do fwMSX -- a CPU
+esta rodando software MSX de verdade (ver a secao seguinte pro VDP; a
+BIOS real ainda trava mais na frente esperando teclado/PPI, que ainda
+nao existe).
+
+### VDP real (`--z80dbg --slots --vdp`)
+
+Documentacao completa em [vdp-spec.md](vdp-spec.md). Por cima do mapa
+de memoria, `--vdp` liga o VDP (TMS9918/V9938) de verdade -- registradores,
+VRAM, protocolo de porta `98h`-`9Bh`, e a maquina de estados que gera as
+interrupcoes de VBlank/HBlank que software MSX real depende para
+funcionar. **Requer `--slots`** (avisa e ignora `--vdp` se usado sem
+`--slots`). Ainda sem sprites, modos MSX2 ou janela grafica -- so os
+modos SCREEN 0/1/2, exportaveis como imagem (ver `vdpshot` abaixo).
+
+```
+vdpregs                  registradores (R#0-R#46) + status + modo de tela
+vdpmem/vdppeek/vdppoke <end> ...   inspeciona/edita a VRAM
+vdpstep [n]               avanca a maquina de estados de scanline manualmente
+vdpshot <arq.ppm> [ini] [fim]      exporta o frame atual como imagem PPM
+```
+
+Exemplo (poke manual de um caractere em SCREEN 0 e exportacao):
+
+```powershell
+.\dist\fwMSX.exe --z80dbg --slots --vdp
+```
+
+```
+z80dbg> vdppoke 0 0x41
+z80dbg> vdpshot tela.ppm 0 0
+escrito tela.ppm (240x1, modo de tela 0)
+```
+
+O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
+de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
+nao ha' janela grafica em tempo real (isso e' Fase 4 do VDP).
 
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 

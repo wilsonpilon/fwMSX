@@ -13,6 +13,75 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.5.0 -- "Antarctic Adventure: Primeiros Pixels" (2026-09-30)
+
+**Fase:** VDP (TMS9918/V9938), Fases 0.5, 1 e 2 -- ver
+[vdp-spec.md](vdp-spec.md) para a especificação completa. Nome
+escolhido por "Antarctic Adventure" (Konami) ser um dos MSX1 mais
+lembrados justamente pelos gráficos -- um pinguim correndo sobre um
+SCREEN 2 bem aproveitado -- exatamente o tipo de imagem que este
+módulo agora sabe decodificar de verdade.
+
+### Destaques
+
+- **`CompositeBus`** (design próprio): o Z80 agora fala com mais de um
+  dispositivo de I/O ao mesmo tempo (mapa de memória + VDP), sem
+  acoplar os dois -- porta de I/O despachada por dispositivo registrado,
+  memória sempre para um único dispositivo designado.
+- **Motor "digital" do VDP em C**, adaptado de `resource/fMSX/fMSX/
+  MSX.c`: registradores, VRAM, protocolo das 4 portas (`98h`-`9Bh`), e a
+  máquina de estados de scanline que gera VBlank/HBlank -- **finalmente
+  dá uso real ao `Z80Cpu::interrupt()`**, que existia desde a Fase 1 do
+  núcleo Z80 mas nunca tinha sido exercitado. Confirmado com um
+  programa sintético de 12 bytes: a interrupção chega em `0x0038` de
+  verdade (`IFF1` desligando, não só PC/SP coincidindo por acaso).
+- **Renderização real de SCREEN 0/1/2**, adaptada de `resource/fMSX/
+  fMSX/Common.h` -- texto mono (240×192), texto colorido com o quirk
+  real de "cor por grupo de 8 caracteres" da TMS9918, e bitmap 256×192
+  com tabela de cor/padrão em terços. Exportável como imagem PPM
+  (`vdpshot`) para inspeção/teste sem precisar de janela gráfica ainda.
+- **Bug real corrigido**: a paleta padrão nunca era carregada no reset
+  (ficava zerada) -- sem a correção, tudo renderizaria em preto, já que
+  software MSX1 normal conta com a paleta fixa do TMS9918 estar
+  presente desde o ligar, sem escrevê-la manualmente.
+- **Tabela de paleta de 512 cores em Fortran**, construída na Fase 1
+  sem consumidor, finalmente usada na Fase 2.
+- 382 verificações automatizadas (`ctest`, 4 suítes), até 54 novas desta
+  versão.
+
+### Exemplo rápido (poke manual + captura de tela)
+
+```
+> .\dist\fwMSX.exe --z80dbg --slots --vdp
+z80dbg> vdppoke 0 0x41
+z80dbg> vdpshot tela.ppm 0 0
+escrito tela.ppm (240x1, modo de tela 0)
+```
+
+### Build usado para validar esta release
+
+- `gcc`/`g++`/`gfortran` 16.2.0 (MSYS2 UCRT64), `nasm` 3.02, `cmake`
+  4.4.3 + `ninja` 1.13.2 -- `dist/fwMSX.exe`/`dist/msxdisk.exe`
+  estáticos.
+- Linux (WSL2, mesma validação da v1.4.1): pacote gerado via
+  `build.sh` pelo autor, com esta versão já incluída.
+
+### Limitações conhecidas
+
+- Sem borda/overscan, sem sprites, sem tela ligada/desligada (`ScreenON`)
+  -- só a área ativa de exibição dos três modos suportados.
+- Sem janela gráfica em tempo real ainda -- `vdpshot` é a única forma
+  de ver o resultado, exportando para um arquivo PPM.
+- A BIOS MSX1 real ainda não chega a habilitar a interrupção de VBlank
+  dentro de nenhum orçamento de ciclos testado -- precisa de PPI/
+  teclado (portas `A9h`-`ABh`), que ainda não existe (ver `doc/SPEC.md`,
+  seção 5.0).
+- Mesmas limitações já registradas nas versões anteriores (SCC/SRAM/
+  `MAP_GMASTER2`/`MAP_FMPAC`/`MAP_GUESS` no mapa de memória, `CPIR`/
+  `CPDR` sem aceleração em Assembly).
+
+---
+
 ## v1.4.1 -- "Salamander: Compilando em Linux" (2026-09-30)
 
 **Fase:** validação de portabilidade, sem features novas -- primeira vez

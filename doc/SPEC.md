@@ -188,22 +188,29 @@ acompanhamento manual do autor a cada build):
   `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
   item adiado.
 
-### 5.0 Proximos passos (para retomar sem se perder -- projeto pausado aqui em 2026-09-30, v1.4.0)
+### 5.0 Proximos passos (para retomar sem se perder -- v1.5.0, 2026-09-30)
 
-O trabalho no core de emulacao foi pausado deliberadamente neste ponto
-(pedido do autor, "vamos parar de mexer nele por hora"). Ordem sugerida
-para quando o trabalho for retomado:
+O trabalho no core de emulacao segue em andamento; esta secao continua
+sendo o "onde paramos" oficial.
 
-1. **VDP** (TMS9918/V9938) -- o que da tela de verdade pela primeira vez;
-   maior payoff visivel, mas tambem o componente mais complexo depois da
-   CPU. Precisa de acesso a VRAM (separada da RAM principal) e aos
-   registradores de porta `98h`-`9Bh`. **Analise e design concluidos em
-   2026-09-30** -- ver [doc/vdp-spec.md](vdp-spec.md) (implementacao
-   ainda nao iniciada). Achado importante: o VDP e' a "maquina" que da'
-   uso real ao gancho de interrupcao periodica deliberadamente deixado
-   de fora da Fase 1 do nucleo Z80 (ver `doc/z80-core-spec.md`, secao
-   3.2) -- as interrupcoes de VBlank/HBlank que ele gera sao o que faz
-   software MSX real (a propria BIOS) funcionar de verdade.
+1. **VDP** (TMS9918/V9938) -- o que da tela de verdade pela primeira vez.
+   **Fases 0.5, 1 e 2 concluidas em 2026-09-30** -- ver
+   [doc/vdp-spec.md](vdp-spec.md). Resumo: `CompositeBus` (multiplexa
+   I/O de porta entre mapa de memoria e VDP), motor "digital" do VDP em
+   **C** (registradores, protocolo de porta `98h`-`9Bh`, maquina de
+   estados de scanline/interrupcao -- **finalmente da uso real** ao
+   `Z80Cpu::interrupt()`, confirmado com um programa sintetico recebendo
+   a interrupcao de VBlank em `0x0038` de verdade), renderizacao real de
+   pixel para SCREEN 0/1/2 (texto mono, texto colorido, bitmap), tabela
+   de paleta de 512 cores em **Fortran** (finalmente com consumidor),
+   exportacao de frame como PPM (`vdpshot`) para inspecao/teste sem
+   janela. **Falta**: sprites (Fase 3, proxima), modos MSX2 5-8 + janela
+   de verdade (Fase 4), motor de comando V9938 (Fase 5, avancado/
+   opcional). Achado que vale lembrar: a BIOS real ainda nao chega a
+   habilitar a interrupcao de VBlank dentro de nenhum orcamento de
+   ciclos testado -- ela poliniza hardware de teclado/PPI (portas
+   `A9h`-`ABh`) que ainda nao existe no projeto, uma limitacao real e
+   separada (nao um bug do VDP), documentada em `doc/vdp-spec.md`.
 2. **PSG** (AY-3-8910) -- som; mais simples que o VDP. Uma vez que exista,
    o SCC do mapa de memoria (adiado na Fase 3, ver
    `doc/memory-map-spec.md`) passa a fazer sentido de verdade.
@@ -227,14 +234,20 @@ para quando o trabalho for retomado:
    - Decidir, quando VDP/PSG existirem, se `fwMSX.exe` sem argumentos
      passa a abrir em modo GUI/maquina completa por padrao (visao
      registrada na secao 5.1 abaixo, ainda nao implementada).
+   - **PPI/teclado (portas `A8h`-`ABh` fora do que o mapa de memoria ja'
+     cobre, `A9h`-`ABh` especificamente)** -- achado na Fase 1 do VDP:
+     a BIOS real fica presa polinizando esse hardware antes de sequer
+     habilitar a interrupcao de VBlank, entao nenhum teste com a BIOS
+     real consegue validar o VDP em uso "de verdade" ainda. Nao e'
+     grande (i8255 PPI + matriz de teclado), mas e' a proxima peca que
+     desbloquearia testes muito mais realistas contra a BIOS.
 
 **Para retomar rapido**: leia esta secao, depois `doc/z80-core-spec.md`
 e `doc/memory-map-spec.md` (ambos documentos vivos, com todas as fases
 e decisoes registradas). O `--z80dbg --slots resource/fMSX/ROMs/MSX.ROM`
-e' o jeito mais rapido de ver o que ja funciona de verdade hoje.
-  Requisito explicito do autor, tratado como vital desde a primeira
-  fase deste modulo: o depurador precisa enxergar todos os
-  slots/subslots, nao so o que esta visivel para a CPU no momento.
+e' o jeito mais rapido de ver o que ja funciona de verdade hoje --
+adicione `--vdp` pra ver tambem os comandos de VDP (`vdpregs`/
+`vdpshot`/etc.).
 - Definir empacotamento final (alem do ZIP de `dist/`) quando houver uma
   versao executavel do emulador.
 

@@ -19,12 +19,13 @@ name mangling, calling conventions, linkedicao).
 
 ## Estado atual
 
-Ainda **nao existe emulacao de MSX completa** (sem VDP/PSG ainda). O
-`main()` de `fwMSX.exe` continua "inicializando" um modulo de cada
-linguagem (C++, C, Assembly e Fortran) via `init_cpp()`/`init_c()`/
-`init_asm()`/`init_fortran()` quando rodado sem argumentos, exatamente
-como no esqueleto original -- essa e a base sobre a qual o emulador de
-fato foi sendo construido nas fases seguintes.
+Ainda **nao existe emulacao de MSX completa** (sem PSG, sem janela
+grafica de verdade, sem PPI/teclado ainda). O `main()` de `fwMSX.exe`
+continua "inicializando" um modulo de cada linguagem (C++, C, Assembly
+e Fortran) via `init_cpp()`/`init_c()`/`init_asm()`/`init_fortran()`
+quando rodado sem argumentos, exatamente como no esqueleto original --
+essa e a base sobre a qual o emulador de fato foi sendo construido nas
+fases seguintes.
 
 A v1.2.x entregou o primeiro utilitario "de verdade" construido nesse
 processo de aprendizado: o **msxdisk**, um manipulador completo de
@@ -57,10 +58,24 @@ Assembly mais antigos do projeto (`src/asm/init_asm.asm`,
 `src/msxdisk/asm/name_match.asm`, Win64-only desde antes do nucleo Z80
 existir). Pacote Linux (`.tar.gz`) disponivel, gerado por `build.sh`.
 
-**O trabalho no core de emulacao esta pausado por ora** (decisao
-deliberada, nao abandono) -- faltam VDP e PSG para existir uma maquina
-MSX completa. Ver [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos
-passos registrados, pra retomar sem se perder.
+A v1.5.0 trouxe o **VDP** (TMS9918/V9938) -- a primeira vez que o
+projeto desenha pixels de verdade. `CompositeBus` (design proprio)
+multiplexa I/O de porta entre o mapa de memoria e o VDP; motor
+"digital" do VDP em **C** (registradores, protocolo de porta `98h`-
+`9Bh`, maquina de estados de scanline/interrupcao) finalmente da uso
+real ao `Z80Cpu::interrupt()`, confirmado com um programa sintetico
+recebendo a interrupcao de VBlank de verdade; renderizacao real de
+SCREEN 0/1/2 (texto mono, texto colorido, bitmap), exportavel como
+imagem PPM via `vdpshot`, sem janela ainda; tabela de paleta de 512
+cores em **Fortran**, finalmente com consumidor. `fwmsx --z80dbg
+--slots resource/fMSX/ROMs/MSX.ROM --vdp` e' o comando mais completo de
+depuracao que o projeto tem hoje. Ver [doc/vdp-spec.md](doc/vdp-spec.md).
+
+**Trabalho no core de emulacao continua em andamento** -- faltam
+sprites (Fase 3 do VDP), modos MSX2 + janela de verdade (Fase 4), PPI/
+teclado e PSG para existir uma maquina MSX completa. Ver
+[doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
+registrados, pra retomar sem se perder.
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico
 de fases (documento vivo, atualizado a cada mudanca relevante).
@@ -79,16 +94,19 @@ fwMSX/
 │   │               tui/gui/config -- ver doc/msxdisk-spec.md)
 │   ├── z80/        nucleo da CPU Z80 (core/cpp/asm/fortran/debug --
 │   │               ver doc/z80-core-spec.md)
-│   └── memmap/     mapa de memoria MSX -- slots/subslots/MegaROM
-│                   (core/cpp/fortran -- ver doc/memory-map-spec.md)
+│   ├── memmap/     mapa de memoria MSX -- slots/subslots/MegaROM
+│   │               (core/cpp/fortran -- ver doc/memory-map-spec.md)
+│   └── vdp/        VDP (TMS9918/V9938) -- registradores/portas/
+│                   renderizacao (core/cpp/fortran -- ver doc/vdp-spec.md)
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
-├── tests/z80/      testes do nucleo Z80 e do mapa de memoria (CTest --
-│                   z80test/z80dbgtest/memmaptest)
+├── tests/z80/      testes do nucleo Z80, mapa de memoria e VDP (CTest --
+│                   z80test/z80dbgtest/memmaptest/vdptest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk
 │   ├── z80-core-spec.md especificacao + fases do nucleo Z80
 │   ├── memory-map-spec.md especificacao + fases do mapa de memoria
+│   ├── vdp-spec.md      especificacao + fases do VDP
 │   ├── MANUAL.md       como compilar e executar
 │   ├── CHANGELOG.md    resumo das alteracoes entre versoes
 │   └── RELEASE.md       detalhes de cada release
@@ -133,7 +151,11 @@ naquele ponto (ex.: `v1.1.2 -- "Nemesis: Renomeacao"`). Regras completas em
   `Debug.c`) -- ver `doc/z80-core-spec.md` e `LICENSE-THIRD-PARTY.md`. O
   motor de slots/subslots e os mappers MegaROM (`src/memmap/core/`) sao
   adaptados de `resource/fMSX/fMSX/MSX.c`/`MSX.h` -- ver
-  `doc/memory-map-spec.md`.
+  `doc/memory-map-spec.md`. O motor "digital" do VDP e a renderizacao de
+  SCREEN 0/1/2 (`src/vdp/core/`) sao adaptados de
+  `resource/fMSX/fMSX/MSX.c` (registradores/portas/interrupcao) e
+  `resource/fMSX/fMSX/Common.h` (`RefreshLine0/1/2`) -- ver
+  `doc/vdp-spec.md`.
 - **Arnold Metselaar** -- autor do utilitario original de manipulacao de
   discos MSX (`resource/DiskUtilities/DiskUtil.c` e correlatos), usado
   como referencia de estudo do formato FAT12/MSX-DOS para o `msxdisk`
@@ -162,9 +184,10 @@ relicenciar o codigo dele sob BSD/GPL/MIT. Por isso, qualquer arquivo
 deste repositorio que incorporar codigo do fMSX diretamente (o setor de
 boot em `src/msxdisk/core/msxdos1_boot.cpp`; o motor/tabelas/desmontador
 da CPU Z80 em `src/z80/core/` e `src/z80/debug/z80_disasm.*`; o motor de
-slots/subslots e mappers MegaROM em `src/memmap/core/`; mais arquivos
-devem se juntar a essa lista quando VDP/PSG forem adaptados do fMSX)
-continua sob a licenca original dele, nao BSD. Ver
+slots/subslots e mappers MegaROM em `src/memmap/core/`; o motor do VDP e
+a renderizacao em `src/vdp/core/`; mais arquivos devem se juntar a essa
+lista quando PSG for adaptado do fMSX) continua sob a licenca original
+dele, nao BSD. Ver
 **[LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md)** para o
 detalhamento completo (fMSX, DiskUtilities, msxDiskUtil) e
 [resource/README.md](resource/README.md) para o aviso sobre o material

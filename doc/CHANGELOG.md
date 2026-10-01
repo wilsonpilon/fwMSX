@@ -7,6 +7,69 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.5.0] - 2026-09-30 - "Antarctic Adventure: Primeiros Pixels"
+
+Primeira vez que o projeto desenha pixels de verdade -- o VDP
+(TMS9918/V9938), Fases 0.5, 1 e 2 -- ver
+[doc/vdp-spec.md](vdp-spec.md) para o histórico completo de fases.
+
+### Adicionado
+- **`CompositeBus`** (`src/z80/cpp/composite_bus.h`, design próprio):
+  multiplexa I/O de porta entre vários dispositivos (mapa de memória em
+  `A8h`, VDP em `98h`-`9Bh`), enquanto leitura/escrita de memória vai
+  sempre para um único dispositivo designado.
+- **Motor "digital" do VDP em C** (`src/vdp/core/`), adaptado de
+  `resource/fMSX/fMSX/MSX.c`: registradores (64), status (16), VRAM,
+  protocolo das 4 portas (`98h` dados, `99h` latch de endereço/
+  registrador, `9Ah` latch de paleta, `9Bh` acesso indireto), cache de
+  ponteiro de tabela (`ChrTab`/`ColTab`/`ChrGen`/etc., mesmo padrão já
+  validado no Z80 e no mapa de memória), e a máquina de estados de
+  scanline que gera as interrupções de VBlank (`IE0`)/HBlank-
+  coincidência (`IE1`). Preservado um quirk real do fMSX: o latch de
+  endereço (`VKey`) não é resetado numa leitura de status, só numa
+  leitura/escrita de dados -- o comentário original diz que isso
+  "quebra Sir Lancelot no ColecoVision" se mudado.
+- **Finalmente dá uso real ao `Z80Cpu::interrupt()`**, que existe desde
+  a Fase 1 do núcleo Z80 mas nunca tinha sido exercitado contra nada --
+  confirmado com um programa sintético de 12 bytes recebendo a
+  interrupção de VBlank em `0x0038` de verdade (`IFF1` desligando,
+  não só coincidência de PC/SP).
+- **Renderização real de pixel** (`src/vdp/core/vdp_render.*`),
+  adaptada de `resource/fMSX/fMSX/Common.h` (`RefreshLine0/1/2`): SCREEN
+  0 (texto 40×24 mono, 240×192), SCREEN 1 (texto 32×24 com cor
+  compartilhada por grupo de 8 caracteres -- quirk real do "Graphics 1"
+  da TMS9918), SCREEN 2 (bitmap 256×192 com tabela de cor/padrão
+  dividida em terços). Sem borda, sprites ou tela ligada/desligada
+  ainda.
+- **Tabela de paleta de 512 cores em Fortran**, construída na Fase 1
+  sem consumidor, finalmente usada pela escrita de paleta via porta
+  `9Ah` na Fase 2.
+- **`vdpshot <arquivo.ppm> [linha_inicial] [linha_final]`**: exporta o
+  frame atual como imagem PPM binária (`P6`), sem depender de biblioteca
+  de imagem externa -- testável byte a byte, visualizável em qualquer
+  leitor de PPM.
+- Comandos de depuração `vdpregs`/`vdpmem`/`vdppeek`/`vdppoke`/
+  `vdpstep` em `--z80dbg --slots --vdp` (requer `--slots`; avisa e
+  ignora `--vdp` sem ele).
+- 54 verificações automatizadas novas (382 no total, `ctest`, 4 suítes):
+  protocolo de porta, cache de tabela por modo de tela, paleta padrão
+  (as 16 entradas), os três modos de renderização com posições de pixel
+  específicas conferidas à mão, PPM round-trip byte a byte, e o teste
+  de aceitação com o programa sintético de interrupção.
+
+### Corrigido
+- `vdp_reset()` zerava a paleta em vez de carregar a paleta padrão do
+  TMS9918 (`PalInit[16]` do fMSX) -- sem essa correção, toda cor FG/BG
+  cairia em preto, já que software MSX1 normal nunca escreve os 16
+  registradores de paleta na mão (espera a paleta padrão desde o ligar).
+
+### Achado, não corrigido nesta versão
+- A BIOS MSX1 real ainda não chega a habilitar a interrupção de VBlank
+  dentro de nenhum orçamento de ciclos testado -- ela poliniza hardware
+  de teclado/PPI (portas `A9h`-`ABh`) que ainda não existe no projeto.
+  Não é um bug do VDP; é a próxima peça que desbloquearia testes bem
+  mais realistas contra a BIOS (ver `doc/SPEC.md`, seção 5.0).
+
 ## [1.4.1] - 2026-09-30 - "Salamander: Compilando em Linux"
 
 Primeira validação real (build + link + execução, não só montagem) do
