@@ -318,6 +318,23 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 nao ha' janela grafica em tempo real (isso e' Fase 4 do VDP).
 
+## Emulador MSX1 numa janela (`--msx`)
+
+```powershell
+.\distwMSX.exe --msx                      # BIOS padrao (resource/fMSX/ROMs/MSX.ROM)
+.\distwMSX.exe --msx --bios MSX.ROM --cart jogo.rom
+.\distwMSX.exe --msx --cart megarom.rom ascii8   # MegaROM (gen8 gen16 konami5 konami4 ascii8 ascii16)
+.\distwMSX.exe --msx --mute                # sem audio
+.\distwMSX.exe --msx --frames 400 --keys "print 1234|" --shot tela.ppm   # sem janela
+```
+
+Abre uma janela com o MSX BASIC rodando em tempo real e som ao vivo. Teclado
+posicional (layout US): Alt esquerdo = GRAPH, Alt direito = CODE, End =
+SELECT, Pause = STOP, F11 = tela cheia; menu **Maquina** (Reset, Pausar),
+**Exibir** e **Som** (mudo/volume). Cartuchos de ROM plana ate' 32KB ou
+MegaROM com mapper, no slot 1. Limites: so' SCREEN 0/1/2, sem joystick nem
+disco -- ver [machine-spec.md](machine-spec.md) e [audio-spec.md](audio-spec.md).
+
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 
 A GUI (Dear ImGui + GLFW + OpenGL3) vem ligada por padrao. Pra compilar
@@ -328,7 +345,8 @@ cmake -S . -B build -G Ninja -DFWMSX_MSXDISK_GUI=OFF
 cmake --build build
 ```
 
-`--gui`/`call gui` nessa build so avisam que a GUI nao foi compilada.
+`--gui`/`call gui` nessa build so avisam que a GUI nao foi compilada. Para
+compilar sem audio: `-DFWMSX_AUDIO=OFF` (o emulador roda mudo).
 
 ## Problemas comuns
 

@@ -22,6 +22,9 @@
 // pontos de entrada de CLI/shell/TUI/GUI do msxdisk.exe standalone). Ver
 // doc/SPEC.md, secao 5.1, e doc/msxdisk-spec.md, Fase 5c.
 //
+// "fwmsx --msx" liga a maquina MSX1 completa numa janela com teclado do
+// host (ou sem janela, com --frames/--shot) -- ver doc/machine-spec.md.
+//
 // "fwmsx --z80dbg" abre o REPL de depuracao do nucleo Z80 (RAM plana de
 // teste, sem maquina MSX ainda) -- ver doc/z80-core-spec.md, Fase 4.
 // "fwmsx --z80dbg --slots" liga o mapa de memoria de verdade (slots/
@@ -43,6 +46,7 @@
 #include "init_fortran.h"
 
 #include "msxdisk/entry.h"
+#include "machine/cli.h"
 #include "z80/debug/z80_debug_shell.h"
 
 namespace {
@@ -60,6 +64,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--msxdisk") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return msxdisk::RunEntryPoint(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--msx") {
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return machine::RunMachineCommand(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);

@@ -112,6 +112,23 @@ termos acima:
   (Assembly) sao codigo original do fwMSX (BSD-3-Clause); as coordenadas
   da matriz sao fato de hardware, conferidas contra `Keys[]` de `MSX.c`.
   **Nao** inclui `PPIOut()` (som de click/rele). Ver `doc/ppi-spec.md`.
+- `src/psg/core/psg_state.{h,c}` -- as mascaras de registrador de
+  `Write8910()` e o protocolo de portas (`WrCtrl8910()`/`WrData8910()`/
+  `RdData8910()`, `RegInit[]` de `Reset8910()`) de `resource/fMSX/EMULib/
+  AY8910.{h,c}`, e os casos `A0h`-`A2h` de `InZ80()`/`OutZ80()` de
+  `resource/fMSX/fMSX/MSX.c`. Os geradores (tom, ruido, envelope) e a
+  geracao de amostras PCM sao codigo original do fwMSX -- o fMSX nao gera
+  amostras, repassa freq/volume para `Sound()`. A tabela de volume
+  (`volume_table.f90`, Fortran), `PsgDevice` e `wav_writer` (C++) sao
+  codigo original (BSD-3-Clause). **Nao** inclui joystick/mouse em R14/R15
+  (so' o "sem joystick" de `InZ80()`), nem SCC/OPLL/Drum(). Ver
+  `doc/psg-spec.md`.
+
+- **miniaudio** (<https://github.com/mackron/miniaudio>, David Reid) --
+  baixado em tempo de configuracao (FetchContent) e compilado em
+  `src/audio/audio_output.cpp` para a saida de audio ao vivo. Dominio
+  publico / MIT-0 (a escolha do licenciado); so' o dispositivo de saida e'
+  usado. Nao e' codigo do fMSX. Ver `doc/audio-spec.md`.
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

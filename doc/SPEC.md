@@ -188,7 +188,7 @@ acompanhamento manual do autor a cada build):
   `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
   item adiado.
 
-### 5.0 Proximos passos (para retomar sem se perder -- v1.8.0, 2026-10-01)
+### 5.0 Proximos passos (para retomar sem se perder -- v1.9.0, 2026-10-02)
 
 O trabalho no core de emulacao segue em andamento; esta secao continua
 sendo o "onde paramos" oficial.
@@ -211,9 +211,22 @@ sendo o "onde paramos" oficial.
    ciclos testado -- ela poliniza hardware de teclado/PPI (portas
    `A9h`-`ABh`) que ainda nao existe no projeto, uma limitacao real e
    separada (nao um bug do VDP), documentada em `doc/vdp-spec.md`.
-2. **PSG** (AY-3-8910) -- som; mais simples que o VDP. Uma vez que exista,
-   o SCC do mapa de memoria (adiado na Fase 3, ver
-   `doc/memory-map-spec.md`) passa a fazer sentido de verdade.
+2. **PSG** (AY-3-8910) -- som. **Fase 1 concluida em 2026-10-02**
+   (v1.9.0) -- ver [doc/psg-spec.md](psg-spec.md). Motor em
+   **C** que gera amostras PCM de verdade (tom, ruido, envelope, avancado
+   por ciclos de Z80), tabela de volume em **Fortran**, `PsgDevice` +
+   gravador de WAV em **C++**; flag `--psg` e comandos `psgregs`/`psgpoke`/
+   `psgrec` no depurador. A BIOS real programa o PSG e `BEEP` no BASIC sai
+   como onda de 1316 Hz (teste `psgtest`). **Audio ao vivo concluido em
+   2026-10-02** ([doc/audio-spec.md](audio-spec.md)). **Falta**: joystick
+   em R14/R15. O SCC do
+   mapa de memoria (adiado na Fase 3, ver `doc/memory-map-spec.md`) agora
+   tem um destino de audio possivel.
+   **Janela com teclado do host: concluida em 2026-10-02** (item 1 abaixo,
+   "janela de verdade") -- `fwmsx --msx`, ver
+   [doc/machine-spec.md](machine-spec.md). Roda a BIOS real em tempo real,
+   com teclado do host e cartucho no slot 1. Audio ao vivo tambem pronto.
+   Continua faltando joystick, disco e os modos MSX2.
 3. Itens menores registrados e conscientemente adiados, sem bloquear
    nada do acima:
    - ~~Validacao em execucao real (nao so montagem) da branch `elf64`/

@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 8
+#define FWMSX_VERSION_MINOR 9
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Zanac"
-#define FWMSX_SUBTITLE  "Prompt do BASIC"
+#define FWMSX_CODENAME  "Gradius 2"
+#define FWMSX_SUBTITLE  "Janela e Som"

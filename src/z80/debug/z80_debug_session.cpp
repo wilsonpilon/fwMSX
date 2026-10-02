@@ -6,6 +6,8 @@
 
 #include "../../memmap/cpp/memory_system.h"
 #include "../../ppi/cpp/ppi_device.h"
+#include "../../psg/cpp/psg_device.h"
+#include "../../psg/cpp/wav_writer.h"
 #include "../../vdp/cpp/ppm_writer.h"
 #include "../../vdp/cpp/vdp_device.h"
 #include "../../vdp/core/vdp_render.h"
@@ -93,8 +95,13 @@ std::string Hex2(uint8_t v) {
 } // namespace
 
 Z80DebugSession::Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system, vdp::VdpDevice *vdp_device,
-                                 ppi::PpiDevice *ppi_device)
-    : bus_(bus), cpu_(bus_), memory_system_(memory_system), vdp_device_(vdp_device), ppi_device_(ppi_device) {}
+                                 ppi::PpiDevice *ppi_device, psg::PsgDevice *psg_device)
+    : bus_(bus),
+      cpu_(bus_),
+      memory_system_(memory_system),
+      vdp_device_(vdp_device),
+      ppi_device_(ppi_device),
+      psg_device_(psg_device) {}
 
 void Z80DebugSession::DriveVdp(int cycles_consumed) {
     if (!vdp_device_) return;
@@ -104,6 +111,10 @@ void Z80DebugSession::DriveVdp(int cycles_consumed) {
         vdp_pending_cycles_ += r.next_period_cycles;
         if (r.irq_pending) cpu_.interrupt(Z80_INT_IRQ);
     }
+}
+
+void Z80DebugSession::DrivePsg(int cycles_consumed) {
+    if (psg_device_) psg_device_->Advance(cycles_consumed);
 }
 
 std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &tokens) {
@@ -139,6 +150,9 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
     if (cmd == "keys") return CmdKeys();
     if (cmd == "keydown") return CmdKeyPress(tokens, true);
     if (cmd == "keyup") return CmdKeyPress(tokens, false);
+    if (cmd == "psgregs") return CmdPsgRegs();
+    if (cmd == "psgpoke") return CmdPsgPoke(tokens);
+    if (cmd == "psgrec") return CmdPsgRec(tokens);
     if (cmd == "help" || cmd == "?") return CmdHelp();
 
     return "comando desconhecido: '" + cmd + "' (digite 'help' para a lista)";
@@ -146,6 +160,7 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
 
 std::string Z80DebugSession::CmdReset() {
     cpu_.reset();
+    if (psg_device_) psg_device_->Reset();
     if (ppi_device_) {
         // Reset de maquina: o PPI volta ao estado de reset (slot primario 0,
         // todas as portas em entrada); teclas pressionadas continuam.
@@ -185,6 +200,7 @@ std::string Z80DebugSession::CmdStep(const std::vector<std::string> &tokens) {
     for (uint32_t i = 0; i < n; ++i) {
         const int leftover = cpu_.run(1);
         DriveVdp(1 - leftover);
+        DrivePsg(1 - leftover);
         out << "step " << (i + 1) << ": PC=" << Hex4(cpu_.pc());
         if (breakpoints_.count(cpu_.pc())) {
             out << "  <-- breakpoint";
@@ -206,6 +222,7 @@ std::string Z80DebugSession::CmdRun(const std::vector<std::string> &tokens) {
         const int step_cycles = 1 - leftover;
         consumed += static_cast<uint32_t>(step_cycles);
         DriveVdp(step_cycles);
+        DrivePsg(step_cycles);
         if (breakpoints_.count(cpu_.pc())) {
             reason = "breakpoint atingido";
             break;
@@ -677,6 +694,69 @@ std::string Z80DebugSession::CmdKeyPress(const std::vector<std::string> &tokens,
     return out.str();
 }
 
+std::string Z80DebugSession::CmdPsgRegs() const {
+    if (!psg_device_) return "psgregs: requer 'fwmsx --z80dbg --slots --psg' (esta sessao nao tem PSG)";
+    const PsgState &p = psg_device_->state();
+    std::ostringstream out;
+    out << "R0-R15:";
+    for (int i = 0; i < PSG_REGS; ++i) out << " " << Hex2(p.r[i]);
+    out << "  (latch=" << static_cast<int>(p.latch) << ")\n";
+    const char names[3] = {'A', 'B', 'C'};
+    for (int ch = 0; ch < PSG_CHANNELS; ++ch) {
+        const bool tone = !(p.r[7] & (1 << ch));
+        const bool noise = !(p.r[7] & (8 << ch));
+        char hz[32];
+        std::snprintf(hz, sizeof(hz), "%.1f", psg_tone_hz(&p, ch));
+        out << "Canal " << names[ch] << ": tom " << (tone ? "ON " : "off") << " " << hz << " Hz, ruido "
+            << (noise ? "ON " : "off") << ", volume " << psg_channel_level(&p, ch)
+            << ((p.r[8 + ch] & 0x10) ? " (envelope)" : "") << "\n";
+    }
+    out << "Ruido: periodo " << (p.r[6] & 0x1F) << "  Envelope: periodo " << ((p.r[12] << 8) | p.r[11]) << " forma "
+        << (p.r[13] & 0x0F) << "\n";
+    out << "Gravacao: " << (psg_device_->recording() ? "LIGADA" : "desligada") << ", "
+        << psg_device_->capture().size() << " amostra(s) a " << psg::kSampleRate << " Hz";
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdPsgPoke(const std::vector<std::string> &tokens) {
+    if (!psg_device_) return "psgpoke: requer 'fwmsx --z80dbg --slots --psg' (esta sessao nao tem PSG)";
+    if (tokens.size() < 3) return "uso: psgpoke <reg 0-15> <byte>";
+    unsigned long reg = 0;
+    uint8_t value = 0;
+    if (!ParseNumber(tokens[1], reg) || reg > 15) return "psgpoke: registrador invalido: '" + tokens[1] + "'";
+    if (!ParseByte(tokens[2], value)) return "psgpoke: byte invalido: '" + tokens[2] + "'";
+    psg_write_reg(&psg_device_->state(), static_cast<int>(reg), value);
+    return "R" + std::to_string(reg) + " = " + Hex2(psg_device_->state().r[reg]);
+}
+
+std::string Z80DebugSession::CmdPsgRec(const std::vector<std::string> &tokens) {
+    if (!psg_device_) return "psgrec: requer 'fwmsx --z80dbg --slots --psg' (esta sessao nao tem PSG)";
+    const char *usage = "uso: psgrec start | stop | clear | save <arquivo.wav>";
+    if (tokens.size() < 2) return usage;
+    const std::string &sub = tokens[1];
+    if (sub == "start") {
+        psg_device_->StartRecording();
+        return "gravacao ligada (as amostras acumulam enquanto o Z80 roda via run/step)";
+    }
+    if (sub == "stop") {
+        psg_device_->StopRecording();
+        return "gravacao parada: " + std::to_string(psg_device_->capture().size()) + " amostra(s)";
+    }
+    if (sub == "clear") {
+        psg_device_->ClearCapture();
+        return "gravacao descartada";
+    }
+    if (sub == "save") {
+        if (tokens.size() < 3) return "uso: psgrec save <arquivo.wav>";
+        if (psg_device_->capture().empty()) return "psgrec save: nada gravado (use 'psgrec start' e rode o Z80)";
+        std::string error;
+        if (!psg::WriteWav(tokens[2], psg_device_->capture(), psg::kSampleRate, error)) return "psgrec save: " + error;
+        return "WAV salvo em '" + tokens[2] + "' (" + std::to_string(psg_device_->capture().size()) +
+               " amostras, mono 16 bits, " + std::to_string(psg::kSampleRate) + " Hz)";
+    }
+    return usage;
+}
+
 std::string Z80DebugSession::CmdHelp() const {
     return "Comandos (enderecos/numeros: decimal, 0x-hex ou $-hex):\n"
            "  reset                 reseta a CPU\n"
@@ -716,6 +796,10 @@ std::string Z80DebugSession::CmdHelp() const {
            "  keydown <tecla>...    pressiona teclas (a-z, 0-9, shift, ctrl, enter, space, f1-f5,\n"
            "                        esc, tab, bs, left/up/down/right, pad0-pad9...) (requer --ppi)\n"
            "  keyup <tecla>...|all  solta teclas (requer --ppi)\n"
+           "  psgregs               registradores do PSG AY-3-8910, canais e gravacao (requer --psg)\n"
+           "  psgpoke <reg> <byte>  escreve num registrador do PSG (0-15) (requer --psg)\n"
+           "  psgrec start|stop|clear|save <arq.wav>  grava o som do PSG enquanto o Z80\n"
+           "      roda (run/step) e salva como WAV mono 16 bits, 44100 Hz (requer --psg)\n"
            "  help                  esta mensagem";
 }
 

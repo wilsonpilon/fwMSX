@@ -13,6 +13,57 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.9.0 -- "Gradius 2: Janela e Som" (2026-10-02)
+
+**Fase:** PSG + janela com teclado do host + audio ao vivo. Nome escolhido
+por "Gradius 2" (Konami) ser um classico de MSX1 lembrado justamente pelo
+som -- e o marco aqui e' o emulador finalmente *soar*, alem de aparecer.
+
+### Destaques
+
+- **`fwmsx --msx`: a maquina MSX1 completa numa janela.** A BIOS real roda
+  em tempo real (Dear ImGui + GLFW + OpenGL) com o teclado do host mapeado
+  para a matriz do MSX (posicional, layout US; Alt esq. = GRAPH, Alt dir. =
+  CODE, End = SELECT, Pause = STOP, F11 = tela cheia). Menu com Reset,
+  Pausar, Soltar teclas, Escala inteira e Som. `--cart <arq> [mapper]`
+  carrega um cartucho no slot 1 (ROM plana ate' 32KB ou MegaROM).
+- **PSG AY-3-8910** (portas `A0h`-`A2h`): motor em C que gera amostras PCM
+  de verdade (3 tons, ruido LFSR de 17 bits, 16 formas de envelope), tabela
+  de volume logaritmica em Fortran, `PsgDevice` e gravador de WAV em C++.
+  Com a BIOS real, `BEEP` no BASIC toca o canal A em 1316 Hz.
+- **Audio ao vivo** pelo dispositivo padrao do sistema (miniaudio, baixado
+  por FetchContent), via buffer circular sem trava, com pre-enchimento
+  contra estalos e menu **Som** (mudo + volume). `--mute` desliga.
+- **Modo sem janela:** `fwmsx --msx --frames N --shot tela.ppm --keys
+  "print 1234|"` roda, digita e salva a tela -- util para CI.
+- Depurador: `--psg`, `psgregs`, `psgpoke`, `psgrec start|stop|clear|save`.
+- 570 verificacoes automatizadas (8 suites).
+
+### Exemplo rapido
+
+```
+> .\dist\fwMSX.exe --msx
+> .\dist\fwMSX.exe --msx --cart jogo.rom
+> .\dist\fwMSX.exe --msx --frames 400 --keys "print 1234|" --shot tela.ppm
+```
+
+### Limitacoes conhecidas
+
+- So' SCREEN 0/1/2 (+ sprites de modo 1); SCREEN 3 e os modos MSX2 mostram
+  so' a cor de fundo (Fase 4 do VDP).
+- Sem joystick (R14/R15 do PSG) e sem disco (FDC): so' teclado.
+- Sem click de tecla/cassete, SCC nem FM.
+- Teclado posicional: acentos/cedilha do ABNT2 nao tem tecla.
+- A janela interativa foi validada em abertura/fechamento e no fluxo de
+  audio (`--frames N`); a digitacao pelo teclado do host nao tem teste
+  automatico (so' `Machine::KeyDown/KeyUp` por baixo dela). O som foi
+  validado pelo consumo do dispositivo no ritmo certo, nao ouvido.
+- Audio no Linux: compilado e testado no WSL2, sem dispositivo de audio la'
+  (o teste do dispositivo real vira `[SKIP]`).
+- Demais limitacoes das versoes anteriores continuam valendo.
+
+---
+
 ## v1.8.0 -- "Zanac: Prompt do BASIC" (2026-10-01)
 
 **Fase:** a BIOS MSX1 real sobe. Nome escolhido por "Zanac" (Compile) ser

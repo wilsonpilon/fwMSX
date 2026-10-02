@@ -22,9 +22,14 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
             startup.use_ppi = true;
             continue;
         }
+        if (args[i] == "--psg") {
+            startup.use_psg = true;
+            continue;
+        }
         if (args[i] != "--slots") continue;
         startup.use_slots = true;
-        if (i + 1 < args.size() && args[i + 1] != "--vdp" && args[i + 1] != "--ppi") {
+        if (i + 1 < args.size() && args[i + 1] != "--vdp" && args[i + 1] != "--ppi" &&
+            args[i + 1] != "--psg") {
             startup.boot_rom_path = args[i + 1];
             startup.boot_rom_requested = true;
         }
@@ -38,6 +43,11 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
     if (startup.use_ppi && !startup.use_slots) {
         startup.ppi_error = "--ppi requer --slots (ignorado nesta sessao)";
         startup.use_ppi = false;
+    }
+
+    if (startup.use_psg && !startup.use_slots) {
+        startup.psg_error = "--psg requer --slots (ignorado nesta sessao)";
+        startup.use_psg = false;
     }
 
     if (!startup.use_slots) return startup;
@@ -93,7 +103,7 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
 
     startup.slot_bus = std::make_unique<memmap::SlotMemoryBus>(*startup.memory_system);
 
-    if (startup.use_vdp || startup.use_ppi) {
+    if (startup.use_vdp || startup.use_ppi || startup.use_psg) {
         startup.composite_bus = std::make_unique<z80::CompositeBus>(*startup.slot_bus);
         if (startup.use_ppi) {
             // Portas A8h-ABh (PPI i8255) -- a porta A8h deixa de ir
@@ -105,6 +115,11 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
             // Porta A8h (slot primario) -- mesmo dispositivo de memoria, ja
             // que SlotMemoryBus::out() ja trata essa porta.
             startup.composite_bus->RegisterPort(0xA8, startup.slot_bus.get());
+        }
+        if (startup.use_psg) {
+            // Portas A0h-A2h (PSG AY-3-8910) -- ver doc/psg-spec.md.
+            startup.psg_device = std::make_unique<psg::PsgDevice>();
+            startup.composite_bus->RegisterPortRange(0xA0, 0xA2, startup.psg_device.get());
         }
         if (startup.use_vdp) {
             // Portas 98h-9Bh (VDP) -- ver doc/vdp-spec.md, secao 3.3/6.

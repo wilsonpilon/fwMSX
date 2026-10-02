@@ -150,9 +150,43 @@ if (FWMSX_MSXDISK_GUI)
     find_package(OpenGL REQUIRED)
 
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app.cpp src/msxdisk/gui/style.cpp src/msxdisk/gui/file_dialog.cpp)
+    set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window.cpp)
 else ()
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app_stub.cpp)
+    set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window_stub.cpp)
 endif ()
+
+# --- Audio ao vivo (miniaudio) -- ver doc/audio-spec.md -------------------
+#
+# miniaudio e' um unico header de dominio publico/MIT-0 (baixado como o
+# ImGui); so' o dispositivo de saida e' compilado (ver audio_output.cpp).
+# Com FWMSX_AUDIO=OFF entra um stub e o emulador roda mudo.
+option(FWMSX_AUDIO "Compila a saida de audio ao vivo (miniaudio)" ON)
+if (FWMSX_AUDIO)
+    FetchContent_Declare(
+            miniaudio
+            GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+            GIT_TAG 0.11.22
+            GIT_SHALLOW TRUE
+    )
+    FetchContent_GetProperties(miniaudio)
+    if (NOT miniaudio_POPULATED)
+        FetchContent_Populate(miniaudio)
+    endif ()
+    set(AUDIO_LIB_SOURCES src/audio/audio_output.cpp)
+    set_source_files_properties(src/audio/audio_output.cpp PROPERTIES INCLUDE_DIRECTORIES ${miniaudio_SOURCE_DIR})
+else ()
+    set(AUDIO_LIB_SOURCES src/audio/audio_output_stub.cpp)
+endif ()
+
+# miniaudio no Linux precisa de pthread/dl/m; no Windows carrega tudo em
+# tempo de execucao (nada a linkar).
+function(audio_link_target target)
+    if (FWMSX_AUDIO AND UNIX AND NOT APPLE)
+        find_package(Threads REQUIRED)
+        target_link_libraries(${target} PRIVATE Threads::Threads ${CMAKE_DL_LIBS} m)
+    endif ()
+endfunction()
 
 # Aplica a um alvo (msxdisk ou fwMSX) tudo que os fontes do msxdisk
 # precisam: include dir, libs externas e o link estatico do runtime
@@ -261,6 +295,28 @@ set(PPI_LIB_SOURCES
         src/ppi/asm/key_count.asm
 )
 
+# --- PSG AY-3-8910 (portas A0h-A2h) -- ver doc/psg-spec.md -------------
+#
+# Motor em C (psg_state.c, adaptado de EMULib/AY8910.c -- ver
+# LICENSE-THIRD-PARTY.md) que gera amostras PCM de verdade, avancado por
+# ciclos de Z80; tabela de volume logaritmica em Fortran
+# (volume_table.f90); PsgDevice e gravador de WAV (C++, design proprio).
+set(PSG_LIB_SOURCES
+        src/psg/core/psg_state.c
+        src/psg/fortran/volume_table.f90
+        src/psg/cpp/wav_writer.cpp
+)
+
+# --- Maquina MSX1 completa + janela (fwmsx --msx) -- ver doc/machine-spec.md
+#
+# machine.cpp junta BIOS + slots + VDP + PPI + PSG + Z80 e avanca por
+# quadros, sem janela (e' o que os testes usam). A CLI (cli.cpp) e a janela
+# (MACHINE_WINDOW_SOURCES: GLFW + ImGui, ou o stub se FWMSX_MSXDISK_GUI=OFF)
+# so' entram no executavel fwMSX.
+set(MACHINE_LIB_SOURCES
+        src/machine/machine.cpp
+)
+
 enable_testing()
 
 add_executable(z80test tests/z80/smoke_test.cpp ${Z80_LIB_SOURCES})
@@ -272,7 +328,7 @@ endif ()
 
 add_test(NAME z80_smoke COMMAND z80test)
 
-add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
+add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES})
 target_include_directories(z80dbgtest PRIVATE src/z80 src/memmap src/vdp)
 set_target_properties(z80dbgtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/z80dbgtest)
 if (MINGW)
@@ -281,7 +337,7 @@ endif ()
 
 add_test(NAME z80_debug_session COMMAND z80dbgtest)
 
-add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
+add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES})
 target_include_directories(memmaptest PRIVATE src/z80 src/memmap src/vdp)
 # FWMSX_SOURCE_DIR: caminho absoluto da raiz do repositorio, para o teste
 # de aceitacao com a BIOS real (resource/fMSX/ROMs/MSX.ROM) achar o
@@ -298,7 +354,7 @@ add_test(NAME memmap_slots COMMAND memmaptest)
 # vdptest: VDP "digital" (Fase 1) + Fase 0.5 (CompositeBus) -- ver
 # doc/vdp-spec.md. Mesmo padrao de memmaptest (FWMSX_SOURCE_DIR para o
 # teste de aceitacao com a BIOS real).
-add_executable(vdptest tests/z80/vdp_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
+add_executable(vdptest tests/z80/vdp_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES})
 target_include_directories(vdptest PRIVATE src/z80 src/memmap src/vdp)
 target_compile_definitions(vdptest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(vdptest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/vdptest)
@@ -309,7 +365,7 @@ endif ()
 add_test(NAME vdp_digital COMMAND vdptest)
 
 # ppitest: PPI i8255 + teclado -- ver doc/ppi-spec.md.
-add_executable(ppitest tests/z80/ppi_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
+add_executable(ppitest tests/z80/ppi_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES})
 target_include_directories(ppitest PRIVATE src/z80 src/memmap src/vdp src/ppi)
 target_compile_definitions(ppitest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(ppitest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/ppitest)
@@ -318,6 +374,42 @@ if (MINGW)
 endif ()
 
 add_test(NAME ppi_keyboard COMMAND ppitest)
+
+# psgtest: PSG AY-3-8910 -- ver doc/psg-spec.md.
+add_executable(psgtest tests/z80/psg_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES})
+target_include_directories(psgtest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg)
+target_compile_definitions(psgtest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(psgtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/psgtest)
+if (MINGW)
+    target_link_options(psgtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME psg_sound COMMAND psgtest)
+
+# machinetest: a maquina MSX1 completa em quadros, sem janela -- ver
+# doc/machine-spec.md.
+add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES})
+target_include_directories(machinetest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
+target_compile_definitions(machinetest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(machinetest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/machinetest)
+if (MINGW)
+    target_link_options(machinetest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME machine_frames COMMAND machinetest)
+
+# audiotest: buffer circular, PSG ao vivo e dispositivo de audio -- ver
+# doc/audio-spec.md.
+add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${AUDIO_LIB_SOURCES})
+target_include_directories(audiotest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/audio)
+target_compile_definitions(audiotest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(audiotest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/audiotest)
+audio_link_target(audiotest)
+if (MINGW)
+    target_link_options(audiotest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME audio_live COMMAND audiotest)
 
 # --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
 #
@@ -339,7 +431,8 @@ add_executable(fwMSX
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
-        ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES}
+        ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES}
+        ${MACHINE_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 
@@ -352,6 +445,8 @@ target_include_directories(fwMSX PRIVATE
         src/z80
         src/memmap
         src/vdp
+        src/audio
 )
 msxdisk_link_target(fwMSX)
+audio_link_target(fwMSX)
 set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)

@@ -91,9 +91,18 @@ real da BIOS "presa" desde a v1.4.0 era um bug do nucleo Z80: `Z80Cpu`
 nao chamava `z80_reset()` na construcao e as tabelas de flag ficavam
 zeradas. Ver [doc/ppi-spec.md, secao 5](doc/ppi-spec.md).
 
+A v1.9.0 trouxe a **maquina de verdade**: `fwmsx --msx` abre uma janela
+(Dear ImGui + GLFW) com a BIOS MSX1 rodando em tempo real, **teclado do
+host**, **cartucho** no slot 1 (`--cart`) e **som ao vivo** -- o **PSG
+AY-3-8910** (motor em **C** que gera amostras PCM, tabela de volume em
+**Fortran**, `PsgDevice` em **C++**) toca pelo dispositivo de audio do
+sistema via miniaudio. `fwmsx --msx --frames N --shot tela.ppm --keys
+"print 1234|"` roda sem janela. Ver [doc/machine-spec.md](doc/machine-spec.md),
+[doc/psg-spec.md](doc/psg-spec.md) e [doc/audio-spec.md](doc/audio-spec.md).
+
 **Trabalho no core de emulacao continua em andamento** -- faltam
-PSG/som, modos MSX2 + janela de verdade com teclado do host (Fase 4 do
-VDP) e cartuchos para existir uma maquina MSX completa. Ver
+joystick, disco, modos MSX2 (Fase 4 do VDP) e os chips de som de
+cartucho (SCC/FM) para uma maquina MSX completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.
 
@@ -118,11 +127,17 @@ fwMSX/
 │   │               (core/cpp/fortran -- ver doc/memory-map-spec.md)
 │   ├── vdp/        VDP (TMS9918/V9938) -- registradores/portas/
 │   │               renderizacao (core/cpp/fortran -- ver doc/vdp-spec.md)
-│   └── ppi/        PPI i8255 + teclado (core/cpp/fortran/asm -- ver
-│                   doc/ppi-spec.md)
+│   ├── ppi/        PPI i8255 + teclado (core/cpp/fortran/asm -- ver
+│   │               doc/ppi-spec.md)
+│   ├── psg/        PSG AY-3-8910 (core/cpp/fortran -- ver doc/psg-spec.md)
+│   ├── audio/      saida de audio ao vivo (miniaudio -- ver
+│   │               doc/audio-spec.md)
+│   └── machine/    maquina MSX1 completa + janela (`--msx` -- ver
+│                   doc/machine-spec.md)
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
-├── tests/z80/      testes do nucleo Z80, mapa de memoria e VDP (CTest --
-│                   z80test/z80dbgtest/memmaptest/vdptest/ppitest)
+├── tests/z80/      testes do nucleo Z80, memoria, VDP, PPI, PSG, maquina e
+│                   audio (CTest -- z80test/z80dbgtest/memmaptest/vdptest/
+│                   ppitest/psgtest/machinetest/audiotest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk
@@ -130,6 +145,9 @@ fwMSX/
 │   ├── memory-map-spec.md especificacao + fases do mapa de memoria
 │   ├── vdp-spec.md      especificacao + fases do VDP
 │   ├── ppi-spec.md      especificacao + fases do PPI/teclado
+│   ├── psg-spec.md      especificacao + fases do PSG
+│   ├── machine-spec.md  maquina completa + janela com teclado do host
+│   ├── audio-spec.md    audio ao vivo
 │   ├── MANUAL.md       como compilar e executar
 │   ├── CHANGELOG.md    resumo das alteracoes entre versoes
 │   └── RELEASE.md       detalhes de cada release
@@ -192,7 +210,8 @@ naquele ponto (ex.: `v1.1.2 -- "Nemesis: Renomeacao"`). Regras completas em
   [replxx](https://github.com/AmokHuginnsson/replxx),
   [FTXUI](https://github.com/ArthurSonzogni/FTXUI),
   [Dear ImGui](https://github.com/ocornut/imgui),
-  [GLFW](https://www.glfw.org/) e [SQLite](https://www.sqlite.org/).
+  [GLFW](https://www.glfw.org/), [SQLite](https://www.sqlite.org/) e
+  [miniaudio](https://github.com/mackron/miniaudio) (audio do emulador).
 
 ## Licenca
 

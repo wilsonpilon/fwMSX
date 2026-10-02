@@ -7,6 +7,47 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.9.0] - 2026-10-02 - "Gradius 2: Janela e Som"
+
+**O fwMSX agora e' uma maquina que da' para usar**: `fwmsx --msx` abre uma
+janela com a BIOS real rodando em tempo real, teclado do host e som. Ver
+[doc/machine-spec.md](machine-spec.md), [doc/psg-spec.md](psg-spec.md) e
+[doc/audio-spec.md](audio-spec.md).
+
+### Adicionado
+- **`fwmsx --msx`: a maquina MSX1 completa numa janela, com teclado do
+  host** -- ver [doc/machine-spec.md](machine-spec.md). `machine::Machine`
+  (`src/machine/`) junta BIOS + slots + VDP + PPI + PSG + Z80 e avanca por
+  quadros (59736 ciclos, 59.92 Hz) sem depender de janela; a janela
+  (Dear ImGui + GLFW + OpenGL) roda em tempo real, com menu (Reset, Pausar,
+  tela cheia com F11) e mapeamento posicional do teclado do host para a
+  matriz do MSX. `--cart <arq> [mapper]` carrega um cartucho no slot 1
+  (ROM plana ou MegaROM); `--frames N --shot arq.ppm [--keys "texto"]` roda
+  sem janela e salva a tela.
+- **Audio ao vivo**: `fwmsx --msx` toca o PSG pelo dispositivo de audio
+  padrao (miniaudio, um header de dominio publico baixado por FetchContent),
+  via buffer circular sem trava e `PsgDevice::EnableLive()/TakeLive()`.
+  Menu **Som** (mudo + volume), `--mute`, `-DFWMSX_AUDIO=OFF` para um stub.
+  Ver [doc/audio-spec.md](audio-spec.md). Novo alvo `audiotest` (inclui o
+  dispositivo real: ~44100 amostras/s, 0 underruns em 1 s).
+- 570 verificacoes automatizadas (8 suites).
+- Novo alvo de teste `machinetest` (boot em quadros, RenderFrame, digitar
+  `print 1234`, Reset, cartucho com INIT).
+- **PSG AY-3-8910 (portas `A0h`-`A2h`)** -- ver [doc/psg-spec.md](psg-spec.md).
+  Motor em C (`src/psg/core/psg_state.{h,c}`) que **gera amostras PCM de
+  verdade** (3 tons, ruido LFSR de 17 bits, 16 formas de envelope) avancadas
+  por ciclos de Z80; tabela de volume logaritmica em Fortran
+  (`volume_table.f90`); `psg::PsgDevice` e gravador de WAV em C++.
+- **Depurador:** flag `--psg` (exige `--slots`) e comandos `psgregs`,
+  `psgpoke`, `psgrec start|stop|clear|save <arq.wav>`; `reset` tambem
+  reseta o PSG.
+- Novo alvo de teste `psgtest`. Com a BIOS real: `GICINI` programa o mixer
+  (R7=`B8h`) e `BEEP` no BASIC toca o canal A em 1316 Hz, volume 7.
+
+### Notas
+- Sem joystick em R14/R15 (R14 le `7Fh`). A duracao do BEEP gravado nao foi conferida
+  contra um MSX real.
+
 ## [1.8.0] - 2026-10-01 - "Zanac: Prompt do BASIC"
 
 **A BIOS MSX1 real sobe ate o prompt do MSX BASIC** e o teclado do PPI

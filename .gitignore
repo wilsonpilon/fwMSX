@@ -160,11 +160,17 @@ dkms.conf
 /dist/memmaptest.exe
 /dist/vdptest.exe
 /dist/ppitest.exe
+/dist/psgtest.exe
+/dist/machinetest.exe
+/dist/audiotest.exe
 /dist/z80test
 /dist/z80dbgtest
 /dist/memmaptest
 /dist/vdptest
 /dist/ppitest
+/dist/psgtest
+/dist/machinetest
+/dist/audiotest
 
 # Diretorios de build gerados automaticamente pelo CLion
 /cmake-build-*/

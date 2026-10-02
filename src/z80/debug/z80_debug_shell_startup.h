@@ -16,6 +16,7 @@
 #include "../../memmap/cpp/memory_system.h"
 #include "../../memmap/cpp/slot_memory_bus.h"
 #include "../../ppi/cpp/ppi_device.h"
+#include "../../psg/cpp/psg_device.h"
 #include "../../vdp/cpp/vdp_device.h"
 #include "../cpp/composite_bus.h"
 #include "../cpp/z80_bus.h"
@@ -63,6 +64,12 @@ struct Z80DebugShellStartup {
     bool use_ppi = false;
     std::string ppi_error;
 
+    // "--psg" (PSG AY-3-8910, ver doc/psg-spec.md): mesmas regras de
+    // "--vdp"/"--ppi" -- exige "--slots" e e' ignorado com aviso em
+    // psg_error caso contrario.
+    bool use_psg = false;
+    std::string psg_error;
+
     // Sempre construido (mesmo quando use_slots==false, so' fica sem uso
     // nesse caso) -- mais simples do que um ponteiro opcional, e o custo
     // de 64KB e' irrelevante.
@@ -74,14 +81,16 @@ struct Z80DebugShellStartup {
     std::unique_ptr<vdp::VdpDevice> vdp_device;
     // So construido quando use_ppi==true.
     std::unique_ptr<ppi::PpiDevice> ppi_device;
-    // Construido quando use_vdp || use_ppi.
+    // So construido quando use_psg==true.
+    std::unique_ptr<psg::PsgDevice> psg_device;
+    // Construido quando use_vdp || use_ppi || use_psg.
     std::unique_ptr<z80::CompositeBus> composite_bus;
 
-    // O IBus que a sessao deve usar: CompositeBus (slots+VDP/PPI) quando
-    // use_vdp ou use_ppi, SlotMemoryBus quando so' use_slots,
+    // O IBus que a sessao deve usar: CompositeBus (slots+VDP/PPI/PSG) quando
+    // use_vdp, use_ppi ou use_psg, SlotMemoryBus quando so' use_slots,
     // FlatMemoryBus caso contrario.
     z80::IBus &Bus() const {
-        if (use_vdp || use_ppi) return *composite_bus;
+        if (use_vdp || use_ppi || use_psg) return *composite_bus;
         return use_slots ? static_cast<z80::IBus &>(*slot_bus) : static_cast<z80::IBus &>(*flat_bus);
     }
 };
