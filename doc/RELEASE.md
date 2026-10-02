@@ -13,6 +13,44 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.6.0 -- "Penguin Adventure: Sprites em Cena" (2026-10-01)
+
+**Fase:** VDP, Fase 3 (sprites de modo 1) -- ver [vdp-spec.md](vdp-spec.md).
+Nome escolhido por "Penguin Adventure" (Konami) ser a sequência de
+"Antarctic Adventure", o nome da versão anterior: o pinguim agora tem
+sprites.
+
+### Destaques
+
+- **Sprites de SCREEN 1/2/3 em C**, adaptados de `Sprites()` e
+  `CheckSprites()` do fMSX (`src/vdp/core/vdp_sprites.{h,c}`): 8x8/16x16,
+  ampliação 2x, prioridade por índice, cor 0 transparente, early clock,
+  Y negativo, terminador Y=208 e R#8 bit 1.
+- **Quinto sprite** (limite de 4 por linha, flag + número em S#0) e
+  **colisão** (S#0 bit 5, linha 192), tudo dirigido por
+  `vdp_step_scanline()`; ler S#0 pela porta `99h` limpa os flags.
+- Recorte pixel a pixel no lugar das máscaras de bits do original --
+  mesmo resultado, verificado nos casos de borda.
+- 402 verificações automatizadas (`ctest`, 4 suítes), 20 novas.
+
+### Build usado para validar esta release
+
+- `gcc`/`g++`/`gfortran` (MSYS2 UCRT64), `nasm`, `cmake` + `ninja`;
+  `dist/fwMSX.exe`/`dist/msxdisk.exe` estáticos. O pacote Linux
+  (`.tar.gz`) desta versão ainda precisa ser gerado via `build.sh` numa
+  máquina Linux/WSL2.
+
+### Limitações conhecidas
+
+- Sem sprites de modo 2 (SCREEN 4-8) nem modos MSX2 -- Fase 4.
+- Sem borda/overscan, sem `ScreenON`, sem janela gráfica em tempo real
+  (`vdpshot` exporta PPM).
+- A BIOS real ainda depende de PPI/teclado para habilitar o VBlank (ver
+  `doc/SPEC.md`, seção 5.0).
+- Demais limitações das versões anteriores continuam valendo.
+
+---
+
 ## v1.5.0 -- "Antarctic Adventure: Primeiros Pixels" (2026-09-30)
 
 **Fase:** VDP (TMS9918/V9938), Fases 0.5, 1 e 2 -- ver

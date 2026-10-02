@@ -390,8 +390,41 @@ com precisao em `LICENSE-THIRD-PARTY.md` (dois autores, nao um).
   verificacoes no total (168+58+102+54), todas passando. Verificacao
   manual via `fwMSX.exe --z80dbg --slots --vdp` (`vdpshot` gerando um
   PPM real, cabecalho conferido byte a byte).
-- [ ] **Fase 3 -- Sprites**: modos de sprite 1 e 2 (colisao, prioridade,
-      "5 sprites por linha" e o flag de overflow).
+- [x] **Fase 3 -- Sprites de modo 1** (concluida em 2026-10-01): sprites
+      do TMS9918 em SCREEN 1/2/3 -- 8x8/16x16, ampliacao 2x, prioridade
+      por indice, cor 0 transparente, early clock (bit 7 do atributo),
+      terminador Y=208, limite de 4 por linha, flag/numero do "quinto
+      sprite" e flag de colisao. Adaptado de `Sprites()`/`CheckSprites()`
+      do fMSX. **Sprites de modo 2** (`ColorSprites()`, SCREEN 4-8, cor
+      por linha, 8 por linha) ficam para a Fase 4, junto com os modos
+      MSX2 -- nao fazem sentido sem eles.
+
+  **Arquivos**: `src/vdp/core/vdp_sprites.{h,c}` (C, adaptado do fMSX);
+  `vdp_render_line()` chama `vdp_sprites_draw_line()` por cima do fundo
+  em SCREEN 1/2; `vdp_step_scanline()` ganhou o efeito de status de
+  `Sprites()` por linha visivel e a checagem de colisao na linha 192
+  (S#0 bit 5; o bit 6/bits 4-0 do quinto sprite sao limpos/reiniciados
+  nessa linha, como no original).
+
+  **Decisoes/simplificacoes**: recorte pixel a pixel em vez das mascaras
+  de bits do original (mesmo resultado, verificado nos casos de borda);
+  sem `MSX_ALLSPRITE` (5o sprite nunca e' desenhado, como o hardware);
+  `ScreenON=0` nao esconde sprites (coerente com a Fase 2); a colisao
+  ignora a ampliacao, como o fMSX; quirk preservado do fMSX: VScroll
+  (R#23) e' somado duas vezes ao Y dos sprites em SCREEN 1 (irrelevante
+  com R#23=0). A renderizacao e' `const` -- o status de sprite e'
+  atualizado so' por `vdp_step_scanline()`, nunca por `vdpshot`.
+
+  **Testes**: +20 verificacoes em `vdptest` (54 -> 74; 402 no total das 4
+  suites): janela vertical exata Y+1..Y+8, prioridade, cor 0, early
+  clock, recorte na borda direita, Y negativo, terminador 208, R#8
+  SPD, 16x16 (indice & 0xFC, quadrantes), ampliado, quinto sprite
+  (flag + numero + nao desenhado + limpeza), colisao (adjacentes,
+  sobrepostos, distantes, dv=8 vs dv=7) e ponta a ponta via
+  `vdp_step_scanline()`/leitura da porta 99h. Dois erros de teste (nao
+  de codigo) achados no processo: a linha 0 de um sprite com Y=250 mostra
+  a linha 5 do padrao (nao a 6), e padroes de colisao precisam ter todas
+  as 8 linhas preenchidas.
 - [ ] **Fase 4 -- Modos MSX2 + janela real**: SCREEN 5-8, paleta de 512
       cores, TEXT80; integracao com uma janela de verdade (GLFW/OpenGL,
       reaproveitando o que a GUI do msxdisk ja' usa) -- primeira vez que

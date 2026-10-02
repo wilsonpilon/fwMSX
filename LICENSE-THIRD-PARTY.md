@@ -99,6 +99,11 @@ termos acima:
   `FontBuf`/`MSX_FIXEDFONT`, todos fora de escopo (ver
   `doc/vdp-spec.md`, secao 6, Fase 2, para o detalhamento completo das
   simplificacoes e das dimensoes de framebuffer resultantes).
+- `src/vdp/core/vdp_sprites.{h,c}` -- sprites de SCREEN 1/2/3, de
+  `resource/fMSX/fMSX/Common.h` (`Sprites()`) e `resource/fMSX/fMSX/MSX.c`
+  (`CheckSprites()` e o trecho de status de sprite de `LoopZ80()`) --
+  **nao** `ColorSprites()` (sprites de modo 2, SCREEN 4-8, Fase 4). Ver
+  `doc/vdp-spec.md`, secao 6, Fase 3.
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

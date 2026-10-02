@@ -71,8 +71,13 @@ cores em **Fortran**, finalmente com consumidor. `fwmsx --z80dbg
 --slots resource/fMSX/ROMs/MSX.ROM --vdp` e' o comando mais completo de
 depuracao que o projeto tem hoje. Ver [doc/vdp-spec.md](doc/vdp-spec.md).
 
+A v1.6.0 trouxe os **sprites** do VDP (Fase 3): SCREEN 1/2/3 com 8x8/
+16x16, ampliacao, prioridade, limite de 4 por linha, flag de quinto
+sprite e de colisao, em **C**, adaptados do fMSX. Ver
+[doc/vdp-spec.md](doc/vdp-spec.md).
+
 **Trabalho no core de emulacao continua em andamento** -- faltam
-sprites (Fase 3 do VDP), modos MSX2 + janela de verdade (Fase 4), PPI/
+modos MSX2 + janela de verdade (Fase 4 do VDP), PPI/
 teclado e PSG para existir uma maquina MSX completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.

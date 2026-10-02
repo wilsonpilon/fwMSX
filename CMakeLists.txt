@@ -231,6 +231,7 @@ set(VDP_LIB_SOURCES
         src/vdp/core/vdp_state.c
         src/vdp/core/vdp_tables.c
         src/vdp/core/vdp_render.c
+        src/vdp/core/vdp_sprites.c
         src/vdp/cpp/ppm_writer.cpp
         src/vdp/fortran/palette_table.f90
 )

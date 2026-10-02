@@ -188,7 +188,7 @@ acompanhamento manual do autor a cada build):
   `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
   item adiado.
 
-### 5.0 Proximos passos (para retomar sem se perder -- v1.5.0, 2026-09-30)
+### 5.0 Proximos passos (para retomar sem se perder -- v1.6.0, 2026-10-01)
 
 O trabalho no core de emulacao segue em andamento; esta secao continua
 sendo o "onde paramos" oficial.
@@ -204,7 +204,7 @@ sendo o "onde paramos" oficial.
    pixel para SCREEN 0/1/2 (texto mono, texto colorido, bitmap), tabela
    de paleta de 512 cores em **Fortran** (finalmente com consumidor),
    exportacao de frame como PPM (`vdpshot`) para inspecao/teste sem
-   janela. **Falta**: sprites (Fase 3, proxima), modos MSX2 5-8 + janela
+   janela. **Fase 3 (sprites de modo 1, SCREEN 1/2/3) concluida em 2026-10-01**. **Falta**: modos MSX2 5-8 (com sprites de modo 2) + janela
    de verdade (Fase 4), motor de comando V9938 (Fase 5, avancado/
    opcional). Achado que vale lembrar: a BIOS real ainda nao chega a
    habilitar a interrupcao de VBlank dentro de nenhum orcamento de

@@ -2,6 +2,7 @@
 // para a nota de atribuicao completa e o escopo/simplificacoes desta
 // Fase 2.
 #include "vdp_render.h"
+#include "vdp_sprites.h"
 
 #define VRAM_MASK ((uint32_t)(VDP_VRAM_SIZE - 1))
 
@@ -128,9 +129,11 @@ void vdp_render_line(const VdpState *v, int y, VdpRgb888 *out_row) {
             return;
         case 1:
             RenderLine1(v, y, out_row);
+            vdp_sprites_draw_line(v, y, out_row);
             return;
         case 2:
             RenderLine2(v, y, out_row);
+            vdp_sprites_draw_line(v, y, out_row);
             return;
         default: {
             /* Modo ainda nao suportado (Fase 3+: sprites/MSX2/etc.) --

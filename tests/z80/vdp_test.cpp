@@ -18,6 +18,7 @@
 #include "../../src/vdp/cpp/ppm_writer.h"
 #include "../../src/vdp/cpp/vdp_device.h"
 #include "../../src/vdp/core/vdp_render.h"
+#include "../../src/vdp/core/vdp_sprites.h"
 
 namespace {
 
@@ -69,6 +70,41 @@ void WriteVramViaPort98(VdpState &v, uint16_t addr, uint8_t value) {
     vdp_out(&v, 0x99, (uint8_t)(addr & 0xFF));
     vdp_out(&v, 0x99, (uint8_t)(((addr >> 8) & 0x3F) | 0x40));
     vdp_out(&v, 0x98, value);
+}
+
+// --- Fase 3: helpers de sprite (SCREEN 1; tabela de atributos em 0x2000,
+// geradores de padrao em 0x2800) -----------------------------------------
+constexpr uint16_t kSprTab = 0x2000;
+constexpr uint16_t kSprGen = 0x2800;
+
+void SetupSpriteScreen(VdpState &v, uint8_t reg1_extra = 0) {
+    vdp_reset(&v);
+    WriteRegisterViaPort99(v, 0, 0x00);
+    WriteRegisterViaPort99(v, 1, reg1_extra); // SCREEN 1 + bits de sprite (0x01 ampliado, 0x02 16x16)
+    WriteRegisterViaPort99(v, 2, 0x02);       // chr_tab = 0x800
+    WriteRegisterViaPort99(v, 4, 0x00);       // chr_gen = 0
+    WriteRegisterViaPort99(v, 5, 0x40);       // spr_tab = 0x40<<7 = 0x2000
+    WriteRegisterViaPort99(v, 6, 0x05);       // spr_gen = 5<<11 = 0x2800
+    WriteRegisterViaPort99(v, 7, 0x00);       // fundo = paleta 0 (preto)
+    // O reset deixa a VRAM zerada: sem terminador, os 32 sprites ficam em Y=0.
+    WriteVramViaPort98(v, kSprTab, 208);
+}
+
+void SetSprite(VdpState &v, int n, uint8_t y, uint8_t x, uint8_t pattern, uint8_t attr, bool terminate = true) {
+    const uint16_t a = static_cast<uint16_t>(kSprTab + n * 4);
+    WriteVramViaPort98(v, a, y);
+    WriteVramViaPort98(v, static_cast<uint16_t>(a + 1), x);
+    WriteVramViaPort98(v, static_cast<uint16_t>(a + 2), pattern);
+    WriteVramViaPort98(v, static_cast<uint16_t>(a + 3), attr);
+    if (terminate && n < 31) WriteVramViaPort98(v, static_cast<uint16_t>(a + 4), 208);
+}
+
+bool RgbIs(const VdpRgb888 &p, const VdpState &v, int pal_index) {
+    return p.r == v.palette_r[pal_index] && p.g == v.palette_g[pal_index] && p.b == v.palette_b[pal_index];
+}
+
+void FillPattern(VdpState &v, int pattern, uint8_t bits) {
+    for (int r = 0; r < 8; ++r) WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + pattern * 8 + r), bits);
 }
 
 // Roda `cycle_budget` ciclos de Z80, opcionalmente avancando o VDP e
@@ -664,6 +700,149 @@ int main() {
         // diretorio de trabalho a cada execucao).
         in.close();
         std::remove(path.c_str());
+    }
+
+
+    // --- Fase 3: sprites (SCREEN 1) ----------------------------------------
+    {
+        std::vector<VdpRgb888> row(VDP_RENDER_WIDTH_STD);
+        VdpState v;
+
+        // 16. Sprite 8x8 basico: aparece em Y+1..Y+8, nao antes nem depois.
+        SetupSpriteScreen(v);
+        FillPattern(v, 1, 0xF0);
+        SetSprite(v, 0, 9, 20, 1, 2); // cor 2
+        vdp_render_line(&v, 9, row.data());
+        const bool before_ok = RgbIs(row[20], v, 0);
+        vdp_render_line(&v, 10, row.data());
+        const bool first_ok = RgbIs(row[19], v, 0) && RgbIs(row[20], v, 2) && RgbIs(row[23], v, 2) && RgbIs(row[24], v, 0);
+        vdp_render_line(&v, 17, row.data());
+        const bool last_ok = RgbIs(row[20], v, 2);
+        vdp_render_line(&v, 18, row.data());
+        const bool after_ok = RgbIs(row[20], v, 0);
+        check(before_ok && first_ok && last_ok && after_ok,
+              "sprite 8x8: ocupa exatamente as linhas Y+1..Y+8 e as colunas X..X+3 (padrao 0xF0)");
+
+        // 17. Prioridade: menor indice fica por cima; cor 0 e' transparente.
+        SetSprite(v, 0, 9, 22, 1, 8, false); // sprite 0 (cor 8) sobre o sprite 1
+        SetSprite(v, 1, 9, 20, 1, 2);        // sprite 1 (cor 2)
+        vdp_render_line(&v, 10, row.data());
+        check(RgbIs(row[20], v, 2) && RgbIs(row[21], v, 2) && RgbIs(row[22], v, 8) && RgbIs(row[25], v, 8),
+              "sprites sobrepostos: o de menor indice (0) cobre o de maior indice (1)");
+        SetSprite(v, 0, 9, 22, 1, 0, false); // cor 0 = transparente
+        vdp_render_line(&v, 10, row.data());
+        check(RgbIs(row[22], v, 2), "sprite de cor 0 e' transparente (deixa ver o sprite por baixo)");
+
+        // 18. Recorte: early clock e borda direita.
+        SetupSpriteScreen(v);
+        FillPattern(v, 1, 0xFF);
+        SetSprite(v, 0, 9, 28, 1, 0x82); // early clock: x = 28-32 = -4
+        vdp_render_line(&v, 10, row.data());
+        check(RgbIs(row[0], v, 2) && RgbIs(row[3], v, 2) && RgbIs(row[4], v, 0),
+              "early clock (bit 7 do atributo): X=28 -> x=-4, so' os 4 pixels visiveis aparecem em 0..3");
+        SetSprite(v, 0, 9, 252, 1, 2);
+        vdp_render_line(&v, 10, row.data());
+        check(RgbIs(row[251], v, 0) && RgbIs(row[252], v, 2) && RgbIs(row[255], v, 2),
+              "borda direita: X=252 desenha so' 4 pixels (252..255), sem escrever alem da linha");
+
+        // 19. Y negativo (wrap): Y=250 -> -6; linhas 0, 1 e 2 mostram as linhas 5, 6 e 7 do padrao.
+        SetupSpriteScreen(v);
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 8 + 5), 0x80);
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 8 + 6), 0x40);
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 8 + 7), 0x20);
+        SetSprite(v, 0, 250, 40, 1, 2);
+        vdp_render_line(&v, 0, row.data());
+        const bool y0 = RgbIs(row[40], v, 2) && RgbIs(row[41], v, 0);
+        vdp_render_line(&v, 1, row.data());
+        const bool y1 = RgbIs(row[40], v, 0) && RgbIs(row[41], v, 2);
+        vdp_render_line(&v, 2, row.data());
+        const bool y2 = RgbIs(row[41], v, 0) && RgbIs(row[42], v, 2);
+        vdp_render_line(&v, 3, row.data());
+        check(y0 && y1 && y2 && RgbIs(row[40], v, 0) && RgbIs(row[41], v, 0) && RgbIs(row[42], v, 0),
+              "Y negativo (Y=250): linhas 0-2 da tela mostram as linhas 5-7 do padrao; linha 3 vazia");
+
+        // 20. Terminador Y=208 esconde os sprites seguintes.
+        SetupSpriteScreen(v);
+        FillPattern(v, 1, 0xFF);
+        SetSprite(v, 0, 208, 10, 1, 2, false);
+        SetSprite(v, 1, 9, 30, 1, 2);
+        vdp_render_line(&v, 10, row.data());
+        check(RgbIs(row[30], v, 0), "Y=208 no sprite 0 termina a lista: o sprite 1 nao e' desenhado");
+
+        // 21. R#8 bit 1 desliga sprites.
+        SetupSpriteScreen(v);
+        FillPattern(v, 1, 0xFF);
+        SetSprite(v, 0, 9, 30, 1, 2);
+        WriteRegisterViaPort99(v, 8, 0x02);
+        vdp_render_line(&v, 10, row.data());
+        check(RgbIs(row[30], v, 0), "R#8 bit 1 (SPD) desliga a exibicao de sprites");
+    }
+    {
+        std::vector<VdpRgb888> row(VDP_RENDER_WIDTH_STD);
+        VdpState v;
+
+        // 22. Sprite 16x16: quadrantes esquerdo (+0..7) / inferior (+8..15) / direito (+16..); indice & 0xFC.
+        SetupSpriteScreen(v, 0x02);
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 4 * 8 + 0), 0x80);  // linha 0, esquerda, pixel 0
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 4 * 8 + 16), 0x01); // linha 0, direita, pixel 15
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 4 * 8 + 8), 0x40);  // linha 8, esquerda, pixel 1
+        SetSprite(v, 0, 19, 100, 7, 2); // 7 & 0xFC = 4
+        vdp_render_line(&v, 20, row.data());
+        const bool top = RgbIs(row[100], v, 2) && RgbIs(row[101], v, 0) && RgbIs(row[115], v, 2) && RgbIs(row[114], v, 0);
+        vdp_render_line(&v, 28, row.data());
+        const bool mid = RgbIs(row[100], v, 0) && RgbIs(row[101], v, 2);
+        check(top && mid, "sprite 16x16: quadrantes lidos dos enderecos certos (indice & 0xFC)");
+
+        // 23. Ampliado (2x): 8x8 vira 16x16, cada pixel/linha dobrado.
+        SetupSpriteScreen(v, 0x01);
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 8 + 0), 0x80);
+        WriteVramViaPort98(v, static_cast<uint16_t>(kSprGen + 8 + 1), 0x40);
+        SetSprite(v, 0, 9, 50, 1, 2);
+        vdp_render_line(&v, 10, row.data());
+        const bool l0 = RgbIs(row[50], v, 2) && RgbIs(row[51], v, 2) && RgbIs(row[52], v, 0);
+        vdp_render_line(&v, 11, row.data());
+        const bool l1 = RgbIs(row[50], v, 2) && RgbIs(row[51], v, 2) && RgbIs(row[52], v, 0);
+        vdp_render_line(&v, 12, row.data());
+        const bool l2 = RgbIs(row[50], v, 0) && RgbIs(row[51], v, 0) && RgbIs(row[52], v, 2) && RgbIs(row[53], v, 2);
+        check(l0 && l1 && l2, "sprite ampliado: cada pixel e cada linha do padrao 8x8 sao dobrados");
+
+        // 24. Quinto sprite: 5 na mesma linha -> flag + numero; o 5o nao e' desenhado.
+        SetupSpriteScreen(v);
+        FillPattern(v, 1, 0xFF);
+        for (int n = 0; n < 5; ++n) SetSprite(v, n, 9, static_cast<uint8_t>(n * 10), 1, 2, n == 4);
+        vdp_sprites_update_status(&v, 10);
+        check((v.status[0] & 0x40) && (v.status[0] & 0x1F) == 4,
+              "5 sprites na mesma linha: S#0 bit 6 (5o sprite) ligado e bits 4-0 = 4");
+        vdp_render_line(&v, 10, row.data());
+        check(RgbIs(row[30], v, 2) && RgbIs(row[40], v, 0), "o 5o sprite da linha nao e' desenhado (limite de 4 por linha)");
+        vdp_sprites_update_status(&v, 100);
+        check(!(v.status[0] & 0x40), "numa linha sem excesso a flag de 5o sprite e' limpa");
+
+        // 25. Colisao.
+        SetupSpriteScreen(v);
+        FillPattern(v, 1, 0xF0);
+        FillPattern(v, 2, 0x0F);
+        FillPattern(v, 3, 0xF0);
+        SetSprite(v, 0, 50, 100, 1, 2, false);
+        SetSprite(v, 1, 50, 104, 2, 3);
+        check(!vdp_sprites_check_collision(&v), "sprites com padroes complementares lado a lado: sem colisao");
+        SetSprite(v, 1, 50, 102, 3, 3);
+        check(vdp_sprites_check_collision(&v), "sprites com pixels acesos sobrepostos: colisao detectada");
+        SetSprite(v, 1, 50, 120, 3, 3);
+        check(!vdp_sprites_check_collision(&v), "sprites distantes: sem colisao");
+        SetSprite(v, 1, 58, 100, 3, 3);
+        check(!vdp_sprites_check_collision(&v), "sprites verticalmente adjacentes (dv=8): sem colisao");
+        SetSprite(v, 1, 57, 100, 3, 3); // dv=7: linha 7 do sprite 0 sobre a linha 0 do sprite 1
+        check(vdp_sprites_check_collision(&v), "colisao na ultima linha de sobreposicao vertical (dv=7)");
+
+        // 26. De ponta a ponta: S#0 bit 5 sobe via vdp_step_scanline() na linha 192
+        // e e' limpo ao ler o status (porta 99h).
+        v.status[0] = 0;
+        for (int i = 0; i < 2 * 262 && !(v.status[0] & 0x20); ++i) vdp_step_scanline(&v);
+        check((v.status[0] & 0x20) != 0 && v.scanline >= 192, "colisao sinalizada em S#0 bit 5 pela maquina de scanline (linha 192)");
+        WriteRegisterViaPort99(v, 15, 0);
+        const uint8_t st = vdp_in(&v, 0x99);
+        check((st & 0x20) && !(v.status[0] & 0x20), "ler S#0 devolve o flag de colisao e o limpa");
     }
 
     if (g_failures == 0) {

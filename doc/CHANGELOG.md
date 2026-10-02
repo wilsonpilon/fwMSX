@@ -7,6 +7,28 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.6.0] - 2026-10-01 - "Penguin Adventure: Sprites em Cena"
+
+Fase 3 do VDP -- sprites de "modo 1" do TMS9918 (SCREEN 1/2/3). Ver
+[doc/vdp-spec.md](vdp-spec.md), secao 6, Fase 3.
+
+### Adicionado
+- **Sprites em C** (`src/vdp/core/vdp_sprites.{h,c}`), adaptados de
+  `Sprites()`/`CheckSprites()` do fMSX: 8x8 e 16x16, ampliação 2x,
+  prioridade por índice, cor 0 transparente, early clock, Y negativo,
+  terminador Y=208, desligamento por R#8 bit 1.
+- **Limite de 4 sprites por linha** com flag/número do "quinto sprite"
+  em S#0, e **flag de colisão** (S#0 bit 5) sinalizada na linha 192 por
+  `vdp_step_scanline()`; ler S#0 pela porta `99h` devolve e limpa.
+- `vdp_render_line()` desenha os sprites por cima do fundo em SCREEN 1/2
+  (o `vdpshot` já os mostra).
+- 20 novas verificações em `vdptest` (402 no total, 4 suítes).
+
+### Notas
+- Sem sprites de modo 2 (SCREEN 4-8) -- Fase 4, com os modos MSX2.
+- Quirk do fMSX preservado: VScroll (R#23) somado duas vezes ao Y dos
+  sprites em SCREEN 1 (irrelevante com R#23=0).
+
 ## [1.5.0] - 2026-09-30 - "Antarctic Adventure: Primeiros Pixels"
 
 Primeira vez que o projeto desenha pixels de verdade -- o VDP
