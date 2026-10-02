@@ -271,7 +271,9 @@ com precisao em `LICENSE-THIRD-PARTY.md` (dois autores, nao um).
   orcamento de ciclos testado** (ate' 20 milhoes) -- investigando, o PC
   fica preso perto de `0x0C3C`-`0x0C44` cedo no boot da BIOS,
   quase certamente esperando uma resposta de PPI/teclado (portas
-  `A9h`/`AAh`/`ABh`) que este projeto ainda nao emula (so' o mapa de
+  `A9h`/`AAh`/`ABh`) que este projeto ainda nao emula (**correcao de
+  2026-10-01, v1.7.0: o PPI agora existe, e o diagnostico estava
+  incompleto -- ver `doc/ppi-spec.md`, secao 5**) (so' o mapa de
   memoria e o VDP existem ate' agora -- PPI e' trabalho futuro nao
   coberto por este design doc). **Isso e' uma limitacao real e
   esperada, separada da correcao do VDP em si** -- confirmado

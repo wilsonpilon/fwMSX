@@ -5,6 +5,7 @@
 #include <sstream>
 
 #include "../../memmap/cpp/memory_system.h"
+#include "../../ppi/cpp/ppi_device.h"
 #include "../../vdp/cpp/ppm_writer.h"
 #include "../../vdp/cpp/vdp_device.h"
 #include "../../vdp/core/vdp_render.h"
@@ -91,8 +92,9 @@ std::string Hex2(uint8_t v) {
 
 } // namespace
 
-Z80DebugSession::Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system, vdp::VdpDevice *vdp_device)
-    : bus_(bus), cpu_(bus_), memory_system_(memory_system), vdp_device_(vdp_device) {}
+Z80DebugSession::Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system, vdp::VdpDevice *vdp_device,
+                                 ppi::PpiDevice *ppi_device)
+    : bus_(bus), cpu_(bus_), memory_system_(memory_system), vdp_device_(vdp_device), ppi_device_(ppi_device) {}
 
 void Z80DebugSession::DriveVdp(int cycles_consumed) {
     if (!vdp_device_) return;
@@ -133,6 +135,10 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
     if (cmd == "vdppoke") return CmdVdpPoke(tokens);
     if (cmd == "vdpstep") return CmdVdpStep(tokens);
     if (cmd == "vdpshot") return CmdVdpShot(tokens);
+    if (cmd == "ppiregs") return CmdPpiRegs();
+    if (cmd == "keys") return CmdKeys();
+    if (cmd == "keydown") return CmdKeyPress(tokens, true);
+    if (cmd == "keyup") return CmdKeyPress(tokens, false);
     if (cmd == "help" || cmd == "?") return CmdHelp();
 
     return "comando desconhecido: '" + cmd + "' (digite 'help' para a lista)";
@@ -140,6 +146,12 @@ std::string Z80DebugSession::ProcessCommand(const std::vector<std::string> &toke
 
 std::string Z80DebugSession::CmdReset() {
     cpu_.reset();
+    if (ppi_device_) {
+        // Reset de maquina: o PPI volta ao estado de reset (slot primario 0,
+        // todas as portas em entrada); teclas pressionadas continuam.
+        ppi_device_->Reset();
+        return "CPU e PPI resetados (PC=0000, slot primario 0).";
+    }
     return "CPU resetada (PC=0000).";
 }
 
@@ -592,6 +604,79 @@ std::string Z80DebugSession::CmdVdpShot(const std::vector<std::string> &tokens) 
            ", modo de tela " + std::to_string(static_cast<int>(v.scr_mode)) + ")";
 }
 
+namespace {
+
+std::string Bin8(uint8_t v) {
+    std::string s(8, '0');
+    for (int i = 0; i < 8; ++i)
+        if (v & (0x80 >> i)) s[static_cast<size_t>(i)] = '1';
+    return s;
+}
+
+} // namespace
+
+std::string Z80DebugSession::CmdPpiRegs() const {
+    if (!ppi_device_) return "ppiregs: requer 'fwmsx --z80dbg --slots --ppi' (esta sessao nao tem PPI)";
+    const PpiState &p = ppi_device_->state();
+    const uint8_t c = p.r[3];
+    std::ostringstream out;
+    out << "Controle (ABh) = " << Hex2(c) << ": porta A " << ((c & 0x10) ? "ENTRADA" : "saida") << ", porta B "
+        << ((c & 0x02) ? "ENTRADA" : "saida") << ", C baixo " << ((c & 0x01) ? "ENTRADA" : "saida")
+        << ", C alto " << ((c & 0x08) ? "ENTRADA" : "saida") << "\n";
+    out << "A (A8h) reg=" << Hex2(p.r[0]) << " pinos=" << Hex2(p.rout[0]) << "  -- slot primario: pag0="
+        << (p.rout[0] & 3) << " pag1=" << ((p.rout[0] >> 2) & 3) << " pag2=" << ((p.rout[0] >> 4) & 3)
+        << " pag3=" << ((p.rout[0] >> 6) & 3) << "\n";
+    out << "B (A9h) reg=" << Hex2(p.r[1]) << " pinos=" << Hex2(p.rout[1]) << "\n";
+    out << "C (AAh) reg=" << Hex2(p.r[2]) << " pinos=" << Hex2(p.rout[2]) << "  -- linha do teclado="
+        << (p.rout[2] & 0x0F) << " motor=" << ((p.rout[2] & 0x10) ? 1 : 0) << " cassete=" << ((p.rout[2] & 0x20) ? 1 : 0)
+        << " LED-CAPS=" << ((p.rout[2] & 0x40) ? 1 : 0) << " click=" << ((p.rout[2] & 0x80) ? 1 : 0);
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdKeys() const {
+    if (!ppi_device_) return "keys: requer 'fwmsx --z80dbg --slots --ppi' (esta sessao nao tem PPI)";
+    const PpiState &p = ppi_device_->state();
+    std::ostringstream out;
+    out << "Matriz de teclado (bit 0 = pressionada; bit 7..0):\n";
+    for (int row = 0; row < PPI_KEY_MATRIX_ROWS; ++row) {
+        out << "  linha " << (row < 10 ? " " : "") << row << ": " << Bin8(p.key_state[row]) << "\n";
+    }
+    const int pressed = ppi_pressed_count(p.key_state);
+    out << pressed << " tecla(s) pressionada(s)";
+    if (pressed > 0) {
+        out << ":";
+        for (int id = 0; id < ppi_key_count(); ++id) {
+            int row;
+            uint8_t mask;
+            ppi_key_position(id, &row, &mask);
+            if (!(p.key_state[row] & mask)) out << " " << ppi_key_name(id);
+        }
+    }
+    return out.str();
+}
+
+std::string Z80DebugSession::CmdKeyPress(const std::vector<std::string> &tokens, bool pressed) {
+    const char *cmd = pressed ? "keydown" : "keyup";
+    if (!ppi_device_) return std::string(cmd) + ": requer 'fwmsx --z80dbg --slots --ppi' (esta sessao nao tem PPI)";
+    if (tokens.size() < 2) return std::string("uso: ") + cmd + " <tecla>... (ex.: " + cmd + " shift a); 'keyup all' solta tudo";
+
+    PpiState &p = ppi_device_->state();
+    std::ostringstream out;
+    for (size_t i = 1; i < tokens.size(); ++i) {
+        if (!pressed && tokens[i] == "all") {
+            ppi_key_release_all(&p);
+            out << "todas as teclas soltas";
+        } else {
+            const int id = ppi_key_lookup(tokens[i].c_str());
+            if (id == PPI_KEY_NONE) return std::string(cmd) + ": tecla desconhecida: '" + tokens[i] + "'";
+            ppi_key_set(&p, id, pressed ? 1 : 0);
+            out << ppi_key_name(id) << (pressed ? " pressionada" : " solta");
+        }
+        if (i + 1 < tokens.size()) out << "\n";
+    }
+    return out.str();
+}
+
 std::string Z80DebugSession::CmdHelp() const {
     return "Comandos (enderecos/numeros: decimal, 0x-hex ou $-hex):\n"
            "  reset                 reseta a CPU\n"
@@ -626,6 +711,11 @@ std::string Z80DebugSession::CmdHelp() const {
            "rodar o Z80 (requer --vdp)\n"
            "  vdpshot <arq.ppm> [linha_ini] [linha_fim]  renderiza o quadro atual (SCREEN\n"
            "      0/1/2) num arquivo PPM (P6) -- sem linhas: todas as 192 (requer --vdp)\n"
+           "  ppiregs               registradores/modo do PPI i8255 e slot primario (requer --ppi)\n"
+           "  keys                  matriz de teclado e teclas pressionadas (requer --ppi)\n"
+           "  keydown <tecla>...    pressiona teclas (a-z, 0-9, shift, ctrl, enter, space, f1-f5,\n"
+           "                        esc, tab, bs, left/up/down/right, pad0-pad9...) (requer --ppi)\n"
+           "  keyup <tecla>...|all  solta teclas (requer --ppi)\n"
            "  help                  esta mensagem";
 }
 

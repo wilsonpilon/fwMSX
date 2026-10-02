@@ -266,6 +266,25 @@ esta rodando software MSX de verdade (ver a secao seguinte pro VDP; a
 BIOS real ainda trava mais na frente esperando teclado/PPI, que ainda
 nao existe).
 
+### PPI e teclado (`--z80dbg --slots --ppi`)
+
+Documentacao completa em [ppi-spec.md](ppi-spec.md). `--ppi` liga o i8255
+(portas `A8h`-`ABh`): o slot primario passa a mudar pelo PPI (como no
+hardware) e ha' uma matriz de teclado de 11 linhas. **Requer `--slots`**
+(avisa e ignora sem ele). Com uma ROM de BIOS, monta o layout MSX1 padrao:
+RAM de 64KB no slot `3:2` e regras de subslot do MSX1.
+
+```
+ppiregs                  modo das portas, slot primario, linha do teclado, LED/motor
+keys                     matriz de teclado + teclas pressionadas
+keydown <tecla>...       pressiona (a-z, 0-9, shift, ctrl, enter, space, f1-f5, pad0-pad9...)
+keyup <tecla>...|all     solta
+```
+
+```powershell
+.\dist\fwMSX.exe --z80dbg --slots resource\fMSX\ROMs\MSX.ROM --vdp --ppi
+```
+
 ### VDP real (`--z80dbg --slots --vdp`)
 
 Documentacao completa em [vdp-spec.md](vdp-spec.md). Por cima do mapa

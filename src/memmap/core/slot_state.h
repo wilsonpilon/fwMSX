@@ -58,6 +58,17 @@ typedef struct SlotState {
     uint8_t ssl_reg[MEMMAP_PRIMARY_SLOTS];
     uint8_t ssl[MEMMAP_PAGES];
 
+    /* Regras de subslot do hardware MSX1 (SSlot() do fMSX): slots 1 e 2
+       (cartuchos) nunca tem subslot, e o slot 0 tambem nao no MSX1 --
+       escrever em FFFFh nesses slots e' forcado a 0, entao a leitura de
+       FFFFh continua devolvendo 0xFF e a BIOS enxerga o slot como NAO
+       expandido. Default 0 (desligado): a Fase 1 do mapa de memoria
+       aceita subslot livremente em qualquer slot (ver
+       memmap_switch_secondary()). Ligado pelo startup do depurador
+       quando ha' BIOS + PPI (maquina MSX1 completa) -- ver
+       doc/ppi-spec.md. */
+    uint8_t msx1_subslot_rules;
+
     /* Vista ativa (cache rapido): o que a CPU enxerga agora, recomputado
        em memmap_switch_primary()/memmap_switch_secondary(). Equivalente
        a RAM[8] do fMSX, mas com permissao de escrita por pedaco de 8KB

@@ -13,6 +13,51 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.7.0 -- "Vampire Killer: Teclado e PPI" (2026-10-01)
+
+**Fase:** PPI i8255 + teclado -- ver [ppi-spec.md](ppi-spec.md). Nome
+escolhido por "Vampire Killer" (Konami) ser um dos jogos de MSX1 mais
+jogados no teclado.
+
+### Destaques
+
+- **As quatro linguagens num único módulo:** chip i8255 em **C**
+  (adaptado do fMSX), `PpiDevice` em **C++** ligado ao mapa de memória,
+  tabela de posição das 87 teclas em **Fortran**, contagem de teclas
+  pressionadas em **Assembly** (`POPCNT`, dual-ABI Win64/SysV).
+- **O slot primário agora é do PPI:** muda quando o pino de saída da porta
+  A muda, e só depois de a BIOS programar o chip (`82h` em `ABh`).
+- **Depurador:** `--ppi`, `ppiregs`, `keys`, `keydown`, `keyup`.
+- **Layout MSX1 com BIOS + `--ppi`:** RAM de 64KB em `3:2` e regras de
+  subslot do MSX1 (slots 0/1/2 sem subslot).
+- 464 verificações automatizadas (`ctest`, 5 suítes), 62 novas.
+
+### Exemplo rápido
+
+```
+> .\dist\fwMSX.exe --z80dbg --slots resource\fMSX\ROMs\MSX.ROM --vdp --ppi
+z80dbg> keydown shift a
+z80dbg> keys
+```
+
+### Build usado para validar esta release
+
+- `gcc`/`g++`/`gfortran` (MSYS2 UCRT64), `nasm`, `cmake` + `ninja`;
+  `dist/fwMSX.exe`/`dist/msxdisk.exe` estáticos. O pacote Linux
+  (`.tar.gz`) desta versão precisa ser gerado via `build.sh` numa máquina
+  Linux/WSL2 (o Assembly novo já tem a branch SysV).
+
+### Limitações conhecidas
+
+- **A BIOS real ainda não sobe**: programa e lê o PPI, mas fica presa na
+  varredura de RAM (`0x0305`-`0x0331`) e não chega a habilitar o VBlank.
+  O teste com a BIOS continua informativo (`doc/ppi-spec.md`, seção 5).
+- Sem teclado do host (só `keydown`/`keyup`), sem som de click/relé do
+  PPI, sem PSG/joystick.
+- Demais limitações das versões anteriores continuam valendo.
+
+---
+
 ## v1.6.0 -- "Penguin Adventure: Sprites em Cena" (2026-10-01)
 
 **Fase:** VDP, Fase 3 (sprites de modo 1) -- ver [vdp-spec.md](vdp-spec.md).

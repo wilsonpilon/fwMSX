@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 6
+#define FWMSX_VERSION_MINOR 7
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Penguin Adventure"
-#define FWMSX_SUBTITLE  "Sprites em Cena"
+#define FWMSX_CODENAME  "Vampire Killer"
+#define FWMSX_SUBTITLE  "Teclado e PPI"

@@ -33,6 +33,10 @@ namespace vdp {
 class VdpDevice;
 } // namespace vdp
 
+namespace ppi {
+class PpiDevice;
+} // namespace ppi
+
 namespace z80::debug {
 
 class Z80DebugSession {
@@ -44,7 +48,7 @@ public:
     // `--z80dbg --slots --vdp` em vez de travar, mesmo padrao ja usado
     // para `memory_system` (mapa de memoria).
     explicit Z80DebugSession(z80::IBus &bus, memmap::MemorySystem *memory_system = nullptr,
-                              vdp::VdpDevice *vdp_device = nullptr);
+                              vdp::VdpDevice *vdp_device = nullptr, ppi::PpiDevice *ppi_device = nullptr);
 
     // Executa um comando (primeiro token = nome do comando) e devolve o
     // texto de resposta (sem newline final). Nunca lanca excecao por
@@ -80,6 +84,9 @@ private:
     std::string CmdVdpPoke(const std::vector<std::string> &tokens);
     std::string CmdVdpStep(const std::vector<std::string> &tokens);
     std::string CmdVdpShot(const std::vector<std::string> &tokens) const;
+    std::string CmdPpiRegs() const;
+    std::string CmdKeys() const;
+    std::string CmdKeyPress(const std::vector<std::string> &tokens, bool pressed);
     std::string CmdHelp() const;
 
     // Avanca a maquina de estados do VDP o quanto for necessario para
@@ -96,6 +103,7 @@ private:
     std::set<uint16_t> breakpoints_;
     memmap::MemorySystem *memory_system_;
     vdp::VdpDevice *vdp_device_;
+    ppi::PpiDevice *ppi_device_;
     // Ciclos restantes ate' a proxima vez que o VDP precisa ser avancado
     // -- ver DriveVdp(). Comeca em 0 (avanca o VDP uma vez antes de
     // qualquer instrucao rodar, pegando o primeiro next_period_cycles de

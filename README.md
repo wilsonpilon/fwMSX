@@ -76,8 +76,18 @@ A v1.6.0 trouxe os **sprites** do VDP (Fase 3): SCREEN 1/2/3 com 8x8/
 sprite e de colisao, em **C**, adaptados do fMSX. Ver
 [doc/vdp-spec.md](doc/vdp-spec.md).
 
+A v1.7.0 trouxe o **PPI i8255 e o teclado** (portas `A8h`-`ABh`): chip
+em **C** adaptado do fMSX, `PpiDevice` em **C++** ligado ao mapa de
+memoria (o slot primario passa a mudar pelo PPI, como no hardware),
+tabela de posicao das 87 teclas na matriz em **Fortran** e contagem de
+teclas pressionadas em **Assembly** dual-ABI. `fwmsx --z80dbg --slots
+resource/fMSX/ROMs/MSX.ROM --vdp --ppi` ganha `ppiregs`/`keys`/
+`keydown`/`keyup`. A BIOS real ja programa e le o PPI, mas ainda nao
+passa da varredura de RAM -- ver [doc/ppi-spec.md](doc/ppi-spec.md).
+
 **Trabalho no core de emulacao continua em andamento** -- faltam
-modos MSX2 + janela de verdade (Fase 4 do VDP), PPI/
+descobrir por que a BIOS nao sai da varredura de RAM, modos MSX2 + janela
+de verdade (Fase 4 do VDP), PPI/
 teclado e PSG para existir uma maquina MSX completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.
@@ -101,17 +111,20 @@ fwMSX/
 │   │               ver doc/z80-core-spec.md)
 │   ├── memmap/     mapa de memoria MSX -- slots/subslots/MegaROM
 │   │               (core/cpp/fortran -- ver doc/memory-map-spec.md)
-│   └── vdp/        VDP (TMS9918/V9938) -- registradores/portas/
-│                   renderizacao (core/cpp/fortran -- ver doc/vdp-spec.md)
+│   ├── vdp/        VDP (TMS9918/V9938) -- registradores/portas/
+│   │               renderizacao (core/cpp/fortran -- ver doc/vdp-spec.md)
+│   └── ppi/        PPI i8255 + teclado (core/cpp/fortran/asm -- ver
+│                   doc/ppi-spec.md)
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
 ├── tests/z80/      testes do nucleo Z80, mapa de memoria e VDP (CTest --
-│                   z80test/z80dbgtest/memmaptest/vdptest)
+│                   z80test/z80dbgtest/memmaptest/vdptest/ppitest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk
 │   ├── z80-core-spec.md especificacao + fases do nucleo Z80
 │   ├── memory-map-spec.md especificacao + fases do mapa de memoria
 │   ├── vdp-spec.md      especificacao + fases do VDP
+│   ├── ppi-spec.md      especificacao + fases do PPI/teclado
 │   ├── MANUAL.md       como compilar e executar
 │   ├── CHANGELOG.md    resumo das alteracoes entre versoes
 │   └── RELEASE.md       detalhes de cada release

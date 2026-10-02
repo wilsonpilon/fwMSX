@@ -188,7 +188,7 @@ acompanhamento manual do autor a cada build):
   `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
   item adiado.
 
-### 5.0 Proximos passos (para retomar sem se perder -- v1.6.0, 2026-10-01)
+### 5.0 Proximos passos (para retomar sem se perder -- v1.7.0, 2026-10-01)
 
 O trabalho no core de emulacao segue em andamento; esta secao continua
 sendo o "onde paramos" oficial.
@@ -234,19 +234,20 @@ sendo o "onde paramos" oficial.
    - Decidir, quando VDP/PSG existirem, se `fwMSX.exe` sem argumentos
      passa a abrir em modo GUI/maquina completa por padrao (visao
      registrada na secao 5.1 abaixo, ainda nao implementada).
-   - **PPI/teclado (portas `A8h`-`ABh` fora do que o mapa de memoria ja'
-     cobre, `A9h`-`ABh` especificamente)** -- achado na Fase 1 do VDP:
-     a BIOS real fica presa polinizando esse hardware antes de sequer
-     habilitar a interrupcao de VBlank, entao nenhum teste com a BIOS
-     real consegue validar o VDP em uso "de verdade" ainda. Nao e'
-     grande (i8255 PPI + matriz de teclado), mas e' a proxima peca que
-     desbloquearia testes muito mais realistas contra a BIOS.
+   - ~~PPI/teclado (portas `A8h`-`ABh`)~~ **Feito na v1.7.0**
+     (2026-10-01) -- ver `doc/ppi-spec.md`. O achado da Fase 1 do VDP
+     ("a BIOS fica presa esperando o PPI") estava *incompleto*: faltavam
+     tambem RAM no slot `3:2` e as regras de subslot do MSX1 (ambas
+     agora ligadas por `--ppi` quando ha' BIOS). A BIOS passa a programar
+     e ler o PPI e a testar a expansao de slots, **mas ainda fica presa
+     na varredura de RAM (`0x0305`-`0x0331`)** -- investigar isso e' o
+     proximo passo (`doc/ppi-spec.md`, secao 7).
 
 **Para retomar rapido**: leia esta secao, depois `doc/z80-core-spec.md`
 e `doc/memory-map-spec.md` (ambos documentos vivos, com todas as fases
 e decisoes registradas). O `--z80dbg --slots resource/fMSX/ROMs/MSX.ROM`
 e' o jeito mais rapido de ver o que ja funciona de verdade hoje --
-adicione `--vdp` pra ver tambem os comandos de VDP (`vdpregs`/
+adicione `--ppi` pra teclado/PPI (`ppiregs`/`keys`/`keydown`) e `--vdp` pra ver tambem os comandos de VDP (`vdpregs`/
 `vdpshot`/etc.).
 - Definir empacotamento final (alem do ZIP de `dist/`) quando houver uma
   versao executavel do emulador.

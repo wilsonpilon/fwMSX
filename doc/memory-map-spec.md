@@ -586,3 +586,12 @@ elas embutidas, o que nunca deve acontecer.
 
 *(Este módulo fica pausado aqui por enquanto -- ver `doc/SPEC.md` para
 os próximos passos do projeto como um todo.)*
+
+### Nota (2026-10-01, v1.7.0): regras de subslot do MSX1
+
+`SlotState.msx1_subslot_rules` (default 0) liga o `SSlot()` fiel do fMSX:
+slots 0/1/2 nunca tem subslot -- escrever em `FFFFh` neles e' forcado a 0.
+So' o startup do depurador com BIOS + `--ppi` liga isso (junto com RAM em
+`3:2`), porque so' ali ha' uma maquina MSX1 completa; a decisao da Fase 1
+("todo slot primario aceita subslot livremente") continua valendo para o
+resto. Ver `doc/ppi-spec.md`, secoes 4 e 5.

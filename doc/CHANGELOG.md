@@ -7,6 +7,38 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.7.0] - 2026-10-01 - "Vampire Killer: Teclado e PPI"
+
+PPI i8255 + matriz de teclado (portas `A8h`-`ABh`) -- ver
+[doc/ppi-spec.md](ppi-spec.md).
+
+### Adicionado
+- **Chip i8255 em C** (`src/ppi/core/ppi_state.{h,c}`), adaptado de
+  `EMULib/I8255.c` e das portas `A8h`-`ABh` de `MSX.c`: modos das portas,
+  set/reset de bit da porta C, pinos de saída só dirigidos em modo saída,
+  e a matriz de teclado de 11 linhas lida por `A9h`.
+- **`ppi::PpiDevice` (C++)**: o slot primário passa a mudar quando o pino
+  de saída da porta A muda (como `PSlot(PPI.Rout[0])` no fMSX). Antes de a
+  BIOS escrever `82h` em `ABh`, `OUT (A8h)` não troca slot -- fiel ao
+  hardware.
+- **Tabela de posição das 87 teclas em Fortran**
+  (`src/ppi/fortran/key_matrix.f90`) e **contagem de teclas pressionadas
+  em Assembly** dual-ABI Win64/SysV (`src/ppi/asm/key_count.asm`).
+- **Depurador:** flag `--ppi` (exige `--slots`) e comandos `ppiregs`,
+  `keys`, `keydown <tecla>...`, `keyup <tecla>...|all`; `reset` também
+  reseta o PPI (teclas pressionadas continuam).
+- **Layout MSX1 com BIOS + `--ppi`**: RAM de 64KB no slot `3:2` e regras
+  de subslot do MSX1 (`SlotState.msx1_subslot_rules`, `SSlot()` do fMSX:
+  slots 0/1/2 sem subslot). Sem `--ppi` nada muda.
+- Novo alvo de teste `ppitest` (62 verificações; 464 no total, 5 suítes).
+
+### Achado
+- A BIOS real agora programa e lê o PPI e testa a expansão de slots, mas
+  **ainda não sai da varredura de RAM** (`0x0305`-`0x0331`). O
+  diagnóstico anterior ("só falta o PPI") estava incompleto -- também
+  faltavam RAM e as regras de subslot. Próximo passo registrado em
+  `doc/ppi-spec.md`, seção 7.
+
 ## [1.6.0] - 2026-10-01 - "Penguin Adventure: Sprites em Cena"
 
 Fase 3 do VDP -- sprites de "modo 1" do TMS9918 (SCREEN 1/2/3). Ver

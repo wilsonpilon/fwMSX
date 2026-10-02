@@ -18,9 +18,13 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
             startup.use_vdp = true;
             continue;
         }
+        if (args[i] == "--ppi") {
+            startup.use_ppi = true;
+            continue;
+        }
         if (args[i] != "--slots") continue;
         startup.use_slots = true;
-        if (i + 1 < args.size() && args[i + 1] != "--vdp") {
+        if (i + 1 < args.size() && args[i + 1] != "--vdp" && args[i + 1] != "--ppi") {
             startup.boot_rom_path = args[i + 1];
             startup.boot_rom_requested = true;
         }
@@ -29,6 +33,11 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
     if (startup.use_vdp && !startup.use_slots) {
         startup.vdp_error = "--vdp requer --slots (ignorado nesta sessao)";
         startup.use_vdp = false;
+    }
+
+    if (startup.use_ppi && !startup.use_slots) {
+        startup.ppi_error = "--ppi requer --slots (ignorado nesta sessao)";
+        startup.use_ppi = false;
     }
 
     if (!startup.use_slots) return startup;
@@ -71,16 +80,37 @@ Z80DebugShellStartup BuildZ80DebugShellStartup(const std::vector<std::string> &a
         startup.memory_system->AllocateRam(0, 0, 0x10000);
     }
 
+    // "--ppi" com BIOS carregada: layout MSX1 padrao (como o fMSX) -- RAM de
+    // 64KB no slot primario 3. Sem isso a BIOS real nao tem onde montar
+    // sua area de trabalho (a RAM em 0:0 so' existe quando NAO ha' ROM de
+    // boot) e fica presa na rotina de limpeza/teste de RAM, mesmo com o PPI
+    // funcionando -- ver doc/ppi-spec.md.
+    if (startup.use_ppi && startup.boot_rom_loaded) {
+        startup.memory_system->AllocateRam(3, 2, 0x10000);
+        // Hardware MSX1: so' o slot 3 e' expandido (ver slot_state.h).
+        startup.memory_system->state().msx1_subslot_rules = 1;
+    }
+
     startup.slot_bus = std::make_unique<memmap::SlotMemoryBus>(*startup.memory_system);
 
-    if (startup.use_vdp) {
-        startup.vdp_device = std::make_unique<vdp::VdpDevice>();
+    if (startup.use_vdp || startup.use_ppi) {
         startup.composite_bus = std::make_unique<z80::CompositeBus>(*startup.slot_bus);
-        // Porta A8h (slot primario) -- mesmo dispositivo de memoria, ja
-        // que SlotMemoryBus::out() ja trata essa porta. Portas 98h-9Bh
-        // (VDP) -- ver doc/vdp-spec.md, secao 3.3/6 (Fase 0.5/1).
-        startup.composite_bus->RegisterPort(0xA8, startup.slot_bus.get());
-        startup.composite_bus->RegisterPortRange(0x98, 0x9B, startup.vdp_device.get());
+        if (startup.use_ppi) {
+            // Portas A8h-ABh (PPI i8255) -- a porta A8h deixa de ir
+            // direto para o SlotMemoryBus: o PPI decide quando o slot
+            // primario muda (ver ppi_device.h e doc/ppi-spec.md).
+            startup.ppi_device = std::make_unique<ppi::PpiDevice>(*startup.memory_system);
+            startup.composite_bus->RegisterPortRange(0xA8, 0xAB, startup.ppi_device.get());
+        } else {
+            // Porta A8h (slot primario) -- mesmo dispositivo de memoria, ja
+            // que SlotMemoryBus::out() ja trata essa porta.
+            startup.composite_bus->RegisterPort(0xA8, startup.slot_bus.get());
+        }
+        if (startup.use_vdp) {
+            // Portas 98h-9Bh (VDP) -- ver doc/vdp-spec.md, secao 3.3/6.
+            startup.vdp_device = std::make_unique<vdp::VdpDevice>();
+            startup.composite_bus->RegisterPortRange(0x98, 0x9B, startup.vdp_device.get());
+        }
     }
 
     return startup;

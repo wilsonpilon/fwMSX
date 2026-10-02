@@ -102,6 +102,7 @@ void memmap_switch_secondary(SlotState *state, uint8_t value) {
     // nada a se aplicar. Revisitar quando LoadRom()/modo de maquina
     // existirem de verdade.
     const int active_primary = state->psl[3];
+    if (state->msx1_subslot_rules && active_primary <= 2) value = 0;
     state->ssl_reg[active_primary] = value;
 
     for (int page = 0; page < MEMMAP_PAGES; ++page) {

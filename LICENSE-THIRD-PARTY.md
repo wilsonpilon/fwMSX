@@ -104,6 +104,14 @@ termos acima:
   (`CheckSprites()` e o trecho de status de sprite de `LoopZ80()`) --
   **nao** `ColorSprites()` (sprites de modo 2, SCREEN 4-8, Fase 4). Ver
   `doc/vdp-spec.md`, secao 6, Fase 3.
+- `src/ppi/core/ppi_state.{h,c}` -- chip i8255 (`resource/fMSX/EMULib/
+  I8255.{h,c}`: `Reset8255()`/`Write8255()`/`Read8255()`) e o tratamento
+  das portas `A8h`-`ABh` e da matriz de teclado de `resource/fMSX/fMSX/
+  MSX.c` (`InZ80()`/`WrZ80()`, `KeyState[]`). A tabela de nomes de tecla,
+  `PpiDevice` (C++), `key_matrix.f90` (Fortran) e `key_count.asm`
+  (Assembly) sao codigo original do fwMSX (BSD-3-Clause); as coordenadas
+  da matriz sao fato de hardware, conferidas contra `Keys[]` de `MSX.c`.
+  **Nao** inclui `PPIOut()` (som de click/rele). Ver `doc/ppi-spec.md`.
 
 Esta lista **sera atualizada conforme o core de emulacao (Z80, VDP, PSG
 etc.) for adaptado do fMSX** nas proximas fases (ver `doc/SPEC.md`,

@@ -247,6 +247,20 @@ set(VDP_LIB_SOURCES
         src/vdp/fortran/palette_table.f90
 )
 
+# --- PPI i8255 + teclado (portas A8h-ABh) -- ver doc/ppi-spec.md -------
+#
+# Chip em C (adaptado de EMULib/I8255.c e dos casos A8h-ABh de MSX.c --
+# ver LICENSE-THIRD-PARTY.md); PpiDevice (C++, design proprio) liga o
+# chip ao z80::IBus e ao MemorySystem (slot primario). Tabela de posicao
+# das teclas na matriz em Fortran (key_matrix.f90) e contagem de teclas
+# pressionadas em Assembly dual-ABI (key_count.asm) -- as quatro
+# linguagens do projeto, de novo, num unico modulo.
+set(PPI_LIB_SOURCES
+        src/ppi/core/ppi_state.c
+        src/ppi/fortran/key_matrix.f90
+        src/ppi/asm/key_count.asm
+)
+
 enable_testing()
 
 add_executable(z80test tests/z80/smoke_test.cpp ${Z80_LIB_SOURCES})
@@ -258,7 +272,7 @@ endif ()
 
 add_test(NAME z80_smoke COMMAND z80test)
 
-add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES})
+add_executable(z80dbgtest tests/z80/debug_session_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
 target_include_directories(z80dbgtest PRIVATE src/z80 src/memmap src/vdp)
 set_target_properties(z80dbgtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/z80dbgtest)
 if (MINGW)
@@ -267,7 +281,7 @@ endif ()
 
 add_test(NAME z80_debug_session COMMAND z80dbgtest)
 
-add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES})
+add_executable(memmaptest tests/z80/memmap_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
 target_include_directories(memmaptest PRIVATE src/z80 src/memmap src/vdp)
 # FWMSX_SOURCE_DIR: caminho absoluto da raiz do repositorio, para o teste
 # de aceitacao com a BIOS real (resource/fMSX/ROMs/MSX.ROM) achar o
@@ -284,7 +298,7 @@ add_test(NAME memmap_slots COMMAND memmaptest)
 # vdptest: VDP "digital" (Fase 1) + Fase 0.5 (CompositeBus) -- ver
 # doc/vdp-spec.md. Mesmo padrao de memmaptest (FWMSX_SOURCE_DIR para o
 # teste de aceitacao com a BIOS real).
-add_executable(vdptest tests/z80/vdp_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES})
+add_executable(vdptest tests/z80/vdp_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
 target_include_directories(vdptest PRIVATE src/z80 src/memmap src/vdp)
 target_compile_definitions(vdptest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(vdptest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/vdptest)
@@ -293,6 +307,17 @@ if (MINGW)
 endif ()
 
 add_test(NAME vdp_digital COMMAND vdptest)
+
+# ppitest: PPI i8255 + teclado -- ver doc/ppi-spec.md.
+add_executable(ppitest tests/z80/ppi_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES})
+target_include_directories(ppitest PRIVATE src/z80 src/memmap src/vdp src/ppi)
+target_compile_definitions(ppitest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(ppitest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/ppitest)
+if (MINGW)
+    target_link_options(ppitest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME ppi_keyboard COMMAND ppitest)
 
 # --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
 #
@@ -314,7 +339,7 @@ add_executable(fwMSX
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
-        ${VDP_LIB_SOURCES}
+        ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 
