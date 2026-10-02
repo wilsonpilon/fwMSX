@@ -325,6 +325,8 @@ nao ha' janela grafica em tempo real (isso e' Fase 4 do VDP).
 .\dist\fwMSX.exe --msx --bios MSX.ROM --cart jogo.rom
 .\dist\fwMSX.exe --msx --cart megarom.rom ascii8   # MegaROM (gen8 gen16 konami5 konami4 ascii8 ascii16)
 .\dist\fwMSX.exe --msx --disk msxdos1.dsk    # MSX-DOS 1.8 (interface de disco + disquete em A:)
+.\dist\fwMSX.exe --msx --msx2                # MSX2 (MSX2.ROM + MSX2EXT.ROM): BASIC 2.1, SCREEN 0-8
+.\dist\fwMSX.exe --msx --msx2 --cart jogo2.rom   # cartucho MSX2 (ex.: Firebird)
 .\dist\fwMSX.exe --msx --mute                # sem audio
 .\dist\fwMSX.exe --msx --frames 400 --keys "print 1234|" --shot tela.ppm   # sem janela
 ```

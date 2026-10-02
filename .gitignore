@@ -164,6 +164,8 @@ dkms.conf
 /dist/machinetest.exe
 /dist/audiotest.exe
 /dist/fdctest.exe
+/dist/vdp2test.exe
+/dist/msx2test.exe
 /dist/z80test
 /dist/z80dbgtest
 /dist/memmaptest
@@ -173,6 +175,8 @@ dkms.conf
 /dist/machinetest
 /dist/audiotest
 /dist/fdctest
+/dist/vdp2test
+/dist/msx2test
 
 # Diretorios de build gerados automaticamente pelo CLion
 /cmake-build-*/

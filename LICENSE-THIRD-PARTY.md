@@ -135,6 +135,16 @@ termos acima:
   do `FDIDisk` do fMSX; `DiskImage` e `FdcDevice` (C++) e o `SlotMmio` sao
   codigo original (BSD-3-Clause). **Nao** inclui READ/WRITE TRACK (tambem nao
   suportados no fMSX) nem formatos de imagem alem de `.dsk`. Ver `doc/fdc-spec.md`.
+- `src/vdp/core/vdp_cmd.{h,c}` -- o motor de comandos do V9938 de `resource/fMSX/fMSX/V9938.c`
+  (Copyright Marat Fayzullin; reescrito por **Alex Wulms**, ver o cabecalho original:
+  execucao "em paralelo" e temporizacao). Adaptado para operar sobre `VdpState`, com um
+  desvio (o bit TR comeca limpo a cada comando). Ver `doc/msx2-spec.md`.
+- `src/vdp/core/vdp_render.{h,c}` e `vdp_sprites.{h,c}` agora tambem adaptam `RefreshLine3..8`,
+  `RefreshLineTx80`, `ColorSprites()` (`resource/fMSX/fMSX/Common.h`, `Wide.h`) e o `CheckSprites()`
+  de `MSX.c`. A paleta fixa de SCREEN 8 (`BPal[]`) vem de `resource/fMSX/fMSX/Unix/Unix.c`.
+- `src/memmap/cpp/ram_mapper.h` e `src/rtc/rtc_device.h` seguem o comportamento dos casos
+  `FCh`-`FFh` e `B4h`/`B5h` de `InZ80()`/`OutZ80()` e de `RTCIn()` (inclusive os valores padrao da
+  CMOS, `RTCInit`) de `resource/fMSX/fMSX/MSX.c`; o codigo e' original (BSD-3-Clause).
 - **miniaudio** (<https://github.com/mackron/miniaudio>, David Reid) --
   baixado em tempo de configuracao (FetchContent) e compilado em
   `src/audio/audio_output.cpp` para a saida de audio ao vivo. Dominio

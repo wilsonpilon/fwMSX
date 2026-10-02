@@ -2,16 +2,23 @@
 // ver vdp_sprites.h para a nota de atribuicao e simplificacoes.
 #include "vdp_sprites.h"
 
-#define VRAM_MASK ((uint32_t)(VDP_VRAM_SIZE - 1))
+#include <string.h>
+
 #define MAXSPRITE1 4 /* sprites por linha em SCREEN 1-3 (MSX.h) */
 
 static uint8_t VramAt(const VdpState *v, uint32_t offset) {
-    return v->vram[offset & VRAM_MASK];
+    return v->vram[offset & v->vram_mask];
 }
 
+#define MAXSPRITE2 8 /* sprites por linha em SCREEN 4-8 (MSX.h) */
+
+/* Sprites existem em SCREEN 1-8 (nao no texto); R#8 bit 1 os desliga. */
 static int SpritesActive(const VdpState *v) {
-    return v->scr_mode >= 1 && v->scr_mode <= 3 && !(v->regs[8] & 0x02);
+    return v->scr_mode >= 1 && v->scr_mode <= 8 && !(v->regs[8] & 0x02);
 }
+
+/* SCREEN 4-8 usam sprites de modo 2 (coloridos) */
+static int ColorMode(const VdpState *v) { return v->scr_mode >= 4; }
 
 typedef struct SpriteScan {
     int count;       /* sprites marcados para desenhar, em ordem de indice */
@@ -47,9 +54,122 @@ static void Scan(const VdpState *v, uint8_t y, SpriteScan *s) {
     s->last = l < 32 ? l : 31;
 }
 
+/* Varredura de modo 2 (primeira metade de ColorSprites()): marca ate' 8
+ * sprites que cruzam a linha `y`, detecta o 9o e o "ultimo checado". O fim da
+ * lista e' o Y=216 (208 no modo 1) e o VScroll vale uma vez so'. */
+typedef struct ColorScan {
+    int count;
+    uint8_t idx[MAXSPRITE2];
+    int ninth;
+    int last;
+} ColorScan;
+
+static void ScanColor(const VdpState *v, int y, ColorScan *s) {
+    static const uint8_t heights[4] = {8, 16, 16, 32};
+    const int oh = heights[v->regs[1] & 0x03];
+    const int ih = heights[v->regs[1] & 0x02];
+    int c = MAXSPRITE2 + 1;
+    int l;
+
+    s->count = 0;
+    s->ninth = 0;
+    for (l = 0; l < 32; ++l) {
+        int k = VramAt(v, v->spr_tab + (uint32_t)l * 4u);
+        if (k == 216) break;
+        k = (uint8_t)(k - v->regs[23]);
+        if (k > 256 - ih) k -= 256;
+        if (y > k && y <= k + oh) {
+            if (!--c) {
+                s->ninth = 1;
+                break; /* sem MSX_ALLSPRITE: o 9o sprite nao e' desenhado */
+            }
+            s->idx[s->count++] = (uint8_t)l;
+        }
+    }
+    s->last = l < 32 ? l : 31;
+}
+
+void vdp_sprites_color_line(const VdpState *v, int y, uint8_t *zbuf) {
+    static const uint8_t heights[4] = {8, 16, 16, 32};
+    const int oh = heights[v->regs[1] & 0x03];
+    const int ih = heights[v->regs[1] & 0x02];
+    ColorScan s;
+    int n;
+    uint8_t or_them = 0;
+
+    memset(zbuf, 0, 320);
+    if (!SpritesActive(v)) return;
+    ScanColor(v, y, &s);
+
+    /* Do ultimo para o primeiro: o de menor indice fica por cima. */
+    for (n = s.count - 1; n >= 0; --n) {
+        const uint32_t at = v->spr_tab + (uint32_t)s.idx[n] * 4u;
+        int k = (uint8_t)(VramAt(v, at) - v->regs[23]);
+        int j, row;
+        uint8_t c, bits;
+        uint8_t *p;
+        uint32_t pt;
+
+        if (k > 256 - ih) k -= 256;
+        row = y - k - 1;
+        row = oh > ih ? (row >> 1) : row;
+
+        /* cor desta linha do sprite: tabela de 16 bytes antes da de atributos */
+        c = VramAt(v, v->spr_tab - 0x200u + (uint32_t)s.idx[n] * 16u + (uint32_t)row);
+        or_them |= (uint8_t)(c & 0x40);
+
+        if (c & 0x0F) {
+            pt = v->spr_gen + ((uint32_t)(ih > 8 ? (VramAt(v, at + 2) & 0xFC) : VramAt(v, at + 2)) << 3) + (uint32_t)row;
+            p = zbuf + VramAt(v, at + 1) + ((c & 0x80) ? 0 : 32);
+            c &= 0x0F;
+            bits = VramAt(v, pt);
+
+            if (or_them & 0x20) {
+                /* CC do sprite anterior: OR das cores */
+                if (oh > ih) {
+                    for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) { p[j * 2] |= c; p[j * 2 + 1] |= c; }
+                    if (ih > 8) {
+                        bits = VramAt(v, pt + 16);
+                        for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) { p[16 + j * 2] |= c; p[17 + j * 2] |= c; }
+                    }
+                } else {
+                    for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) p[j] |= c;
+                    if (ih > 8) {
+                        bits = VramAt(v, pt + 16);
+                        for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) p[8 + j] |= c;
+                    }
+                }
+            } else {
+                if (oh > ih) {
+                    for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) p[j * 2] = p[j * 2 + 1] = c;
+                    if (ih > 8) {
+                        bits = VramAt(v, pt + 16);
+                        for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) p[16 + j * 2] = p[17 + j * 2] = c;
+                    }
+                } else {
+                    for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) p[j] = c;
+                    if (ih > 8) {
+                        bits = VramAt(v, pt + 16);
+                        for (j = 0; j < 8; ++j) if (bits & (0x80 >> j)) p[8 + j] = c;
+                    }
+                }
+            }
+        }
+        or_them >>= 1;
+    }
+}
+
 void vdp_sprites_update_status(VdpState *v, int y) {
     SpriteScan s;
     if (!SpritesActive(v)) return;
+    if (ColorMode(v)) {
+        ColorScan cs;
+        ScanColor(v, y, &cs);
+        v->status[0] &= (uint8_t)~0x5F;
+        if (cs.ninth) v->status[0] |= 0x40;
+        v->status[0] |= (uint8_t)cs.last;
+        return;
+    }
     /* y_efetivo = y + 2*VScroll, ver nota no .h */
     Scan(v, (uint8_t)(y + 2 * v->regs[23]), &s);
     v->status[0] &= (uint8_t)~0x5F;
@@ -123,7 +243,7 @@ int vdp_sprites_check_collision(const VdpState *v) {
 
     for (i = 0; i < 32; ++i) {
         const uint8_t y = VramAt(v, v->spr_tab + i * 4u);
-        if (y == 208) break;
+        if (y == (ColorMode(v) ? 216 : 208)) break;
         if (y < limit_start || y > limit_end) valid |= 1u << i;
     }
 

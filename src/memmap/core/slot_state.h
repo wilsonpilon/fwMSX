@@ -66,7 +66,9 @@ typedef struct SlotState {
        aceita subslot livremente em qualquer slot (ver
        memmap_switch_secondary()). Ligado pelo startup do depurador
        quando ha' BIOS + PPI (maquina MSX1 completa) -- ver
-       doc/ppi-spec.md. */
+       doc/ppi-spec.md.
+       Valor 2 = MSX2: so' os slots de cartucho (1 e 2) ficam sem subslot -- o
+       slot 0 pode ser expandido (o SSlot() do fMSX so' o proibe em MSX1). */
     uint8_t msx1_subslot_rules;
 
     /* Vista ativa (cache rapido): o que a CPU enxerga agora, recomputado
@@ -140,6 +142,12 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
    mappers essa checagem e' sempre verdadeira por construcao (o endereco
    de controle sempre cai na mesma pagina que o pedaco afetado), entao
    aplicar a mesma checagem pra todos os mappers e' seguro e uniforme. */
+/* Aponta o pedaco de 8KB `chunk_idx` (0-7) da combinacao (primary, secondary)
+   para `ptr` como RAM gravavel -- usado pelo mapper de RAM do MSX2 (portas
+   FCh-FFh) para trocar o segmento de 16KB de uma pagina. Se a combinacao esta'
+   visivel na pagina agora, a vista ativa e' atualizada na hora. */
+void memmap_remap_ram_chunk(SlotState *state, int primary, int secondary, int chunk_idx, uint8_t *ptr);
+
 int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_t addr, uint8_t value);
 
 /* Troca de slot primario (porta A8h do PPI) / secundario (endereco

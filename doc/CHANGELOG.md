@@ -7,6 +7,39 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.11.0] - 2026-10-02 - "Firebird: MSX2 em Cena"
+
+**O fwMSX agora e' tambem um MSX2**: `fwmsx --msx --msx2` roda o MSX BASIC 2.1 e jogos
+MSX2 de verdade, como o Firebird. Ver [doc/msx2-spec.md](msx2-spec.md).
+
+### Adicionado
+- **MSX2** (`fwmsx --msx --msx2`) -- ver [doc/msx2-spec.md](msx2-spec.md). A BIOS MSX2 real
+  roda ate' o **MSX BASIC 2.1** (identico ao fMSXgo de referencia), e o **Firebird**
+  (jogo MSX2) joga: logos, titulo, floresta rolando e sprites coloridos.
+  - **VDP V9938:** VRAM de 128KB com paginas (R#14); **SCREEN 3, 4, 5, 6, 7, 8 e TEXT80**;
+    212 linhas; cor 0 transparente; tela desligada (R#1 bit 6); **sprites de modo 2**
+    (cor por linha, bits CC/EC, 8 por linha, 9o sprite, colisao).
+  - **Motor de comandos** (`vdp_cmd.c`, adaptado de `V9938.c`): POINT, PSET, SRCH, LINE,
+    LMMV, LMMM, LMCM, LMMC, HMMV, HMMM, YMMM, HMMC, com operacoes logicas, temporizacao
+    por scanline e handshake TR. `LINE`/`CIRCLE`/`PAINT` do BASIC desenham de verdade.
+  - **Maquina:** RAM de 128KB com **mapper** (portas `FCh`-`FFh`), **RTC** RP5C01 com CMOS
+    (portas `B4h`/`B5h`), sub-ROM `MSX2EXT.ROM` em 3:1 dividindo o slot com a DISK.ROM
+    (o MSX-DOS 1.8 boota no MSX2 e nem pergunta a data). A imagem do MSX2 e' sempre de 512
+    pixels de largura (modos de 256 saem dobrados) e a janela recria a textura ao mudar de modo.
+  - `--keys` aceita pontuacao com SHIFT (`( ) : $ " ...`); `--vdplog` mostra as mudancas
+    dos registradores do VDP por quadro.
+- Novos alvos de teste `vdp2test` (VDP isolado, cada modo e cada comando) e `msx2test`
+  (mapper, RTC e a maquina com a BIOS MSX2 real, inclusive o BASIC desenhando).
+- 795 verificacoes automatizadas (11 suites).
+
+### Corrigido
+- **SCREEN 3 (multicolor)** do MSX1 agora e' desenhado (caia no fundo liso).
+- A **cor 0 transparente** (mostra a cor de fundo) e a **tela desligada** (R#1 bit 6) agora
+  valem em todos os modos; antes o renderizador as ignorava.
+- `R#10`/`R#11`/`R#6` guardam so' os bits que existem (como o `VDPOut()` do fMSX).
+- Desvio deliberado do fMSX: o bit TR do motor de comandos comeca limpo a cada comando (no
+  fMSX o LMCM seguinte a um HMMC devolvia um pixel velho).
+
 ## [1.10.0] - 2026-10-02 - "Golvellius: MSX-DOS e Joystick"
 
 **O MSX-DOS 1.8 boota, e os jogos de cartucho ganham joystick e deteccao de

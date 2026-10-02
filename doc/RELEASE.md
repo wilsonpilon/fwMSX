@@ -13,6 +13,63 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.11.0 -- "Firebird: MSX2 em Cena" (2026-10-02)
+
+**Fase:** MSX2 -- VDP V9938, mapper de RAM, RTC. Nome escolhido por "Firebird"
+(Hi no Tori Hououhen, Konami) ser o jogo MSX2 que motivou tudo: na v1.10.0 ele nao
+rodava (e' um jogo MSX2, titulo em SCREEN 5) e agora joga.
+
+### Destaques
+
+- **`fwmsx --msx --msx2`:** a BIOS MSX2 real sobe ate' o **MSX BASIC 2.1**, identico ao
+  fMSXgo usado como referencia. `--ext <arq>` escolhe a sub-ROM (padrao: `MSX2EXT.ROM`
+  ao lado da BIOS). O MSX-DOS 1.8 tambem boota no MSX2 (a sub-ROM e a DISK.ROM dividem
+  o slot 3:1) e nem pergunta a data, porque o RTC ja' a fornece.
+- **VDP V9938 completo:** VRAM de 128KB com paginas (R#14); **SCREEN 3, 4, 5, 6, 7, 8 e
+  TEXT80**; 212 linhas; cor 0 transparente; **sprites de modo 2** (cor por linha, bits
+  CC/EC, 8 por linha, 9o sprite, colisao). SCREEN 6/7 e TEXT80 saem com 512 pixels de verdade.
+- **Motor de comandos** (adaptado do `V9938.c`): POINT, PSET, SRCH, LINE, LMMV, LMMM, LMCM,
+  LMMC, HMMV, HMMM, YMMM, HMMC, com operacoes logicas, **temporizacao por scanline** e o
+  handshake TR. `LINE ,bf`, `CIRCLE` e `PAINT` do BASIC desenham de verdade.
+- **RAM de 128KB com mapper** (portas `FCh`-`FFh`) e **relogio RTC** RP5C01 com CMOS
+  (`B4h`/`B5h`), com os valores padrao da BIOS.
+- **Janela:** a imagem do MSX2 e' sempre de 512 pixels de largura (modos de 256 saem
+  dobrados) e a janela recria a textura ao mudar de modo.
+- **Firebird joga:** logo MSX, logo Konami, titulo com kanji, floresta rolando e sprites
+  coloridos de modo 2.
+- `--keys` aceita pontuacao com SHIFT (`( ) : $ " ...`); `--vdplog` (sem janela) mostra, a
+  cada quadro, os registradores do VDP que mudaram.
+- 795 verificacoes automatizadas (11 suites): `vdp2test` (cada modo e cada comando, pixel a
+  pixel) e `msx2test` (mapper, RTC, a BIOS MSX2 real e o BASIC desenhando).
+
+### Correcoes que valem tambem para o MSX1
+
+- **SCREEN 3 (multicolor)** agora e' desenhado (caia no fundo liso).
+- A **cor 0 transparente** e a **tela desligada** (R#1 bit 6) valem em todos os modos.
+- `R#6`/`R#10`/`R#11` guardam so' os bits que existem (como o `VDPOut()` do fMSX).
+- Desvio deliberado do fMSX: o bit TR do motor de comandos comeca limpo a cada comando.
+
+### Exemplo rapido
+
+```
+> .\dist\fwMSX.exe --msx --msx2
+> .\dist\fwMSX.exe --msx --msx2 --cart "Firebird.rom"
+> .\dist\fwMSX.exe --msx --msx2 --frames 600 --keys "screen 5:line (20,20)-(120,80),9,bf:a$=input$(1)|" --wait 900 --shot tela.ppm
+```
+
+### Limitacoes conhecidas
+
+- **Sem V9958 (MSX2+):** SCREEN 10-12 (YJK/YAE), rolagem horizontal (R#26/R#27) e R#25.
+- A imagem e' montada **no fim do quadro**, nao por scanline: efeitos de rastreio no meio
+  do quadro (paleta ou rolagem por linha) nao aparecem. Sem borda/overscan nem entrelacamento.
+- Sem SCC/FM (F1 Spirit e jogos da Konami rodam sem esse som); sem MSX-DOS 2, Kanji ROM e RS-232.
+- Verificado visualmente contra o fMSXgo (boot do BASIC 2.1 e Firebird), **sem diff automatico
+  de pixels**. Testado com um unico jogo MSX2 (o Firebird).
+- A CMOS do RTC nao persiste entre execucoes.
+- Demais limitacoes das versoes anteriores continuam valendo.
+
+---
+
 ## v1.10.0 -- "Golvellius: MSX-DOS e Joystick" (2026-10-02)
 
 **Fase:** disco, joystick e cartuchos de verdade. Nome escolhido por "Golvellius"

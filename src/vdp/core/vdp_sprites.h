@@ -12,10 +12,12 @@
 // de "quinto sprite" e flag de colisao. Ver doc/vdp-spec.md, secao 6
 // (Fase 3).
 //
+// Sprites de "modo 2" (SCREEN 4-8, ColorSprites() do fMSX, V9938): cor por
+// linha de sprite, ate' 8 por linha, bits CC (OR de cores)/IC/EC (early
+// clock) -- ver vdp_sprites_color_line(). Status do "9o sprite" e colisao
+// tambem valem nesses modos.
+//
 // Simplificacoes deliberadas em relacao ao fMSX:
-//   - SEM sprites de "modo 2" (SCREEN 4-8, ColorSprites() -- cor por
-//     linha de sprite, ate' 8 por linha): so' vem com os modos MSX2 na
-//     Fase 4. Fora de SCREEN 1/2/3, nada e' desenhado/checado.
 //   - SEM a opcao MSX_ALLSPRITE (desenhar alem do 4o sprite por linha):
 //     comportamento de hardware real, como o fMSX com a opcao desligada.
 //   - Tecnica de mascara de bits do original (K&=...) substituida por
@@ -43,6 +45,14 @@ extern "C" {
 // sprites visiveis nessa linha. No-op fora de SCREEN 1/2/3 ou com
 // sprites desligados (R#8 bit 1). Nao altera `v` (so' le).
 void vdp_sprites_draw_line(const VdpState *v, int y, VdpRgb888 *row);
+
+// Sprites COLORIDOS de modo 2 (SCREEN 4-8, ColorSprites() do fMSX): cada linha
+// de cada sprite tem sua propria cor (e bits CC/IC/EC) numa tabela de 16 bytes
+// por sprite logo ANTES da tabela de atributos (spr_tab - 200h). Ate' 8 por
+// linha. Preenche `zbuf` (320 bytes = 32 + 256 + 32 de margem para sprites
+// parcialmente fora da tela) com o indice de cor de cada pixel (0 = sem
+// sprite); o pixel x da tela esta' em zbuf[32 + x]. Nao altera `v`.
+void vdp_sprites_color_line(const VdpState *v, int y, uint8_t *zbuf);
 
 // Efeito colateral de status de Sprites() do fMSX: recalcula os bits do
 // "quinto sprite" (S#0 bit 6 = flag, bits 4-0 = numero do ultimo sprite

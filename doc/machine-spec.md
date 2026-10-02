@@ -78,6 +78,12 @@ SELECT, Pause = STOP**; F1-F5; teclado numerico = teclado numerico do MSX.
 - Os callbacks do emulador sao instalados **antes** do ImGui, que encadeia
   o callback ja' existente -- o menu continua funcionando.
 
+## 4a. MSX2
+
+`--msx2` liga o MSX2: VDP V9938, RAM de 128KB com mapper, RTC e sub-ROM -- ver
+[msx2-spec.md](msx2-spec.md). A janela se adapta ao tamanho da imagem (512x192 ou
+512x212, linhas dobradas na exibicao).
+
 ## 4b. Jogos reais (verificacao manual)
 
 Rodados com `--cart` + `--frames N --shot` (ROMs fora do repositorio):
@@ -86,7 +92,7 @@ Rodados com `--cart` + `--frames N --shot` (ROMs fora do repositorio):
 |------|--------|-----------|
 | King's Valley (16KB) | ROM plana | **Roda**: titulo, "PUSH SPACE KEY" vira "PLAY START" ao apertar espaco |
 | F1 Spirit (128KB) | Konami5 (detectado) | **Roda** ate' o menu do jogo (sem o som do SCC) |
-| Firebird / Hi no Tori (128KB) | Konami4 (detectado, confirmado pelos acessos 6000h/8000h/A000h) | **E' um jogo MSX2** -- nao roda em MSX1 (ver abaixo) |
+| Firebird / Hi no Tori (128KB) | Konami4 (detectado, confirmado pelos acessos 6000h/8000h/A000h) | **MSX2: joga** com `--msx2` (logos, titulo com kanji, floresta rolando, sprites coloridos). Em MSX1 nao roda -- e' um jogo MSX2 (ver abaixo) |
 | Lode Runner + Konami SCC (128KB) | Konami5 | Cai no BASIC: ROM que espera disco (nao retestada com `--disk-interface`) |
 
 **Firebird: nao era bug.** O jogo instala o gancho `H.TIMI` (`FD9Fh` -> `4048h`),
@@ -98,8 +104,8 @@ programa que roda N quadros e salva a tela (`pkg/msx`: `NewMachine` + `StepFrame
 Resultado: em **modo MSX1 a referencia tambem trava** (`PC=4D74h` fixo, tela
 branca); em **modo MSX2 ela roda o jogo**: logo MSX, logo Konami e o titulo em
 **SCREEN 5** (`R#0=06h`, `R#1=62h` -- o mesmo `R#1` que o nosso VDP MSX1 recebia e
-renderizava como lixo em SCREEN 1). O Firebird e' um jogo MSX2; passa a funcionar
-com o VDP MSX2 (Fase 4) e a BIOS `MSX2.ROM`/`MSX2EXT.ROM`, que ja' estao em `resource/`.
+renderizava como lixo em SCREEN 1). O Firebird e' um jogo MSX2; **passou a funcionar
+com o VDP MSX2 (v1.11)** e a BIOS `MSX2.ROM`/`MSX2EXT.ROM`.
 
 **Metodo (reutilizavel):** compilar o `fmsxgo` e escrever um `main` em Go de ~30
 linhas (`DefaultConfig`, `Model`, `ROMDir`, `LoadCartridge`, `StepFrame`,
@@ -110,9 +116,8 @@ util para comparar a Fase 4 do VDP.
 
 - **Audio:** o PSG toca ao vivo (ver `doc/audio-spec.md`); `--mute` desliga.
   Click de tecla/cassete (PPI), SCC e FM ainda sem som.
-- **Modos de tela:** so' SCREEN 0/1/2 (+ sprites de modo 1). SCREEN 3
-  (multicolor) e MSX2 (5-8, sprites de modo 2) caem no fallback de cor de
-  fundo -- Fase 4 do VDP.
+- **Modos de tela:** todos os do MSX1 e do V9938 (SCREEN 0-8, TEXT80) -- ver
+  `doc/msx2-spec.md`. Faltam so' os do MSX2+/V9958 (SCREEN 10-12).
 - **Joystick:** setas + Z/Espaco (fogo A) + X (fogo B) na porta A e gamepads
   do GLFW (1o -> A, 2o -> B); sem mouse. **Disco:** ver `doc/fdc-spec.md`
   (`--disk`, MSX-DOS 1.8 boota).

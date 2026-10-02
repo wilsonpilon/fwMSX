@@ -47,6 +47,37 @@ void MemorySystem::AllocateRam(int primary, int secondary, std::size_t size) {
     owned_buffers_.push_back(std::move(buffer));
 }
 
+void MemorySystem::AllocateMapperRam(int primary, int secondary, int segments) {
+    if (!ValidSlotIndex(primary, secondary)) return;
+    int n = 4;
+    while (n < segments && n < 256) n <<= 1;
+    const std::size_t total = static_cast<std::size_t>(n) * 0x4000;
+
+    auto buffer = std::make_unique<uint8_t[]>(total);
+    std::fill(buffer.get(), buffer.get() + total, uint8_t{0});
+
+    // Anexa como RAM de 64KB (os 4 segmentos iniciais) e depois remapeia as
+    // paginas para os segmentos 3,2,1,0 do fMSX.
+    memmap_attach(&state_, primary, secondary, buffer.get(), 0x10000, MEMMAP_KIND_RAM, /*writable=*/1);
+    mapper_base_[primary][secondary] = buffer.get();
+    mapper_segments_[primary][secondary] = n;
+    owned_buffers_.push_back(std::move(buffer));
+    for (int page = 0; page < 4; ++page) SetMapperSegment(primary, secondary, page, 3 - page);
+}
+
+void MemorySystem::SetMapperSegment(int primary, int secondary, int page, int segment) {
+    if (!ValidSlotIndex(primary, secondary) || page < 0 || page > 3) return;
+    const int n = mapper_segments_[primary][secondary];
+    if (n == 0) return;
+    uint8_t *base = mapper_base_[primary][secondary] + static_cast<std::size_t>(segment & (n - 1)) * 0x4000;
+    memmap_remap_ram_chunk(&state_, primary, secondary, page * 2, base);
+    memmap_remap_ram_chunk(&state_, primary, secondary, page * 2 + 1, base + 0x2000);
+}
+
+int MemorySystem::MapperSegments(int primary, int secondary) const {
+    return ValidSlotIndex(primary, secondary) ? mapper_segments_[primary][secondary] : 0;
+}
+
 bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std::size_t size, std::string *error,
                             MemMapMapperType mapper) {
     if (!ValidSlotIndex(primary, secondary)) {

@@ -108,9 +108,15 @@ MSX-DOS 1.8** -- a `DISK.ROM` do fMSX no slot 3:1 conversa com uma controladora
 MegaROM e a correcao do estado inicial dos bancos: King's Valley e F1 Spirit
 rodam. Ver [doc/fdc-spec.md](doc/fdc-spec.md).
 
-**Trabalho no core de emulacao continua em andamento** -- faltam
-os modos MSX2 (Fase 4 do VDP -- o Firebird e outros jogos MSX2 esperam por
-isso) e os chips de som de cartucho (SCC/FM) para uma maquina MSX completa. Ver
+A v1.11.0 trouxe o **MSX2**: `fwmsx --msx --msx2` roda a BIOS MSX2
+(MSX BASIC 2.1) com o **VDP V9938** completo -- SCREEN 0 a 8, TEXT80, sprites de
+modo 2 e o **motor de comandos** (adaptado do `V9938.c` do fMSX), RAM de 128KB com
+**mapper** e **relogio RTC**. Jogos MSX2 como o **Firebird** rodam, e o BASIC
+desenha `LINE`/`CIRCLE`/`PAINT` em SCREEN 5. Ver [doc/msx2-spec.md](doc/msx2-spec.md).
+
+**Trabalho no core de emulacao continua em andamento** -- faltam SCREEN 9-12
+(V9958), os chips de som de cartucho (SCC/FM) e efeitos de rastreio no meio do
+quadro para uma maquina MSX completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.
 
@@ -138,6 +144,7 @@ fwMSX/
 │   ├── ppi/        PPI i8255 + teclado (core/cpp/fortran/asm -- ver
 │   │               doc/ppi-spec.md)
 │   ├── psg/        PSG AY-3-8910 (core/cpp/fortran -- ver doc/psg-spec.md)
+│   ├── rtc/        relogio RTC do MSX2 (header-only -- ver doc/msx2-spec.md)
 │   ├── fdc/        controladora de disquete WD2793 (core/cpp -- ver
 │   │               doc/fdc-spec.md)
 │   ├── audio/      saida de audio ao vivo (miniaudio -- ver
@@ -147,7 +154,8 @@ fwMSX/
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
 ├── tests/z80/      testes do nucleo Z80, memoria, VDP, PPI, PSG, maquina e
 │                   audio e disco (CTest -- z80test/z80dbgtest/memmaptest/
-│                   vdptest/ppitest/psgtest/machinetest/audiotest/fdctest)
+│                   vdptest/vdp2test/ppitest/psgtest/machinetest/msx2test/
+│                   audiotest/fdctest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk
@@ -159,6 +167,7 @@ fwMSX/
 │   ├── machine-spec.md  maquina completa + janela com teclado do host
 │   ├── audio-spec.md    audio ao vivo
 │   ├── fdc-spec.md      disco: controladora WD2793 + MSX-DOS
+│   ├── msx2-spec.md     MSX2: VDP V9938, mapper de RAM, RTC
 │   ├── MANUAL.md       como compilar e executar
 │   ├── CHANGELOG.md    resumo das alteracoes entre versoes
 │   └── RELEASE.md       detalhes de cada release

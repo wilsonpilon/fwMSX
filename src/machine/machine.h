@@ -16,13 +16,33 @@
 #include "../fdc/cpp/disk_image.h"
 #include "../fdc/cpp/fdc_device.h"
 #include "../memmap/core/slot_state.h"
+#include "../memmap/cpp/ram_mapper.h"
+#include "../rtc/rtc_device.h"
 #include "../z80/cpp/z80_cpu.h"
 #include "../z80/debug/z80_debug_shell_startup.h"
 
 namespace machine {
 
+// Modelo da maquina: MSX1 (TMS9918, 64KB de RAM, MSX.ROM) ou MSX2 (V9938 com
+// 128KB de VRAM e motor de comandos, RAM de 128KB com mapper, relogio RTC,
+// MSX2.ROM + MSX2EXT.ROM). Ver doc/msx2-spec.md.
+enum class Model { MSX1, MSX2 };
+
+// Tamanho da imagem de RenderFrame(): `width` x `height` pixels e quantas vezes
+// cada linha deve ser repetida ao exibir (`y_scale`): 2 nas imagens de 512 de
+// largura do MSX2, onde o pixel e' a metade da largura de um pixel de 256.
+struct FrameSize {
+    int width = 256;
+    int height = 192;
+    int y_scale = 1;
+};
+
 struct MachineConfig {
+    Model model = Model::MSX1;
+    // BIOS principal (MSX.ROM, ou MSX2.ROM no MSX2).
     std::string bios_path;
+    // Sub-ROM do MSX2 (MSX2EXT.ROM, 16KB, no slot 3:1). Vazio = ao lado da BIOS.
+    std::string ext_rom_path;
     // Cartucho opcional no slot 1 (vazio = so' BIOS + BASIC). Com mapper
     // MEMMAP_MAPPER_NONE (padrao): ate' 32KB e' ROM plana (em 4000h, ou em
     // 8000h se o cabecalho "AB" aponta o INIT para la'); acima de 32KB e'
@@ -62,14 +82,26 @@ public:
 
     // Teclado do MSX por nome (a-z, 0-9, shift, enter, space, f1-f5...; ver
     // ppi_key_name()). Devolvem false se o nome for desconhecido.
+    // Tecla(s) MSX para um caractere (letras, numeros, espaco, pontuacao comum com
+    // SHIFT quando preciso; '|' = ENTER) -- usado pelo --keys e pelos testes.
+    // Devolve false se o caractere nao tem tecla.
+    static bool KeysForChar(char c, std::string &key, bool &shift);
+
     bool KeyDown(const std::string &name);
     bool KeyUp(const std::string &name);
     void ReleaseAllKeys();
 
-    // Renderiza o quadro atual em `rgba` (256x192, 4 bytes por pixel na
-    // ordem R,G,B,A -- direto para glTexImage2D). Telas mais estreitas
-    // (SCREEN 0, 240px) ficam centralizadas sobre a cor de fundo.
-    void RenderFrame(std::vector<uint32_t> &rgba) const;
+    // Renderiza o quadro atual em `rgba` (4 bytes por pixel na ordem R,G,B,A --
+    // direto para glTexImage2D) e devolve o tamanho. MSX1: sempre 256x192
+    // (telas mais estreitas ficam centralizadas sobre a cor de fundo). MSX2:
+    // 512 de largura x 192 ou 212 linhas (os modos de 256 pixels saem
+    // dobrados; a imagem pede y_scale=2 ao exibir, ver FrameSize).
+    FrameSize RenderFrame(std::vector<uint32_t> &rgba) const;
+
+    bool is_msx2() const { return model_ == Model::MSX2; }
+    // Mapper de RAM e relogio (so' no MSX2; nullptr no MSX1).
+    memmap::RamMapperDevice *mapper() { return mapper_.get(); }
+    rtc::RtcDevice *rtc() { return rtc_.get(); }
 
     // Joystick das portas A (0) e B (1): mascara de PSG_JOY_* (1 = pressionado).
     void SetJoystick(int port, uint8_t bits);
@@ -101,6 +133,9 @@ private:
     int vdp_pending_cycles_ = 0;
     uint64_t frame_count_ = 0;
     std::string cart_info_;
+    Model model_ = Model::MSX1;
+    std::unique_ptr<memmap::RamMapperDevice> mapper_;
+    std::unique_ptr<rtc::RtcDevice> rtc_;
     std::unique_ptr<fdc::FdcDevice> fdc_;
     fdc::DiskImage disks_[2];
 };

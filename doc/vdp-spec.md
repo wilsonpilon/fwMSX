@@ -429,13 +429,17 @@ com precisao em `LICENSE-THIRD-PARTY.md` (dois autores, nao um).
   de codigo) achados no processo: a linha 0 de um sprite com Y=250 mostra
   a linha 5 do padrao (nao a 6), e padroes de colisao precisam ter todas
   as 8 linhas preenchidas.
-- [ ] **Fase 4 -- Modos MSX2 + janela real**: SCREEN 5-8, paleta de 512
-      cores, TEXT80; integracao com uma janela de verdade (GLFW/OpenGL,
-      reaproveitando o que a GUI do msxdisk ja' usa) -- primeira vez que
-      o fwMSX mostra uma tela de MSX de verdade.
-- [ ] **Fase 5 -- Motor de comando V9938 (MSX2+, opcional/avancado)**:
-      SRCH/LINE/LMMV/LMMM/LMCM/LMMC/HMMV/HMMM/YMMM/HMMC, adaptado de
-      `V9938.c` (com a atribuicao dupla Fayzullin/Wulms, ver secao 5).
+- [x] **Fase 4 -- Modos MSX2 + janela real** -- **concluida em 2026-10-02**
+      (a janela veio na v1.9.0; os modos agora): VRAM de 128KB com paginas
+      (R#14), SCREEN 3 (multicolor), 4, 5, 6, 7, 8 e TEXT80, 212 linhas, cor 0
+      transparente, tela desligada, **sprites de modo 2** (cor por linha, CC/EC,
+      9o sprite, colisao). Adaptado de `Common.h`/`Wide.h` do fMSX; SCREEN 6/7 e
+      TEXT80 em 512 pixels de verdade. Ver [msx2-spec.md](msx2-spec.md).
+- [x] **Fase 5 -- Motor de comando V9938** -- **concluida em 2026-10-02**:
+      POINT/PSET/SRCH/LINE/LMMV/LMMM/LMCM/LMMC/HMMV/HMMM/YMMM/HMMC, adaptado de
+      `V9938.c` (atribuicao dupla Fayzullin/Wulms), com a temporizacao por scanline
+      do fMSX e o handshake TR. Desvio: o TR comeca limpo a cada comando.
+      **Falta (V9958/MSX2+)**: SCREEN 10-12 (YJK), rolagem horizontal, R#25-R#27.
 
 *(Cada fase sera detalhada em sub-fases, como aconteceu em
 `doc/z80-core-spec.md` e `doc/memory-map-spec.md`, no momento em que a

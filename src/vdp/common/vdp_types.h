@@ -19,8 +19,14 @@ extern "C" {
 // VDP_VRAM_PAGES=1 faz `regs[14] &= (VDP_VRAM_PAGES-1)` sempre dar 0 --
 // o rollover de pagina em vdp_in()/vdp_out() vira um no-op observavel,
 // nao removido do codigo (mantido fiel ao fMSX, so' inofensivo agora).
-#define VDP_VRAM_SIZE 0x4000
-#define VDP_VRAM_PAGES 1
+#define VDP_VRAM_SIZE 0x20000
+#define VDP_VRAM_PAGES 8
+
+// MSX1 (TMS9918): 16KB de VRAM, 1 pagina; MSX2 (V9938): 128KB, 8 paginas de
+// 16KB selecionadas pelo registrador 14. O VdpState sempre aloca os 128KB e o
+// modelo escolhe quanto usa (vram_pages/vram_mask) -- ver vdp_set_model().
+#define VDP_MODEL_MSX1 0
+#define VDP_MODEL_MSX2 1
 
 // MAXSCREEN do fMSX (resource/fMSX/fMSX/MSX.h) -- maior modo de tela
 // numerado (SCREEN 12); MAXSCREEN+1 e' o modo especial TEXT80 (SCREEN 0

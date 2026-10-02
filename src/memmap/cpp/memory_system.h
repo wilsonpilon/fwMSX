@@ -60,6 +60,21 @@ public:
     // antes (o buffer antigo e' liberado).
     void AllocateRam(int primary, int secondary, std::size_t size);
 
+    // RAM com MAPPER (MSX2, portas FCh-FFh): `segments` (potencia de 2, >= 4)
+    // segmentos de 16KB; cada uma das 4 paginas de 16KB da CPU mostra um
+    // segmento escolhido por SetMapperSegment(). Estado inicial = o do fMSX:
+    // pagina 0 -> segmento 3, 1 -> 2, 2 -> 1, 3 -> 0. A combinacao
+    // (primary, secondary) aparece como RAM de 64KB no resto do sistema.
+    void AllocateMapperRam(int primary, int secondary, int segments);
+
+    // Escolhe o segmento (0..segments-1, mascarado) da pagina de 16KB `page`
+    // (0..3) da RAM com mapper de (primary, secondary). Vale mesmo que a
+    // combinacao nao esteja visivel agora (a vista e' refeita se estiver).
+    void SetMapperSegment(int primary, int secondary, int page, int segment);
+
+    // Numero de segmentos da RAM com mapper (0 se a combinacao nao tem mapper).
+    int MapperSegments(int primary, int secondary) const;
+
     // Carrega uma imagem de ROM plana (SEM bank-switch -- isso e' Fase 3,
     // ver doc/memory-map-spec.md, secao 6) na combinacao (primary,
     // secondary). `size` deve ser multiplo de MEMMAP_CHUNK_SIZE (8KB) e
@@ -112,6 +127,8 @@ private:
     // vive aqui em vez de em SlotState (C) porque e' metadado de
     // depurador, nao algo que o motor de troca de slot precisa conhecer.
     uint32_t rom_crc32_[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS] = {};
+    uint8_t *mapper_base_[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS] = {};
+    int mapper_segments_[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS] = {};
 };
 
 } // namespace memmap

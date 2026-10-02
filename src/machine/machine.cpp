@@ -89,32 +89,70 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
         m->cart_info_ = std::to_string(data.size() / 1024) + "KB, " + mapper_name + (guessed ? " (detectado)" : "");
     }
 
+    m->model_ = config.model;
+    const bool msx2 = config.model == Model::MSX2;
+    const bool want_disk = config.disk_interface || !config.disk_a.empty() || !config.disk_b.empty();
+    const std::string bios_dir = [&] {
+        const size_t slash = config.bios_path.find_last_of("/\\");
+        return slash == std::string::npos ? std::string() : config.bios_path.substr(0, slash + 1);
+    }();
+
+    // O slot 3:1 hospeda a sub-ROM do MSX2 (em 0000h-3FFFh) e a DISK.ROM (em
+    // 4000h-7FFFh): uma unica ROM plana de 32KB, montada aqui.
+    std::vector<uint8_t> slot31;
+
+    if (msx2) {
+        // VDP V9938 (128KB, comandos), RAM de 128KB com mapper (3:2), regras de
+        // subslot do MSX2, e as portas do mapper (FCh-FFh) e do relogio (B4h/B5h).
+        m->startup_.vdp_device->SetModel(VDP_MODEL_MSX2);
+        memmap::MemorySystem &mem = *m->startup_.memory_system;
+        mem.state().msx1_subslot_rules = 2;
+        mem.AllocateMapperRam(3, 2, 8);
+        m->mapper_ = std::make_unique<memmap::RamMapperDevice>(mem, 3, 2);
+        m->rtc_ = std::make_unique<rtc::RtcDevice>();
+        m->startup_.composite_bus->RegisterPortRange(0xFC, 0xFF, m->mapper_.get());
+        m->startup_.composite_bus->RegisterPortRange(0xB4, 0xB5, m->rtc_.get());
+
+        std::string ext_path = config.ext_rom_path.empty() ? bios_dir + "MSX2EXT.ROM" : config.ext_rom_path;
+        std::vector<uint8_t> ext;
+        if (!ReadFile(ext_path, ext, error)) {
+            error = "sub-ROM do MSX2: " + error;
+            return nullptr;
+        }
+        if (ext.size() != 0x4000) {
+            error = "sub-ROM do MSX2 '" + ext_path + "': tamanho invalido (" + std::to_string(ext.size()) + " bytes, esperava 16384)";
+            return nullptr;
+        }
+        slot31 = ext;
+    }
+
     // Interface de disquete: DISK.ROM em 3:1 (como o fMSX), com a controladora
     // mapeada em 7FF8h-7FFFh daquele slot.
-    if (config.disk_interface || !config.disk_a.empty() || !config.disk_b.empty()) {
-        std::string rom_path = config.disk_rom_path;
-        if (rom_path.empty()) {
-            const size_t slash = config.bios_path.find_last_of("/\\");
-            rom_path = (slash == std::string::npos ? std::string() : config.bios_path.substr(0, slash + 1)) + "DISK.ROM";
-        }
+    if (want_disk) {
+        std::string rom_path = config.disk_rom_path.empty() ? bios_dir + "DISK.ROM" : config.disk_rom_path;
         std::vector<uint8_t> rom;
         if (!ReadFile(rom_path, rom, error)) {
             error = "DISK.ROM: " + error;
             return nullptr;
         }
-        if (rom.empty() || rom.size() > 0x8000) {
+        if (rom.empty() || rom.size() > 0x4000) {
             error = "DISK.ROM: tamanho invalido (" + std::to_string(rom.size()) + " bytes)";
             return nullptr;
         }
-        // A ROM de disco responde em 4000h-7FFFh do slot: preenche 0000h-3FFFh.
-        std::vector<uint8_t> image(0x4000, 0);
-        image.insert(image.end(), rom.begin(), rom.end());
-        while (image.size() % 0x2000) image.push_back(0);
+        slot31.resize(0x4000, 0); // sem sub-ROM (MSX1): 0000h-3FFFh vazio
+        slot31.insert(slot31.end(), rom.begin(), rom.end());
+    }
+
+    if (!slot31.empty()) {
+        while (slot31.size() % 0x2000) slot31.push_back(0);
         std::string load_error;
-        if (!m->startup_.memory_system->LoadRom(3, 1, image.data(), image.size(), &load_error)) {
-            error = "DISK.ROM: " + load_error;
+        if (!m->startup_.memory_system->LoadRom(3, 1, slot31.data(), slot31.size(), &load_error)) {
+            error = "slot 3:1 (sub-ROM/DISK.ROM): " + load_error;
             return nullptr;
         }
+    }
+
+    if (want_disk) {
         m->fdc_ = std::make_unique<fdc::FdcDevice>();
         m->startup_.slot_bus->AttachMmio(3, 1, m->fdc_.get());
         for (int d = 0; d < 2; ++d) fdc_attach(&m->fdc_->fdc(), d, m->disks_[d].disk());
@@ -173,11 +211,47 @@ void Machine::EjectDisk(int drive) {
 
 void Machine::Reset() {
     if (fdc_) fdc_reset(&fdc_->fdc());
+    if (mapper_) mapper_->Reset();
     cpu_->reset();
     startup_.vdp_device->Reset();
     startup_.ppi_device->Reset();
     startup_.psg_device->Reset();
     vdp_pending_cycles_ = 0;
+}
+
+// Teclas MSX (com SHIFT quando preciso, layout internacional) para um caractere
+// do --keys. Devolve false se o caractere nao tem tecla.
+bool Machine::KeysForChar(char c, std::string &key, bool &shift) {
+    shift = false;
+    if (c >= 'a' && c <= 'z') { key = std::string(1, c); return true; }
+    if (c >= 'A' && c <= 'Z') { key = std::string(1, static_cast<char>(c - 'A' + 'a')); shift = true; return true; }
+    if (c >= '0' && c <= '9') { key = std::string(1, c); return true; }
+    switch (c) {
+    case ' ': key = "space"; return true;
+    case '|': key = "enter"; return true; // ENTER (o '|' real nao e' digitavel aqui)
+    case '.': case ',': case '/': case '-': case '=': case ';': case '\'': case '[': case ']': case '`':
+        key = std::string(1, c);
+        return true;
+    // simbolos com SHIFT (MSX internacional)
+    case '!': key = "1"; shift = true; return true;
+    case '@': key = "2"; shift = true; return true;
+    case '#': key = "3"; shift = true; return true;
+    case '$': key = "4"; shift = true; return true;
+    case '%': key = "5"; shift = true; return true;
+    case '^': key = "6"; shift = true; return true;
+    case '&': key = "7"; shift = true; return true;
+    case '*': key = "8"; shift = true; return true;
+    case '(': key = "9"; shift = true; return true;
+    case ')': key = "0"; shift = true; return true;
+    case '_': key = "-"; shift = true; return true;
+    case '+': key = "="; shift = true; return true;
+    case ':': key = ";"; shift = true; return true;
+    case '"': key = "'"; shift = true; return true;
+    case '<': key = ","; shift = true; return true;
+    case '>': key = "."; shift = true; return true;
+    case '?': key = "/"; shift = true; return true;
+    default: return false;
+    }
 }
 
 bool Machine::KeyDown(const std::string &name) {
@@ -198,20 +272,53 @@ void Machine::SetJoystick(int port, uint8_t bits) { psg_set_joystick(&startup_.p
 
 void Machine::ReleaseAllKeys() { ppi_key_release_all(&startup_.ppi_device->state()); }
 
-void Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
+FrameSize Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
     const VdpState &v = startup_.vdp_device->state();
+    const VdpRgb888 border = vdp_render_border_color(&v);
+    const uint32_t border_px = PackRgba(border.r, border.g, border.b);
     const int width = vdp_render_width(&v);
-    const int pad = (kFrameWidth - width) / 2;
+    const int lines = vdp_render_height(&v);
+    std::vector<VdpRgb888> row(VDP_RENDER_MAX_WIDTH);
 
-    rgba.assign(static_cast<size_t>(kFrameWidth) * kFrameHeight,
-                PackRgba(v.palette_r[v.regs[7] & 0x0F], v.palette_g[v.regs[7] & 0x0F], v.palette_b[v.regs[7] & 0x0F]));
-
-    std::vector<VdpRgb888> row(static_cast<size_t>(kFrameWidth));
-    for (int y = 0; y < kFrameHeight; ++y) {
-        vdp_render_line(&v, y, row.data());
-        uint32_t *dst = rgba.data() + static_cast<size_t>(y) * kFrameWidth + pad;
-        for (int x = 0; x < width; ++x) dst[x] = PackRgba(row[x].r, row[x].g, row[x].b);
+    FrameSize size;
+    if (model_ == Model::MSX1) {
+        // MSX1: 256x192, telas mais estreitas centralizadas sobre a borda
+        const int pad = (kFrameWidth - width) / 2;
+        size.width = kFrameWidth;
+        size.height = kFrameHeight;
+        rgba.assign(static_cast<size_t>(size.width) * size.height, border_px);
+        for (int y = 0; y < size.height; ++y) {
+            vdp_render_line(&v, y, row.data());
+            uint32_t *dst = rgba.data() + static_cast<size_t>(y) * size.width + pad;
+            for (int x = 0; x < width; ++x) dst[x] = PackRgba(row[x].r, row[x].g, row[x].b);
+        }
+        return size;
     }
+
+    // MSX2: 512 pixels de largura. Modos de 256 (e o texto de 40 colunas, 240)
+    // saem dobrados na horizontal; os de 512 (SCREEN 6/7, TEXT80 de 480) saem
+    // como sao. O que sobra nas laterais e' a cor da borda.
+    size.width = 512;
+    size.height = lines;
+    size.y_scale = 2;
+    rgba.assign(static_cast<size_t>(size.width) * size.height, border_px);
+    const int factor = width <= 256 ? 2 : 1;
+    const int out_width = width * factor;
+    const int pad = (size.width - out_width) / 2;
+    for (int y = 0; y < lines; ++y) {
+        vdp_render_line(&v, y, row.data());
+        uint32_t *dst = rgba.data() + static_cast<size_t>(y) * size.width + pad;
+        for (int x = 0; x < width; ++x) {
+            const uint32_t px = PackRgba(row[x].r, row[x].g, row[x].b);
+            if (factor == 2) {
+                dst[x * 2] = px;
+                dst[x * 2 + 1] = px;
+            } else {
+                dst[x] = px;
+            }
+        }
+    }
+    return size;
 }
 
 } // namespace machine

@@ -196,7 +196,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    GLFWwindow *window = glfwCreateWindow(Machine::kFrameWidth * 3, Machine::kFrameHeight * 3 + 20, "fwMSX", nullptr, nullptr);
+    // Janela inicial: 3x o MSX1 (768x576) ou 2x o MSX2 (512x384 -> 1024x768).
+    const int start_w = machine->is_msx2() ? 1024 : Machine::kFrameWidth * 3;
+    const int start_h = (machine->is_msx2() ? 768 : Machine::kFrameHeight * 3) + 20;
+    GLFWwindow *window = glfwCreateWindow(start_w, start_h, "fwMSX", nullptr, nullptr);
     if (window == nullptr) {
         std::fprintf(stderr, "fwmsx: falha ao criar a janela (GLFW)\n");
         glfwTerminate();
@@ -228,8 +231,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
     std::vector<uint32_t> pixels;
-    machine->RenderFrame(pixels);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Machine::kFrameWidth, Machine::kFrameHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    // A imagem muda de tamanho com o modo de tela no MSX2 (512x192 ou 512x212,
+    // linhas dobradas na exibicao): a textura e' recriada quando isso acontece.
+    FrameSize frame_size = machine->RenderFrame(pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, frame_size.width, frame_size.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
 
     // Audio ao vivo: o PSG empurra as amostras de cada quadro para o buffer do
     // dispositivo. Sem dispositivo (ou --mute) o emulador segue mudo.
@@ -320,9 +325,14 @@ int RunEmulatorWindow(const WindowOptions &options) {
             audio_out.Push(live_samples.data(), live_samples.size());
         }
         if (ran > 0) {
-            machine->RenderFrame(pixels);
+            const FrameSize fsz = machine->RenderFrame(pixels);
             glBindTexture(GL_TEXTURE_2D, texture);
-            glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Machine::kFrameWidth, Machine::kFrameHeight, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+            if (fsz.width != frame_size.width || fsz.height != frame_size.height) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fsz.width, fsz.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+            } else {
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, fsz.width, fsz.height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+            }
+            frame_size = fsz;
         }
 
         if (now - fps_window_start >= 0.5) {
@@ -426,10 +436,12 @@ int RunEmulatorWindow(const WindowOptions &options) {
                          ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBackground);
         {
             const ImVec2 avail = ImGui::GetContentRegionAvail();
-            float scale = std::min(avail.x / Machine::kFrameWidth, avail.y / Machine::kFrameHeight);
+            const float disp_w = static_cast<float>(frame_size.width);
+            const float disp_h = static_cast<float>(frame_size.height * frame_size.y_scale);
+            float scale = std::min(avail.x / disp_w, avail.y / disp_h);
             if (integer_scale && scale >= 1.0f) scale = std::floor(scale);
             if (scale < 0.1f) scale = 0.1f;
-            const ImVec2 size(Machine::kFrameWidth * scale, Machine::kFrameHeight * scale);
+            const ImVec2 size(disp_w * scale, disp_h * scale);
             ImGui::SetCursorPos(ImVec2((avail.x - size.x) * 0.5f, (avail.y - size.y) * 0.5f));
             ImGui::Image(static_cast<ImTextureID>(texture), size);
         }

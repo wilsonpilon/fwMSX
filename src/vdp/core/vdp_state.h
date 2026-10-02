@@ -56,6 +56,7 @@
 #include <stdint.h>
 
 #include "../common/vdp_types.h"
+#include "vdp_cmd.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -66,6 +67,25 @@ typedef struct VdpState {
     uint8_t status[16]; /* VDPStatus[] do fMSX -- S#0..S#9ish usados */
 
     uint8_t vram[VDP_VRAM_SIZE];
+
+    /* Modelo do VDP (VDP_MODEL_*): MSX1 = 16KB e sem comandos/modos 4-8; MSX2 =
+       128KB (8 paginas via R#14), modos SCREEN 4-8, sprites de modo 2 e motor
+       de comandos. vram_mask = tamanho da VRAM em uso - 1 (3FFFh/1FFFFh). */
+    uint8_t model;
+    uint8_t vram_pages;
+    uint32_t vram_mask;
+
+    /* Motor de comandos do V9938 (ver vdp_cmd.h): estado do comando ativo, o
+       orcamento de "ciclos" desta scanline e qual engine esta rodando. */
+    VdpCmd cmd;
+    int ops_cnt;
+    uint8_t engine;
+
+    /* Piscar de TEXT80 (BFlag/BCount do LoopZ80 do fMSX): cores de frente/fundo
+       "extras" (XFGColor/XBGColor) usadas pelos caracteres com o bit de piscar. */
+    uint8_t blink_flag;
+    uint8_t blink_count;
+    uint8_t x_fg, x_bg;
 
     /* Protocolo de porta -- ver InZ80/WrZ80 98h-9Bh em MSX.c. */
     uint16_t vaddr; /* VAddr: endereco de VRAM atual (14 bits, 0..3FFFh) */
@@ -120,9 +140,17 @@ typedef struct VdpStepResult {
     int irq_pending;
 } VdpStepResult;
 
+/* Escolhe o modelo (VDP_MODEL_MSX1/MSX2): ajusta o tamanho da VRAM em uso e
+   zera o VDP (vdp_reset()). Chamar antes de rodar; o modelo sobrevive a
+   vdp_reset() (um reset de maquina nao troca o VDP). */
+void vdp_set_model(VdpState *v, int model);
+
+/* Reset de maquina: zera o VDP mantendo o modelo ja' escolhido. */
+void vdp_reset_keep_model(VdpState *v);
+
 /* Zera registradores/status/VRAM/paleta, poe o modo de tela em 0 e
    recomputa o cache de tabela -- equivalente ao trecho de VDP em
-   ResetMSX() do fMSX. */
+   ResetMSX() do fMSX. Sempre como MSX1 (ver vdp_set_model()). */
 void vdp_reset(VdpState *v);
 
 /* Le/escreve nas portas 98h-9Bh -- protocolo completo (latches de 2

@@ -80,7 +80,7 @@ constexpr uint16_t kSprGen = 0x2800;
 void SetupSpriteScreen(VdpState &v, uint8_t reg1_extra = 0) {
     vdp_reset(&v);
     WriteRegisterViaPort99(v, 0, 0x00);
-    WriteRegisterViaPort99(v, 1, reg1_extra); // SCREEN 1 + bits de sprite (0x01 ampliado, 0x02 16x16)
+    WriteRegisterViaPort99(v, 1, static_cast<uint8_t>(reg1_extra | 0x40)); // tela ligada (bit 6) + SCREEN 1 + bits de sprite (0x01 ampliado, 0x02 16x16)
     WriteRegisterViaPort99(v, 2, 0x02);       // chr_tab = 0x800
     WriteRegisterViaPort99(v, 4, 0x00);       // chr_gen = 0
     WriteRegisterViaPort99(v, 5, 0x40);       // spr_tab = 0x40<<7 = 0x2000
@@ -272,7 +272,8 @@ int main() {
         // Com bit 0x80 setado, NAO auto-incrementa.
         vdp_write_register(&v, 17, 0x80 | 10);
         vdp_out(&v, 0x9B, 0x22);
-        check(v.regs[10] == 0x22, "9Bh com R#17=(0x80|10) escreve em R#10");
+        // R#10 so' guarda 3 bits (VDPOut() do fMSX: V&=0x07): 22h -> 02h
+        check(v.regs[10] == 0x02, "9Bh com R#17=(0x80|10) escreve em R#10 (so' 3 bits: 22h -> 02h)");
         check(v.regs[17] == (0x80 | 10), "R#17 NAO auto-incrementa quando bit 0x80 esta setado");
     }
 
@@ -528,7 +529,7 @@ int main() {
         VdpState v;
         vdp_reset(&v);
         WriteRegisterViaPort99(v, 0, 0x00);
-        WriteRegisterViaPort99(v, 1, 0x10); // (regs0&0x0E)>>1 | (regs1&0x18) == 0x10 -> SCR0
+        WriteRegisterViaPort99(v, 1, 0x50); // tela ligada (0x40) | 0x10 => (regs0&0x0E)>>1 | (regs1&0x18) == 0x10 -> SCR0
         WriteRegisterViaPort99(v, 2, 0x01); // chr_tab = 1<<10 = 0x400
         WriteRegisterViaPort99(v, 4, 0x00); // chr_gen = 0
         WriteRegisterViaPort99(v, 7, 0x21); // FG=idx2 BG=idx1
@@ -555,7 +556,7 @@ int main() {
         VdpState v;
         vdp_reset(&v);
         WriteRegisterViaPort99(v, 0, 0x00);
-        WriteRegisterViaPort99(v, 1, 0x00); // composite 0x00 -> SCR1
+        WriteRegisterViaPort99(v, 1, 0x40); // tela ligada; composite 0x00 -> SCR1
         WriteRegisterViaPort99(v, 2, 0x02); // chr_tab = 2<<10 = 0x800
         WriteRegisterViaPort99(v, 3, 0x01); // col_tab = 1<<6 = 0x40
         WriteRegisterViaPort99(v, 4, 0x00); // chr_gen = 0
@@ -600,7 +601,7 @@ int main() {
         VdpState v;
         vdp_reset(&v);
         WriteRegisterViaPort99(v, 0, 0x02); // (2&0x0E)>>1=1 | (regs1&0x18)=0 -> composite 0x01 -> SCR2
-        WriteRegisterViaPort99(v, 1, 0x00);
+        WriteRegisterViaPort99(v, 1, 0x40); // tela ligada
         WriteRegisterViaPort99(v, 2, 0x00); // chr_tab = 0
         // col_tab BASE so' usa o bit7 de regs[3] (r3=0x80 -- aqui 0x7F
         // deixa o bit7 zerado, base=0), mas o bit0 dele participa da

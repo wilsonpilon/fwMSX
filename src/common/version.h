@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 10
+#define FWMSX_VERSION_MINOR 11
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Golvellius"
-#define FWMSX_SUBTITLE  "MSX-DOS e Joystick"
+#define FWMSX_CODENAME  "Firebird"
+#define FWMSX_SUBTITLE  "MSX2 em Cena"

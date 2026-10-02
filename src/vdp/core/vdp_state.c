@@ -5,6 +5,7 @@
 
 #include <string.h>
 
+#include "vdp_cmd.h"
 #include "vdp_sprites.h"
 #include "vdp_tables.h"
 
@@ -91,6 +92,7 @@ static void RecomputeTables(VdpState *v) {
     v->spr_tab_mask = (((uint32_t)(uint8_t)(v->regs[5] | (uint8_t)~kScreenMask[j].m5)) << 7) | 0x1807Fu;
 }
 
+
 int vdp_set_screen(VdpState *v) {
     int j;
     switch (((v->regs[0] & 0x0E) >> 1) | (v->regs[1] & 0x18)) {
@@ -134,14 +136,23 @@ void vdp_write_register(VdpState *v, int reg, uint8_t value) {
         case 3:
         case 4:
         case 5:
-        case 6:
-        case 10:
-        case 11:
             v->regs[reg] = value;
             RecomputeTables(v);
             break;
-        case 14:
-            v->regs[14] = (uint8_t)(value & (VDP_VRAM_PAGES - 1));
+        case 6:
+            v->regs[6] = (uint8_t)(value & 0x3F);
+            RecomputeTables(v);
+            break;
+        case 10: /* bits 16-18 da tabela de cor (MSX2) */
+            v->regs[10] = (uint8_t)(value & 0x07);
+            RecomputeTables(v);
+            break;
+        case 11: /* bits 15-16 da tabela de atributos de sprite (MSX2) */
+            v->regs[11] = (uint8_t)(value & 0x03);
+            RecomputeTables(v);
+            break;
+        case 14: /* pagina de 16KB da VRAM (MSX1: so' a pagina 0) */
+            v->regs[14] = (uint8_t)(value & (v->vram_pages - 1));
             break;
         case 15:
             v->regs[15] = (uint8_t)(value & 0x0F);
@@ -157,9 +168,13 @@ void vdp_write_register(VdpState *v, int reg, uint8_t value) {
             v->regs[25] = value;
             vdp_set_screen(v);
             break;
-        case 44: /* VDPWrite(V) -- motor de comando V9938, fora de escopo (Fase 5) */
-        case 46: /* VDPDraw(V) -- idem */
-            v->regs[reg] = value;
+        case 44: /* dado da CPU para o motor de comandos (VDPWrite) */
+            if (v->model == VDP_MODEL_MSX2) vdp_cmd_write(v, value);
+            v->regs[44] = value;
+            break;
+        case 46: /* dispara um comando (VDPDraw) */
+            v->regs[46] = value;
+            if (v->model == VDP_MODEL_MSX2) vdp_cmd_draw(v, value);
             break;
         default:
             if (reg >= 0 && reg < 64) v->regs[reg] = value;
@@ -167,10 +182,31 @@ void vdp_write_register(VdpState *v, int reg, uint8_t value) {
     }
 }
 
-void vdp_reset(VdpState *v) {
+static void ResetInternal(VdpState *v) {
+    /* Aqui o modelo ja' esta' escolhido (v->model). */
+    if (v->model != VDP_MODEL_MSX2) {
+        v->model = VDP_MODEL_MSX1;
+        v->vram_pages = 1;
+        v->vram_mask = 0x3FFFu;
+    } else {
+        v->vram_pages = VDP_VRAM_PAGES;
+        v->vram_mask = VDP_VRAM_SIZE - 1;
+    }
     memset(v->regs, 0, sizeof(v->regs));
     memset(v->status, 0, sizeof(v->status));
     memset(v->vram, 0, sizeof(v->vram));
+    memset(&v->cmd, 0, sizeof(v->cmd));
+    v->ops_cnt = 0;
+    v->engine = 0;
+    v->blink_flag = 0;
+    v->blink_count = 0;
+    v->x_fg = 0;
+    v->x_bg = 0;
+    if (v->model == VDP_MODEL_MSX2) {
+        /* VDPSInit[] do fMSX: S#0=9Fh, S#2=6Ch (os bits fixos em 1 do V9938) */
+        v->status[0] = 0x9F;
+        v->status[2] = 0x6C;
+    }
     v->vaddr = 0;
     v->vdata = 0;
     v->vkey = 1;
@@ -190,12 +226,32 @@ void vdp_reset(VdpState *v) {
     RecomputeTables(v);
 }
 
+void vdp_set_model(VdpState *v, int model) {
+    v->model = (model == VDP_MODEL_MSX2) ? VDP_MODEL_MSX2 : VDP_MODEL_MSX1;
+    ResetInternal(v);
+}
+
+void vdp_reset(VdpState *v) {
+    /* Reset "de fabrica": sempre MSX1 (um VdpState nao inicializado nao tem
+       modelo valido). Use vdp_set_model() para MSX2 e vdp_reset_keep_model()
+       para um reset de maquina. */
+    v->model = VDP_MODEL_MSX1;
+    ResetInternal(v);
+}
+
+void vdp_reset_keep_model(VdpState *v) { ResetInternal(v); }
+
 // InZ80()/WrZ80() do fMSX, casos 98h/99h/9Ah/9Bh -- ver vdp_state.h para
 // a nota de escopo (S#7/LMCM omitido, motor de comando fora de escopo).
+static uint32_t VramIndex(const VdpState *v) {
+    return (((uint32_t)v->regs[14] << 14) | v->vaddr) & v->vram_mask;
+}
+
 static void AdvanceVramAddress(VdpState *v) {
     v->vaddr = (uint16_t)((v->vaddr + 1) & 0x3FFF);
+    /* Ao dar a volta nos 16KB, a pagina (R#14) avanca -- so' nos modos MSX2 */
     if (v->vaddr == 0 && v->scr_mode > 3) {
-        v->regs[14] = (uint8_t)((v->regs[14] + 1) & (VDP_VRAM_PAGES - 1));
+        v->regs[14] = (uint8_t)((v->regs[14] + 1) & (v->vram_pages - 1));
     }
 }
 
@@ -204,7 +260,7 @@ uint8_t vdp_in(VdpState *v, uint16_t port) {
         case 0x98: {
             const uint8_t result = v->vdata;
             v->vkey = 1;
-            v->vdata = v->vram[v->vaddr];
+            v->vdata = v->vram[VramIndex(v)];
             AdvanceVramAddress(v);
             return result;
         }
@@ -222,8 +278,11 @@ uint8_t vdp_in(VdpState *v, uint16_t port) {
                     v->status[1] &= 0xFE;
                     SetVdpIrq(v, (uint8_t)~VDP_INT_IE1);
                     break;
+                case 7: /* S#7 = proximo pixel do LMCM (motor de comandos, MSX2) */
+                    if (v->model == VDP_MODEL_MSX2) v->status[7] = v->regs[44] = vdp_cmd_read(v);
+                    break;
                 default:
-                    break; /* S#7 (LMCM) fora de escopo -- motor de comando, Fase 5 */
+                    break;
             }
             return result;
         }
@@ -237,7 +296,7 @@ void vdp_out(VdpState *v, uint16_t port, uint8_t value) {
         case 0x98:
             v->vkey = 1;
             v->vdata = value;
-            v->vram[v->vaddr] = value;
+            v->vram[VramIndex(v)] = value;
             AdvanceVramAddress(v);
             return;
 
@@ -256,7 +315,7 @@ void vdp_out(VdpState *v, uint16_t port, uint8_t value) {
                 case 0x40:
                     v->vaddr = (uint16_t)((((uint16_t)value << 8) + v->alatch) & 0x3FFF);
                     if (!(value & 0x40)) {
-                        v->vdata = v->vram[v->vaddr];
+                        v->vdata = v->vram[VramIndex(v)];
                         AdvanceVramAddress(v);
                     }
                     break;
@@ -326,6 +385,28 @@ VdpStepResult vdp_step_scanline(VdpState *v) {
         if (v->scanline == 0) {
             v->drawing = 1;
             v->status[2] &= 0xBF; /* reseta bit de VRefresh */
+
+            /* Piscar de TEXT80 (R#12 = cores do piscar, R#13 = tempos on/off) */
+            if (v->blink_count) {
+                --v->blink_count;
+            } else {
+                v->blink_flag = (uint8_t)!v->blink_flag;
+                if (!v->regs[13]) {
+                    v->x_fg = (uint8_t)(v->regs[7] >> 4);
+                    v->x_bg = (uint8_t)(v->regs[7] & 0x0F);
+                } else {
+                    v->blink_count = (uint8_t)((v->blink_flag ? (v->regs[13] & 0x0F) : (v->regs[13] >> 4)) * 10);
+                    if (v->blink_count) {
+                        if (v->blink_flag) {
+                            v->x_fg = (uint8_t)(v->regs[7] >> 4);
+                            v->x_bg = (uint8_t)(v->regs[7] & 0x0F);
+                        } else {
+                            v->x_fg = (uint8_t)(v->regs[12] >> 4);
+                            v->x_bg = (uint8_t)(v->regs[12] & 0x0F);
+                        }
+                    }
+                }
+            }
         }
 
         {
@@ -388,8 +469,8 @@ VdpStepResult vdp_step_scanline(VdpState *v) {
         if (!(v->status[0] & 0x20) && vdp_sprites_check_collision(v)) v->status[0] |= 0x20;
     }
 
-    /* LoopVDP()/RefreshLine[]/som/teclado/joystick/mouse/cheats:
-       fora de escopo, ver vdp_state.h. */
+    /* LoopVDP(): avanca o comando do V9938 em execucao (so' MSX2) */
+    if (v->model == VDP_MODEL_MSX2) vdp_cmd_loop(v);
 
     result.irq_pending = v->irq_pending != 0;
     return result;

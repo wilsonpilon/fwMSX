@@ -278,6 +278,7 @@ set(VDP_LIB_SOURCES
         src/vdp/core/vdp_tables.c
         src/vdp/core/vdp_render.c
         src/vdp/core/vdp_sprites.c
+        src/vdp/core/vdp_cmd.c
         src/vdp/cpp/ppm_writer.cpp
         src/vdp/fortran/palette_table.f90
 )
@@ -418,6 +419,29 @@ if (MINGW)
 endif ()
 
 add_test(NAME fdc_wd2793 COMMAND fdctest)
+
+# vdp2test: VDP MSX2 (V9938) -- modos SCREEN 3-8, sprites de modo 2 e motor de
+# comandos -- ver doc/vdp-spec.md (Fases 4 e 5).
+add_executable(vdp2test tests/z80/vdp2_test.cpp ${VDP_LIB_SOURCES})
+target_include_directories(vdp2test PRIVATE src/vdp)
+set_target_properties(vdp2test PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/vdp2test)
+if (MINGW)
+    target_link_options(vdp2test PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME vdp_msx2 COMMAND vdp2test)
+
+# msx2test: maquina MSX2 (mapper de RAM, RTC, V9938 pelo BASIC e disco) -- ver
+# doc/msx2-spec.md.
+add_executable(msx2test tests/z80/msx2_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${FDC_LIB_SOURCES})
+target_include_directories(msx2test PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/rtc)
+target_compile_definitions(msx2test PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(msx2test PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/msx2test)
+if (MINGW)
+    target_link_options(msx2test PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME msx2_machine COMMAND msx2test)
 
 # audiotest: buffer circular, PSG ao vivo e dispositivo de audio -- ver
 # doc/audio-spec.md.

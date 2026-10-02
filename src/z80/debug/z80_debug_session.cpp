@@ -540,8 +540,9 @@ std::string Z80DebugSession::CmdVdpMem(const std::vector<std::string> &tokens) c
     if (tokens.size() > 2 && !ParseU32(tokens[2], len)) return "vdpmem: tamanho invalido: '" + tokens[2] + "'";
 
     const VdpState &v = vdp_device_->state();
+    const uint32_t vram_size = v.vram_mask + 1; // 16KB no MSX1, 128KB no MSX2
     std::ostringstream out;
-    for (uint32_t i = 0; i < len && (addr + i) < VDP_VRAM_SIZE; ++i) {
+    for (uint32_t i = 0; i < len && (addr + i) < vram_size; ++i) {
         const uint16_t a = static_cast<uint16_t>(addr + i);
         if (i % 16 == 0) {
             if (i != 0) out << "\n";
@@ -557,7 +558,8 @@ std::string Z80DebugSession::CmdVdpPeek(const std::vector<std::string> &tokens) 
     if (tokens.size() < 2) return "uso: vdppeek <endereco>";
     uint16_t addr = 0;
     if (!ParseAddr(tokens[1], addr)) return "vdppeek: endereco invalido: '" + tokens[1] + "'";
-    if (addr >= VDP_VRAM_SIZE) return "vdppeek: endereco alem da VRAM (" + std::to_string(VDP_VRAM_SIZE) + " bytes)";
+    const uint32_t vram_size = vdp_device_->state().vram_mask + 1;
+    if (addr >= vram_size) return "vdppeek: endereco alem da VRAM (" + std::to_string(vram_size) + " bytes)";
     return Hex4(addr) + ": " + Hex2(vdp_device_->state().vram[addr]);
 }
 
@@ -568,7 +570,8 @@ std::string Z80DebugSession::CmdVdpPoke(const std::vector<std::string> &tokens) 
     uint8_t value = 0;
     if (!ParseAddr(tokens[1], addr)) return "vdppoke: endereco invalido: '" + tokens[1] + "'";
     if (!ParseByte(tokens[2], value)) return "vdppoke: byte invalido: '" + tokens[2] + "'";
-    if (addr >= VDP_VRAM_SIZE) return "vdppoke: endereco alem da VRAM (" + std::to_string(VDP_VRAM_SIZE) + " bytes)";
+    const uint32_t vram_size = vdp_device_->state().vram_mask + 1;
+    if (addr >= vram_size) return "vdppoke: endereco alem da VRAM (" + std::to_string(vram_size) + " bytes)";
     vdp_device_->state().vram[addr] = value;
     return Hex4(addr) + " <- " + Hex2(value);
 }
@@ -595,7 +598,7 @@ std::string Z80DebugSession::CmdVdpShot(const std::vector<std::string> &tokens) 
 
     const VdpState &v = vdp_device_->state();
     const int width = vdp_render_width(&v);
-    const int height = VDP_RENDER_HEIGHT;
+    const int height = vdp_render_height(&v);
 
     uint32_t start = 0;
     uint32_t end = static_cast<uint32_t>(height - 1);

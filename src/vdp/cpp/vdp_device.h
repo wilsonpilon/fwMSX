@@ -32,7 +32,9 @@ public:
     // CmdRun/CmdStep) chama isto diretamente.
     VdpStepResult Step() { return vdp_step_scanline(&state_); }
 
-    void Reset() { vdp_reset(&state_); }
+    void Reset() { vdp_reset_keep_model(&state_); }
+    // MSX1 (16KB, TMS9918) ou MSX2 (128KB, V9938): ver vdp_set_model().
+    void SetModel(int model) { vdp_set_model(&state_, model); }
 
     VdpState &state() { return state_; }
     const VdpState &state() const { return state_; }

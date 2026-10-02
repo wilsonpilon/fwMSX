@@ -29,7 +29,7 @@ bool ParseMapper(const std::string &s, MemMapMapperType &out) {
 // BIOS padrao: resource/fMSX/ROMs/MSX.ROM a partir do diretorio de trabalho,
 // do diretorio do executavel ou de um dos pais deles (dist/ fica dentro do
 // repositorio); ou um MSX.ROM solto ao lado do executavel.
-std::string FindDefaultBios(const std::string &argv0) {
+std::string FindDefaultBios(const std::string &argv0, const char *rom_name) {
     std::vector<fs::path> roots;
     std::error_code ec;
     roots.push_back(fs::current_path(ec));
@@ -38,25 +38,11 @@ std::string FindDefaultBios(const std::string &argv0) {
     for (fs::path p = exe_dir; p.has_parent_path() && p != p.parent_path(); p = p.parent_path()) roots.push_back(p.parent_path());
 
     for (const fs::path &root : roots) {
-        for (const char *rel : {"resource/fMSX/ROMs/MSX.ROM", "MSX.ROM"}) {
+        for (const std::string &rel : {std::string("resource/fMSX/ROMs/") + rom_name, std::string(rom_name)}) {
             const fs::path candidate = root / rel;
             if (fs::is_regular_file(candidate, ec)) return candidate.string();
         }
     }
-    return "";
-}
-
-// Tecla MSX para um caractere do --keys; "" se nao suportado.
-std::string KeyForChar(char c) {
-    if (c >= 'a' && c <= 'z') return std::string(1, c);
-    if (c >= 'A' && c <= 'Z') return std::string(1, static_cast<char>(c - 'A' + 'a'));
-    if (c >= '0' && c <= '9') return std::string(1, c);
-    if (c == ' ') return "space";
-    if (c == '.') return ".";
-    if (c == ',') return ",";
-    if (c == '/') return "/";
-    if (c == '-') return "-";
-    if (c == '|') return "enter";
     return "";
 }
 
@@ -68,6 +54,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     std::string shot_path;
     std::string keys;
     bool mute = false;
+    bool vdplog = false;
     int wait_frames = 60;
 
     for (size_t i = 0; i < args.size(); ++i) {
@@ -83,6 +70,12 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             const std::string *v = need("um arquivo");
             if (!v) return 2;
             config.bios_path = *v;
+        } else if (a == "--msx2") {
+            config.model = Model::MSX2;
+        } else if (a == "--ext") {
+            const std::string *v = need("um arquivo");
+            if (!v) return 2;
+            config.ext_rom_path = *v;
         } else if (a == "--cart") {
             const std::string *v = need("um arquivo");
             if (!v) return 2;
@@ -128,6 +121,8 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             const std::string *v = need("um numero de quadros");
             if (!v) return 2;
             wait_frames = std::atoi(v->c_str());
+        } else if (a == "--vdplog") {
+            vdplog = true;
         } else if (a == "--mute") {
             mute = true;
         } else if (a == "--keys") {
@@ -141,9 +136,10 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     }
 
     if (config.bios_path.empty()) {
-        config.bios_path = FindDefaultBios(argv0);
+        const char *rom_name = config.model == Model::MSX2 ? "MSX2.ROM" : "MSX.ROM";
+        config.bios_path = FindDefaultBios(argv0, rom_name);
         if (config.bios_path.empty()) {
-            std::cerr << "fwmsx --msx: BIOS nao encontrada (esperava resource/fMSX/ROMs/MSX.ROM); use --bios <arquivo>" << std::endl;
+            std::cerr << "fwmsx --msx: BIOS nao encontrada (esperava resource/fMSX/ROMs/" << rom_name << "); use --bios <arquivo>" << std::endl;
             return 1;
         }
     }
@@ -164,34 +160,58 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
                 if (m->disk(d).loaded()) std::cout << ", " << static_cast<char>('A' + d) << ": " << m->disk(d).path();
             std::cout << std::endl;
         }
+        // --vdplog: mostra, a cada quadro, os registradores do VDP que mudaram
+        uint8_t last_regs[64] = {};
+        auto run_frame = [&]() {
+            m->RunFrame();
+            if (!vdplog) return;
+            const VdpState &vs = m->vdp_state();
+            for (int r = 0; r < 47; ++r) {
+                if (vs.regs[r] != last_regs[r]) {
+                    std::printf("quadro %llu: R#%d %02X -> %02X (SCREEN %d, PC=%04X)\n", static_cast<unsigned long long>(m->frame_count()), r,
+                                last_regs[r], vs.regs[r], vs.scr_mode, m->cpu().pc());
+                    last_regs[r] = vs.regs[r];
+                }
+            }
+        };
         const int boot_frames = frames > 0 ? frames : 400;
-        for (int i = 0; i < boot_frames; ++i) m->RunFrame();
+        for (int i = 0; i < boot_frames; ++i) run_frame();
         for (char c : keys) {
-            const std::string key = KeyForChar(c);
-            if (key.empty()) {
+            std::string key;
+            bool shift = false;
+            if (!Machine::KeysForChar(c, key, shift)) {
                 std::cerr << "fwmsx --msx: caractere nao suportado em --keys: '" << c << "'" << std::endl;
                 return 2;
             }
+            if (shift) m->KeyDown("shift");
             m->KeyDown(key);
-            for (int i = 0; i < 6; ++i) m->RunFrame();
+            for (int i = 0; i < 6; ++i) run_frame();
             m->KeyUp(key);
-            for (int i = 0; i < 6; ++i) m->RunFrame();
+            if (shift) m->KeyUp("shift");
+            for (int i = 0; i < 6; ++i) run_frame();
         }
         if (!keys.empty()) {
-            for (int i = 0; i < wait_frames; ++i) m->RunFrame();
+            for (int i = 0; i < wait_frames; ++i) run_frame();
         }
         if (shot_path.empty()) return 0;
 
         std::vector<uint32_t> rgba;
-        m->RenderFrame(rgba);
-        std::vector<VdpRgb888> rgb(rgba.size());
-        for (size_t i = 0; i < rgba.size(); ++i) {
-            rgb[i].r = static_cast<uint8_t>(rgba[i] & 0xFF);
-            rgb[i].g = static_cast<uint8_t>((rgba[i] >> 8) & 0xFF);
-            rgb[i].b = static_cast<uint8_t>((rgba[i] >> 16) & 0xFF);
+        const FrameSize fs_size = m->RenderFrame(rgba);
+        // Repete cada linha y_scale vezes para a imagem sair com a proporcao certa
+        // (no MSX2 a imagem de 512 de largura tem pixels "altos").
+        const int out_h = fs_size.height * fs_size.y_scale;
+        std::vector<VdpRgb888> rgb(static_cast<size_t>(fs_size.width) * out_h);
+        for (int y = 0; y < out_h; ++y) {
+            const uint32_t *src = rgba.data() + static_cast<size_t>(y / fs_size.y_scale) * fs_size.width;
+            VdpRgb888 *dst = rgb.data() + static_cast<size_t>(y) * fs_size.width;
+            for (int x = 0; x < fs_size.width; ++x) {
+                dst[x].r = static_cast<uint8_t>(src[x] & 0xFF);
+                dst[x].g = static_cast<uint8_t>((src[x] >> 8) & 0xFF);
+                dst[x].b = static_cast<uint8_t>((src[x] >> 16) & 0xFF);
+            }
         }
         std::string werr;
-        if (!vdp::WritePpm(shot_path, rgb.data(), Machine::kFrameWidth, Machine::kFrameHeight, &werr)) {
+        if (!vdp::WritePpm(shot_path, rgb.data(), fs_size.width, out_h, &werr)) {
             std::cerr << "fwmsx --msx: " << werr << std::endl;
             return 1;
         }

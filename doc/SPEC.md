@@ -204,9 +204,10 @@ sendo o "onde paramos" oficial.
    pixel para SCREEN 0/1/2 (texto mono, texto colorido, bitmap), tabela
    de paleta de 512 cores em **Fortran** (finalmente com consumidor),
    exportacao de frame como PPM (`vdpshot`) para inspecao/teste sem
-   janela. **Fase 3 (sprites de modo 1, SCREEN 1/2/3) concluida em 2026-10-01**. **Falta**: modos MSX2 5-8 (com sprites de modo 2) + janela
-   de verdade (Fase 4), motor de comando V9938 (Fase 5, avancado/
-   opcional). Achado que vale lembrar: a BIOS real ainda nao chega a
+   janela. **Fase 3 (sprites de modo 1, SCREEN 1/2/3) concluida em 2026-10-01**.
+   **Fases 4 e 5 (MSX2) concluidas em 2026-10-02**: todos os modos do V9938, sprites
+   de modo 2 e o motor de comandos -- ver [doc/msx2-spec.md](msx2-spec.md); `fwmsx
+   --msx --msx2` roda o MSX BASIC 2.1 e o Firebird. **Falta**: so' o V9958 (MSX2+). Achado que vale lembrar: a BIOS real ainda nao chega a
    habilitar a interrupcao de VBlank dentro de nenhum orcamento de
    ciclos testado -- ela poliniza hardware de teclado/PPI (portas
    `A9h`-`ABh`) que ainda nao existe no projeto, uma limitacao real e

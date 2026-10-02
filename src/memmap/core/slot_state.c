@@ -102,7 +102,8 @@ void memmap_switch_secondary(SlotState *state, uint8_t value) {
     // nada a se aplicar. Revisitar quando LoadRom()/modo de maquina
     // existirem de verdade.
     const int active_primary = state->psl[3];
-    if (state->msx1_subslot_rules && active_primary <= 2) value = 0;
+    if (state->msx1_subslot_rules == 1 && active_primary <= 2) value = 0;
+    if (state->msx1_subslot_rules == 2 && (active_primary == 1 || active_primary == 2)) value = 0;
     state->ssl_reg[active_primary] = value;
 
     for (int page = 0; page < MEMMAP_PAGES; ++page) {
@@ -221,6 +222,17 @@ static void RefreshChunk(SlotState *state, int primary, int secondary, int chunk
     if (state->psl[page] != primary || state->ssl[page] != secondary) return;
     state->active_view[chunk_idx] = ptr;
     state->active_writable[chunk_idx] = 0;
+}
+
+void memmap_remap_ram_chunk(SlotState *state, int primary, int secondary, int chunk_idx, uint8_t *ptr) {
+    if (!ValidSlot(primary, secondary) || chunk_idx < 0 || chunk_idx >= MEMMAP_CHUNKS) return;
+    state->chunk[primary][secondary][chunk_idx] = ptr;
+    state->chunk_writable[primary][secondary][chunk_idx] = 1;
+
+    const int page = chunk_idx / 2;
+    if (state->psl[page] != primary || state->ssl[page] != secondary) return;
+    state->active_view[chunk_idx] = ptr;
+    state->active_writable[chunk_idx] = 1;
 }
 
 int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_t addr, uint8_t value) {
