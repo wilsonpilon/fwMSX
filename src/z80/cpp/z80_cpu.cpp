@@ -14,6 +14,14 @@ Z80Cpu::Z80Cpu(IBus &bus) : bus_(bus) {
     c_bus_.patch = &Z80Cpu::trampoline_patch;
     c_bus_.jump = &Z80Cpu::trampoline_jump;
     c_bus_.ram_ptr = &Z80Cpu::trampoline_ram_ptr;
+
+    // Estado de reset ja' na construcao. Alem do estado inicial dos
+    // registradores, isto garante z80_tables_init() (tabelas de flag em
+    // Fortran): antes, quem nao chamasse reset() explicitamente rodava com
+    // as tabelas de Sinal/Zero/Paridade ZERADAS -- toda instrucao que
+    // consulta a tabela (AND/OR/XOR/INC/DEC/CP/...) produzia flags erradas,
+    // e foi isso que fazia a BIOS real ficar presa (ver doc/ppi-spec.md).
+    z80_reset(&state_, &c_bus_);
 }
 
 void Z80Cpu::reset() { z80_reset(&state_, &c_bus_); }

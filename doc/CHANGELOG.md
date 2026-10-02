@@ -7,6 +7,34 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.8.0] - 2026-10-01 - "Zanac: Prompt do BASIC"
+
+**A BIOS MSX1 real sobe ate o prompt do MSX BASIC** e o teclado do PPI
+chega ate' ela -- primeira vez que o fwMSX roda software MSX de verdade.
+Ver [doc/ppi-spec.md](ppi-spec.md), seção 5.
+
+### Corrigido
+- **`Z80Cpu` agora chama `z80_reset()` na construção.** Antes, quem não
+  digitasse `reset` rodava com as tabelas de flag Sinal/Zero/Paridade
+  **zeradas** (elas são preenchidas por `z80_tables_init()`, dentro de
+  `z80_reset()`): `AND`/`OR`/`XOR`/`CP`/`INC`/`DEC` davam flags erradas
+  (`AND A` com A=0 devolvia `F=10h` em vez de `54h`). Era a causa real de
+  a BIOS ficar "presa" desde a v1.4.0 -- o diagnóstico anterior ("falta
+  PPI", depois "falta RAM/subslot") estava errado/incompleto. Os 168
+  testes do `z80test` não pegaram porque todos chamam `cpu.reset()` antes.
+  Teste de regressão novo em `debug_session_test.cpp`.
+
+### Adicionado
+- Teste de aceite com a BIOS real (`ppitest`, antes informativo): 100M de
+  ciclos, VBlank habilitado, a abertura "MSX BASIC version 1.0 ... Bytes
+  free" na VRAM e `keydown z` aparecendo na tela.
+- 470 verificações automatizadas (5 suítes).
+
+### Notas
+- Com BIOS + `--ppi`: RAM de 64KB em `3:2` (necessária). As regras de
+  subslot do MSX1 foram testadas -- a BIOS sobe com e sem elas; mantidas
+  por fidelidade ao fMSX.
+
 ## [1.7.0] - 2026-10-01 - "Vampire Killer: Teclado e PPI"
 
 PPI i8255 + matriz de teclado (portas `A8h`-`ABh`) -- ver

@@ -5,7 +5,8 @@
 > retomar do ponto exato onde parou.
 
 Estado: **Fase 1 concluida em 2026-10-01** (chip + matriz de teclado +
-integracao com o mapa de memoria + comandos de depuracao).
+integracao com o mapa de memoria + comandos de depuracao). **A BIOS real
+sobe ate o prompt do MSX BASIC (v1.8.0)** -- ver a secao 5.
 
 ## 1. Objetivo
 
@@ -19,9 +20,8 @@ para a BIOS real avancar:
 | `AAh` (porta C, saida)   | bits 0-3: linha do teclado; bit 4: rele do motor do cassete; bit 5: saida do cassete; bit 6: LED de CAPS; bit 7: click |
 | `ABh` (controle)         | modo (bit 7=1) ou set/reset de um bit da porta C (bit 7=0) |
 
-Achado da Fase 1 do VDP: a BIOS real ficava presa perto de `0x0C3C`
-esperando esse hardware. Ver a secao 5 para o que mudou e o que ainda
-impede a BIOS de subir de verdade.
+Achado da Fase 1 do VDP: a BIOS real ficava presa perto de `0x0C3C`.
+O PPI era necessario, mas **nao era a causa** -- ver a secao 5.
 
 ## 2. Arquitetura (as quatro linguagens)
 
@@ -83,29 +83,54 @@ o slot 3 e' expandido. Sem `--ppi` (ou sem ROM) nada muda: o mapa de
 memoria continua aceitando subslot livremente (decisao da Fase 1 do mapa de
 memoria, que os 102 testes de `memmaptest` dependem).
 
-## 5. BIOS real: onde estamos
+## 5. BIOS real: boot completo ate o prompt do MSX BASIC (v1.8.0)
 
-Resultado de rodar `fwmsx --z80dbg --slots resource/fMSX/ROMs/MSX.ROM
---vdp --ppi` (20 milhoes de ciclos):
+`fwmsx --z80dbg --slots resource/fMSX/ROMs/MSX.ROM --vdp --ppi` e `run
+100000000` agora leva a BIOS MSX1 real ate o prompt, com a tela de
+abertura na VRAM (SCREEN 0, exportavel com `vdpshot`):
 
-1. **Antes** (so' VDP): presa em `0x0C3C`; a hipotese da Fase 1 do VDP era
-   "falta PPI".
-2. **PPI sozinho nao bastou**: a BIOS programa o chip (`82h` em `ABh`,
-   `50h` em `AAh`) mas, sem RAM, reinicia o boot em ciclo -- faltava o
-   layout de RAM (secao 4). O diagnostico original do VDP estava
-   incompleto: eram *duas* lacunas (PPI e RAM/subslot).
-3. **Com RAM em `3:2` e as regras de subslot**: a BIOS passa pela deteccao
-   de expansao de slot (confere que escrever em `FFFFh` nos slots 0-2 nao
-   vira expansao) e entra na rotina de varredura de RAM (`0x0305`-`0x0331`),
-   **mas fica nela**: nunca troca o slot da pagina 3 (A8h fica `00h`) e o
-   VDP continua sem ter `IE0` habilitado. **Nao chegou ainda ao ponto de
-   inicializar o VDP / habilitar VBlank.**
+```
+MSX BASIC version 1.0
+Copyright 1983 by Microsoft
+28815 Bytes free
+Ok
+```
 
-Isso e' o proximo passo natural (ver secao 7), nao um defeito do PPI: o chip
-e a matriz estao cobertos por testes unitarios, e a BIOS ja' o programa e o
-le. O teste com a BIOS real em `tests/z80/ppi_test.cpp` continua
-**informativo, nao-bloqueante**, pelo mesmo motivo do teste equivalente do
-VDP.
+Teclas de `keydown`/`keyup` chegam ao BASIC (a BIOS le a matriz pelo PPI
+durante a interrupcao de VBlank e escreve o caractere na tela).
+
+**A causa raiz da "BIOS presa" (v1.4.0-v1.7.0) NAO era o PPI.** A saga,
+para nao repetir o erro de diagnostico:
+
+1. Fase 1 do VDP: "presa em `0x0C3C`, deve ser o PPI" -- hipotese plausivel,
+   mas incompleta.
+2. v1.7.0: com PPI, a BIOS programa o chip mas reiniciava o boot em ciclo;
+   somando RAM em `3:2` e as regras de subslot, ficava na varredura de RAM
+   (`0x0305`-`0x0331`). Mais uma hipotese incompleta.
+3. **Causa real: `Z80Cpu` nao chamava `z80_reset()` na construcao.** O
+   estado inicial era zerado -- incluindo `g_z80_zs_table`/`g_z80_pzs_table`
+   (tabelas de flag Sinal/Zero/Paridade, preenchidas por `z80_tables_init()`
+   dentro de `z80_reset()`). Quem nunca digitava `reset` rodava com flags de
+   `AND`/`OR`/`XOR`/`CP`/`INC`/`DEC` erradas (Z e P nunca setavam). O fio
+   que levou ate' la': a BIOS fazia `LD A,B / AND A / JR Z,...` com `B=0` e
+   o `JR Z` nao desviava -- `AND A` com A=0 devolvia `F=10h` em vez de
+   `54h`. Os 168 testes do `z80test` nao pegaram porque todos chamam
+   `cpu.reset()` antes. **Correcao:** o construtor de `Z80Cpu` agora chama
+   `z80_reset()`; teste de regressao em `tests/z80/debug_session_test.cpp`
+   (CPU sem `reset` explicito).
+
+O que cada peca de fato era necessaria para o boot:
+
+- PPI: necessario (a BIOS escreve `82h` em `ABh` logo no inicio).
+- RAM de 64KB no slot `3:2`: necessario (sem RAM a BIOS nao monta a area de
+  trabalho).
+- Regras de subslot do MSX1 (`msx1_subslot_rules`): **testado -- a BIOS
+  sobe com e sem elas**. Mantidas por fidelidade ao `SSlot()` do fMSX.
+
+Teste de aceite: `tests/z80/ppi_test.cpp`, teste 9 (deixou de ser
+informativo): 100M de ciclos, confere VBlank habilitado (R#1 bit 5) e IFF1
+ligado, a abertura do MSX BASIC na VRAM, e que `keydown z` escreve `z` na
+tela.
 
 ## 6. Decisoes e simplificacoes
 
@@ -121,13 +146,11 @@ VDP.
 
 ## 7. Proximos passos
 
-1. **Descobrir por que a BIOS nao sai da varredura de RAM** (`0x0305`-
-   `0x0331`) com RAM em `3:2`. Candidatos: algum detalhe de leitura em
-   regioes vazias/ROM de 32KB nas paginas 2/3, o teste de RAM da pagina 3
-   antes de ela ser trocada para o slot 3, ou uma diferenca de ordem de
-   troca de slot. Passo seguinte tipico: comparar a sequencia de `OUT A8h`/
-   `WR FFFFh` com o que o fMSX faz para a mesma BIOS.
-2. Quando a BIOS chegar a `EI`, converter o teste informativo em criterio
-   de aceite de verdade (interrupcao de VBlank recebida em `0x0038`).
-3. PSG (`A0h`-`A2h`), que a BIOS tambem consulta (joystick/teclado de
-   cassete).
+1. **PSG (`A0h`-`A2h`)**: a BIOS ja' sobe sem ele (leituras de porta sem
+   dispositivo devolvem 0), mas joystick, som e o resto do teclado de
+   cassete dependem dele.
+2. **Janela real + teclado do host** (VDP Fase 4): o prompt ja' e'
+   renderizado; falta mostrar numa janela e mapear o teclado do host para
+   `ppi_key_set()`.
+3. Cartuchos: carregar uma ROM de jogo em `1:0`/`2:0` (o `loadrom` ja'
+   existe) e deixar a BIOS achar e iniciar o cartucho.

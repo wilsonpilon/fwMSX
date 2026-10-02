@@ -13,6 +13,44 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.8.0 -- "Zanac: Prompt do BASIC" (2026-10-01)
+
+**Fase:** a BIOS MSX1 real sobe. Nome escolhido por "Zanac" (Compile) ser
+um clássico de MSX1 -- e o marco aqui é exatamente o "Ok" que o
+fMSX/MSX BASIC mostra ao ligar.
+
+### Destaques
+
+- **A BIOS real boota até o prompt do MSX BASIC.** Com `fwmsx --z80dbg
+  --slots resource/fMSX/ROMs/MSX.ROM --vdp --ppi`, `run 100000000` e
+  `vdpshot tela.ppm`, a tela mostra `MSX BASIC version 1.0 / Copyright
+  1983 by Microsoft / 28815 Bytes free / Ok` renderizada pelo VDP do
+  projeto. `keydown`/`keyup` digitam no BASIC pelo PPI.
+- **Bug do núcleo Z80 corrigido:** `Z80Cpu` não chamava `z80_reset()` na
+  construção, então as tabelas de flag ficavam zeradas se ninguém desse
+  `reset`. Era a causa real de a BIOS ficar presa desde a v1.4.0.
+- 470 verificações automatizadas, teste de aceite com a BIOS real.
+
+### Exemplo rápido
+
+```
+> .\dist\fwMSX.exe --z80dbg --slots resource\fMSX\ROMs\MSX.ROM --vdp --ppi
+z80dbg> run 100000000
+z80dbg> keydown p
+z80dbg> run 1000000
+z80dbg> keyup p
+z80dbg> run 2000000
+z80dbg> vdpshot tela.ppm
+```
+
+### Limitações conhecidas
+
+- Sem janela (só `vdpshot`), sem teclado do host, sem PSG/som/joystick,
+  sem cartuchos carregados automaticamente.
+- Demais limitações das versões anteriores continuam valendo.
+
+---
+
 ## v1.7.0 -- "Vampire Killer: Teclado e PPI" (2026-10-01)
 
 **Fase:** PPI i8255 + teclado -- ver [ppi-spec.md](ppi-spec.md). Nome

@@ -272,8 +272,10 @@ com precisao em `LICENSE-THIRD-PARTY.md` (dois autores, nao um).
   fica preso perto de `0x0C3C`-`0x0C44` cedo no boot da BIOS,
   quase certamente esperando uma resposta de PPI/teclado (portas
   `A9h`/`AAh`/`ABh`) que este projeto ainda nao emula (**correcao de
-  2026-10-01, v1.7.0: o PPI agora existe, e o diagnostico estava
-  incompleto -- ver `doc/ppi-spec.md`, secao 5**) (so' o mapa de
+  2026-10-01: o PPI agora existe (v1.7.0) e o diagnostico estava errado --
+  a causa real era o `Z80Cpu` nao inicializar as tabelas de flag (v1.8.0).
+  A BIOS real agora habilita o VBlank e chega ao prompt do BASIC; ver
+  `doc/ppi-spec.md`, secao 5**) (so' o mapa de
   memoria e o VDP existem ate' agora -- PPI e' trabalho futuro nao
   coberto por este design doc). **Isso e' uma limitacao real e
   esperada, separada da correcao do VDP em si** -- confirmado

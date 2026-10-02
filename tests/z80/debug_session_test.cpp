@@ -320,6 +320,27 @@ int main() {
               "startup sem argumentos: sessao funciona normalmente sobre FlatMemoryBus (regressao)");
     }
 
+    // --- regressao: CPU recem-construida (SEM reset) ja' tem as tabelas de flag ---
+    // Bug real da v1.7.0: Z80Cpu nao chamava z80_reset() na construcao, entao quem
+    // nao dava 'reset' rodava com g_z80_zs/pzs_table ZERADAS -- AND/OR/XOR/CP...
+    // davam flags erradas (Z e P nunca setavam) e a BIOS real nao subia.
+    {
+        z80::debug::FlatMemoryBus bus;
+        Z80DebugSession session(bus); // nenhum reset explicito
+        Cmd(session, {"poke", "0", "0x3E"}); // LD A,0Fh
+        Cmd(session, {"poke", "1", "0x0F"});
+        Cmd(session, {"poke", "2", "0xB7"}); // OR A  -> P=1 (paridade par de 0Fh), Z=0
+        Cmd(session, {"poke", "3", "0x3E"}); // LD A,0
+        Cmd(session, {"poke", "4", "0x00"});
+        Cmd(session, {"poke", "5", "0xA7"}); // AND A -> Z=1, P=1, H=1
+        Cmd(session, {"step", "2"});
+        check(Contains(Cmd(session, {"regs"}), "P/V=1"), "CPU sem reset: OR A com A=0Fh liga P/V (tabela de paridade inicializada)");
+        Cmd(session, {"step", "2"});
+        const std::string regs = Cmd(session, {"regs"});
+        check(Contains(regs, "Z=1") && Contains(regs, "P/V=1") && Contains(regs, "H=1"),
+              "CPU sem reset: AND A com A=0 liga Z, P/V e H");
+    }
+
     if (g_failures == 0) {
         std::printf("\nTodos os testes passaram.\n");
         return 0;

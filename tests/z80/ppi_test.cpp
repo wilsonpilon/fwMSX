@@ -1,4 +1,5 @@
 // Teste do PPI i8255 + teclado (portas A8h-ABh) -- ver doc/ppi-spec.md.
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <set>
@@ -9,6 +10,8 @@
 #include "../../src/memmap/cpp/slot_memory_bus.h"
 #include "../../src/ppi/cpp/ppi_device.h"
 #include "../../src/ppi/core/ppi_state.h"
+#include "../../src/vdp/core/vdp_state.h"
+#include "../../src/z80/common/z80_state.h"
 #include "../../src/z80/cpp/composite_bus.h"
 #include "../../src/z80/debug/z80_debug_session.h"
 #include "../../src/z80/debug/z80_debug_shell_startup.h"
@@ -268,7 +271,11 @@ int main() {
     }
 
 #ifdef FWMSX_SOURCE_DIR
-    // --- 9. BIOS real (informativo) -----------------------------------------
+    // --- 9. BIOS real: boot completo ate o prompt do MSX BASIC ----------------
+    // Criterio de aceite de verdade (era informativo ate a v1.6.0): com PPI, RAM em
+    // 3:2 e o nucleo Z80 inicializado de verdade (ver Z80Cpu::Z80Cpu), a BIOS MSX1
+    // sobe, habilita o VBlank, escreve a tela de abertura do MSX BASIC na VRAM e
+    // passa a ler o teclado pelo PPI.
     {
         const std::string rom = std::string(FWMSX_SOURCE_DIR) + "/resource/fMSX/ROMs/MSX.ROM";
         z80::debug::Z80DebugShellStartup s = z80::debug::BuildZ80DebugShellStartup({"--slots", rom, "--vdp", "--ppi"});
@@ -276,13 +283,29 @@ int main() {
             std::printf("[SKIP] BIOS real: '%s' nao encontrada\n", rom.c_str());
         } else {
             z80::debug::Z80DebugSession session(s.Bus(), s.memory_system.get(), s.vdp_device.get(), s.ppi_device.get());
-            std::set<uint16_t> pcs;
-            for (int i = 0; i < 400; ++i) {
-                session.ProcessCommand({"run", "50000"});
-                pcs.insert(session.cpu().pc());
-            }
-            std::printf("[INFO] BIOS real com PPI: PC final=%04X, controle do PPI=%02X, VDP R#1=%02X, %zu PCs distintos amostrados\n",
-                        session.cpu().pc(), s.ppi_device->state().r[3], s.vdp_device->state().regs[1], pcs.size());
+            auto run = [&](int cycles) {
+                for (int done = 0; done < cycles; done += 100000) session.ProcessCommand({"run", "100000"});
+            };
+            auto vram_has = [&](const std::string &text) {
+                const uint8_t *v = s.vdp_device->state().vram;
+                for (int i = 0; i + static_cast<int>(text.size()) <= VDP_VRAM_SIZE; ++i)
+                    if (std::equal(text.begin(), text.end(), v + i)) return true;
+                return false;
+            };
+
+            run(100000000);
+            const VdpState &vs = s.vdp_device->state();
+            check((vs.regs[1] & 0x20) != 0 && (session.cpu().iff() & Z80_IFF_1) != 0,
+                  "BIOS real: habilitou a interrupcao de VBlank do VDP (R#1 bit 5) e liga IFF1");
+            check(vs.scr_mode == 0 && vram_has("MSX BASIC version 1.0") && vram_has("Bytes free"),
+                  "BIOS real: a tela de abertura 'MSX BASIC version 1.0 ... Bytes free' esta na VRAM (SCREEN 0)");
+            check(!vram_has("zzz"), "BIOS real: antes de qualquer tecla nao ha' 'zzz' na tela");
+
+            session.ProcessCommand({"keydown", "z"});
+            run(1500000);
+            session.ProcessCommand({"keyup", "z"});
+            run(2000000);
+            check(vram_has("zz"), "BIOS real + PPI: 'keydown z' chega ao BASIC (a BIOS le a matriz de teclado e escreve 'z' na tela)");
         }
     }
 #endif

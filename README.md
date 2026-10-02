@@ -82,13 +82,18 @@ memoria (o slot primario passa a mudar pelo PPI, como no hardware),
 tabela de posicao das 87 teclas na matriz em **Fortran** e contagem de
 teclas pressionadas em **Assembly** dual-ABI. `fwmsx --z80dbg --slots
 resource/fMSX/ROMs/MSX.ROM --vdp --ppi` ganha `ppiregs`/`keys`/
-`keydown`/`keyup`. A BIOS real ja programa e le o PPI, mas ainda nao
-passa da varredura de RAM -- ver [doc/ppi-spec.md](doc/ppi-spec.md).
+`keydown`/`keyup`. Ver [doc/ppi-spec.md](doc/ppi-spec.md).
+
+A v1.8.0 fez a **BIOS MSX1 real subir ate o prompt do MSX BASIC** --
+`MSX BASIC version 1.0 / Bytes free / Ok` renderizado pelo VDP do projeto
+(exporte com `vdpshot`), com `keydown`/`keyup` digitando nele. A causa
+real da BIOS "presa" desde a v1.4.0 era um bug do nucleo Z80: `Z80Cpu`
+nao chamava `z80_reset()` na construcao e as tabelas de flag ficavam
+zeradas. Ver [doc/ppi-spec.md, secao 5](doc/ppi-spec.md).
 
 **Trabalho no core de emulacao continua em andamento** -- faltam
-descobrir por que a BIOS nao sai da varredura de RAM, modos MSX2 + janela
-de verdade (Fase 4 do VDP), PPI/
-teclado e PSG para existir uma maquina MSX completa. Ver
+PSG/som, modos MSX2 + janela de verdade com teclado do host (Fase 4 do
+VDP) e cartuchos para existir uma maquina MSX completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.
 

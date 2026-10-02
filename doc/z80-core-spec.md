@@ -660,3 +660,17 @@ a release v1.3.0 (`./dist/z80dbgtest.exe | grep -c '^\[PASS\]'`).
 
 *(Cada fase sera detalhada em sub-fases, como aconteceu em
 `doc/msxdisk-spec.md`, no momento em que a implementacao comecar.)*
+
+## 8. Correcao (v1.8.0, 2026-10-01): `Z80Cpu` agora e' resetado na construcao
+
+`z80_tables_init()` (que chama a rotina Fortran das tabelas de flag, secao
+3.5) so' era disparada por `z80_reset()`, e o construtor de `Z80Cpu` nao
+chamava `z80_reset()`. Quem nao desse `reset` explicito rodava com
+`g_z80_zs_table`/`g_z80_pzs_table` **zeradas**: `AND`/`OR`/`XOR`/`CP`/
+`INC`/`DEC` produziam flags de Zero/Paridade/Sinal erradas (`AND A` com A=0
+dava `F=10h` em vez de `54h`). Os 168 testes de `z80test` nao pegaram
+porque todos chamam `cpu.reset()` antes -- a lacuna era "CPU recem-
+construida". O construtor agora chama `z80_reset()` (efeito colateral: SP
+inicial passa a ser `F000h` desde a construcao, nao `0000h`); regressao
+coberta em `tests/z80/debug_session_test.cpp`. Foi a causa real da BIOS
+"presa" desde a v1.4.0 -- ver `doc/ppi-spec.md`, secao 5.

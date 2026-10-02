@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 7
+#define FWMSX_VERSION_MINOR 8
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Vampire Killer"
-#define FWMSX_SUBTITLE  "Teclado e PPI"
+#define FWMSX_CODENAME  "Zanac"
+#define FWMSX_SUBTITLE  "Prompt do BASIC"

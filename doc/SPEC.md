@@ -188,7 +188,7 @@ acompanhamento manual do autor a cada build):
   `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
   item adiado.
 
-### 5.0 Proximos passos (para retomar sem se perder -- v1.7.0, 2026-10-01)
+### 5.0 Proximos passos (para retomar sem se perder -- v1.8.0, 2026-10-01)
 
 O trabalho no core de emulacao segue em andamento; esta secao continua
 sendo o "onde paramos" oficial.
@@ -238,10 +238,12 @@ sendo o "onde paramos" oficial.
      (2026-10-01) -- ver `doc/ppi-spec.md`. O achado da Fase 1 do VDP
      ("a BIOS fica presa esperando o PPI") estava *incompleto*: faltavam
      tambem RAM no slot `3:2` e as regras de subslot do MSX1 (ambas
-     agora ligadas por `--ppi` quando ha' BIOS). A BIOS passa a programar
-     e ler o PPI e a testar a expansao de slots, **mas ainda fica presa
-     na varredura de RAM (`0x0305`-`0x0331`)** -- investigar isso e' o
-     proximo passo (`doc/ppi-spec.md`, secao 7).
+     agora ligadas por `--ppi` quando ha' BIOS). **Causa real (achada na
+     v1.8.0): `Z80Cpu` nao chamava `z80_reset()` na construcao e as
+     tabelas de flag do Z80 ficavam zeradas** -- corrigido. **A BIOS MSX1
+     real agora sobe ate o prompt do MSX BASIC** (`MSX BASIC version 1.0
+     ... Ok`), renderizado pelo VDP, e `keydown`/`keyup` digitam nele
+     (`doc/ppi-spec.md`, secao 5).
 
 **Para retomar rapido**: leia esta secao, depois `doc/z80-core-spec.md`
 e `doc/memory-map-spec.md` (ambos documentos vivos, com todas as fases
