@@ -105,6 +105,17 @@ if (FWMSX_MSXDISK_GUI)
     set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
     set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
     set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+    # Linux: o GLFW 3.4 compila por padrao o backend Wayland, que exige
+    # wayland-scanner (+ libwayland-dev, libxkbcommon-dev, wayland-protocols).
+    # Sem isso o configure falha ("Failed to find wayland-scanner"). Se a
+    # ferramenta nao existe, cai para X11 so' (funciona tambem via XWayland).
+    if (UNIX AND NOT APPLE)
+        find_program(FWMSX_WAYLAND_SCANNER wayland-scanner)
+        if (NOT FWMSX_WAYLAND_SCANNER)
+            message(STATUS "wayland-scanner nao encontrado -- GLFW sera compilado so' com X11")
+            set(GLFW_BUILD_WAYLAND OFF CACHE BOOL "" FORCE)
+        endif()
+    endif()
     FetchContent_Declare(
             glfw3
             GIT_REPOSITORY https://github.com/glfw/glfw.git

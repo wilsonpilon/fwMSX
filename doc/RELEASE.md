@@ -36,9 +36,12 @@ sprites.
 ### Build usado para validar esta release
 
 - `gcc`/`g++`/`gfortran` (MSYS2 UCRT64), `nasm`, `cmake` + `ninja`;
-  `dist/fwMSX.exe`/`dist/msxdisk.exe` estáticos. O pacote Linux
-  (`.tar.gz`) desta versão ainda precisa ser gerado via `build.sh` numa
-  máquina Linux/WSL2.
+  `dist/fwMSX.exe`/`dist/msxdisk.exe` estáticos.
+- Linux (WSL2): pacote `dist/fwMSX-1.6.0-linux.tar.gz` gerado pelo autor
+  via `build.sh`. No caminho apareceu um problema de build da GUI: o
+  GLFW 3.4 exige `wayland-scanner` por padrão no Linux; o `CMakeLists.txt`
+  agora cai para X11 só quando a ferramenta não existe (ver
+  `build.sh`, pré-requisitos).
 
 ### Limitações conhecidas
 

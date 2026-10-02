@@ -20,6 +20,9 @@
 # Para a GUI (Dear ImGui + GLFW + OpenGL3), tambem:
 #   sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev \
 #                     libxinerama-dev libxcursor-dev libxi-dev
+# (Wayland e' opcional: sem `wayland-scanner` o CMake compila o GLFW so' com
+# X11, que tambem roda em sessoes Wayland via XWayland. Para Wayland nativo:
+#   sudo apt install libwayland-dev libxkbcommon-dev wayland-protocols)
 #
 # Ver doc/MANUAL.md para instrucoes completas (o essencial de Linux e o
 # mesmo fluxo do Windows: CMake + Ninja, mesma arvore de fontes).

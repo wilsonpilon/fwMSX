@@ -24,6 +24,13 @@ Fase 3 do VDP -- sprites de "modo 1" do TMS9918 (SCREEN 1/2/3). Ver
   (o `vdpshot` já os mostra).
 - 20 novas verificações em `vdptest` (402 no total, 4 suítes).
 
+### Corrigido
+- Build Linux: sem `wayland-scanner` o configure do GLFW 3.4 falhava;
+  agora o `CMakeLists.txt` desliga o backend Wayland nesse caso e usa só
+  X11 (via XWayland em sessões Wayland). Pré-requisitos documentados no
+  cabeçalho do `build.sh`.
+- Pacote Linux `dist/fwMSX-1.6.0-linux.tar.gz` incluído.
+
 ### Notas
 - Sem sprites de modo 2 (SCREEN 4-8) -- Fase 4, com os modos MSX2.
 - Quirk do fMSX preservado: VScroll (R#23) somado duas vezes ao Y dos
