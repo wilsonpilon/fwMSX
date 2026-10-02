@@ -60,6 +60,10 @@ struct MachineConfig {
     std::string disk_b;
     bool disk_interface = false;
     std::string disk_rom_path;
+    // Discos inseridos (agora e depois, pelo menu) entram protegidos contra
+    // gravacao: o MSX-DOS le normalmente e recusa escrever, e o arquivo da
+    // imagem nunca e' alterado.
+    bool disk_read_only = false;
 };
 
 class Machine {
@@ -138,6 +142,7 @@ private:
     std::unique_ptr<rtc::RtcDevice> rtc_;
     std::unique_ptr<fdc::FdcDevice> fdc_;
     fdc::DiskImage disks_[2];
+    bool disk_read_only_ = false;
 };
 
 } // namespace machine

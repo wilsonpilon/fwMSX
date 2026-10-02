@@ -5,7 +5,7 @@
 
 namespace fdc {
 
-bool DiskImage::Load(const std::string &path, std::string &error) {
+bool DiskImage::Load(const std::string &path, std::string &error, bool read_only) {
     std::ifstream in(path, std::ios::binary);
     if (!in) {
         error = "nao foi possivel abrir '" + path + "'";
@@ -29,10 +29,16 @@ bool DiskImage::Load(const std::string &path, std::string &error) {
     disk_.write_user = this;
     path_ = path;
 
-    // Sem permissao de escrita no arquivo: entra protegido (o MSX-DOS ve'
-    // "Write protected disk" em vez de perder dados em silencio).
-    std::ofstream probe_write(path, std::ios::binary | std::ios::in | std::ios::out);
-    disk_.write_protected = probe_write ? 0 : 1;
+    // Somente leitura (pedido) ou sem permissao de escrita no arquivo: entra
+    // protegido (o MSX-DOS ve' "Write protect error" em vez de perder dados em
+    // silencio). A sonda de escrita so' roda se a escrita nao foi recusada, para
+    // nao abrir o arquivo para escrita sem necessidade.
+    if (read_only) {
+        disk_.write_protected = 1;
+    } else {
+        std::ofstream probe_write(path, std::ios::binary | std::ios::in | std::ios::out);
+        disk_.write_protected = probe_write ? 0 : 1;
+    }
     return true;
 }
 

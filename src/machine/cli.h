@@ -24,7 +24,9 @@ namespace machine {
 //                           ao lado da BIOS, no slot 3:1); --diskb para B:;
 //                           --disk-interface liga so' a interface; --diskrom
 //                           <arq> escolhe outra DISK.ROM. As escritas do
-//                           MSX-DOS vao direto para o arquivo da imagem.
+//                           MSX-DOS vao direto para o arquivo da imagem, a menos
+//                           que se use --disk-ro (discos somente leitura: o
+//                           MSX-DOS le, recusa gravar e o arquivo nao muda).
 //   --mute                  nao abre dispositivo de audio (emulador mudo)
 //   --frames <n>            roda n quadros e sai; sem --shot/--keys abre a
 //                           janela e fecha sozinha apos n quadros

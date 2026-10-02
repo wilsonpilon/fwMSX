@@ -90,6 +90,7 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
     }
 
     m->model_ = config.model;
+    m->disk_read_only_ = config.disk_read_only;
     const bool msx2 = config.model == Model::MSX2;
     const bool want_disk = config.disk_interface || !config.disk_a.empty() || !config.disk_b.empty();
     const std::string bios_dir = [&] {
@@ -195,7 +196,7 @@ bool Machine::InsertDisk(int drive, const std::string &path, std::string &error)
     }
     drive &= 1;
     std::string load_error;
-    if (!disks_[drive].Load(path, load_error)) {
+    if (!disks_[drive].Load(path, load_error, disk_read_only_)) {
         error = "disco " + std::string(1, static_cast<char>('A' + drive)) + ": " + load_error;
         return false;
     }

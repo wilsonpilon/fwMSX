@@ -7,6 +7,28 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.11.1] - 2026-10-02 - "Firebird: Arrumando a Casa"
+
+Versao pequena de acabamento sobre a 1.11.0.
+
+### Adicionado
+- **`--disk-ro`**: discos somente leitura. O MSX-DOS le normalmente e responde `Write protect
+  error writing drive A` ao tentar gravar; o arquivo `.dsk` nunca e' alterado. Vale tambem
+  para discos inseridos depois, pelo menu **Disco**. Era o maior risco de perda de dados da
+  v1.10.0 (as gravacoes vao direto para o arquivo). Teste novo em `machinetest`.
+
+### Corrigido (documentacao e comentarios)
+- Textos que ficaram para tras: o `MANUAL.md` ainda dizia "nao ha' janela grafica", o `README`
+  "sem janela ainda", o `psg-spec` listava audio ao vivo e joystick como pendentes, o
+  `ppi-spec` listava PSG/janela/cartuchos como proximos passos, e dois `TODO(FDC)` em
+  `slot_state.c/.h` apontavam para um controlador que ja' existe (mora em `SlotMmio`).
+
+- 800 verificacoes automatizadas (11 suites, +5 da `--disk-ro`).
+
+### Verificado
+- Jogos MSX1 rodando na maquina MSX2: o King's Valley mostra o mesmo logo "Konami Software"
+  sobre azul que o fMSXgo de referencia.
+
 ## [1.11.0] - 2026-10-02 - "Firebird: MSX2 em Cena"
 
 **O fwMSX agora e' tambem um MSX2**: `fwmsx --msx --msx2` roda o MSX BASIC 2.1 e jogos

@@ -19,9 +19,9 @@
 //     de inferido de uma regra hardcoded ("RAM mora em 3:2", como o
 //     EnWrite do fMSX assume).
 //   - Sem a logica especifica de controlador de disquete (enderecos
-//     7FF8h/BFF8h/etc. do RdZ80/WrZ80 do fMSX) -- esse hardware nao
-//     existe ainda no fwMSX. TODO explicito, nao omissao silenciosa: ver
-//     doc/memory-map-spec.md, secao 3.2.
+//     7FF8h/BFF8h/etc. do RdZ80/WrZ80 do fMSX) neste motor em C: ela mora
+//     na camada C++ (memmap::SlotMmio + fdc::FdcDevice, v1.10) -- ver
+//     doc/fdc-spec.md.
 //   - MegaROM (Fase 3): so a troca de banco de ROM de MAP_GEN8/GEN16/
 //     KONAMI5/KONAMI4/ASCII8/ASCII16 -- sem SCC, sem SRAM (ASCII8/16 sem
 //     ela), sem MAP_GMASTER2/MAP_FMPAC/MAP_GUESS. Ver doc/

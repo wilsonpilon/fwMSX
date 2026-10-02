@@ -20,7 +20,9 @@ public:
     // Carrega `path`. Devolve false e preenche `error` se o arquivo nao abre
     // ou o tamanho nao e' de disquete. Se o arquivo nao pode ser aberto para
     // escrita, o disco entra protegido contra gravacao.
-    bool Load(const std::string &path, std::string &error);
+    // Com `read_only`, o disco entra protegido contra gravacao (o MSX-DOS ve' o
+    // erro de protecao) e o arquivo nunca e' escrito.
+    bool Load(const std::string &path, std::string &error, bool read_only = false);
 
     // Cria na memoria uma imagem em branco (zeros) de `size` bytes -- sem
     // arquivo associado (as escritas ficam so' na memoria). Para testes.

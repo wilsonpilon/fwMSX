@@ -120,19 +120,18 @@ void memmap_switch_secondary(SlotState *state, uint8_t value) {
 }
 
 uint8_t memmap_read(const SlotState *state, uint16_t addr) {
-    // TODO(FDC): o RdZ80 do fMSX intercepta 7FF8h/BFF8h/7F80h/7FB8h (e
-    // variantes) para o controlador de disquete quando o slot 3:1 esta
-    // visivel -- esse hardware nao existe ainda no fwMSX (ver
-    // doc/memory-map-spec.md, secao 3.2). Omissao registrada de
-    // proposito, nao esquecida.
+    // O RdZ80 do fMSX intercepta 7FF8h/BFF8h (controlador de disquete) quando o
+    // slot 3:1 esta visivel. Aqui isso NAO e' tarefa deste motor em C: o
+    // memmap::SlotMemoryBus (C++) trata antes, via SlotMmio -- ver
+    // doc/fdc-spec.md.
     const int chunk_idx = addr >> 13;
     const int offset = addr & (MEMMAP_CHUNK_SIZE - 1);
     return state->active_view[chunk_idx][offset];
 }
 
 void memmap_write(SlotState *state, uint16_t addr, uint8_t value) {
-    // TODO(FDC): mesma observacao de memmap_read() acima, para o lado de
-    // escrita do WrZ80 do fMSX (comandos do FDC em 7FF8h/BFF8h/etc.).
+    // Idem memmap_read(): os registradores do FDC (7FF8h/BFF8h/...) sao
+    // atendidos pelo SlotMemoryBus (SlotMmio) antes de chegar aqui.
     const int chunk_idx = addr >> 13;
     if (state->active_writable[chunk_idx]) {
         const int offset = addr & (MEMMAP_CHUNK_SIZE - 1);

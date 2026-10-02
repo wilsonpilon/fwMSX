@@ -111,6 +111,8 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             const std::string *v = need("um arquivo .dsk");
             if (!v) return 2;
             config.disk_b = *v;
+        } else if (a == "--disk-ro") {
+            config.disk_read_only = true;
         } else if (a == "--disk-interface") {
             config.disk_interface = true;
         } else if (a == "--diskrom") {

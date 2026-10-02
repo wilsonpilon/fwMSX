@@ -66,7 +66,7 @@ multiplexa I/O de porta entre o mapa de memoria e o VDP; motor
 real ao `Z80Cpu::interrupt()`, confirmado com um programa sintetico
 recebendo a interrupcao de VBlank de verdade; renderizacao real de
 SCREEN 0/1/2 (texto mono, texto colorido, bitmap), exportavel como
-imagem PPM via `vdpshot`, sem janela ainda; tabela de paleta de 512
+imagem PPM via `vdpshot` (a janela veio na v1.9.0); tabela de paleta de 512
 cores em **Fortran**, finalmente com consumidor. `fwmsx --z80dbg
 --slots resource/fMSX/ROMs/MSX.ROM --vdp` e' o comando mais completo de
 depuracao que o projeto tem hoje. Ver [doc/vdp-spec.md](doc/vdp-spec.md).

@@ -275,6 +275,33 @@ int main() {
         }
         std::remove(dos_tmp.c_str());
 
+        // --- 7d. Disco somente leitura (--disk-ro): o MSX-DOS le, recusa gravar, o arquivo nao muda
+        {
+            std::ofstream out(dos_tmp, std::ios::binary);
+            out.write(reinterpret_cast<const char *>(dos_original.data()), static_cast<std::streamsize>(dos_original.size()));
+        }
+        MachineConfig ro = config;
+        ro.disk_a = dos_tmp;
+        ro.disk_read_only = true;
+        std::unique_ptr<Machine> rm = Machine::Create(ro, error);
+        if (!rm) {
+            check(false, "Create() com disco somente leitura: " + error);
+        } else {
+            check(rm->disk(0).loaded() && rm->disk(0).disk()->write_protected == 1, "disk_read_only: o disco A: entra protegido contra gravacao");
+            Frames(*rm, 500);
+            check(VramHas(*rm, "COMMAND version 1.12"), "disco somente leitura: o MSX-DOS boota e le normalmente");
+            Type(*rm, "|copy command.com x.com|");
+            Frames(*rm, 600);
+            check(VramHas(*rm, "Write protect error writing drive A"), "copy em disco protegido: 'Write protect error writing drive A'");
+            std::ifstream in(dos_tmp, std::ios::binary);
+            std::vector<uint8_t> after((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            check(after == dos_original, "o arquivo .dsk ficou byte a byte identico (nenhuma gravacao)");
+            std::string ierr;
+            rm->EjectDisk(0);
+            check(rm->InsertDisk(0, dos_tmp, ierr) && rm->disk(0).disk()->write_protected == 1, "InsertDisk() depois (menu) tambem entra protegido");
+        }
+        std::remove(dos_tmp.c_str());
+
         MachineConfig big = config;
         std::vector<uint8_t> huge(0x10000, 0);
         const std::string big_path = TempPath("fwmsx_machine_big.rom");

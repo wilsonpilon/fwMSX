@@ -146,11 +146,9 @@ tela.
 
 ## 7. Proximos passos
 
-1. **PSG (`A0h`-`A2h`)**: a BIOS ja' sobe sem ele (leituras de porta sem
-   dispositivo devolvem 0), mas joystick, som e o resto do teclado de
-   cassete dependem dele.
-2. **Janela real + teclado do host** (VDP Fase 4): o prompt ja' e'
-   renderizado; falta mostrar numa janela e mapear o teclado do host para
-   `ppi_key_set()`.
-3. Cartuchos: carregar uma ROM de jogo em `1:0`/`2:0` (o `loadrom` ja'
-   existe) e deixar a BIOS achar e iniciar o cartucho.
+*(historico: estes tres itens estavam abertos na v1.8.0 e ja' foram feitos)*
+
+1. ~~**PSG (`A0h`-`A2h`)**~~ -- feito na v1.9.0 (`doc/psg-spec.md`); joystick na v1.10.0.
+2. ~~**Janela real + teclado do host**~~ -- feito na v1.9.0 (`fwmsx --msx`,
+   `doc/machine-spec.md`).
+3. ~~Cartuchos~~ -- feito (`--cart`, deteccao de mapper na v1.10.0).

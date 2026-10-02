@@ -23,7 +23,10 @@ fwmsx --msx --diskrom <DISK.ROM> ...               # outra ROM de disco (padrao:
 - Menu **Disco** da janela: inserir/ejetar A: e B: a qualquer momento (o
   dialogo de arquivo e' o do Windows, o mesmo do msxdisk; no Linux use `--disk`).
 - **As escritas do MSX-DOS vao direto para o arquivo da imagem**, setor a
-  setor, como o fMSX. Faca uma copia antes se o disco importa.
+  setor, como o fMSX. Faca uma copia antes se o disco importa -- ou use
+  **`--disk-ro`** (v1.11.1): os discos entram protegidos contra gravacao, o MSX-DOS
+  le normalmente, responde `Write protect error writing drive A` ao tentar gravar e
+  o arquivo nunca e' alterado (vale tambem para os discos inseridos depois, pelo menu).
 - Tamanhos aceitos: 160K, 180K, 320K, 360K, 720K e 1.44M, ou o que o BPB do
   setor de boot descrever (ex.: 360K de 80 trilhas e 1 lado).
 

@@ -19,7 +19,7 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 11
-#define FWMSX_VERSION_PATCH 0
+#define FWMSX_VERSION_PATCH 1
 
 #define FWMSX_CODENAME  "Firebird"
-#define FWMSX_SUBTITLE  "MSX2 em Cena"
+#define FWMSX_SUBTITLE  "Arrumando a Casa"

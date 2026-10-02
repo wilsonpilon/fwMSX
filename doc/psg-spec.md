@@ -6,8 +6,9 @@
 
 Estado: **Fase 1 concluida em 2026-10-02** (motor de som + portas +
 gravacao em WAV + comandos de depuracao). A BIOS real programa o PSG e o
-`BEEP` do BASIC sai como onda de verdade. **Falta**: saida de audio ao
-vivo (placa de som) e joystick em R14/R15 -- ver a secao 5.
+`BEEP` do BASIC sai como onda de verdade. A saida de audio ao vivo (v1.9.0)
+e o joystick em R14/R15 (v1.10.0) ja' estao prontos; falta so' o mouse -- ver a
+secao 5.
 
 ## 1. Objetivo
 

@@ -13,6 +13,29 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.11.1 -- "Firebird: Arrumando a Casa" (2026-10-02)
+
+**Fase:** acabamento da v1.11.0 -- sem recurso grande, so' o que sobrou pelo caminho.
+
+### Destaques
+
+- **`--disk-ro`:** discos somente leitura. O MSX-DOS le normalmente, recusa gravar (`Write
+  protect error writing drive A`) e o arquivo `.dsk` fica byte a byte identico. Vale para os
+  discos inseridos pelo menu **Disco** tambem. Fecha o maior risco de perda de dados
+  documentado desde a v1.10.0.
+- **Documentacao em dia:** textos que diziam "sem janela" ou listavam como pendentes coisas ja'
+  feitas (audio ao vivo, joystick, janela, cartuchos) foram corrigidos, e dois `TODO(FDC)` que
+  apontavam para um controlador ja' existente viraram notas.
+- Verificado: jogos MSX1 sobem na maquina MSX2 (King's Valley igual ao fMSXgo).
+- 800 verificacoes automatizadas (11 suites).
+
+### Limitacoes conhecidas
+
+- As mesmas da v1.11.0. O "Lode Runner + Konami SCC" continua caindo no BASIC ("Illegal
+  function call in 10"): e' uma ROM que espera um disco proprio, e nao foi investigada.
+
+---
+
 ## v1.11.0 -- "Firebird: MSX2 em Cena" (2026-10-02)
 
 **Fase:** MSX2 -- VDP V9938, mapper de RAM, RTC. Nome escolhido por "Firebird"
