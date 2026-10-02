@@ -27,6 +27,10 @@ void psg_reset(PsgState *p) {
     p->lfsr = 1;
 }
 
+void psg_set_joystick(PsgState *p, int port, uint8_t bits) {
+    if (port == 0 || port == 1) p->joy[port] = bits & 0x3F;
+}
+
 void psg_write_reg(PsgState *p, int reg, uint8_t v) {
     switch (reg) {
     case 1: case 3: case 5: p->r[reg] = v & 0x0F; break;
@@ -53,9 +57,17 @@ void psg_write_latch(PsgState *p, uint8_t value) { p->latch = value & 0x0F; }
 void psg_write_data(PsgState *p, uint8_t value) { psg_write_reg(p, p->latch, value); }
 
 uint8_t psg_read_data(const PsgState *p) {
-    /* InZ80() 0xA2 do fMSX, sem joystick plugado: R14 devolve 7Fh e R15 so'
-     * os 4 bits altos; os demais sao lidos como estao. */
-    if (p->latch == 14) return 0x7F;
+    /* InZ80() 0xA2 do fMSX. R14 e' a porta de joystick: o bit 6 de R15
+     * escolhe A (0) ou B (1); R14 devolve os 6 bits do joystick em logica
+     * invertida (0 = pressionado) com o bit 6 sempre 1 -- 7Fh sem nada
+     * pressionado. Se o software desliga as linhas desse joystick (bit 4/5 de
+     * R15) le tudo solto, como no fMSX. R15 devolve so' os 4 bits altos; os
+     * demais registradores sao lidos como estao. */
+    if (p->latch == 14) {
+        const int port = (p->r[15] >> 6) & 1;
+        if (p->r[15] & (0x10 << port)) return 0x7F;
+        return (uint8_t)((~p->joy[port] & 0x3F) | 0x40);
+    }
     if (p->latch == 15) return p->r[15] & 0xF0;
     return p->r[p->latch];
 }

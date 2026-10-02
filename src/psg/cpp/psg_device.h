@@ -71,7 +71,13 @@ public:
 
     // Reset de maquina (ResetMSX() do fMSX): registradores voltam ao
     // estado inicial; uma gravacao em andamento continua.
-    void Reset() { psg_reset(&state_); }
+    // O joystick e' o mundo externo (como as teclas do PPI): continua como estava.
+    void Reset() {
+        const uint8_t joy[2] = {state_.joy[0], state_.joy[1]};
+        psg_reset(&state_);
+        state_.joy[0] = joy[0];
+        state_.joy[1] = joy[1];
+    }
 
     void StartRecording() { recording_ = true; }
     void StopRecording() { recording_ = false; }

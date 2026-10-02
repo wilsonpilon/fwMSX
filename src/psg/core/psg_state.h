@@ -34,6 +34,15 @@ extern "C" {
 #define PSG_Z80_CLOCK 3579545
 #define PSG_CYCLES_PER_TICK 16
 
+/* Bits do joystick MSX (JST_* do fMSX), 1 = pressionado: o estado "do mundo
+ * externo" que o host informa com psg_set_joystick(). */
+#define PSG_JOY_UP 0x01
+#define PSG_JOY_DOWN 0x02
+#define PSG_JOY_LEFT 0x04
+#define PSG_JOY_RIGHT 0x08
+#define PSG_JOY_FIRE_A 0x10
+#define PSG_JOY_FIRE_B 0x20
+
 typedef struct PsgState {
     uint8_t r[PSG_REGS]; /* Registradores, ja' mascarados como Write8910() do fMSX */
     uint8_t latch;       /* Registrador selecionado por A0h */
@@ -50,6 +59,11 @@ typedef struct PsgState {
     uint8_t env_attack; /* 1 = rampa subindo */
     uint8_t env_hold;   /* 1 = envelope parado no valor final */
 
+    /* Joystick das portas A (0) e B (1), bits PSG_JOY_*, 1 = pressionado. Nao e'
+     * registrador do chip: e' o mundo externo, como as teclas do PPI -- psg_reset()
+     * o zera, mas PsgDevice::Reset() (reset de maquina) o preserva. */
+    uint8_t joy[2];
+
     /* Reamostragem: ciclos de Z80 ainda nao convertidos em ticks, fase do
      * reamostrador e soma do filtro de caixa. */
     uint32_t cycle_acc;
@@ -61,6 +75,11 @@ typedef struct PsgState {
 // Estado de reset do AY8910 (RegInit do fMSX: R7=FDh, R14=FFh) e geradores
 // zerados.
 void psg_reset(PsgState *p);
+
+// Informa o estado do joystick da porta `port` (0 = A, 1 = B): mascara de
+// PSG_JOY_*, 1 = pressionado. Lido pelo software em R14 (ver
+// psg_read_data()).
+void psg_set_joystick(PsgState *p, int port, uint8_t bits);
 
 // Latch/escrita/leitura de registrador pelas portas A0h/A1h/A2h.
 void psg_write_latch(PsgState *p, uint8_t value);

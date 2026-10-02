@@ -124,6 +124,17 @@ termos acima:
   (so' o "sem joystick" de `InZ80()`), nem SCC/OPLL/Drum(). Ver
   `doc/psg-spec.md`.
 
+- `src/memmap/cpp/rom_guess.{h,cpp}` -- a heuristica de `GuessROM()` de
+  `resource/fMSX/fMSX/MSX.c` (contagem de `LD (nnnn),A` nos enderecos de
+  registrador de banco de cada mapper). **Nao** inclui a consulta a
+  `CARTS.CRC`/`CARTS.SHA` do fMSX. Ver `doc/memory-map-spec.md`.
+- `src/fdc/core/fdc_state.{h,c}` -- a controladora WD1793/WD2793 de
+  `resource/fMSX/EMULib/WD1793.{h,c}` (comandos tipo 1-4, protocolo DRQ/IRQ e o
+  "watchdog" de leitura do registrador READY) e o mapeamento `7FF8h`-`7FFFh`
+  de `resource/fMSX/fMSX/MSX.c`. A imagem e' um `.dsk` cru (`FdcDisk`) em vez
+  do `FDIDisk` do fMSX; `DiskImage` e `FdcDevice` (C++) e o `SlotMmio` sao
+  codigo original (BSD-3-Clause). **Nao** inclui READ/WRITE TRACK (tambem nao
+  suportados no fMSX) nem formatos de imagem alem de `.dsk`. Ver `doc/fdc-spec.md`.
 - **miniaudio** (<https://github.com/mackron/miniaudio>, David Reid) --
   baixado em tempo de configuracao (FetchContent) e compilado em
   `src/audio/audio_output.cpp` para a saida de audio ao vivo. Dominio

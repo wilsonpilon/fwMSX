@@ -100,9 +100,17 @@ sistema via miniaudio. `fwmsx --msx --frames N --shot tela.ppm --keys
 "print 1234|"` roda sem janela. Ver [doc/machine-spec.md](doc/machine-spec.md),
 [doc/psg-spec.md](doc/psg-spec.md) e [doc/audio-spec.md](doc/audio-spec.md).
 
+A v1.10.0 trouxe o **disco**: `fwmsx --msx --disk msxdos1.dsk` **boota o
+MSX-DOS 1.8** -- a `DISK.ROM` do fMSX no slot 3:1 conversa com uma controladora
+**WD2793** (motor em **C** adaptado do fMSX, imagem `.dsk` e dispositivo em
+**C++**), `dir` e `copy` funcionam e gravam no arquivo. Tambem chegaram o
+**joystick** (teclado e gamepad), a **deteccao automatica de mapper** de
+MegaROM e a correcao do estado inicial dos bancos: King's Valley e F1 Spirit
+rodam. Ver [doc/fdc-spec.md](doc/fdc-spec.md).
+
 **Trabalho no core de emulacao continua em andamento** -- faltam
-joystick, disco, modos MSX2 (Fase 4 do VDP) e os chips de som de
-cartucho (SCC/FM) para uma maquina MSX completa. Ver
+os modos MSX2 (Fase 4 do VDP -- o Firebird e outros jogos MSX2 esperam por
+isso) e os chips de som de cartucho (SCC/FM) para uma maquina MSX completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.
 
@@ -130,14 +138,16 @@ fwMSX/
 │   ├── ppi/        PPI i8255 + teclado (core/cpp/fortran/asm -- ver
 │   │               doc/ppi-spec.md)
 │   ├── psg/        PSG AY-3-8910 (core/cpp/fortran -- ver doc/psg-spec.md)
+│   ├── fdc/        controladora de disquete WD2793 (core/cpp -- ver
+│   │               doc/fdc-spec.md)
 │   ├── audio/      saida de audio ao vivo (miniaudio -- ver
 │   │               doc/audio-spec.md)
 │   └── machine/    maquina MSX1 completa + janela (`--msx` -- ver
 │                   doc/machine-spec.md)
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
 ├── tests/z80/      testes do nucleo Z80, memoria, VDP, PPI, PSG, maquina e
-│                   audio (CTest -- z80test/z80dbgtest/memmaptest/vdptest/
-│                   ppitest/psgtest/machinetest/audiotest)
+│                   audio e disco (CTest -- z80test/z80dbgtest/memmaptest/
+│                   vdptest/ppitest/psgtest/machinetest/audiotest/fdctest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk
@@ -148,6 +158,7 @@ fwMSX/
 │   ├── psg-spec.md      especificacao + fases do PSG
 │   ├── machine-spec.md  maquina completa + janela com teclado do host
 │   ├── audio-spec.md    audio ao vivo
+│   ├── fdc-spec.md      disco: controladora WD2793 + MSX-DOS
 │   ├── MANUAL.md       como compilar e executar
 │   ├── CHANGELOG.md    resumo das alteracoes entre versoes
 │   └── RELEASE.md       detalhes de cada release

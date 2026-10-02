@@ -12,7 +12,9 @@
 
 #include <GLFW/glfw3.h>
 #include "../../audio/audio_output.h"
+#include "../../msxdisk/gui/file_dialog.h"
 #include "../../psg/cpp/psg_device.h"
+#include "../../psg/core/psg_state.h"
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -81,10 +83,40 @@ const char *HostKeyToMsx(int key) {
     }
 }
 
+// Teclado do host -> bit do joystick da porta A (alem de continuar valendo como
+// tecla do MSX: as setas sao o cursor e Espaco a barra de espaco, e os jogos
+// que leem so' um dos dois ignoram o outro). 0 = a tecla nao e' do joystick.
+uint8_t HostKeyToJoy(int key) {
+    switch (key) {
+    case GLFW_KEY_UP: return PSG_JOY_UP;
+    case GLFW_KEY_DOWN: return PSG_JOY_DOWN;
+    case GLFW_KEY_LEFT: return PSG_JOY_LEFT;
+    case GLFW_KEY_RIGHT: return PSG_JOY_RIGHT;
+    case GLFW_KEY_SPACE:
+    case GLFW_KEY_Z: return PSG_JOY_FIRE_A;
+    case GLFW_KEY_X: return PSG_JOY_FIRE_B;
+    default: return 0;
+    }
+}
+
+// Gamepad do GLFW (d-pad ou analogico esquerdo + botoes) -> bits do joystick.
+uint8_t PadToJoy(const GLFWgamepadstate &s) {
+    uint8_t bits = 0;
+    if (s.buttons[GLFW_GAMEPAD_BUTTON_DPAD_UP] || s.axes[GLFW_GAMEPAD_AXIS_LEFT_Y] < -0.5f) bits |= PSG_JOY_UP;
+    if (s.buttons[GLFW_GAMEPAD_BUTTON_DPAD_DOWN] || s.axes[GLFW_GAMEPAD_AXIS_LEFT_Y] > 0.5f) bits |= PSG_JOY_DOWN;
+    if (s.buttons[GLFW_GAMEPAD_BUTTON_DPAD_LEFT] || s.axes[GLFW_GAMEPAD_AXIS_LEFT_X] < -0.5f) bits |= PSG_JOY_LEFT;
+    if (s.buttons[GLFW_GAMEPAD_BUTTON_DPAD_RIGHT] || s.axes[GLFW_GAMEPAD_AXIS_LEFT_X] > 0.5f) bits |= PSG_JOY_RIGHT;
+    if (s.buttons[GLFW_GAMEPAD_BUTTON_A] || s.buttons[GLFW_GAMEPAD_BUTTON_X]) bits |= PSG_JOY_FIRE_A;
+    if (s.buttons[GLFW_GAMEPAD_BUTTON_B] || s.buttons[GLFW_GAMEPAD_BUTTON_Y]) bits |= PSG_JOY_FIRE_B;
+    return bits;
+}
+
 // Estado compartilhado com os callbacks do GLFW (que nao carregam ponteiro
 // de usuario por padrao aqui -- uma unica janela por processo).
 struct HostInput {
     std::vector<std::pair<const char *, bool>> events; // (tecla MSX, pressionada?)
+    uint8_t joy_keys = 0;    // bits do joystick com a tecla do host segurada agora
+    uint8_t joy_latched = 0; // bits pressionados em algum momento desde o ultimo quadro
     bool lost_focus = false;
     bool toggle_fullscreen = false;
 };
@@ -96,11 +128,23 @@ void KeyCallback(GLFWwindow *, int key, int, int action, int) {
         if (action == GLFW_PRESS) g_input.toggle_fullscreen = true;
         return;
     }
+    if (const uint8_t bit = HostKeyToJoy(key)) {
+        if (action == GLFW_PRESS) {
+            g_input.joy_keys |= bit;
+            g_input.joy_latched |= bit; // um toque mais curto que um quadro ainda vale 1 quadro
+        } else {
+            g_input.joy_keys &= static_cast<uint8_t>(~bit);
+        }
+    }
     if (const char *name = HostKeyToMsx(key)) g_input.events.emplace_back(name, action == GLFW_PRESS);
 }
 
 void FocusCallback(GLFWwindow *, int focused) {
-    if (!focused) g_input.lost_focus = true;
+    if (!focused) {
+        g_input.lost_focus = true;
+        g_input.joy_keys = 0;
+        g_input.joy_latched = 0;
+    }
 }
 
 void GlfwErrorCallback(int error, const char *description) {
@@ -209,6 +253,8 @@ int RunEmulatorWindow(const WindowOptions &options) {
     bool fullscreen = false;
     int saved_x = 0, saved_y = 0, saved_w = 0, saved_h = 0;
 
+    std::string pad_names[2];
+    std::string disk_message; // ultimo erro ao inserir disco (menu Disco)
     std::vector<std::string> deferred_releases;
     const double frame_dt = 1.0 / Machine::kFrameRate;
     double last_time = glfwGetTime();
@@ -241,8 +287,23 @@ int RunEmulatorWindow(const WindowOptions &options) {
         last_time = now;
         int ran = 0;
         ApplyKeyEvents(*machine, deferred_releases);
+        // Joystick: teclado (porta A) + gamepads do GLFW (1o -> porta A, 2o -> porta B).
+        pad_names[0].clear();
+        pad_names[1].clear();
+        uint8_t joy[2] = {static_cast<uint8_t>(g_input.joy_keys | g_input.joy_latched), 0};
+        for (int pad = 0, port = 0; pad <= GLFW_JOYSTICK_LAST && port < 2; ++pad) {
+            GLFWgamepadstate state;
+            if (!glfwJoystickIsGamepad(pad) || !glfwGetGamepadState(pad, &state)) continue;
+            joy[port] |= PadToJoy(state);
+            pad_names[port] = glfwGetGamepadName(pad);
+            ++port;
+        }
+        machine->SetJoystick(0, joy[0]);
+        machine->SetJoystick(1, joy[1]);
+        if (ran == 0 && accumulator >= frame_dt) g_input.joy_latched = 0;
         while (!paused && accumulator >= frame_dt && ran < 4) {
             machine->RunFrame();
+            g_input.joy_latched = 0; // o toque ja' foi visto por este quadro
             accumulator -= frame_dt;
             ++ran;
             ++fps_frames;
@@ -311,6 +372,42 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Disco")) {
+                if (!machine->has_disk_interface()) {
+                    ImGui::TextDisabled("Sem interface de disquete.");
+                    ImGui::TextDisabled("Inicie com --disk <arq.dsk> ou --disk-interface.");
+                } else {
+                    for (int d = 0; d < 2; ++d) {
+                        const char letter = static_cast<char>('A' + d);
+                        const fdc::DiskImage &img = machine->disk(d);
+                        ImGui::Text("%c: %s", letter, img.loaded() ? img.path().c_str() : "(vazio)");
+                        std::string label = std::string("Inserir em ") + letter + ":...";
+                        if (ImGui::MenuItem(label.c_str())) {
+                            if (const auto chosen = msxdisk::gui::ShowOpenDskDialog(window)) {
+                                std::string disk_error;
+                                if (!machine->InsertDisk(d, *chosen, disk_error)) disk_message = disk_error;
+                                else disk_message.clear();
+                            }
+                        }
+                        label = std::string("Ejetar ") + letter + ":";
+                        if (ImGui::MenuItem(label.c_str(), nullptr, false, img.loaded())) machine->EjectDisk(d);
+                    }
+                    if (!disk_message.empty()) {
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+                    }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("As gravacoes do MSX-DOS vao direto para o arquivo.");
+                }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Joystick")) {
+                ImGui::TextDisabled("Porta A: setas + Z/Espaco (A) + X (B)");
+                for (int port = 0; port < 2; ++port) {
+                    ImGui::Text("Gamepad -> porta %c: %s", 'A' + port, pad_names[port].empty() ? "(nenhum)" : pad_names[port].c_str());
+                }
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Ajuda")) {
                 ImGui::MenuItem("Teclado", nullptr, &show_keys);
                 ImGui::EndMenu();
@@ -348,6 +445,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     "Enter, Espaco, Backspace (BS), Tab, Esc, setas, Home, Ins, Del\n"
                     "End = SELECT   Pause = STOP   F1-F5 = F1-F5\n"
                     "Teclado numerico = teclado numerico do MSX\n"
+                    "Joystick (porta A): setas, Z ou Espaco = botao A, X = botao B; gamepads: ver menu Joystick\n"
                     "F11 = tela cheia");
             }
             ImGui::End();

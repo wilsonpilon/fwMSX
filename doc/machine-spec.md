@@ -22,6 +22,9 @@ fwmsx --msx --frames N --shot tela.ppm [--keys "texto"]  # sem janela
   (posta em `4000h`; a BIOS acha o cabecalho `AB` e chama o INIT). Com
   mapper (`gen8 gen16 konami5 konami4 ascii8 ascii16`): MegaROM (ver
   `doc/memory-map-spec.md`).
+- `--disk <arq.dsk>` / `--diskb` / `--disk-interface` / `--diskrom <arq>`: interface
+  de disquete (DISK.ROM em 3:1 + WD2793) e discos A:/B: -- ver `doc/fdc-spec.md`.
+- `--wait N`: com `--keys`, quadros a esperar depois das teclas (padrao 60).
 - `--frames N` sem `--shot`/`--keys`: abre a janela e fecha sozinha apos N
   quadros (para validar a janela sem interacao).
 - `--shot` / `--keys`: **sem janela** -- roda os quadros, digita o texto
@@ -75,6 +78,34 @@ SELECT, Pause = STOP**; F1-F5; teclado numerico = teclado numerico do MSX.
 - Os callbacks do emulador sao instalados **antes** do ImGui, que encadeia
   o callback ja' existente -- o menu continua funcionando.
 
+## 4b. Jogos reais (verificacao manual)
+
+Rodados com `--cart` + `--frames N --shot` (ROMs fora do repositorio):
+
+| Jogo | Mapper | Resultado |
+|------|--------|-----------|
+| King's Valley (16KB) | ROM plana | **Roda**: titulo, "PUSH SPACE KEY" vira "PLAY START" ao apertar espaco |
+| F1 Spirit (128KB) | Konami5 (detectado) | **Roda** ate' o menu do jogo (sem o som do SCC) |
+| Firebird / Hi no Tori (128KB) | Konami4 (detectado, confirmado pelos acessos 6000h/8000h/A000h) | **E' um jogo MSX2** -- nao roda em MSX1 (ver abaixo) |
+| Lode Runner + Konami SCC (128KB) | Konami5 | Cai no BASIC: ROM que espera disco (nao retestada com `--disk-interface`) |
+
+**Firebird: nao era bug.** O jogo instala o gancho `H.TIMI` (`FD9Fh` -> `4048h`),
+fica em `JR $` e a logica roda dentro da interrupcao; a tela passava por faixas de
+cor, preto, vermelho e um mosaico. Depois de descartar mapper, mascara de banco e
+paginas visiveis, a pista veio de um **emulador de referencia**: o `fMSXgo`
+(`E:\fmsxgo`, em Go, do mesmo autor) foi compilado e usado por um pequeno
+programa que roda N quadros e salva a tela (`pkg/msx`: `NewMachine` + `StepFrame`).
+Resultado: em **modo MSX1 a referencia tambem trava** (`PC=4D74h` fixo, tela
+branca); em **modo MSX2 ela roda o jogo**: logo MSX, logo Konami e o titulo em
+**SCREEN 5** (`R#0=06h`, `R#1=62h` -- o mesmo `R#1` que o nosso VDP MSX1 recebia e
+renderizava como lixo em SCREEN 1). O Firebird e' um jogo MSX2; passa a funcionar
+com o VDP MSX2 (Fase 4) e a BIOS `MSX2.ROM`/`MSX2EXT.ROM`, que ja' estao em `resource/`.
+
+**Metodo (reutilizavel):** compilar o `fmsxgo` e escrever um `main` em Go de ~30
+linhas (`DefaultConfig`, `Model`, `ROMDir`, `LoadCartridge`, `StepFrame`,
+`GetFrameBuffer`) da' uma tela de referencia de qualquer ROM em MSX1 ou MSX2 --
+util para comparar a Fase 4 do VDP.
+
 ## 5. Limites conhecidos e o que falta
 
 - **Audio:** o PSG toca ao vivo (ver `doc/audio-spec.md`); `--mute` desliga.
@@ -82,8 +113,9 @@ SELECT, Pause = STOP**; F1-F5; teclado numerico = teclado numerico do MSX.
 - **Modos de tela:** so' SCREEN 0/1/2 (+ sprites de modo 1). SCREEN 3
   (multicolor) e MSX2 (5-8, sprites de modo 2) caem no fallback de cor de
   fundo -- Fase 4 do VDP.
-- **Sem joystick/mouse** (R14/R15 do PSG) e sem disco (FDC): jogos que
-  exigem joystick ainda nao jogam; so' teclado.
+- **Joystick:** setas + Z/Espaco (fogo A) + X (fogo B) na porta A e gamepads
+  do GLFW (1o -> A, 2o -> B); sem mouse. **Disco:** ver `doc/fdc-spec.md`
+  (`--disk`, MSX-DOS 1.8 boota).
 - **Sem teclado de layout nao-US:** o mapeamento e' posicional; `Shift+2`
   sai `@` como no MSX, mas acentos/cedilha do ABNT2 nao tem tecla.
 - **A janela interativa so' foi validada em abertura/fechamento** (contexto

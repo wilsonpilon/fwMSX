@@ -257,6 +257,7 @@ set(Z80_DEBUG_SESSION_SOURCES
 set(MEMMAP_LIB_SOURCES
         src/memmap/core/slot_state.c
         src/memmap/cpp/memory_system.cpp
+        src/memmap/cpp/rom_guess.cpp
         src/memmap/fortran/rom_checksum.f90
 )
 
@@ -305,6 +306,16 @@ set(PSG_LIB_SOURCES
         src/psg/core/psg_state.c
         src/psg/fortran/volume_table.f90
         src/psg/cpp/wav_writer.cpp
+)
+
+# --- Controladora de disquete WD2793 (DiskROM em 3:1) -- ver doc/fdc-spec.md
+#
+# Motor em C adaptado do WD1793.c do fMSX (so' imagens .dsk cruas);
+# DiskImage (gravacao imediata no arquivo) e FdcDevice (registradores em
+# 7FF8h-7FFFh do slot do DiskROM, via SlotMmio) em C++, design proprio.
+set(FDC_LIB_SOURCES
+        src/fdc/core/fdc_state.c
+        src/fdc/cpp/disk_image.cpp
 )
 
 # --- Maquina MSX1 completa + janela (fwmsx --msx) -- ver doc/machine-spec.md
@@ -388,7 +399,7 @@ add_test(NAME psg_sound COMMAND psgtest)
 
 # machinetest: a maquina MSX1 completa em quadros, sem janela -- ver
 # doc/machine-spec.md.
-add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES})
+add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(machinetest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
 target_compile_definitions(machinetest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(machinetest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/machinetest)
@@ -398,9 +409,19 @@ endif ()
 
 add_test(NAME machine_frames COMMAND machinetest)
 
+# fdctest: controladora de disquete WD2793 -- ver doc/fdc-spec.md.
+add_executable(fdctest tests/z80/fdc_test.cpp ${MEMMAP_LIB_SOURCES} ${FDC_LIB_SOURCES})
+target_include_directories(fdctest PRIVATE src/memmap src/fdc)
+set_target_properties(fdctest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fdctest)
+if (MINGW)
+    target_link_options(fdctest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME fdc_wd2793 COMMAND fdctest)
+
 # audiotest: buffer circular, PSG ao vivo e dispositivo de audio -- ver
 # doc/audio-spec.md.
-add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${AUDIO_LIB_SOURCES})
+add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(audiotest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/audio)
 target_compile_definitions(audiotest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(audiotest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/audiotest)
@@ -432,7 +453,7 @@ add_executable(fwMSX
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
         ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES}
-        ${MACHINE_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
+        ${MACHINE_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 

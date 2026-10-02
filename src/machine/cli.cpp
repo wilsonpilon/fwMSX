@@ -52,6 +52,10 @@ std::string KeyForChar(char c) {
     if (c >= 'A' && c <= 'Z') return std::string(1, static_cast<char>(c - 'A' + 'a'));
     if (c >= '0' && c <= '9') return std::string(1, c);
     if (c == ' ') return "space";
+    if (c == '.') return ".";
+    if (c == ',') return ",";
+    if (c == '/') return "/";
+    if (c == '-') return "-";
     if (c == '|') return "enter";
     return "";
 }
@@ -64,6 +68,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     std::string shot_path;
     std::string keys;
     bool mute = false;
+    int wait_frames = 60;
 
     for (size_t i = 0; i < args.size(); ++i) {
         const std::string &a = args[i];
@@ -83,12 +88,15 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             if (!v) return 2;
             config.cart_path = *v;
             if (i + 1 < args.size() && args[i + 1].rfind("--", 0) != 0) {
-                if (!ParseMapper(args[i + 1], config.cart_mapper)) {
+                if (args[i + 1] == "auto") {
+                    ++i; // detecta sozinho (o padrao)
+                } else if (!ParseMapper(args[i + 1], config.cart_mapper)) {
                     std::cerr << "fwmsx --msx: mapper desconhecido: '" << args[i + 1]
-                              << "' (use gen8, gen16, konami5, konami4, ascii8 ou ascii16)" << std::endl;
+                              << "' (use auto, gen8, gen16, konami5, konami4, ascii8 ou ascii16)" << std::endl;
                     return 2;
+                } else {
+                    ++i;
                 }
-                ++i;
             }
         } else if (a == "--frames") {
             const std::string *v = need("um numero");
@@ -102,6 +110,24 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             const std::string *v = need("um arquivo .ppm");
             if (!v) return 2;
             shot_path = *v;
+        } else if (a == "--disk" || a == "--diska") {
+            const std::string *v = need("um arquivo .dsk");
+            if (!v) return 2;
+            config.disk_a = *v;
+        } else if (a == "--diskb") {
+            const std::string *v = need("um arquivo .dsk");
+            if (!v) return 2;
+            config.disk_b = *v;
+        } else if (a == "--disk-interface") {
+            config.disk_interface = true;
+        } else if (a == "--diskrom") {
+            const std::string *v = need("um arquivo");
+            if (!v) return 2;
+            config.disk_rom_path = *v;
+        } else if (a == "--wait") {
+            const std::string *v = need("um numero de quadros");
+            if (!v) return 2;
+            wait_frames = std::atoi(v->c_str());
         } else if (a == "--mute") {
             mute = true;
         } else if (a == "--keys") {
@@ -131,6 +157,13 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             std::cerr << "fwmsx --msx: " << error << std::endl;
             return 1;
         }
+        if (!m->cart_info().empty()) std::cout << "cartucho: " << m->cart_info() << std::endl;
+        if (m->has_disk_interface()) {
+            std::cout << "disco: interface de disquete ligada (DISK.ROM em 3:1)";
+            for (int d = 0; d < 2; ++d)
+                if (m->disk(d).loaded()) std::cout << ", " << static_cast<char>('A' + d) << ": " << m->disk(d).path();
+            std::cout << std::endl;
+        }
         const int boot_frames = frames > 0 ? frames : 400;
         for (int i = 0; i < boot_frames; ++i) m->RunFrame();
         for (char c : keys) {
@@ -145,7 +178,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             for (int i = 0; i < 6; ++i) m->RunFrame();
         }
         if (!keys.empty()) {
-            for (int i = 0; i < 60; ++i) m->RunFrame();
+            for (int i = 0; i < wait_frames; ++i) m->RunFrame();
         }
         if (shot_path.empty()) return 0;
 

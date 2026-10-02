@@ -75,7 +75,7 @@ de instrucao, nao de ciclo).
   bits, R13 4 bits; R7/R11/R12/R14/R15 8 bits. Registrador > 15 e'
   ignorado.
 - **Reset** (`RegInit[]`): R7 = `FDh`, R14 = `FFh`, o resto 0.
-- **Leitura** (de `InZ80()` 0xA2): R14 devolve `7Fh` (sem joystick), R15
+- **Leitura** (de `InZ80()` 0xA2): R14 devolve o joystick (`7Fh` sem nada pressionado), R15
   so' os 4 bits altos, os demais como estao.
 - **Escrever em R13 sempre reinicia o envelope.** Formas 0-3 -> como 9
   (decay e silencio), 4-7 -> como 15 (attack e silencio), 8-15 como o
@@ -109,8 +109,10 @@ conferida contra um MSX real** -- o teste so' exige que exista uma onda.
 **Falta / adiado:**
 - ~~**Saida de audio ao vivo**~~ **Feita em 2026-10-02** -- ver
   `doc/audio-spec.md` (`PsgDevice::EnableLive()/TakeLive()` + miniaudio).
-- **Joystick/mouse em R14/R15** (sem eles o jogo nao le o direcional pelo
-  PSG); hoje R14 sempre devolve `7Fh`.
+- ~~**Joystick em R14/R15**~~ **Feito (v1.10)**: `psg_set_joystick()`; R14 le
+  os 6 bits do joystick da porta escolhida por R15 bit 6 (logica invertida,
+  bit 6 sempre 1), R15 bits 4/5 cortam as linhas. **Mouse** continua sem
+  suporte.
 - **Click do PPI** (`AAh` bit 7) e `Drum()`: ainda sem som.
 - **SCC** (do mapa de memoria, adiado) passa a ter um destino de audio
   possivel, mas e' um chip a parte.

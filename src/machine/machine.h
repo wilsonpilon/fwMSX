@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "../fdc/cpp/disk_image.h"
+#include "../fdc/cpp/fdc_device.h"
 #include "../memmap/core/slot_state.h"
 #include "../z80/cpp/z80_cpu.h"
 #include "../z80/debug/z80_debug_shell_startup.h"
@@ -22,10 +24,22 @@ namespace machine {
 struct MachineConfig {
     std::string bios_path;
     // Cartucho opcional no slot 1 (vazio = so' BIOS + BASIC). Com mapper
-    // MEMMAP_MAPPER_NONE e' ROM plana (ate' 32KB, posta em 4000h); com outro
-    // mapper e' MegaROM (ver doc/memory-map-spec.md).
+    // MEMMAP_MAPPER_NONE (padrao): ate' 32KB e' ROM plana (em 4000h, ou em
+    // 8000h se o cabecalho "AB" aponta o INIT para la'); acima de 32KB e'
+    // MegaROM com o mapper detectado automaticamente (memmap::GuessMapper).
+    // Com outro mapper, e' MegaROM desse mapper (ver doc/memory-map-spec.md).
     std::string cart_path;
     MemMapMapperType cart_mapper = MEMMAP_MAPPER_NONE;
+
+    // Disco (ver doc/fdc-spec.md): a interface de disquete (DISK.ROM no slot
+    // 3:1 + controladora WD2793) so' e' ligada quando ha' um disco em A:/B:
+    // ou `disk_interface` e' true -- sem ela o MSX BASIC e' o "puro" (28815
+    // bytes livres), com ela vira o Disk BASIC. `disk_rom_path` vazio = DISK.ROM
+    // ao lado da BIOS.
+    std::string disk_a;
+    std::string disk_b;
+    bool disk_interface = false;
+    std::string disk_rom_path;
 };
 
 class Machine {
@@ -57,6 +71,21 @@ public:
     // (SCREEN 0, 240px) ficam centralizadas sobre a cor de fundo.
     void RenderFrame(std::vector<uint32_t> &rgba) const;
 
+    // Joystick das portas A (0) e B (1): mascara de PSG_JOY_* (1 = pressionado).
+    void SetJoystick(int port, uint8_t bits);
+
+    // Interface de disquete: true se o DISK.ROM esta no slot 3:1. Inserir/ejetar
+    // disco em A: (0) / B: (1) a qualquer momento; as escritas do MSX vao
+    // direto para o arquivo da imagem.
+    bool has_disk_interface() const { return fdc_ != nullptr; }
+    bool InsertDisk(int drive, const std::string &path, std::string &error);
+    void EjectDisk(int drive);
+    const fdc::DiskImage &disk(int drive) const { return disks_[drive & 1]; }
+    fdc::FdcDevice *fdc() { return fdc_.get(); }
+
+    // Resumo do cartucho carregado ("" se nao ha'): tamanho e mapper.
+    const std::string &cart_info() const { return cart_info_; }
+
     uint64_t frame_count() const { return frame_count_; }
     const VdpState &vdp_state() const { return startup_.vdp_device->state(); }
     PpiState &ppi_state() { return startup_.ppi_device->state(); }
@@ -71,6 +100,9 @@ private:
     std::unique_ptr<z80::Z80Cpu> cpu_;
     int vdp_pending_cycles_ = 0;
     uint64_t frame_count_ = 0;
+    std::string cart_info_;
+    std::unique_ptr<fdc::FdcDevice> fdc_;
+    fdc::DiskImage disks_[2];
 };
 
 } // namespace machine

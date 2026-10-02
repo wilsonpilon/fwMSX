@@ -187,16 +187,18 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
     state->rom_base[primary][secondary] = data;
     state->rom_bank_mask[primary][secondary] = (uint8_t)(bank_count - 1);
 
-    // Estado inicial: todos os 4 quartos de 16KB (enderecos
-    // 4000h/6000h/8000h/A000h) mostram o banco 0 -- simplificacao
-    // deliberada em vez da heuristica de assinatura 'AB' do fMSX (ver
-    // doc/memory-map-spec.md, secao 6): simples, deterministico, e o
-    // codigo de inicializacao real de um cartucho sempre troca os bancos
-    // que precisa antes de depender de conteudo especifico em outro lugar.
+    // Estado inicial: os 4 pedacos de 8KB (enderecos 4000h/6000h/8000h/A000h)
+    // mostram os bancos 0,1,2,3 -- SetMegaROM(J,0,1,2,3) do fMSX (e o que
+    // MegaROMs reais encontram ao ligar: o codigo de INIT de varios jogos
+    // chama rotinas em 6000h-7FFFh ANTES de trocar qualquer banco, esperando
+    // o banco 1 ali -- com todos os pedacos no banco 0 esse codigo executava
+    // lixo, o que travava o Firebird). Os bancos sao mascarados pelo tamanho
+    // da ROM (uma MegaROM de 16KB so' tem os bancos 0 e 1).
     for (int quarter = 0; quarter < 4; ++quarter) {
-        state->rom_bank[primary][secondary][quarter] = 0;
+        const size_t bank = (size_t)quarter & (bank_count - 1);
+        state->rom_bank[primary][secondary][quarter] = (uint8_t)bank;
         const int chunk_idx = quarter + 2;
-        state->chunk[primary][secondary][chunk_idx] = data; /* banco 0 */
+        state->chunk[primary][secondary][chunk_idx] = data + (bank << 13);
         state->chunk_writable[primary][secondary][chunk_idx] = 0;
     }
 

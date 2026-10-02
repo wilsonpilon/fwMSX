@@ -7,6 +7,52 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.10.0] - 2026-10-02 - "Golvellius: MSX-DOS e Joystick"
+
+**O MSX-DOS 1.8 boota, e os jogos de cartucho ganham joystick e deteccao de
+mapper.** Verificado com jogos e discos reais -- ver
+[doc/fdc-spec.md](fdc-spec.md) e [doc/machine-spec.md](machine-spec.md), secao 4b.
+
+### Adicionado
+- **Disco: controladora WD2793 + DiskROM -- o MSX-DOS 1.8 boota.** `fwmsx --msx
+  --disk msxdos1.dsk` roda o **MSX-DOS** de verdade: a `DISK.ROM` no slot 3:1
+  fala com um WD2793 mapeado em `7FF8h-7FFFh` (motor em C adaptado do
+  `WD1793.c` do fMSX, `.dsk` cru, gravacao direta no arquivo). `dir` e `copy`
+  funcionam, e o arquivo copiado sai identico ao original. Novo mecanismo
+  `SlotMmio` no barramento de slots; menu **Disco** na janela (inserir/ejetar
+  A:/B:); opcoes `--disk`, `--diskb`, `--disk-interface`, `--diskrom`, `--wait`.
+  Ver [doc/fdc-spec.md](fdc-spec.md). Novo alvo `fdctest`.
+- **Joystick** (R14/R15 do PSG): `psg_set_joystick()`, leitura de R14 com a
+  selecao de porta (bit 6 de R15) e o corte das linhas (bits 4/5), como o
+  `InZ80()` 0xA2 do fMSX. Na janela: **setas + Z/Espaco (fogo A) + X (fogo B)**
+  na porta A e **gamepads do GLFW** (1o -> porta A, 2o -> porta B), com menu
+  **Joystick**. Um toque mais curto que um quadro ainda vale 1 quadro. Reset
+  de maquina nao solta o joystick.
+- **Deteccao automatica de mapper** (`memmap::GuessMapper`, o `MAP_GUESS` do
+  fMSX, so' a heuristica de `LD (nnnn),A`): `--cart <arq>` com mais de 32KB
+  detecta Konami4/Konami5/ASCII8/ASCII16/Gen8 sozinho (`--cart <arq> auto` ou
+  um nome de mapper para forcar). O CLI imprime o que detectou.
+- Cartucho de ROM plana de ate' 16KB cujo cabecalho `AB` aponta para
+  8000h+ vai para a pagina 2.
+
+### Corrigido
+- **Estado inicial de MegaROM**: os bancos 0,1,2,3 aparecem em 4000h/6000h/
+  8000h/A000h (como `SetMegaROM(J,0,1,2,3)` do fMSX), nao todos no banco 0.
+  Varios jogos chamam rotinas em 6000h-7FFFh antes de trocar qualquer banco.
+
+- 659 verificacoes automatizadas (9 suites).
+
+### Verificado com jogos reais (fora do repositorio)
+- **King's Valley** (16KB): roda, tela de titulo e entrada pelo teclado.
+- **F1 Spirit** (128KB, Konami5 detectado): roda ate' o menu do jogo.
+- **Firebird / Hi no Tori** (128KB, Konami4 detectado): **e' um jogo MSX2**
+  (titulo em SCREEN 5) -- na maquina MSX1 ele nao chega a lugar nenhum, e e'
+  o que se esperava: confirmado rodando o mesmo jogo num emulador de
+  referencia (fMSXgo, em Go) em modo MSX1 (tambem trava) e em modo MSX2 (roda).
+  Nao era bug do nucleo; ele passa a funcionar com o VDP MSX2 (Fase 4).
+- **Lode Runner + Konami SCC**: cai no BASIC ("Illegal function call in 10") --
+  e' uma ROM que espera disco (FDC), que ainda nao existe.
+
 ## [1.9.0] - 2026-10-02 - "Gradius 2: Janela e Som"
 
 **O fwMSX agora e' uma maquina que da' para usar**: `fwmsx --msx` abre uma

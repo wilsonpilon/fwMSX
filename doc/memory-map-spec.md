@@ -450,14 +450,16 @@ elas embutidas, o que nunca deve acontecer.
     por um índice de "slot de cartucho" como o `CartMap[PS][SS]` do
     fMSX -- o fwMSX ainda não tem o conceito de slot físico de cartucho
     separado do lógico (simplificação já registrada na seção 3.2).
-  - **Estado inicial de uma MegaROM recém-carregada**: todos os 4
-    quartos de 16KB começam mostrando o banco 0 -- mais simples e
-    determinístico que a heurística de assinatura `'A','B'` do fMSX
-    (que inicializa como `0,1,2,3` ou `N-2,N-1,N-2,N-1` dependendo de
-    onde encontra a assinatura). O código de inicialização real de um
-    cartucho sempre troca os bancos que precisa antes de depender de
-    conteúdo específico em outro lugar, então a escolha do banco
-    inicial não é observável na prática.
+  - **Estado inicial de uma MegaROM recém-carregada** (CORRIGIDO na
+    v1.10 -- a versão original desta fase era uma suposição errada): os
+    4 pedaços de 8KB mostram os bancos **0,1,2,3** em `4000h/6000h/
+    8000h/A000h` (mascarados pelo tamanho da ROM), como `SetMegaROM(J,
+    0,1,2,3)` do fMSX. A decisão original ("todos no banco 0, o INIT
+    sempre troca os bancos antes de depender deles") não vale: o INIT de
+    vários jogos chama rotinas em `6000h-7FFFh` esperando o banco 1 ali,
+    e executava lixo -- ver `doc/machine-spec.md`, seção 4b (Firebird).
+    O fMSX também tem a variante `N-2,N-1,N-2,N-1` (cartuchos cujo
+    cabeçalho `AB` fica no fim da ROM) -- ainda não implementada.
   - **Tamanho válido de MegaROM**: múltiplo de 8KB, entre 8KB e 2MB (256
     bancos) -- o teto vem de `rom_bank_mask` ser um `uint8_t` (mesmo
     tipo `byte ROMMask[MAXSLOTS]` do fMSX, que tem a mesma limitação

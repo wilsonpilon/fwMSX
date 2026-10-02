@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../../src/memmap/cpp/memory_system.h"
+#include "../../src/memmap/cpp/rom_guess.h"
 #include "../../src/memmap/cpp/slot_memory_bus.h"
 #include "../../src/z80/common/z80_state.h"
 #include "../../src/z80/cpp/z80_cpu.h"
@@ -666,6 +667,57 @@ int main() {
                                                 std::to_string(pc_history.size()) +
                                                 ") -- evidencia de execucao real, nao so nao-crash");
         }
+    }
+
+    // === Estado inicial de MegaROM + deteccao de mapper (v1.10) =============
+    // Uma MegaROM recem-carregada mostra os bancos 0,1,2,3 em 4000h/6000h/8000h/
+    // A000h (SetMegaROM(J,0,1,2,3) do fMSX) -- varios jogos chamam rotinas em
+    // 6000h-7FFFh antes de trocar qualquer banco.
+    {
+        auto banked = [](int banks) {
+            std::vector<uint8_t> rom(static_cast<size_t>(banks) * 0x2000, 0);
+            for (int b = 0; b < banks; ++b) rom[static_cast<size_t>(b) * 0x2000] = static_cast<uint8_t>(0x10 | b);
+            return rom;
+        };
+        for (MemMapMapperType mapper : {MEMMAP_MAPPER_GEN8, MEMMAP_MAPPER_KONAMI4, MEMMAP_MAPPER_KONAMI5, MEMMAP_MAPPER_ASCII8,
+                                        MEMMAP_MAPPER_GEN16, MEMMAP_MAPPER_ASCII16}) {
+            const std::vector<uint8_t> rom = banked(8);
+            memmap::MemorySystem mem;
+            std::string error;
+            mem.LoadRom(1, 0, rom.data(), rom.size(), &error, mapper);
+            check(mem.PeekSlot(1, 0, 0x4000) == 0x10 && mem.PeekSlot(1, 0, 0x6000) == 0x11 && mem.PeekSlot(1, 0, 0x8000) == 0x12 &&
+                      mem.PeekSlot(1, 0, 0xA000) == 0x13,
+                  "MegaROM recem-carregada (mapper " + std::to_string(static_cast<int>(mapper)) + "): bancos iniciais 0,1,2,3 em 4000h/6000h/8000h/A000h");
+        }
+        const std::vector<uint8_t> small = banked(2); // 16KB: so' os bancos 0 e 1 existem
+        memmap::MemorySystem mem;
+        std::string error;
+        mem.LoadRom(1, 0, small.data(), small.size(), &error, MEMMAP_MAPPER_KONAMI4);
+        check(mem.PeekSlot(1, 0, 0x8000) == 0x10 && mem.PeekSlot(1, 0, 0xA000) == 0x11, "MegaROM de 2 bancos: os iniciais 2,3 sao mascarados para 0,1");
+    }
+    {
+        // GuessMapper: conta LD (nnnn),A nos enderecos de registrador de cada mapper.
+        auto with_writes = [](std::initializer_list<unsigned> addrs, int repeat) {
+            std::vector<uint8_t> rom(0x20000, 0);
+            size_t pos = 0x100;
+            for (int r = 0; r < repeat; ++r)
+                for (unsigned a : addrs) {
+                    rom[pos++] = 0x32;
+                    rom[pos++] = static_cast<uint8_t>(a & 0xFF);
+                    rom[pos++] = static_cast<uint8_t>(a >> 8);
+                }
+            return rom;
+        };
+        auto guess = [&](std::initializer_list<unsigned> addrs) {
+            const std::vector<uint8_t> rom = with_writes(addrs, 6);
+            return memmap::GuessMapper(rom.data(), rom.size());
+        };
+        check(guess({0x5000, 0x7000, 0x9000, 0xB000}) == MEMMAP_MAPPER_KONAMI5, "GuessMapper: 5000h/7000h/9000h/B000h -> Konami5");
+        check(guess({0x6000, 0x8000, 0xA000}) == MEMMAP_MAPPER_KONAMI4, "GuessMapper: 6000h/8000h/A000h -> Konami4");
+        check(guess({0x6000, 0x6800, 0x7000, 0x7800}) == MEMMAP_MAPPER_ASCII8, "GuessMapper: 6000h/6800h/7000h/7800h -> ASCII8");
+        check(guess({0x6000, 0x7000, 0x77FF}) == MEMMAP_MAPPER_ASCII16, "GuessMapper: 6000h/7000h/77FFh -> ASCII16");
+        const std::vector<uint8_t> blank(0x20000, 0);
+        check(memmap::GuessMapper(blank.data(), blank.size()) == MEMMAP_MAPPER_GEN8, "GuessMapper: sem pistas -> Gen8 (o padrao)");
     }
 
     if (g_failures == 0) {

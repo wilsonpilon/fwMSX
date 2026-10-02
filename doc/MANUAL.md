@@ -321,14 +321,18 @@ nao ha' janela grafica em tempo real (isso e' Fase 4 do VDP).
 ## Emulador MSX1 numa janela (`--msx`)
 
 ```powershell
-.\distwMSX.exe --msx                      # BIOS padrao (resource/fMSX/ROMs/MSX.ROM)
-.\distwMSX.exe --msx --bios MSX.ROM --cart jogo.rom
-.\distwMSX.exe --msx --cart megarom.rom ascii8   # MegaROM (gen8 gen16 konami5 konami4 ascii8 ascii16)
-.\distwMSX.exe --msx --mute                # sem audio
-.\distwMSX.exe --msx --frames 400 --keys "print 1234|" --shot tela.ppm   # sem janela
+.\dist\fwMSX.exe --msx                      # BIOS padrao (resource/fMSX/ROMs/MSX.ROM)
+.\dist\fwMSX.exe --msx --bios MSX.ROM --cart jogo.rom
+.\dist\fwMSX.exe --msx --cart megarom.rom ascii8   # MegaROM (gen8 gen16 konami5 konami4 ascii8 ascii16)
+.\dist\fwMSX.exe --msx --disk msxdos1.dsk    # MSX-DOS 1.8 (interface de disco + disquete em A:)
+.\dist\fwMSX.exe --msx --mute                # sem audio
+.\dist\fwMSX.exe --msx --frames 400 --keys "print 1234|" --shot tela.ppm   # sem janela
 ```
 
-Abre uma janela com o MSX BASIC rodando em tempo real e som ao vivo. Teclado
+Abre uma janela com o MSX BASIC rodando em tempo real e som ao vivo. Com `--disk`
+a maquina ganha a interface de disquete e boota o MSX-DOS; **as gravacoes vao
+direto para o arquivo `.dsk`** (faca backup) -- ver [fdc-spec.md](fdc-spec.md).
+Joystick: setas + Z/Espaco (A) + X (B), ou gamepad. Teclado
 posicional (layout US): Alt esquerdo = GRAPH, Alt direito = CODE, End =
 SELECT, Pause = STOP, F11 = tela cheia; menu **Maquina** (Reset, Pausar),
 **Exibir** e **Som** (mudo/volume). Cartuchos de ROM plana ate' 32KB ou

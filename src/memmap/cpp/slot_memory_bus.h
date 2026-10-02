@@ -9,6 +9,18 @@
 
 namespace memmap {
 
+// Dispositivo mapeado em memoria DENTRO de um slot: quando o slot do
+// dispositivo esta visivel na pagina do endereco, leituras/escritas em
+// certos enderecos vao para ele em vez da ROM/RAM do slot (ex.: a controladora
+// de disquete em 7FF8h-7FFFh do slot do DiskROM, ver src/fdc/). Cada metodo
+// devolve true se tratou o acesso, false para cair na memoria normal.
+class SlotMmio {
+public:
+    virtual ~SlotMmio() = default;
+    virtual bool MmioRead(uint16_t addr, uint8_t &value) = 0;
+    virtual bool MmioWrite(uint16_t addr, uint8_t value) = 0;
+};
+
 // Liga um MemorySystem ao nucleo Z80: leitura/escrita normais vao para a
 // vista ativa (memmap_read/memmap_write); a porta A8h e o endereco FFFFh
 // recebem o tratamento especial de troca de slot primario/secundario que
@@ -31,6 +43,10 @@ public:
             const SlotState &s = memory_.state();
             return static_cast<uint8_t>(~s.ssl_reg[s.psl[3]]);
         }
+        if (mmio_ && (addr & 0x3F80) == 0x3F80 && MmioVisible(addr)) {
+            uint8_t value;
+            if (mmio_->MmioRead(addr, value)) return value;
+        }
         return memmap_read(&memory_.state(), addr);
     }
 
@@ -39,7 +55,16 @@ public:
             memmap_switch_secondary(&memory_.state(), value);
             return;
         }
+        if (mmio_ && (addr & 0x3F80) == 0x3F80 && MmioVisible(addr) && mmio_->MmioWrite(addr, value)) return;
         memmap_write(&memory_.state(), addr, value);
+    }
+
+    // Liga um dispositivo mapeado em memoria ao slot (primary, secondary) --
+    // um so' por barramento (suficiente para o DiskROM). nullptr desliga.
+    void AttachMmio(int primary, int secondary, SlotMmio *device) {
+        mmio_ = device;
+        mmio_primary_ = primary;
+        mmio_secondary_ = secondary;
     }
 
     uint8_t in(uint16_t port) override {
@@ -87,7 +112,17 @@ public:
     }
 
 private:
+    // O slot do dispositivo esta visivel na pagina de `addr` agora?
+    bool MmioVisible(uint16_t addr) const {
+        const SlotState &s = memory_.state();
+        const int page = addr >> 14;
+        return s.psl[page] == mmio_primary_ && s.ssl[page] == mmio_secondary_;
+    }
+
     MemorySystem &memory_;
+    SlotMmio *mmio_ = nullptr;
+    int mmio_primary_ = 0;
+    int mmio_secondary_ = 0;
 };
 
 } // namespace memmap

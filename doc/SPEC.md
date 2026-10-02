@@ -188,7 +188,7 @@ acompanhamento manual do autor a cada build):
   `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
   item adiado.
 
-### 5.0 Proximos passos (para retomar sem se perder -- v1.9.0, 2026-10-02)
+### 5.0 Proximos passos (para retomar sem se perder -- v1.10.0, 2026-10-02)
 
 O trabalho no core de emulacao segue em andamento; esta secao continua
 sendo o "onde paramos" oficial.
@@ -218,15 +218,17 @@ sendo o "onde paramos" oficial.
    gravador de WAV em **C++**; flag `--psg` e comandos `psgregs`/`psgpoke`/
    `psgrec` no depurador. A BIOS real programa o PSG e `BEEP` no BASIC sai
    como onda de 1316 Hz (teste `psgtest`). **Audio ao vivo concluido em
-   2026-10-02** ([doc/audio-spec.md](audio-spec.md)). **Falta**: joystick
-   em R14/R15. O SCC do
+   2026-10-02** ([doc/audio-spec.md](audio-spec.md)). **Joystick (R14/R15) pronto em
+   v1.10.** O SCC do
    mapa de memoria (adiado na Fase 3, ver `doc/memory-map-spec.md`) agora
    tem um destino de audio possivel.
    **Janela com teclado do host: concluida em 2026-10-02** (item 1 abaixo,
    "janela de verdade") -- `fwmsx --msx`, ver
    [doc/machine-spec.md](machine-spec.md). Roda a BIOS real em tempo real,
    com teclado do host e cartucho no slot 1. Audio ao vivo tambem pronto.
-   Continua faltando joystick, disco e os modos MSX2.
+   Joystick pronto (v1.10) e **disco pronto: o MSX-DOS 1.8 boota**
+   ([doc/fdc-spec.md](fdc-spec.md)). Continuam faltando os modos MSX2 (Fase 4 do
+   VDP -- o Firebird e' um jogo MSX2 e espera por isso).
 3. Itens menores registrados e conscientemente adiados, sem bloquear
    nada do acima:
    - ~~Validacao em execucao real (nao so montagem) da branch `elf64`/

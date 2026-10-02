@@ -13,6 +13,57 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.10.0 -- "Golvellius: MSX-DOS e Joystick" (2026-10-02)
+
+**Fase:** disco, joystick e cartuchos de verdade. Nome escolhido por "Golvellius"
+(Compile) ser um classico de MSX lembrado como um dos jogos de disco/cartucho
+mais ambiciosos da plataforma -- e o marco aqui e' o emulador finalmente rodar
+software de terceiros: MSX-DOS e jogos reais.
+
+### Destaques
+
+- **O MSX-DOS 1.8 boota.** `fwmsx --msx --disk msxdos1.dsk` carrega
+  `MSXDOS.SYS` + `COMMAND.COM` pela **controladora WD2793** (motor em C adaptado do
+  `WD1793.c` do fMSX) mapeada em `7FF8h-7FFFh` do slot da `DISK.ROM` (3:1). `dir` e
+  `copy` funcionam; o arquivo copiado sai identico ao original (conferido byte a
+  byte e por hash). As escritas vao direto para o `.dsk`. Menu **Disco** na
+  janela (inserir/ejetar A:/B:); opcoes `--disk`, `--diskb`, `--disk-interface`,
+  `--diskrom`. Novo mecanismo `SlotMmio` no barramento de slots.
+- **Joystick** (R14/R15 do PSG): setas + Z/Espaco (fogo A) + X (fogo B) na porta A
+  e **gamepads do GLFW** (1o -> A, 2o -> B), com menu **Joystick**.
+- **Deteccao automatica de mapper** (`MAP_GUESS` do fMSX): `--cart` com mais de
+  32KB acerta Konami4/Konami5/ASCII8/ASCII16/Gen8 sozinho.
+- **Bug corrigido:** o estado inicial de uma MegaROM mostra os bancos 0,1,2,3 (como
+  o fMSX), nao todos no banco 0 -- varios jogos chamam 6000h-7FFFh antes de trocar banco.
+- **Jogos reais verificados:** King's Valley (roda; o espaco inicia o jogo) e F1 Spirit
+  (roda ate' o menu). **Firebird e' um jogo MSX2** -- confirmado contra um emulador
+  de referencia (fMSXgo) -- e espera pelo VDP MSX2.
+- 659 verificacoes automatizadas (9 suites).
+
+### Exemplo rapido
+
+```
+> .\dist\fwMSX.exe --msx --disk msxdos1.dsk
+> .\dist\fwMSX.exe --msx --cart "King's Valley.rom"
+> .\dist\fwMSX.exe --msx --disk msxdos1.dsk --frames 600 --keys "|dir|" --wait 120 --shot tela.ppm
+```
+
+### Limitacoes conhecidas
+
+- **Disco:** sem FORMAT (READ/WRITE TRACK nao suportados, como no fMSX), so' imagens
+  `.dsk` cruas, sem DiskROM do MSX-DOS 2 (exige MSX2). A interface so' liga com
+  `--disk`/`--disk-interface`. O `copy` de 7KB leva ~5 s emulados.
+- **As escritas do MSX-DOS vao direto para o arquivo da imagem** -- faca backup.
+- Sem modos MSX2 (SCREEN 5-8), logo sem Firebird e demais jogos MSX2; SCREEN 3 ainda
+  cai no fallback de cor de fundo. Sem SCC/FM (F1 Spirit roda sem o som do SCC).
+- Joystick e gamepad foram testados pelo caminho do programa lendo R14 (cartucho
+  sintetico); nao ha' teste com gamepad fisico nem das teclas na janela. A janela
+  interativa foi validada em abertura/fechamento; digitar pelo teclado do host e o
+  som audivel nao tem teste automatico.
+- Demais limitacoes das versoes anteriores continuam valendo.
+
+---
+
 ## v1.9.0 -- "Gradius 2: Janela e Som" (2026-10-02)
 
 **Fase:** PSG + janela com teclado do host + audio ao vivo. Nome escolhido

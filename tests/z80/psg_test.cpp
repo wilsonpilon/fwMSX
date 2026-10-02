@@ -226,6 +226,38 @@ int main() {
         check(dev.state().r[7] == 0xFD, "Reset() de maquina volta os registradores ao estado inicial");
     }
 
+    // --- 6b. Joystick em R14/R15 ---------------------------------------------
+    {
+        psg::PsgDevice dev;
+        auto read_r14 = [&] {
+            dev.out(0xA0, 14);
+            return dev.in(0xA2);
+        };
+        check(read_r14() == 0x7F, "joystick: nada pressionado le 7Fh (porta A)");
+        psg_set_joystick(&dev.state(), 0, PSG_JOY_UP | PSG_JOY_FIRE_A);
+        check(read_r14() == 0x7F - 0x01 - 0x10, "joystick A: cima + fogo A = bits 0 e 4 em 0 (logica invertida): " + std::to_string(read_r14()));
+        psg_set_joystick(&dev.state(), 0, PSG_JOY_LEFT | PSG_JOY_RIGHT | PSG_JOY_DOWN | PSG_JOY_FIRE_B);
+        check(read_r14() == (0x7F & ~(0x04 | 0x08 | 0x02 | 0x20)), "joystick A: esquerda+direita+baixo+fogo B");
+        // O bit 6 de R15 escolhe a porta: B nao foi tocada.
+        dev.out(0xA0, 15);
+        dev.out(0xA1, 0x40);
+        check(read_r14() == 0x7F, "R15 bit 6 = 1 seleciona a porta B (nada pressionado la')");
+        psg_set_joystick(&dev.state(), 1, PSG_JOY_UP);
+        check(read_r14() == 0x7E, "joystick B: cima = 7Eh");
+        // Bit 4/5 de R15 desliga as linhas do joystick A/B (le tudo solto).
+        dev.out(0xA0, 15);
+        dev.out(0xA1, 0x60);
+        check(read_r14() == 0x7F, "R15 bit 5 = 1 desliga as linhas da porta B (le 7Fh mesmo pressionado)");
+        psg_set_joystick(&dev.state(), 1, 0xFF);
+        check((dev.state().joy[1] & 0xC0) == 0, "psg_set_joystick guarda so' os 6 bits validos");
+        psg_set_joystick(&dev.state(), 2, PSG_JOY_UP); // porta invalida: ignorada
+        // Reset de maquina nao solta o joystick (e' o mundo externo, como as teclas).
+        psg_set_joystick(&dev.state(), 0, PSG_JOY_FIRE_A);
+        dev.Reset();
+        dev.out(0xA0, 14);
+        check(dev.in(0xA2) == 0x7F - 0x10 && dev.state().r[7] == 0xFD, "Reset() zera os registradores mas mantem o joystick");
+    }
+
     // --- 7. Gravacao de amostras + WAV ----------------------------------------
     {
         psg::PsgDevice dev;
