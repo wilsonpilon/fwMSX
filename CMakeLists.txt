@@ -309,6 +309,18 @@ set(PSG_LIB_SOURCES
         src/psg/cpp/wav_writer.cpp
 )
 
+# --- Chip de som SCC (cartuchos Konami5/Gen8, 9800h-98FFh) -- ver doc/scc-spec.md
+#
+# Motor em C adaptado do SCC.c do fMSX (ver LICENSE-THIRD-PARTY.md) que gera
+# amostras PCM; soma de canal em Assembly dual-ABI (render_channel.asm);
+# tabela de volume linear em Fortran (scc_volume_table.f90). SccDevice (C++,
+# header-only) liga o chip ao slot de cartucho via memmap::SlotCartIo.
+set(SCC_LIB_SOURCES
+        src/scc/core/scc_state.c
+        src/scc/asm/render_channel.asm
+        src/scc/fortran/scc_volume_table.f90
+)
+
 # --- Controladora de disquete WD2793 (DiskROM em 3:1) -- ver doc/fdc-spec.md
 #
 # Motor em C adaptado do WD1793.c do fMSX (so' imagens .dsk cruas);
@@ -400,7 +412,7 @@ add_test(NAME psg_sound COMMAND psgtest)
 
 # machinetest: a maquina MSX1 completa em quadros, sem janela -- ver
 # doc/machine-spec.md.
-add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(machinetest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
 target_compile_definitions(machinetest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(machinetest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/machinetest)
@@ -433,7 +445,7 @@ add_test(NAME vdp_msx2 COMMAND vdp2test)
 
 # msx2test: maquina MSX2 (mapper de RAM, RTC, V9938 pelo BASIC e disco) -- ver
 # doc/msx2-spec.md.
-add_executable(msx2test tests/z80/msx2_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(msx2test tests/z80/msx2_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(msx2test PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/rtc)
 target_compile_definitions(msx2test PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(msx2test PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/msx2test)
@@ -445,7 +457,7 @@ add_test(NAME msx2_machine COMMAND msx2test)
 
 # audiotest: buffer circular, PSG ao vivo e dispositivo de audio -- ver
 # doc/audio-spec.md.
-add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(audiotest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/audio)
 target_compile_definitions(audiotest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(audiotest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/audiotest)
@@ -455,6 +467,16 @@ if (MINGW)
 endif ()
 
 add_test(NAME audio_live COMMAND audiotest)
+
+# scctest: chip SCC (protocolo de ativacao no cartucho, onda, frequencia,
+# volume e o kernel de Assembly contra a referencia em C) -- ver doc/scc-spec.md.
+add_executable(scctest tests/z80/scc_test.cpp ${MEMMAP_LIB_SOURCES} ${SCC_LIB_SOURCES})
+set_target_properties(scctest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/scctest)
+if (MINGW)
+    target_link_options(scctest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME scc_sound COMMAND scctest)
 
 # --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
 #
@@ -477,7 +499,7 @@ add_executable(fwMSX
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
         ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES}
-        ${MACHINE_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
+        ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 

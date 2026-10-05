@@ -163,6 +163,8 @@ dkms.conf
 /dist/psgtest.exe
 /dist/machinetest.exe
 /dist/audiotest.exe
+/dist/scctest.exe
+/dist/scctest
 /dist/fdctest.exe
 /dist/vdp2test.exe
 /dist/msx2test.exe

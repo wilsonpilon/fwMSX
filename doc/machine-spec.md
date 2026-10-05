@@ -96,9 +96,9 @@ Rodados com `--cart` + `--frames N --shot` (ROMs fora do repositorio):
 | Jogo | Mapper | Resultado |
 |------|--------|-----------|
 | King's Valley (16KB) | ROM plana | **Roda**: titulo, "PUSH SPACE KEY" vira "PLAY START" ao apertar espaco |
-| F1 Spirit (128KB) | Konami5 (detectado) | **Roda** ate' o menu do jogo (sem o som do SCC) |
+| F1 Spirit (128KB) | Konami5 (detectado) | **Roda** ate' o menu do jogo, com o som do SCC (v1.13.0, ver `doc/scc-spec.md`) |
 | Firebird / Hi no Tori (128KB) | Konami4 (detectado, confirmado pelos acessos 6000h/8000h/A000h) | **MSX2: joga** com `--msx2` (logos, titulo com kanji, floresta rolando, sprites coloridos). Em MSX1 nao roda -- e' um jogo MSX2 (ver abaixo) |
-| Lode Runner + Konami SCC (128KB) | Konami5 | Cai no BASIC: ROM que espera disco (nao retestada com `--disk-interface`) |
+| Lode Runner + Konami SCC (128KB) | Konami5 | Cai no BASIC ("Illegal function call in 10"), mesmo com `--disk-interface`; nenhum mapper liga o SCC em 1500 quadros (ver `doc/scc-spec.md`, secao 5) |
 
 **Firebird: nao era bug.** O jogo instala o gancho `H.TIMI` (`FD9Fh` -> `4048h`),
 fica em `JR $` e a logica roda dentro da interrupcao; a tela passava por faixas de
@@ -120,7 +120,8 @@ util para comparar a Fase 4 do VDP.
 ## 5. Limites conhecidos e o que falta
 
 - **Audio:** o PSG toca ao vivo (ver `doc/audio-spec.md`); `--mute` desliga.
-  Click de tecla/cassete (PPI), SCC e FM ainda sem som.
+  O SCC tambem toca ao vivo (v1.13.0), somado ao PSG. Click de tecla/cassete
+  (PPI) e FM ainda sem som.
 - **Modos de tela:** todos os do MSX1 e do V9938 (SCREEN 0-8, TEXT80) -- ver
   `doc/msx2-spec.md`. Faltam so' os do MSX2+/V9958 (SCREEN 10-12).
 - **Joystick:** setas + Z/Espaco (fogo A) + X (fogo B) na porta A e gamepads

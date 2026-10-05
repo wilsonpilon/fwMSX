@@ -18,6 +18,7 @@
 #include "../memmap/core/slot_state.h"
 #include "../memmap/cpp/ram_mapper.h"
 #include "../rtc/rtc_device.h"
+#include "../scc/cpp/scc_device.h"
 #include "../z80/cpp/z80_cpu.h"
 #include "../z80/debug/z80_debug_shell_startup.h"
 
@@ -126,6 +127,13 @@ public:
     const VdpState &vdp_state() const { return startup_.vdp_device->state(); }
     PpiState &ppi_state() { return startup_.ppi_device->state(); }
     psg::PsgDevice &psg() { return *startup_.psg_device; }
+    scc::SccDevice &scc() { return *scc_; }
+
+    // Saida de audio ao vivo: PSG e SCC somados (saturados em 16 bits). `out`
+    // recebe as amostras acumuladas desde a ultima chamada.
+    void EnableLiveAudio(bool on);
+    void TakeLiveAudio(std::vector<int16_t> &out);
+
     z80::Z80Cpu &cpu() { return *cpu_; }
     memmap::MemorySystem &memory() { return *startup_.memory_system; }
 
@@ -141,6 +149,7 @@ private:
     std::unique_ptr<memmap::RamMapperDevice> mapper_;
     std::unique_ptr<rtc::RtcDevice> rtc_;
     std::unique_ptr<fdc::FdcDevice> fdc_;
+    std::unique_ptr<scc::SccDevice> scc_;
     fdc::DiskImage disks_[2];
     bool disk_read_only_ = false;
 };

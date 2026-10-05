@@ -13,6 +13,47 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.13.0 -- "F1 Spirit: Som do SCC" (2026-10-05)
+
+**Fase:** chip de som SCC (Konami), o proximo item de `doc/SPEC.md`, secao 5.0.
+
+### Destaques
+
+- **O SCC toca.** Cartuchos Konami5 e Gen8 que ligam o SCC (escrita `3Fh` em `9000h`, ou em
+  `8000h-9FFFh` no Gen8) agora tocam a trilha pela mesma saida de audio do PSG. O **F1 Spirit**
+  programa os cinco canais de verdade: apos 4000 quadros o mixer esta em `1Fh`, com volumes e
+  periodos reais, e o estado renderiza 44085 amostras nao-nulas por segundo.
+- **Quatro linguagens na fase:** o motor em **C** (`scc_state.c`, port do `SCC.c` do fMSX), a soma
+  de canal em **Assembly** dual-ABI (`render_channel.asm`), a tabela de volume linear em **Fortran**
+  (`scc_volume_table.f90`) e o `SccDevice` em **C++** ligado ao slot de cartucho.
+- **Barramento de cartucho:** `memmap::SlotCartIo` / `AttachCart()` entrega as leituras e escritas
+  do slot de cartucho ao dispositivo antes do mapper. E' o mesmo papel do `SlotMmio` do FDC, mas
+  para um dispositivo que precisa ver as escritas que tambem vao ao mapper.
+- **Mixagem:** PSG e SCC somados na saida ao vivo, com saturacao em 16 bits.
+
+### Build usado para validar esta release
+
+- Toolchain MSYS2 UCRT64: GCC/GNU Fortran 16.2.0, NASM 3.02, CMake 4.4.4, Ninja 1.13.2.
+- `ctest`: 12 suites, todas passando. `scc_sound` (`scctest`) e' a nova, com 18 verificacoes:
+  protocolo Konami5 e Gen8, ROM plana, frequencia (+-1%), nivel e volume linear, mixer e volume
+  zerados, espelho `B0h`, e o teste diferencial do Assembly contra a referencia em C.
+- Verificado com o jogo: F1 Spirit (ver Destaques). Lode Runner + Konami SCC continua sem subir
+  (boot do cartucho, nao o chip; ver `doc/scc-spec.md`, secao 5).
+- Build Linux (`build.sh`, WSL Ubuntu 26.04): GCC/GNU Fortran 15.2.0, NASM 3.01, CMake 4.2.3, Ninja
+  1.13.2. `ctest`: 12/12 suites, incluindo `scc_sound` -- o kernel de Assembly rodou no caminho
+  `elf64`/SysV. Pacote: `dist/fwMSX-1.13.0-linux.tar.gz`.
+- Pacote Windows: `.\build.ps1` gerou `dist\fwMSX-1.13.0.zip`.
+
+### Limitacoes conhecidas
+
+- **Lode Runner + Konami SCC** cai no BASIC ("Illegal function call in 10") com Konami5, e nenhum
+  mapper chega a ligar o SCC nele. Nao investigado a fundo.
+- Modo SCC+ (enderecos com `2000h`) implementado, mas sem cartucho de referencia nem teste dedicado.
+- Sem FM (OPLL/FMPAC), sem SRAM persistente, sem `MAP_GMASTER2`/`MAP_FMPAC`/`MAP_GUESS`.
+- Sem filtro de reamostragem no SCC: frequencias altas podem ter aliasing.
+
+---
+
 ## v1.12.0 -- "Metal Gear: Entrada Direta" (2026-10-05)
 
 **Fase:** item menor adiado desde a v1.2.0 ("5.1 Visao registrada", `doc/SPEC.md`) -- sem

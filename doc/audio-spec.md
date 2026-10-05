@@ -63,7 +63,8 @@ isso so' se confirma ouvindo (ex.: digitar `BEEP` na janela e ouvir os
 
 - **Click do teclado e do cassete** (PPI, `AAh` bit 7): ainda sem som --
   o `BEEP` e a musica do PSG tocam, o clique de tecla nao.
-- **SCC e FM** (cartuchos com som proprio): chips ainda nao existem.
+- **SCC**: pronto na v1.13.0 (ver `doc/scc-spec.md`), somado ao PSG na mesma saida.
+- **FM** (OPLL/FMPAC): chip ainda nao existe.
 - **Reamostragem melhor** que o filtro de caixa do PSG (aliasing leve em
   tons agudos) e curva de volume medida em chip real.
 - **Escolha de dispositivo de audio** (so' o padrao do sistema) e ajuste de

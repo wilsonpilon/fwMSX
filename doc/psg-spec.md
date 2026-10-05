@@ -115,8 +115,8 @@ conferida contra um MSX real** -- o teste so' exige que exista uma onda.
   bit 6 sempre 1), R15 bits 4/5 cortam as linhas. **Mouse** continua sem
   suporte.
 - **Click do PPI** (`AAh` bit 7) e `Drum()`: ainda sem som.
-- **SCC** (do mapa de memoria, adiado) passa a ter um destino de audio
-  possivel, mas e' um chip a parte.
+- **SCC**: concluido na v1.13.0 como chip a parte (ver `doc/scc-spec.md`),
+  somado ao PSG na saida ao vivo.
 - Filtro de reamostragem melhor que a caixa (hoje ha' aliasing leve nos
   tons agudos); curva de volume medida em chip real em vez da ideal de
   3 dB/passo.

@@ -408,11 +408,11 @@ elas embutidas, o que nunca deve acontecer.
   ao ler `MapROM()` por completo antes de portar, não antes): o texto
   original listava também `MAP_GMASTER2`/`MAP_FMPAC`/`MAP_GUESS`.
   Deixados de fora, com justificativa:
-  - **SCC** (chip de som, interação em `9800h-9FFFh` quando ligado) --
-    aparece em `MAP_GEN8`/`MAP_KONAMI5`. Não existe PSG/som no fwMSX
-    ainda (fase futura própria, ver `doc/SPEC.md`), então não há nada
-    pra uma escrita de SCC acionar -- só a troca de banco de ROM desses
-    dois mappers foi portada, o trecho de SCC foi omitido.
+  - **SCC** (chip de som, interação em `9800h-98FFh` quando ligado) --
+    aparece em `MAP_GEN8`/`MAP_KONAMI5`. Adiado nesta fase; **implementado na
+    v1.13.0**: o barramento entrega essas leituras/escritas ao `SccDevice`
+    antes do mapper (`memmap::SlotCartIo`, `src/memmap/cpp/slot_memory_bus.h`).
+    Ver `doc/scc-spec.md`.
   - **SRAM** (bateria, selecionada por um bit no valor de troca de
     banco, persistida em arquivo) em `MAP_ASCII8`/`MAP_ASCII16` --
     exige infraestrutura de save-state que não existe ainda. Portada só

@@ -164,6 +164,9 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
         }
     }
 
+    m->scc_ = std::make_unique<scc::SccDevice>();
+    m->startup_.slot_bus->AttachCart(1, 0, m->scc_.get());
+
     m->cpu_ = std::make_unique<z80::Z80Cpu>(m->startup_.Bus());
     return m;
 }
@@ -185,8 +188,27 @@ void Machine::RunFrame() {
             if (r.irq_pending) cpu_->interrupt(Z80_INT_IRQ);
         }
         startup_.psg_device->Advance(used);
+        scc_->Advance(used);
     }
     ++frame_count_;
+}
+
+void Machine::EnableLiveAudio(bool on) {
+    startup_.psg_device->EnableLive(on);
+    scc_->EnableLive(on);
+}
+
+void Machine::TakeLiveAudio(std::vector<int16_t> &out) {
+    std::vector<int16_t> psg_samples, scc_samples;
+    startup_.psg_device->TakeLive(psg_samples);
+    scc_->TakeLive(scc_samples);
+
+    const size_t n = std::max(psg_samples.size(), scc_samples.size());
+    out.reserve(out.size() + n);
+    for (size_t i = 0; i < n; ++i) {
+        const int sum = (i < psg_samples.size() ? psg_samples[i] : 0) + (i < scc_samples.size() ? scc_samples[i] : 0);
+        out.push_back(static_cast<int16_t>(std::clamp(sum, -32768, 32767)));
+    }
 }
 
 bool Machine::InsertDisk(int drive, const std::string &path, std::string &error) {
@@ -217,6 +239,7 @@ void Machine::Reset() {
     startup_.vdp_device->Reset();
     startup_.ppi_device->Reset();
     startup_.psg_device->Reset();
+    scc_->Reset();
     vdp_pending_cycles_ = 0;
 }
 

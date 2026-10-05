@@ -245,7 +245,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
         std::string audio_error;
         audio_ok = audio_out.Start(audio_error);
         audio_status = audio_ok ? audio_out.device_name() : ("indisponivel: " + audio_error);
-        if (audio_ok) machine->psg().EnableLive(true);
+        if (audio_ok) machine->EnableLiveAudio(true);
     }
     float volume = 0.7f;
     bool muted = false;
@@ -321,7 +321,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
         if (paused) accumulator = 0.0;
         if (audio_ok) {
             live_samples.clear();
-            machine->psg().TakeLive(live_samples);
+            machine->TakeLiveAudio(live_samples);
             audio_out.Push(live_samples.data(), live_samples.size());
         }
         if (ran > 0) {

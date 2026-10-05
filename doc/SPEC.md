@@ -181,7 +181,7 @@ acompanhamento manual do autor a cada build):
   100 mil ciclos de execucao real de codigo de BIOS).
 
   **Ainda faltam VDP e PSG para existir uma maquina MSX completa** --
-  ver a nota de "proximos passos" logo abaixo. SCC, SRAM persistente,
+  ver a nota de "proximos passos" logo abaixo. SRAM persistente,
   `MAP_GMASTER2`/`MAP_FMPAC` e a heuristica `MAP_GUESS` do mapa de
   memoria ficaram deliberadamente de fora por dependerem de subsistemas
   que ainda nao existem (som, save-state) -- ver
@@ -220,9 +220,9 @@ sendo o "onde paramos" oficial.
    `psgrec` no depurador. A BIOS real programa o PSG e `BEEP` no BASIC sai
    como onda de 1316 Hz (teste `psgtest`). **Audio ao vivo concluido em
    2026-10-02** ([doc/audio-spec.md](audio-spec.md)). **Joystick (R14/R15) pronto em
-   v1.10.** O SCC do
-   mapa de memoria (adiado na Fase 3, ver `doc/memory-map-spec.md`) agora
-   tem um destino de audio possivel.
+   v1.10.** O SCC (adiado na Fase 3 do mapa de memoria, ver
+   `doc/memory-map-spec.md`) foi feito na **v1.13.0** (2026-10-05) -- ver
+   [doc/scc-spec.md](scc-spec.md).
    **Janela com teclado do host: concluida em 2026-10-02** (item 1 abaixo,
    "janela de verdade") -- `fwmsx --msx`, ver
    [doc/machine-spec.md](machine-spec.md). Roda a BIOS real em tempo real,

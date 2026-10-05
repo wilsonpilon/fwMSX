@@ -229,8 +229,9 @@ loadrom <p> <s> <arquivo> [mapper]     carrega ROM (plana ou MegaROM)
 ```
 
 Mappers MegaROM suportados no `loadrom`: `gen8`, `gen16`, `konami5`,
-`konami4`, `ascii8`, `ascii16` (so a troca de banco de ROM -- sem SCC/
-SRAM, ver `memory-map-spec.md` secao 6 pro motivo). Sem o parametro,
+`konami4`, `ascii8`, `ascii16` (a troca de banco de ROM; o SCC de
+Konami5/Gen8 esta ligado desde a v1.13.0, ver `scc-spec.md`; SRAM continua
+fora, ver `memory-map-spec.md` secao 6 pro motivo). Sem o parametro,
 carrega como ROM plana (sem bank-switch), o mesmo usado para a BIOS.
 
 `--z80dbg --slots [rom]` aceita um caminho de ROM opcional logo depois

@@ -7,6 +7,30 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.13.0] - 2026-10-05 - "F1 Spirit: Som do SCC"
+
+**O SCC toca**: cartuchos Konami5 e Gen8 que ligam o chip de som SCC agora tocam a trilha.
+O F1 Spirit programa os cinco canais de verdade. Ver [doc/scc-spec.md](scc-spec.md).
+
+### Adicionado
+- **Chip de som SCC** (`src/scc/`): motor em **C** adaptado do `EMULib/SCC.c` do fMSX, gerando
+  amostras PCM (como o PSG); soma de canal em **Assembly** dual-ABI (`render_channel.asm`); tabela
+  de volume linear em **Fortran**; `SccDevice` em **C++** ligado ao slot de cartucho.
+- Protocolo do cartucho: `3Fh` em `9000h` (Konami5) ou em `8000h-9FFFh` (Gen8) liga o chip, e a
+  faixa `9800h-98FFh` vai para ele enquanto estiver ligado. A escrita nessa faixa nao chega ao mapper.
+- `memmap::SlotCartIo` / `SlotMemoryBus::AttachCart()`: o barramento entrega leituras e escritas do
+  slot de cartucho ao dispositivo antes do mapper (o FDC usa o `SlotMmio`, de outra natureza).
+- Saida de audio ao vivo soma PSG e SCC, com saturacao em 16 bits (`Machine::TakeLiveAudio`).
+- Teste novo `scctest` (CTest `scc_sound`): 18 verificacoes, inclusive o teste diferencial do
+  kernel de Assembly contra a referencia em C (2000 casos aleatorios).
+
+### Verificado
+- F1 Spirit (Konami5, 128KB): apos 4000 quadros, o jogo liga os cinco canais (mixer `1Fh`) e o
+  estado renderiza 44085 amostras nao-nulas por segundo, pico 21874.
+- Lode Runner + Konami SCC continua sem subir o jogo (ver `doc/scc-spec.md`, secao 5): nenhum mapper
+  chega a ligar o SCC nesse cartucho. O problema parece ser o boot do cartucho, nao o chip; nao
+  investigado a fundo nesta versao.
+
 ## [1.12.0] - 2026-10-05 - "Metal Gear: Entrada Direta"
 
 Versao pequena: fecha uma decisao de comportamento registrada desde a v1.2.0.

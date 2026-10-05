@@ -126,8 +126,16 @@ nenhum modo conhecido, preservado por ser o historico do projeto.
 *A v1.12.0 abre direto aqui: sem argumentos, `fwMSX.exe` sobe a BIOS MSX1 real
 e mostra o prompt do MSX BASIC.*
 
+A v1.13.0 trouxe o **chip de som SCC** (Konami): os cartuchos Konami5 e Gen8
+que ligam o SCC (escrita `3Fh` em `9000h`, ou em `8000h-9FFFh` no Gen8) agora
+tocam a trilha pela mesma saida de audio do PSG. O **F1 Spirit** programa os
+cinco canais de verdade. O motor do SCC e' um port do fMSX em **C**, a soma
+dos canais e' **Assembly** dual-ABI, a tabela de volume e' **Fortran**, e o
+protocolo do cartucho e' o `SccDevice` em **C++**. Ver
+[doc/scc-spec.md](doc/scc-spec.md).
+
 **Trabalho no core de emulacao continua em andamento** -- faltam SCREEN 9-12
-(V9958), os chips de som de cartucho (SCC/FM) e efeitos de rastreio no meio do
+(V9958), o chip FM (OPLL/FMPAC) e efeitos de rastreio no meio do
 quadro para uma maquina MSX completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.
@@ -156,6 +164,7 @@ fwMSX/
 │   ├── ppi/        PPI i8255 + teclado (core/cpp/fortran/asm -- ver
 │   │               doc/ppi-spec.md)
 │   ├── psg/        PSG AY-3-8910 (core/cpp/fortran -- ver doc/psg-spec.md)
+│   ├── scc/        chip de som SCC (core/asm/fortran/cpp -- ver doc/scc-spec.md)
 │   ├── rtc/        relogio RTC do MSX2 (header-only -- ver doc/msx2-spec.md)
 │   ├── fdc/        controladora de disquete WD2793 (core/cpp -- ver
 │   │               doc/fdc-spec.md)
@@ -176,6 +185,7 @@ fwMSX/
 │   ├── vdp-spec.md      especificacao + fases do VDP
 │   ├── ppi-spec.md      especificacao + fases do PPI/teclado
 │   ├── psg-spec.md      especificacao + fases do PSG
+│   ├── scc-spec.md      especificacao + fases do SCC
 │   ├── machine-spec.md  maquina completa + janela com teclado do host
 │   ├── audio-spec.md    audio ao vivo
 │   ├── fdc-spec.md      disco: controladora WD2793 + MSX-DOS
@@ -259,8 +269,8 @@ deste repositorio que incorporar codigo do fMSX diretamente (o setor de
 boot em `src/msxdisk/core/msxdos1_boot.cpp`; o motor/tabelas/desmontador
 da CPU Z80 em `src/z80/core/` e `src/z80/debug/z80_disasm.*`; o motor de
 slots/subslots e mappers MegaROM em `src/memmap/core/`; o motor do VDP e
-a renderizacao em `src/vdp/core/`; mais arquivos devem se juntar a essa
-lista quando PSG for adaptado do fMSX) continua sob a licenca original
+a renderizacao em `src/vdp/core/`; o PSG em `src/psg/core/`; o SCC em
+`src/scc/core/`; mais arquivos devem se juntar a essa lista) continua sob a licenca original
 dele, nao BSD. Ver
 **[LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md)** para o
 detalhamento completo (fMSX, DiskUtilities, msxDiskUtil) e

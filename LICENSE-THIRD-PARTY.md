@@ -121,8 +121,15 @@ termos acima:
   amostras, repassa freq/volume para `Sound()`. A tabela de volume
   (`volume_table.f90`, Fortran), `PsgDevice` e `wav_writer` (C++) sao
   codigo original (BSD-3-Clause). **Nao** inclui joystick/mouse em R14/R15
-  (so' o "sem joystick" de `InZ80()`), nem SCC/OPLL/Drum(). Ver
+  (so' o "sem joystick" de `InZ80()`), nem OPLL/Drum(). Ver
   `doc/psg-spec.md`.
+- `src/scc/core/scc_state.{h,c}` -- as regras de registrador do chip SCC de
+  `resource/fMSX/EMULib/SCC.{h,c}` (`WriteSCC()`/`WriteSCCP()`/`ReadSCC()`,
+  espelhamento `B0h`-`BFh`, mascara do mixer, ondas compartilhadas dos canais 3 e 4)
+  e a ativacao pelo cartucho de `resource/fMSX/fMSX/MSX.c` (escritas em `9000h`/`8000h-9FFFh`).
+  A geracao de amostras PCM (fase Q16, reamostragem por ciclos de Z80), a soma de canal em
+  Assembly (`src/scc/asm/render_channel.asm`), a tabela de volume linear (Fortran) e o
+  `SccDevice` (C++) sao codigo original (BSD-3-Clause). Ver `doc/scc-spec.md`.
 
 - `src/memmap/cpp/rom_guess.{h,cpp}` -- a heuristica de `GuessROM()` de
   `resource/fMSX/fMSX/MSX.c` (contagem de `LD (nnnn),A` nos enderecos de
