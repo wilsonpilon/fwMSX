@@ -447,7 +447,12 @@ depois).
   nivel de verificacao dado a `LDIR`/`LDDR`. Fica registrado como
   trabalho futuro, se algum dia houver motivo de desempenho real pra
   isso (compras/buscas por string nao costumam ser hot path em software
-  MSX). `INIR`/`INDR`/`OTIR`/`OTDR` nunca entraram no escopo -- tocam
+  MSX). **Atualizacao (v1.14.0):** `CPIR`/`CPDR` ganharam o caminho rapido
+  em Assembly, com a regra de flags tratada acima: a busca (`REPNE SCASB`,
+  `z80_fast_block_search()` em `block_ops.asm`) so' acha o ULTIMO byte
+  examinado; quem monta flags, HL/BC, PC e ciclos e' o C de `opcodes_ed.h`,
+  com as mesmas expressoes do loop lento. Ver o teste diferencial CPIR/CPDR
+  em `tests/z80/smoke_test.cpp` (teste 6). `INIR`/`INDR`/`OTIR`/`OTDR` nunca entraram no escopo -- tocam
   porta de I/O a cada iteracao (`bus->in`/`bus->out`), que por definicao
   nunca pode ter ponteiro direto de RAM.
 

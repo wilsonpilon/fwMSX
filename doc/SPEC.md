@@ -241,9 +241,10 @@ sendo o "onde paramos" oficial.
      name_match.asm`, ambos Win64-only desde antes do nucleo Z80
      existir) -- ver `doc/RELEASE.md`, v1.4.1, e `doc/z80-core-spec.md`,
      secao 6 (Fase 3), para o relato completo.
-   - `CPIR`/`CPDR` em Assembly (nucleo Z80, Fase 3) -- so `LDIR`/`LDDR`
-     foram acelerados; as flags de `CPIR`/`CPDR` dependem do byte
-     comparado, tornando o corte de lote mais arriscado.
+   - ~~`CPIR`/`CPDR` em Assembly (nucleo Z80, Fase 3)~~ **Feito na v1.14.0**
+     (2026-10-05): a busca (`REPNE SCASB`, `block_ops.asm`) vai para o
+     Assembly; contagem, flags e PC saem do mesmo calculo do loop lento, a
+     partir do ultimo byte examinado. Ver `doc/z80-core-spec.md`, secao 6.
    - `MAP_GMASTER2`/`MAP_FMPAC`/SRAM persistente/`MAP_GUESS` no mapa de
      memoria (ver `doc/memory-map-spec.md`, secao 6) -- dependem de
      som/save-state, que ainda nao existem.

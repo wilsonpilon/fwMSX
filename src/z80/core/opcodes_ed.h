@@ -329,7 +329,38 @@ case Z80_CPI:
         ((state->af.b.hi ^ I ^ J.b.lo) & Z80_H_FLAG) | (state->bc.w ? Z80_P_FLAG : 0));
     break;
 
-case Z80_CPIR:
+case Z80_CPIR: {
+    // Caminho rapido (Assembly, z80_fast_block_search): so' a busca vai para
+    // o Assembly. Contagem, HL/BC/PC, ciclos e flags saem do mesmo calculo
+    // do loop lento abaixo, a partir do ultimo byte examinado. Mesma regra
+    // de orcamento e de BC==0 do LDIR (ver comentario la').
+    uint16_t remaining = state->bc.w;
+    uint16_t n = 0;
+    if (remaining != 0) {
+        n = remaining;
+        if (21 * (int)remaining > state->icount) n = (uint16_t)(state->icount / 21);
+    }
+    if (n > 0 && bus->ram_ptr) {
+        uint8_t *region = bus->ram_ptr(bus->ctx, state->hl.w, n);
+        if (region) {
+            const int k = z80_fast_block_search(region, n, state->af.b.hi, 0);
+            I = region[k - 1];
+            J.b.lo = (uint8_t)(state->af.b.hi - I);
+            state->hl.w = (uint16_t)(state->hl.w + k);
+            state->bc.w = (uint16_t)(remaining - k);
+            state->af.b.lo = (uint8_t)(
+                Z80_N_FLAG | (state->af.b.lo & Z80_C_FLAG) | g_z80_zs_table[J.b.lo] |
+                ((state->af.b.hi ^ I ^ J.b.lo) & Z80_H_FLAG) | (state->bc.w ? Z80_P_FLAG : 0));
+            if (J.b.lo == 0 || state->bc.w == 0) {
+                state->icount -= 21 * (k - 1) + 16;
+            } else {
+                state->icount -= 21 * k;
+                state->pc.w -= 2;
+            }
+            break;
+        }
+    }
+
     I = Z80_RD(state->hl.w++);
     J.b.lo = (uint8_t)(state->af.b.hi - I);
     if (--state->bc.w && J.b.lo) { state->icount -= 21; state->pc.w -= 2; } else state->icount -= 16;
@@ -337,6 +368,7 @@ case Z80_CPIR:
         Z80_N_FLAG | (state->af.b.lo & Z80_C_FLAG) | g_z80_zs_table[J.b.lo] |
         ((state->af.b.hi ^ I ^ J.b.lo) & Z80_H_FLAG) | (state->bc.w ? Z80_P_FLAG : 0));
     break;
+}
 
 case Z80_CPD:
     I = Z80_RD(state->hl.w--);
@@ -347,7 +379,38 @@ case Z80_CPD:
         ((state->af.b.hi ^ I ^ J.b.lo) & Z80_H_FLAG) | (state->bc.w ? Z80_P_FLAG : 0));
     break;
 
-case Z80_CPDR:
+case Z80_CPDR: {
+    // Mesma logica de CPIR, com HL decrescendo: o intervalo pedido a
+    // bus->ram_ptr() e' [hl-(n-1), hl], e a busca comeca no topo dele.
+    uint16_t remaining = state->bc.w;
+    uint16_t n = 0;
+    if (remaining != 0) {
+        n = remaining;
+        if (21 * (int)remaining > state->icount) n = (uint16_t)(state->icount / 21);
+    }
+    if (n > 0 && bus->ram_ptr) {
+        uint16_t base = (uint16_t)(state->hl.w - (n - 1));
+        uint8_t *region = bus->ram_ptr(bus->ctx, base, n);
+        if (region) {
+            uint8_t *top = region + (n - 1);
+            const int k = z80_fast_block_search(top, n, state->af.b.hi, 1);
+            I = top[-(k - 1)];
+            J.b.lo = (uint8_t)(state->af.b.hi - I);
+            state->hl.w = (uint16_t)(state->hl.w - k);
+            state->bc.w = (uint16_t)(remaining - k);
+            state->af.b.lo = (uint8_t)(
+                Z80_N_FLAG | (state->af.b.lo & Z80_C_FLAG) | g_z80_zs_table[J.b.lo] |
+                ((state->af.b.hi ^ I ^ J.b.lo) & Z80_H_FLAG) | (state->bc.w ? Z80_P_FLAG : 0));
+            if (J.b.lo == 0 || state->bc.w == 0) {
+                state->icount -= 21 * (k - 1) + 16;
+            } else {
+                state->icount -= 21 * k;
+                state->pc.w -= 2;
+            }
+            break;
+        }
+    }
+
     I = Z80_RD(state->hl.w--);
     J.b.lo = (uint8_t)(state->af.b.hi - I);
     if (--state->bc.w && J.b.lo) { state->icount -= 21; state->pc.w -= 2; } else state->icount -= 16;
@@ -355,3 +418,4 @@ case Z80_CPDR:
         Z80_N_FLAG | (state->af.b.lo & Z80_C_FLAG) | g_z80_zs_table[J.b.lo] |
         ((state->af.b.hi ^ I ^ J.b.lo) & Z80_H_FLAG) | (state->bc.w ? Z80_P_FLAG : 0));
     break;
+}

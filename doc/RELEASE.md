@@ -13,6 +13,32 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.14.0 -- "Hydlide: Busca Rapida" (2026-10-05)
+
+**Fase:** item menor adiado desde a Fase 3 do nucleo Z80 (`doc/SPEC.md`, secao 5.0): `CPIR`/`CPDR`
+em Assembly.
+
+### Destaques
+
+- **CPIR e CPDR** procuram o byte em Assembly (`REPNE SCASB`, `z80_fast_block_search()`), no
+  mesmo molde do LDIR/LDDR. A regra de flags (que dependia do valor do ultimo byte, o motivo do
+  adiamento) fica no C, com as mesmas expressoes do loop lento.
+- Caminho rapido so' quando o trecho e' RAM gravavel plana. Sobre ROM, o loop lento continua valendo.
+
+### Build usado para validar esta release
+
+- Windows: `z80test` com 300 checks passando; suite completa 12/12 (`ctest`).
+- Linux (WSL Ubuntu 26.04, SysV): `z80test` com 300 checks passando; suite completa 12/12.
+- Teste de sensibilidade: quebrar o tratamento de casamento no caminho rapido derruba 26 checks.
+
+### Limitacoes conhecidas
+
+- O caminho rapido nao cobre ROM (o `ram_ptr` so' devolve pedacos gravaveis), entao CPIR/CPDR sobre
+  ROM continuam no loop lento. Correto, so' sem o ganho de desempenho.
+- Mesmas limitacoes da v1.13.0 (Lode Runner + SCC, FM, SRAM, V9958).
+
+---
+
 ## v1.13.0 -- "F1 Spirit: Som do SCC" (2026-10-05)
 
 **Fase:** chip de som SCC (Konami), o proximo item de `doc/SPEC.md`, secao 5.0.

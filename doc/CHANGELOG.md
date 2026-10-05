@@ -7,6 +7,25 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.14.0] - 2026-10-05 - "Hydlide: Busca Rapida"
+
+**CPIR e CPDR ganham caminho rapido em Assembly**, no mesmo molde do LDIR/LDDR. Ver
+[doc/z80-core-spec.md](z80-core-spec.md), secao 6.
+
+### Adicionado
+- `z80_fast_block_search()` (`src/z80/asm/block_ops.asm`, dual-ABI Win64/SysV): a busca do byte
+  em `REPNE SCASB`, para frente (CPIR) ou para tras (CPDR).
+- Caminho rapido de CPIR/CPDR em `opcodes_ed.h`: so' a busca vai para o Assembly. Contagem, HL/BC,
+  PC, ciclos e flags saem das mesmas expressoes do loop lento, a partir do ultimo byte examinado.
+- Teste diferencial CPIR/CPDR em `tests/z80/smoke_test.cpp` (teste 6): 12 casos fixos e 120 aleatorios,
+  com casamento e sem casamento, orcamento grande e pequeno, nos dois sentidos. Comparam registradores,
+  flags e a RAM inteira contra o loop lento.
+
+### Verificado
+- Teste de sensibilidade: quebrar o tratamento de casamento no caminho rapido derruba 26 checks.
+- `z80test`: 300 checks passam no Windows e no Linux (SysV).
+- Suite completa: 12/12 suites nas duas plataformas.
+
 ## [1.13.0] - 2026-10-05 - "F1 Spirit: Som do SCC"
 
 **O SCC toca**: cartuchos Konami5 e Gen8 que ligam o chip de som SCC agora tocam a trilha.

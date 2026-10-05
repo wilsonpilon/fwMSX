@@ -90,3 +90,56 @@ z80_fast_block_move:
     pop rsi
     pop rdi
     ret
+
+; ---------------------------------------------------------------------------
+; Busca de byte para CPIR/CPDR (Fase 3, nucleo Z80) -- design proprio.
+;
+; int z80_fast_block_search(const uint8_t *p, uint16_t len, uint8_t value,
+;                           int reverse);
+;
+; Procura `value` nos `len` bytes a partir de `p`: reverse == 0 (CPIR) anda
+; para cima, reverse != 0 (CPDR) anda para baixo -- por isso, no caso
+; reverse!=0, `p` aponta para o ULTIMO byte da regiao, mesma convencao de
+; z80_fast_block_move(). Devolve quantos bytes foram examinados (1..len, ou
+; 0 se len == 0): o ultimo examinado e' o que casou, ou o ultimo da regiao
+; se nao houve casamento. Quem chama calcula as flags a partir desse byte.
+;
+; Usa REPNE SCASB, que para no primeiro casamento; DF e' sempre restaurado
+; para 0 antes de retornar, como em z80_fast_block_move().
+; ---------------------------------------------------------------------------
+
+    global z80_fast_block_search
+
+z80_fast_block_search:
+%ifidn __OUTPUT_FORMAT__, win64
+    ; ABI Win64: RCX=p, RDX=len (16 bits uteis em DX), R8B=value, R9D=reverse
+    push rdi
+    mov rdi, rcx
+    movzx ecx, dx        ; ecx = len
+    movzx eax, r8b       ; al = value
+    mov r10d, r9d        ; r10d = reverse
+%else
+    ; ABI SysV AMD64: RDI=p, RSI=len (SI), DL=value, ECX=reverse
+    mov r10d, ecx        ; r10d = reverse (lido ANTES de sobrescrever ECX com o len)
+    movzx ecx, si       ; ecx = len
+    movzx eax, dl        ; al = value
+%endif
+    mov r11d, ecx        ; r11d = len (guardado para calcular quantos foram examinados)
+
+    test r10d, r10d
+    jnz .backward
+    cld
+    jmp .scan
+.backward:
+    std
+.scan:
+    repne scasb          ; para no primeiro byte == al (ou quando ecx chega a 0)
+    cld
+
+    mov eax, r11d
+    sub eax, ecx         ; examinados = len - restantes
+
+%ifidn __OUTPUT_FORMAT__, win64
+    pop rdi
+%endif
+    ret

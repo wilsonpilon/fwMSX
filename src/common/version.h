@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 13
+#define FWMSX_VERSION_MINOR 14
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "F1 Spirit"
-#define FWMSX_SUBTITLE  "Som do SCC"
+#define FWMSX_CODENAME  "Hydlide"
+#define FWMSX_SUBTITLE  "Busca Rapida"
