@@ -13,6 +13,49 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.12.0 -- "Metal Gear: Entrada Direta" (2026-10-05)
+
+**Fase:** item menor adiado desde a v1.2.0 ("5.1 Visao registrada", `doc/SPEC.md`) -- sem
+recurso novo, so' uma mudanca de comportamento padrao agora que faz sentido.
+
+### Destaques
+
+- **`fwMSX.exe` sem argumento nenhum abre a maquina completa em janela** (os mesmos padroes de
+  `fwmsx --msx`: BIOS MSX1 ao lado do executavel, sem cartucho/disco). Ate aqui, sem argumentos,
+  o executavel imprimia so' o esqueleto dos quatro modulos (C++/C/Assembly/Fortran) -- fazia
+  sentido enquanto nao havia emulacao de verdade, mas deixou de fazer desde que o core existe
+  (Z80 desde a v1.3.0, VDP desde a v1.5.0, maquina completa desde a v1.9.0).
+- O esqueleto continua acessivel, so' que agora precisa de argumentos explicitos que nao batem
+  com nenhum modo conhecido (ex.: `fwMSX.exe NomeDoProduto 1 2 3`) -- preservado por ser o
+  historico do projeto, nao removido.
+
+### Exemplo rapido
+
+```powershell
+.\dist\fwMSX.exe                 # abre a maquina MSX1 numa janela (BASIC pronto)
+.\dist\fwMSX.exe fwMSX 2 0 5     # esqueleto multi-linguagem (historico)
+```
+
+### Build usado para validar esta release
+
+- Toolchain MSYS2 UCRT64: GCC/GNU Fortran 16.2.0, NASM 3.02, CMake 4.4.4, Ninja 1.13.2.
+- `.\build.ps1` gerou `dist\fwMSX.exe`, `dist\msxdisk.exe` e `dist\fwMSX-1.12.0.zip`.
+- `ctest`: 11 suites, todas passando (`z80_smoke`, `z80_debug_session`, `memmap_slots`,
+  `vdp_digital`, `ppi_keyboard`, `psg_sound`, `machine_frames`, `fdc_wd2793`, `vdp_msx2`,
+  `msx2_machine`, `audio_live`).
+- Verificado a mao: `dist\fwMSX.exe` sem argumentos abre a janela e fica rodando.
+
+### Correcoes no script de build
+
+- `build.ps1` agora para no primeiro erro do CMake (configuracao ou compilacao). Antes ele
+  imprimia "Pronto" e empacotava um zip mesmo quando a compilacao falhava.
+
+### Limitacoes conhecidas
+
+- As mesmas da v1.11.1.
+
+---
+
 ## v1.11.1 -- "Firebird: Arrumando a Casa" (2026-10-02)
 
 **Fase:** acabamento da v1.11.0 -- sem recurso grande, so' o que sobrou pelo caminho.

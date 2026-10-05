@@ -94,28 +94,17 @@ esta' numa copia antiga do `build.sh` (versoes anteriores usavam
 .\dist\fwMSX.exe
 ```
 
-Saida esperada (com os valores default de `src\common\version.h`):
+**Desde a v1.12.0**, sem nenhum argumento isso abre a maquina MSX1 completa
+numa janela (os mesmos padroes de `--msx`: BIOS `resource/fMSX/ROMs/MSX.ROM`
+ao lado do executavel, sem cartucho/disco) -- ver secao "Emulador MSX1 numa
+janela" abaixo e `doc/machine-spec.md`.
 
-```
-Copyright (c) 1972-2026 Cybernostra, Inc.
-fwMSX [v 1.1.1]
-----------------------------------------
-Loading module... CPP [v 1.1.1]
-Loading module...C [v 1.1.1]
-Loading module...Assembly [v 1.1.1]
-Loading module Fortran [v 1.1.1]
-----------------------------------------
-Assinaturas dos modulos:
-  C++       0x0001
-  C         0x0002
-  Assembly  0x0003
-  Fortran   0x0004
-```
+### Esqueleto multi-linguagem (historico)
 
-### Parametros opcionais
-
-`fwMSX.exe` aceita, na linha de comando, o nome do produto e a versao a
-serem exibidos (sobrescrevendo os defaults de `version.h`):
+O esqueleto original do projeto (um modulo "carregado" em cada uma das quatro
+linguagens -- C++, C, Assembly e Fortran) continua existindo, mas so e'
+alcancado com argumentos explicitos que nao batem com nenhum modo conhecido
+(nome do produto + versao, sobrescrevendo os defaults de `version.h`):
 
 ```powershell
 .\dist\fwMSX.exe fwMSX 2 0 5

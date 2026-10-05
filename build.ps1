@@ -31,9 +31,17 @@ $distDir  = Join-Path $root "dist"
 
 Write-Host "==> Configurando (CMake + Ninja)..." -ForegroundColor Cyan
 cmake -S $root -B $buildDir -G "Ninja"
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Configuracao do CMake falhou (codigo $LASTEXITCODE)."
+    exit $LASTEXITCODE
+}
 
 Write-Host "==> Compilando..." -ForegroundColor Cyan
 cmake --build $buildDir
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Compilacao falhou (codigo $LASTEXITCODE)."
+    exit $LASTEXITCODE
+}
 
 $exe = Join-Path $distDir "fwMSX.exe"
 if (-not (Test-Path $exe)) {

@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 11
-#define FWMSX_VERSION_PATCH 1
+#define FWMSX_VERSION_MINOR 12
+#define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Firebird"
-#define FWMSX_SUBTITLE  "Arrumando a Casa"
+#define FWMSX_CODENAME  "Metal Gear"
+#define FWMSX_SUBTITLE  "Entrada Direta"

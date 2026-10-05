@@ -247,9 +247,16 @@ sendo o "onde paramos" oficial.
    - `MAP_GMASTER2`/`MAP_FMPAC`/SRAM persistente/`MAP_GUESS` no mapa de
      memoria (ver `doc/memory-map-spec.md`, secao 6) -- dependem de
      som/save-state, que ainda nao existem.
-   - Decidir, quando VDP/PSG existirem, se `fwMSX.exe` sem argumentos
-     passa a abrir em modo GUI/maquina completa por padrao (visao
-     registrada na secao 5.1 abaixo, ainda nao implementada).
+   - ~~Decidir, quando VDP/PSG existirem, se `fwMSX.exe` sem argumentos
+     passa a abrir em modo GUI/maquina completa por padrao~~ **Feito na
+     v1.12.0** (2026-10-05) -- ver secao 5.1 abaixo. `fwMSX.exe` sem
+     nenhum argumento agora chama `machine::RunMachineCommand({}, argv[0])`
+     direto (os mesmos padroes de `--msx`: BIOS MSX1 ao lado do
+     executavel, sem cartucho/disco, janela aberta). O esqueleto dos
+     quatro modulos (C++/C/Assembly/Fortran) continua alcancavel, mas so'
+     com argumentos explicitos que nao batem com nenhum modo conhecido
+     (ex.: `fwMSX.exe NomeDoProduto 1 2 3`) -- preservado por ser o
+     historico do projeto, nao removido.
    - ~~PPI/teclado (portas `A8h`-`ABh`)~~ **Feito na v1.7.0**
      (2026-10-01) -- ver `doc/ppi-spec.md`. O achado da Fase 1 do VDP
      ("a BIOS fica presa esperando o PPI") estava *incompleto*: faltavam
@@ -287,6 +294,12 @@ Fase 5c):
   **nao faz sentido abrir uma tela de emulador que ainda nao emula nada**,
   entao essa mudanca de comportamento padrao só acontece quando o core de
   emulacao existir.
+  **Implementado na v1.12.0** (2026-10-05): o core de emulacao (Z80, mapa
+  de memoria, VDP, PSG, PPI/teclado, disco) ja existe de sobra, entao
+  `fwMSX.exe` sem argumento nenhum agora abre a maquina completa em
+  janela (`main()` chama `machine::RunMachineCommand({}, argv[0])` antes
+  de qualquer outra checagem de modo) -- mudanca de uma linha de
+  comportamento, nao de codigo novo, ja que `--msx` ja cobria tudo.
 - **Implementado em 2026-09-29 (v1.2.0)**: `fwMSX.exe` chama o `msxdisk`
   embutido via `fwmsx --msxdisk <resto dos argumentos>`, repassando para
   `msxdisk::RunEntryPoint()` (`src/msxdisk/entry.{h,cpp}`) -- a mesma

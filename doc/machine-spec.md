@@ -8,6 +8,11 @@ Estado: **concluido em 2026-10-02** para MSX1 (SCREEN 0/1/2 com sprites):
 `fwmsx --msx` abre uma janela com a BIOS real rodando em tempo real, teclado
 do host e cartucho opcional. Ver a secao 5 para o que falta.
 
+**Desde a v1.12.0 (2026-10-05)**: `fwMSX.exe` **sem argumento nenhum** chama
+isto direto, com todos os padroes (sem `--cart`/`--disk`) -- ver
+`doc/SPEC.md`, secao 5.1. `fwmsx --msx` continua existindo igual, para quem
+quer passar opcoes.
+
 ## 1. Uso
 
 ```

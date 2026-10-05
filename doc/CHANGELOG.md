@@ -7,6 +7,24 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.12.0] - 2026-10-05 - "Metal Gear: Entrada Direta"
+
+Versao pequena: fecha uma decisao de comportamento registrada desde a v1.2.0.
+
+### Alterado
+- **`fwMSX.exe` sem argumento nenhum agora abre a maquina completa em janela**, com os mesmos
+  padroes de `--msx` (BIOS MSX1 ao lado do executavel, sem cartucho/disco). Antes, sem
+  argumentos, imprimia o esqueleto dos quatro modulos (C++/C/Assembly/Fortran) -- decisao
+  registrada em `doc/SPEC.md`, secao 5.1 ("sem argumentos deve abrir em GUI por padrao, uma
+  vez que exista emulacao de verdade"), adiada ate agora por nao fazer sentido antes do core
+  existir. O esqueleto continua alcancavel com argumentos explicitos que nao batem com nenhum
+  modo conhecido (ex.: `fwMSX.exe NomeDoProduto 1 2 3`), preservado por ser o historico do
+  projeto.
+
+### Corrigido
+- `build.ps1` para no primeiro erro do CMake (configuracao ou compilacao). Antes imprimia
+  "Pronto" e empacotava o zip mesmo com a compilacao falhando.
+
 ## [1.11.1] - 2026-10-02 - "Firebird: Arrumando a Casa"
 
 Versao pequena de acabamento sobre a 1.11.0.

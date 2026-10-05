@@ -3,7 +3,15 @@
 //
 // Created by barney on 27/09/2026.
 //
-// Este e o "main" do sistema. Ele:
+// Este e o "main" do sistema.
+//
+// Sem argumento nenhum, abre a maquina MSX1 completa em janela (os mesmos
+// padroes de "--msx" -- ver doc/SPEC.md, secao 5.1, decisao registrada em
+// 2026-09-29 e implementada quando o core de emulacao passou a existir de
+// verdade).
+//
+// Com argumentos que nao batem com nenhum modo conhecido (ex.:
+// "fwMSX.exe NomeDoProduto 1 2 3"), cai no esqueleto historico do projeto:
 //   1. Imprime o aviso de copyright;
 //   2. Le (ou assume os valores padrao de version.h para) o nome do
 //      produto e a versao (major.minor.patch), recebidos como parametros
@@ -61,6 +69,16 @@ void print_signature(const char* label, std::uint16_t signature) {
 } // namespace
 
 int main(int argc, char* argv[]) {
+    // Sem argumento nenhum, com o core de emulacao (Z80+VDP+PSG+mapa de
+    // memoria+maquina) ja existindo de verdade, abre a maquina completa em
+    // janela com os padroes de "--msx" (BIOS MSX1 ao lado do executavel,
+    // sem cartucho/disco) -- decisao registrada em doc/SPEC.md, secao 5.1.
+    // O esqueleto dos quatro modulos (C++/C/Assembly/Fortran) abaixo so e'
+    // alcancado quando ha argumentos explicitos que nao sao um dos modos
+    // conhecidos (ex.: "fwMSX.exe NomeDoProduto 1 2 3").
+    if (argc == 1) {
+        return machine::RunMachineCommand({}, argv[0]);
+    }
     if (argc > 1 && std::string(argv[1]) == "--msxdisk") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return msxdisk::RunEntryPoint(tokens);

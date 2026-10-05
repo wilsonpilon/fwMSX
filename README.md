@@ -114,6 +114,18 @@ modo 2 e o **motor de comandos** (adaptado do `V9938.c` do fMSX), RAM de 128KB c
 **mapper** e **relogio RTC**. Jogos MSX2 como o **Firebird** rodam, e o BASIC
 desenha `LINE`/`CIRCLE`/`PAINT` em SCREEN 5. Ver [doc/msx2-spec.md](doc/msx2-spec.md).
 
+A v1.12.0 fechou uma decisao que vinha registrada desde a v1.2.0
+([doc/SPEC.md, secao 5.1](doc/SPEC.md)): com o core de emulacao ja existindo
+de verdade, `fwmsx` **sem argumento nenhum** agora abre a maquina completa em
+janela (os mesmos padroes de `--msx`), em vez do esqueleto dos quatro modulos.
+O esqueleto continua acessivel com argumentos explicitos que nao batem com
+nenhum modo conhecido, preservado por ser o historico do projeto.
+
+![fwMSX rodando o MSX BASIC numa janela](images/fwMSX-00.png)
+
+*A v1.12.0 abre direto aqui: sem argumentos, `fwMSX.exe` sobe a BIOS MSX1 real
+e mostra o prompt do MSX BASIC.*
+
 **Trabalho no core de emulacao continua em andamento** -- faltam SCREEN 9-12
 (V9958), os chips de som de cartucho (SCC/FM) e efeitos de rastreio no meio do
 quadro para uma maquina MSX completa. Ver
