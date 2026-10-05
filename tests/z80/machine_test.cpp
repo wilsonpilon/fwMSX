@@ -97,7 +97,7 @@ int main() {
         // --- 4. RenderFrame ------------------------------------------------------
         std::vector<uint32_t> rgba;
         m->RenderFrame(rgba);
-        check(rgba.size() == 256u * 192u, "RenderFrame: 256x192 pixels");
+        check(rgba.size() == 272u * 228u, "RenderFrame: 272x228 pixels (256x192 de tela + borda do fMSX)");
         const VdpState &v = m->vdp_state();
         const uint8_t bg = v.regs[7] & 0x0F;
         const uint32_t bg_px = 0xFF000000u | (static_cast<uint32_t>(v.palette_b[bg]) << 16) | (static_cast<uint32_t>(v.palette_g[bg]) << 8) | v.palette_r[bg];

@@ -72,8 +72,11 @@ public:
     // Ciclos de Z80 por quadro NTSC: 262 linhas x 228 ciclos (59.92 Hz).
     static constexpr int kFrameCycles = 262 * 228;
     static constexpr double kFrameRate = 3579545.0 / kFrameCycles;
-    static constexpr int kFrameWidth = 256;
-    static constexpr int kFrameHeight = 192;
+    // Quadro com borda, como o fMSX (WIDTH 272 x HEIGHT 228): 8 pixels de borda de
+    // cada lado; 18 linhas em cima e embaixo para 192 linhas (8 para 212). A borda
+    // tem a cor de fundo (R#7). MSX2 sai com 16 de borda por lado (pixels dobrados).
+    static constexpr int kFrameWidth = 272;
+    static constexpr int kFrameHeight = 228;
 
     // Devolve nullptr e preenche `error` se a BIOS/cartucho nao carregarem.
     static std::unique_ptr<Machine> Create(const MachineConfig &config, std::string &error);

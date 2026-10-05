@@ -328,8 +328,11 @@ a maquina ganha a interface de disquete e boota o MSX-DOS; **as gravacoes vao
 direto para o arquivo `.dsk`** (faca backup) -- ver [fdc-spec.md](fdc-spec.md).
 Joystick: setas + Z/Espaco (A) + X (B), ou gamepad. Teclado
 posicional (layout US): Alt esquerdo = GRAPH, Alt direito = CODE, End =
-SELECT, Pause = STOP, F11 = tela cheia; menu **Maquina** (Reset, Pausar),
-**Exibir** e **Som** (mudo/volume). Cartuchos de ROM plana ate' 32KB ou
+SELECT, Pause = STOP, F11 = tela cheia; menus **Arquivo**, **Maquina** (Reiniciar, Modelo MSX1/MSX2/MSX2+,
+Pausar), **Exibir**, **Som** (mudo/volume), **Disco**, **Cartucho**, **Joystick**,
+**Ferramentas** e **Ajuda**. Os itens marcados "(em breve)" ainda nao existem; o
+resto do menu do fMSX (trapacas, memoria, POKE, fita, DiskROM) esta listado ali.
+Trocar o modelo ou o cartucho reinicia a maquina. Cartuchos de ROM plana ate' 32KB ou
 MegaROM com mapper, no slot 1. Limites: so' SCREEN 0/1/2, sem joystick nem
 disco -- ver [machine-spec.md](machine-spec.md) e [audio-spec.md](audio-spec.md).
 

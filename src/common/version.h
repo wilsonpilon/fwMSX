@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 15
+#define FWMSX_VERSION_MINOR 16
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Metal Gear 2"
-#define FWMSX_SUBTITLE  "Cores YJK"
+#define FWMSX_CODENAME  "Aleste"
+#define FWMSX_SUBTITLE  "Janela e Video"

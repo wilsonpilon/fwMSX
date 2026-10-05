@@ -19,7 +19,7 @@ name mangling, calling conventions, linkedicao).
 
 ## Estado atual
 
-O **fwMSX ja e' um emulador de MSX** (MSX1 e MSX2): `fwMSX.exe` sem argumentos
+A janela tem menus do fMSX, zoom, proporcao, tela cheia e filtros de video (menu Video). O **fwMSX ja e' um emulador de MSX** (MSX1 e MSX2): `fwMSX.exe` sem argumentos
 abre a maquina numa janela (desde a v1.12.0). Estao prontos o Z80, o mapa de
 memoria com cartuchos e MegaROM, o VDP (TMS9918 e V9938, com comandos), teclado,
 PSG, SCC, disco (MSX-DOS 1.8) e joystick, e o MSX2+ (V9958, `--msx2p`, com YJK,

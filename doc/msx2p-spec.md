@@ -104,6 +104,16 @@ BASIC nao aceita o modo.
   escopo, como nos outros modos. A imagem e' montada por quadro.
 - **Cores YJK nao foram conferidas com um V9958 real**: a regra do azul vem de
   um turbo R segundo o openMSX, mas nao houve medicao propria.
-- **Sem jogo MSX2+ no repositorio** para demonstracao; a verificacao foi feita
-  com BASIC e com os testes unitarios.
+- **Jogos MSX2+ reais (validacao em 2026-10-05)**, em `resource/fmsxgo/media`:
+  - **Sonyc (Analogy) (1995)**, ROM ASCII8 de 1 MB: sobe no `--msx2p`, pergunta
+    "Easy or Normal" (E/N); com `E` passa a SCREEN 8 com R#25 = `08h` (YJK). A tela
+    de titulo ("ANALOGY presents") sai com cores naturais, o que indica que a
+    decodificacao YJK esta correta com dados reais. O jogo avisa "FM not found" e
+    "R800 not found" e segue na versao Z80: esta maquina nao tem FM.
+  - **Mega Chase - Shadowfax (2026)**, disco de 720KB montado com `--disk-ro`: inicia
+    a partir do disco, liga YJK com HScroll512 (R#25 = `09h`) e faz rolagem horizontal
+    real (R#26/R#27 mudam a cada quadro). O titulo "PUSH FIRE" aparece nitido. A
+    arte do titulo ocupa pouca area da tela e a tecla de espaco nao saiu do titulo,
+    entao o jogo em si nao foi validado. A rolagem com HScroll512 ainda precisa de
+    conferencia visual contra um V9958 real.
 - **Atributo de 10 e 11** nao e' distinguido, como no fMSX.

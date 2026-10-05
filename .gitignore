@@ -164,6 +164,8 @@ dkms.conf
 /dist/machinetest.exe
 /dist/audiotest.exe
 /dist/scctest.exe
+/dist/videofiltertest.exe
+/dist/videofiltertest
 /dist/scctest
 /dist/fdctest.exe
 /dist/vdp2test.exe

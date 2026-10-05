@@ -191,6 +191,17 @@ acompanhamento manual do autor a cada build):
 
 ### 5.0 Proximos passos (para retomar sem se perder -- atualizado na v1.15.0, 2026-10-05)
 
+**Situacao em 2026-10-05 (depois da v1.15.0, sem commit):**
+
+- [x] Maquina MSX1 e MSX2 completas; MSX2+ (V9958) com YJK/YAE, scroll e mascara da esquerda (v1.15.0).
+- [x] Janela: quadro com borda do fMSX, menus do fMSX, troca de modelo e cartucho, tema e fonte, zoom 2x-6x, proporcao 4:3/16:9, tela cheia com menu oculto, filtros de video (interpolacao, scanlines, cor).
+- [ ] Validar na tela: menus, tela cheia, 4:3, 16:9 e filtros de video (a automacao nao opera a janela).
+- [ ] Itens "(em breve)" do menu: salvar estado, memoria, PAL, trapacas, POKE, DiskROM, fita, MIDI, gravacao de som, novo disco, slot 2, dispositivos de entrada, mostrar sprites.
+- [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada ainda nao diagnosticada; Mega Chase so' validado ate o titulo; F-1 Spirit 3D (3 discos) validado ate o titulo com discos A e B, troca pela janela nao testada.
+- [ ] Licenca: README e LICENSE-THIRD-PARTY dizem que a autorizacao do fMSX e so' para estudo. Confirmar por escrito antes de mudar esse texto.
+- [ ] Chip FM (OPLL/FMPAC); efeitos de rastreio no meio do quadro; SRAM e save-state.
+- [ ] Cores YJK do V9958 nao conferidas com hardware real.
+
 O trabalho no core de emulacao segue em andamento; esta secao continua
 sendo o "onde paramos" oficial.
 

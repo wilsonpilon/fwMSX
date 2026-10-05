@@ -7,6 +7,31 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.16.0] - 2026-10-05 - "Aleste: Janela e Video"
+
+Janela com menus do fMSX, zoom, proporcao, tela cheia e filtros de video.
+
+### Adicionado
+- **Quadro com borda, como o fMSX**: 272x228 no MSX1 e 544x228 no MSX2; borda de 18 linhas (8 em 212 linhas) e cor de fundo. As teclas de funcao e o texto do BASIC deixam de encostar na borda.
+- **Menus do fMSX na janela**: Arquivo, Maquina (Modelo MSX1/MSX2/MSX2+, Reiniciar, Pausar), Exibir, Video, Som, Disco, Cartucho, Joystick, Ferramentas, Configuracoes e Ajuda. Os itens sem implementacao aparecem desabilitados com "(em breve)".
+- **Trocar modelo ou cartucho** recria a maquina (os discos montados entram de novo).
+- **Configuracoes -> Interface**: tema escuro ou claro, tamanho da letra (Normal, Grande, Muito grande; padrao Grande) e borda e sombra da tela.
+- **Exibir -> Janela**: zoom 2x, 3x, 4x e 6x (padrao 3x), com a janela redimensionada. Janela inicial limitada a area util do monitor.
+- **Exibir -> Proporcao**: Original (pixels), 4:3 corrigido e 16:9 esticado.
+- **Tela cheia com menu oculto**: a barra aparece com o mouse no topo ou com um submenu aberto.
+- **Video -> Interpolate Video**: Nearest Neighbor, Linear Scaling, EPX Scale 2x, Eagle Algorithm, Scale 2x Algorithm e 2xSal Algorithm (2xSal e uma aproximacao).
+- **Video -> Scanlines**: TV, LCD e LCD Raster.
+- **Video -> Color Filter**: Monochrome, Sepia, Green CRT, Amber CRT, CMY Raster e RGB Raster.
+- Dialogo de abertura de arquivo generico (Windows), usado para cartuchos.
+- Testes: `video_filters` (filtros de video) e a geometria do quadro em `machine_test` e `msx2_test`.
+
+### Corrigido
+- Janela inicial centralizada no topo da area util, para a barra de titulo nao ficar fora da tela.
+
+### Pendente (proximas versoes)
+- Itens "(em breve)" do menu: salvar estado, memoria, PAL, trapacas, POKE, DiskROM, fita, MIDI, gravacao de som, novo disco, slot 2, dispositivos de entrada e mostrar sprites.
+- Validacao visual dos menus, tela cheia, 4:3, 16:9 e dos filtros de video (a automacao nao consegue operar a janela).
+
 ## [1.15.0] - 2026-10-05 - "Metal Gear 2: Cores YJK"
 
 **Agora e' um MSX2+**: `fwmsx --msx --msx2p` roda a BIOS MSX2+ real (MSX BASIC 3.0) com o VDP

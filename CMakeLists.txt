@@ -150,7 +150,7 @@ if (FWMSX_MSXDISK_GUI)
     find_package(OpenGL REQUIRED)
 
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app.cpp src/msxdisk/gui/style.cpp src/msxdisk/gui/file_dialog.cpp)
-    set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window.cpp)
+    set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window.cpp src/machine/gui/video_filters.cpp)
 else ()
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app_stub.cpp)
     set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window_stub.cpp)
@@ -477,6 +477,11 @@ if (MINGW)
 endif ()
 
 add_test(NAME scc_sound COMMAND scctest)
+
+# videofiltertest: filtros de video da janela (interpolacao, scanlines, cor) -- sem janela.
+add_executable(videofiltertest tests/z80/video_filter_test.cpp src/machine/gui/video_filters.cpp)
+target_include_directories(videofiltertest PRIVATE src/machine/gui)
+add_test(NAME video_filters COMMAND videofiltertest)
 
 # --- fwMSX: esqueleto multi-linguagem do emulador (Fase 0) ---
 #

@@ -12,7 +12,10 @@
 
 #include <GLFW/glfw3.h>
 #include "../../audio/audio_output.h"
+#include "../../common/version.h"
 #include "../../msxdisk/gui/file_dialog.h"
+#include "../../msxdisk/gui/style.h"
+#include "video_filters.h"
 #include "../../psg/cpp/psg_device.h"
 #include "../../psg/core/psg_state.h"
 #include <imgui.h>
@@ -177,6 +180,14 @@ void ApplyKeyEvents(Machine &m, std::vector<std::string> &deferred) {
     }
 }
 
+// BIOS padrao de cada modelo, ao lado da BIOS atual (mesma pasta de ROMs).
+std::string BiosFor(const std::string &current_bios, Model model) {
+    const char *name = model == Model::MSX2P ? "MSX2P.ROM" : model == Model::MSX2 ? "MSX2.ROM" : "MSX.ROM";
+    const size_t slash = current_bios.find_last_of("/\\");
+    const std::string dir = slash == std::string::npos ? std::string() : current_bios.substr(0, slash + 1);
+    return dir + name;
+}
+
 } // namespace
 
 int RunEmulatorWindow(const WindowOptions &options) {
@@ -196,15 +207,23 @@ int RunEmulatorWindow(const WindowOptions &options) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
-    // Janela inicial: 3x o MSX1 (768x576) ou 2x o MSX2 (512x384 -> 1024x768).
-    const int start_w = machine->is_msx2() ? 1024 : Machine::kFrameWidth * 3;
-    const int start_h = (machine->is_msx2() ? 768 : Machine::kFrameHeight * 3) + 20;
+    // Janela inicial: 3x o MSX1 ou 2x o MSX2 (quadro com borda, 544x228 com linhas dobradas).
+    // Janela inicial em 3x, sem passar da area util do monitor principal.
+    int start_w = std::max(980, machine->is_msx2() ? 544 * 3 : Machine::kFrameWidth * 3);
+    int start_h = (machine->is_msx2() ? Machine::kFrameHeight * 2 * 3 : Machine::kFrameHeight * 3) + 40;
+    int work_x = 0, work_y = 0, work_w = 0, work_h = 0;
+    glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &work_x, &work_y, &work_w, &work_h);
+    if (work_w > 0 && work_h > 0) {
+        start_w = std::min(start_w, work_w * 95 / 100);
+        start_h = std::min(start_h, work_h * 80 / 100); // deixa espaco para a barra de titulo
+    }
     GLFWwindow *window = glfwCreateWindow(start_w, start_h, "fwMSX", nullptr, nullptr);
     if (window == nullptr) {
         std::fprintf(stderr, "fwmsx: falha ao criar a janela (GLFW)\n");
         glfwTerminate();
         return 1;
     }
+    if (work_w > 0) glfwSetWindowPos(window, work_x + (work_w - start_w) / 2, work_y + 60); // espaco para a barra de titulo
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
@@ -217,7 +236,8 @@ int RunEmulatorWindow(const WindowOptions &options) {
     ImGui::CreateContext();
     ImGuiIO &io = ImGui::GetIO();
     io.IniFilename = nullptr; // sem imgui.ini solto na pasta de trabalho
-    ImGui::StyleColorsDark();
+    msxdisk::gui::LoadModernFont(io);
+    msxdisk::gui::ApplyModernStyle(true);
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
@@ -269,6 +289,71 @@ int RunEmulatorWindow(const WindowOptions &options) {
     double fps = 0.0;
     int exit_code = 0;
 
+    // Configuracao usada para criar a maquina atual: trocar modelo ou cartucho
+    // recria a maquina a partir dela (os discos montados entram de novo).
+    MachineConfig current = options.machine;
+    auto snapshot = [&]() {
+        MachineConfig next = current;
+        next.disk_a = machine->disk(0).loaded() ? machine->disk(0).path() : std::string();
+        next.disk_b = machine->disk(1).loaded() ? machine->disk(1).path() : std::string();
+        return next;
+    };
+    auto reboot = [&](const MachineConfig &next) {
+        std::string reboot_error;
+        std::unique_ptr<Machine> fresh = Machine::Create(next, reboot_error);
+        if (!fresh) {
+            disk_message = reboot_error;
+            return;
+        }
+        machine = std::move(fresh);
+        current = next;
+        machine->EnableLiveAudio(audio_ok);
+        disk_message.clear();
+    };
+    auto LoadCartridgeFromDialog = [&]() {
+        if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Abrir cartucho MSX", "Cartuchos MSX",
+                                                                  "*.rom;*.mx1;*.mx2;*.bin")) {
+            MachineConfig next = snapshot();
+            next.cart_path = *chosen;
+            next.cart_mapper = MEMMAP_MAPPER_NONE;
+            reboot(next);
+        }
+    };
+
+    // Interface (menu Configuracoes -> Interface): tema, tamanho da letra e moldura da tela.
+    int ui_theme = 0;      // 0 = escuro, 1 = claro
+    int ui_font = 1;       // 0 = normal, 1 = grande (padrao), 2 = muito grande
+    bool ui_frame = true; // borda e sombra em volta da tela do MSX
+    int applied_theme = 0;
+    int applied_font = 0;
+    static const float kFontScales[3] = {1.0f, 1.25f, 1.5f};
+    // Exibicao: zoom da janela (1x, 1.5x, 2x, 3x), proporcao da imagem e menu oculto em tela cheia.
+    static const float kZooms[4] = {2.0f, 3.0f, 4.0f, 6.0f};
+    static const char *kZoomNames[4] = {"2x", "3x", "4x", "6x"};
+    // Filtros de video (menu Video): interpolacao, scanlines e filtro de cor.
+    VideoFilterOptions video_opts;
+    std::vector<uint32_t> filtered;
+    int tex_w = frame_size.width;
+    int tex_h = frame_size.height;
+    int zoom_index = 1; // 3x
+    int aspect_mode = 0; // 0 = original (pixels), 1 = 4:3 corrigido, 2 = 16:9 esticado
+    bool resize_pending = false;
+    bool menu_visible = true;
+    // Tamanho da imagem em pixels de tela, antes do zoom, para a proporcao escolhida.
+    auto display_size = [&](float &w, float &h) {
+        h = static_cast<float>(frame_size.height * frame_size.y_scale);
+        w = static_cast<float>(frame_size.width);
+        if (aspect_mode == 1) w = h * 4.0f / 3.0f;
+        else if (aspect_mode == 2) w = h * 16.0f / 9.0f;
+    };
+    // Ajusta a janela para o zoom escolhido (a altura inclui a barra de menu).
+    auto apply_window_zoom = [&]() {
+        float w = 0.0f, h = 0.0f;
+        display_size(w, h);
+        const int cw = static_cast<int>(std::lround(w * kZooms[zoom_index]));
+        const int ch = static_cast<int>(std::lround(h * kZooms[zoom_index] + ImGui::GetFrameHeight()));
+        glfwSetWindowSize(window, cw, ch);
+    };
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
 
@@ -284,6 +369,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 glfwSetWindowMonitor(window, nullptr, saved_x, saved_y, saved_w, saved_h, 0);
             }
             fullscreen = !fullscreen;
+        }
+        if (resize_pending && !fullscreen) {
+            apply_window_zoom();
+            resize_pending = false;
         }
 
         // Emulacao em tempo real: quantos quadros de 1/59.92 s ja' passaram.
@@ -327,10 +416,19 @@ int RunEmulatorWindow(const WindowOptions &options) {
         if (ran > 0) {
             const FrameSize fsz = machine->RenderFrame(pixels);
             glBindTexture(GL_TEXTURE_2D, texture);
-            if (fsz.width != frame_size.width || fsz.height != frame_size.height) {
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, fsz.width, fsz.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+            const std::vector<uint32_t> *upload = &pixels;
+            int up_w = fsz.width;
+            int up_h = fsz.height;
+            if (VideoFiltersActive(video_opts)) {
+                ApplyVideoFilters(pixels, fsz.width, fsz.height, video_opts, filtered, up_w, up_h);
+                upload = &filtered;
+            }
+            if (up_w != tex_w || up_h != tex_h) {
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, up_w, up_h, 0, GL_RGBA, GL_UNSIGNED_BYTE, upload->data());
+                tex_w = up_w;
+                tex_h = up_h;
             } else {
-                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, fsz.width, fsz.height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, up_w, up_h, GL_RGBA, GL_UNSIGNED_BYTE, upload->data());
             }
             frame_size = fsz;
         }
@@ -349,25 +447,127 @@ int RunEmulatorWindow(const WindowOptions &options) {
             glfwSetWindowShouldClose(window, GLFW_TRUE);
         }
 
+        if (ui_theme != applied_theme) {
+            msxdisk::gui::ApplyModernStyle(ui_theme == 0);
+            applied_theme = ui_theme;
+        }
+        if (ui_font != applied_font) {
+            ImGui::GetIO().FontGlobalScale = kFontScales[ui_font];
+            applied_font = ui_font;
+        }
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        if (ImGui::BeginMainMenuBar()) {
+        {
+            const ImGuiIO &io_now = ImGui::GetIO();
+            const float bar_h = ImGui::GetFrameHeight();
+            const bool near_top = io_now.MousePos.y >= 0.0f && io_now.MousePos.y < (menu_visible ? bar_h + 8.0f : 6.0f);
+            const bool submenu_open = ImGui::IsPopupOpen("", ImGuiPopupFlags_AnyPopupId);
+            menu_visible = !fullscreen || near_top || submenu_open;
+        }
+        if (menu_visible && ImGui::BeginMainMenuBar()) {
+            if (ImGui::BeginMenu("Arquivo")) {
+                if (ImGui::MenuItem("Carregar cartucho...")) LoadCartridgeFromDialog();
+                ImGui::MenuItem("Salvar estado (em breve)", nullptr, false, false);
+                ImGui::Separator();
+                if (ImGui::MenuItem("Sair")) glfwSetWindowShouldClose(window, GLFW_TRUE);
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Maquina")) {
-                if (ImGui::MenuItem("Reset")) machine->Reset();
+                if (ImGui::MenuItem("Reiniciar")) machine->Reset();
+                if (ImGui::BeginMenu("Modelo")) {
+                    const struct {
+                        Model model;
+                        const char *label;
+                    } models[] = {{Model::MSX1, "MSX1 (TMS9918)"}, {Model::MSX2, "MSX2 (V9938)"}, {Model::MSX2P, "MSX2+ (V9958)"}};
+                    for (const auto &entry : models) {
+                        if (ImGui::MenuItem(entry.label, nullptr, current.model == entry.model) && current.model != entry.model) {
+                            MachineConfig next = snapshot();
+                            next.model = entry.model;
+                            next.bios_path = BiosFor(current.bios_path, entry.model);
+                            next.ext_rom_path.clear();
+                            reboot(next);
+                        }
+                    }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Trocar o modelo reinicia a maquina.");
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Video")) {
+                    ImGui::MenuItem("NTSC (EUA/Japao)", nullptr, true);
+                    ImGui::MenuItem("PAL (Europa) (em breve)", nullptr, false, false);
+                    ImGui::EndMenu();
+                }
+                ImGui::MenuItem("Memoria principal (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Memoria de video (em breve)", nullptr, false, false);
+                ImGui::Separator();
                 if (ImGui::MenuItem("Pausar", nullptr, &paused) && paused) audio_out.Flush();
                 if (ImGui::MenuItem("Soltar todas as teclas")) {
                     machine->ReleaseAllKeys();
                     deferred_releases.clear();
                 }
-                ImGui::Separator();
-                if (ImGui::MenuItem("Sair")) glfwSetWindowShouldClose(window, GLFW_TRUE);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Exibir")) {
-                ImGui::MenuItem("Escala inteira", nullptr, &integer_scale);
+                ImGui::TextDisabled("Janela");
+                for (int z = 0; z < 4; ++z) {
+                    if (ImGui::MenuItem(kZoomNames[z], nullptr, !fullscreen && zoom_index == z)) {
+                        zoom_index = z;
+                        if (fullscreen) g_input.toggle_fullscreen = true;
+                        resize_pending = true;
+                    }
+                }
+                ImGui::Separator();
                 if (ImGui::MenuItem("Tela cheia", "F11", fullscreen)) g_input.toggle_fullscreen = true;
+                ImGui::Separator();
+                ImGui::TextDisabled("Proporcao");
+                if (ImGui::MenuItem("Original (pixels)", nullptr, aspect_mode == 0)) aspect_mode = 0;
+                if (ImGui::MenuItem("4:3 (corrigido)", nullptr, aspect_mode == 1)) aspect_mode = 1;
+                if (ImGui::MenuItem("16:9 (esticado)", nullptr, aspect_mode == 2)) aspect_mode = 2;
+                ImGui::Separator();
+                ImGui::MenuItem("Escala inteira (so' em Original)", nullptr, &integer_scale);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Video")) {
+                if (ImGui::BeginMenu("Interpolate Video")) {
+                    const struct {
+                        Interpolation mode;
+                        const char *label;
+                    } modes[] = {{Interpolation::Nearest, "Nearest Neighbor"},
+                                 {Interpolation::Linear, "Linear Scaling"},
+                                 {Interpolation::Epx, "EPX Scale 2x"},
+                                 {Interpolation::Eagle, "Eagle Algorithm"},
+                                 {Interpolation::Scale2x, "Scale 2x Algorithm"},
+                                 {Interpolation::Sal2x, "2xSal Algorithm"}};
+                    for (const auto &m : modes) {
+                        if (ImGui::MenuItem(m.label, nullptr, video_opts.interp == m.mode)) video_opts.interp = m.mode;
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Scanlines")) {
+                    if (ImGui::MenuItem("Nenhum", nullptr, video_opts.scanlines == Scanlines::None)) video_opts.scanlines = Scanlines::None;
+                    if (ImGui::MenuItem("TV", nullptr, video_opts.scanlines == Scanlines::Tv)) video_opts.scanlines = Scanlines::Tv;
+                    if (ImGui::MenuItem("LCD", nullptr, video_opts.scanlines == Scanlines::Lcd)) video_opts.scanlines = Scanlines::Lcd;
+                    if (ImGui::MenuItem("LCD Raster", nullptr, video_opts.scanlines == Scanlines::LcdRaster)) video_opts.scanlines = Scanlines::LcdRaster;
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Color Filter")) {
+                    const struct {
+                        ColorFilter filter;
+                        const char *label;
+                    } filters[] = {{ColorFilter::None, "Nenhum"},
+                                   {ColorFilter::Monochrome, "Monochrome"},
+                                   {ColorFilter::Sepia, "Sepia"},
+                                   {ColorFilter::GreenCrt, "Green CRT"},
+                                   {ColorFilter::AmberCrt, "Amber CRT"},
+                                   {ColorFilter::CmyRaster, "CMY Raster"},
+                                   {ColorFilter::RgbRaster, "RGB Raster"}};
+                    for (const auto &f : filters) {
+                        if (ImGui::MenuItem(f.label, nullptr, video_opts.color == f.filter)) video_opts.color = f.filter;
+                    }
+                    ImGui::EndMenu();
+                }
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Som")) {
@@ -380,12 +580,14 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     changed |= ImGui::SliderFloat("Volume", &volume, 0.0f, 1.0f, "%.2f");
                     if (changed) audio_out.SetGain(muted ? 0.0f : volume);
                 }
+                ImGui::Separator();
+                ImGui::MenuItem("Gravar trilha de som (em breve)", nullptr, false, false);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Disco")) {
                 if (!machine->has_disk_interface()) {
                     ImGui::TextDisabled("Sem interface de disquete.");
-                    ImGui::TextDisabled("Inicie com --disk <arq.dsk> ou --disk-interface.");
+                    ImGui::TextDisabled("Use --disk <arq.dsk> ao iniciar, ou troque o modelo.");
                 } else {
                     for (int d = 0; d < 2; ++d) {
                         const char letter = static_cast<char>('A' + d);
@@ -407,8 +609,24 @@ int RunEmulatorWindow(const WindowOptions &options) {
                         ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
                     }
                     ImGui::Separator();
+                    ImGui::MenuItem("Novo disco... (em breve)", nullptr, false, false);
                     ImGui::TextDisabled("As gravacoes do MSX-DOS vao direto para o arquivo.");
                 }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Cartucho")) {
+                ImGui::Text("Slot 1: %s", current.cart_path.empty() ? "(vazio)" : current.cart_path.c_str());
+                if (!machine->cart_info().empty()) ImGui::TextDisabled("%s", machine->cart_info().c_str());
+                ImGui::Separator();
+                if (ImGui::MenuItem("Inserir cartucho...")) LoadCartridgeFromDialog();
+                if (ImGui::MenuItem("Retirar cartucho", nullptr, false, !current.cart_path.empty())) {
+                    MachineConfig next = snapshot();
+                    next.cart_path.clear();
+                    next.cart_mapper = MEMMAP_MAPPER_NONE;
+                    reboot(next);
+                }
+                ImGui::Separator();
+                ImGui::MenuItem("Slot 2 (em breve)", nullptr, false, false);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Joystick")) {
@@ -418,8 +636,40 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Ferramentas")) {
+                ImGui::MenuItem("Dispositivos de entrada (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Trapacas (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Buscar trapacas (em breve)", nullptr, false, false);
+                ImGui::Separator();
+                ImGui::MenuItem("Mostrar todos os sprites (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Patch da DiskROM (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Bateria MIDI (em breve)", nullptr, false, false);
+                ImGui::Separator();
+                ImGui::MenuItem("POKE &HFFFF,&HAA (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Rebobinar fita (em breve)", nullptr, false, false);
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Configuracoes")) {
+                if (ImGui::BeginMenu("Interface")) {
+                    ImGui::TextDisabled("Tema");
+                    if (ImGui::MenuItem("Escuro", nullptr, ui_theme == 0)) ui_theme = 0;
+                    if (ImGui::MenuItem("Claro", nullptr, ui_theme == 1)) ui_theme = 1;
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Tamanho da letra");
+                    if (ImGui::MenuItem("Normal", nullptr, ui_font == 0)) ui_font = 0;
+                    if (ImGui::MenuItem("Grande", nullptr, ui_font == 1)) ui_font = 1;
+                    if (ImGui::MenuItem("Muito grande", nullptr, ui_font == 2)) ui_font = 2;
+                    ImGui::Separator();
+                    ImGui::MenuItem("Borda e sombra da tela", nullptr, &ui_frame);
+                    ImGui::EndMenu();
+                }
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Ajuda")) {
                 ImGui::MenuItem("Teclado", nullptr, &show_keys);
+                ImGui::Separator();
+                ImGui::TextDisabled("fwMSX v%d.%d.%d (%s \"%s\")", FWMSX_VERSION_MAJOR, FWMSX_VERSION_MINOR,
+                                    FWMSX_VERSION_PATCH, FWMSX_CODENAME, FWMSX_SUBTITLE);
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();
@@ -436,14 +686,25 @@ int RunEmulatorWindow(const WindowOptions &options) {
                          ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoBackground);
         {
             const ImVec2 avail = ImGui::GetContentRegionAvail();
-            const float disp_w = static_cast<float>(frame_size.width);
-            const float disp_h = static_cast<float>(frame_size.height * frame_size.y_scale);
+            float disp_w = 0.0f, disp_h = 0.0f;
+            display_size(disp_w, disp_h);
             float scale = std::min(avail.x / disp_w, avail.y / disp_h);
-            if (integer_scale && scale >= 1.0f) scale = std::floor(scale);
+            if (aspect_mode == 0 && integer_scale && scale >= 1.0f) scale = std::floor(scale);
             if (scale < 0.1f) scale = 0.1f;
             const ImVec2 size(disp_w * scale, disp_h * scale);
             ImGui::SetCursorPos(ImVec2((avail.x - size.x) * 0.5f, (avail.y - size.y) * 0.5f));
+            const ImVec2 p0 = ImGui::GetCursorScreenPos();
+            const ImVec2 p1(p0.x + size.x, p0.y + size.y);
+            ImDrawList *dl = ImGui::GetWindowDrawList();
+            if (ui_frame) {
+                // Sombra deslocada, atras da imagem.
+                dl->AddRectFilled(ImVec2(p0.x + 6, p0.y + 8), ImVec2(p1.x + 6, p1.y + 8),
+                                  IM_COL32(0, 0, 0, 120), 8.0f);
+            }
             ImGui::Image(static_cast<ImTextureID>(texture), size);
+            if (ui_frame) {
+                dl->AddRect(ImVec2(p0.x - 3, p0.y - 3), ImVec2(p1.x + 3, p1.y + 3), IM_COL32(110, 110, 125, 255), 6.0f, 0, 2.0f);
+            }
         }
         ImGui::End();
         ImGui::PopStyleVar(2);
@@ -467,7 +728,9 @@ int RunEmulatorWindow(const WindowOptions &options) {
         int display_w = 0, display_h = 0;
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
-        glClearColor(0.05f, 0.05f, 0.07f, 1.0f);
+        float clear_r = 0.05f, clear_g = 0.05f, clear_b = 0.07f;
+        msxdisk::gui::ModernClearColor(ui_theme == 0, &clear_r, &clear_g, &clear_b);
+        glClearColor(clear_r, clear_g, clear_b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         glfwSwapBuffers(window);

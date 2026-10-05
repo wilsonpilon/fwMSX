@@ -87,8 +87,11 @@ SELECT, Pause = STOP**; F1-F5; teclado numerico = teclado numerico do MSX.
 ## 4a. MSX2
 
 `--msx2` liga o MSX2: VDP V9938, RAM de 128KB com mapper, RTC e sub-ROM -- ver
-[msx2-spec.md](msx2-spec.md). A janela se adapta ao tamanho da imagem (512x192 ou
-512x212, linhas dobradas na exibicao).
+[msx2-spec.md](msx2-spec.md). Menu **Video** (janela): *Interpolate Video* (Nearest Neighbor, Linear Scaling, EPX Scale 2x, Eagle Algorithm, Scale 2x Algorithm, 2xSal Algorithm), *Scanlines* (TV, LCD, LCD Raster) e *Color Filter* (Monochrome, Sepia, Green CRT, Amber CRT, CMY Raster, RGB Raster). Escritos do zero a partir das descricoes publicas dos algoritmos, em `src/machine/gui/video_filters.cpp`; 2xSal e uma aproximacao. Testes em `tests/z80/video_filter_test.cpp` (CTest `video_filters`).
+
+O quadro sai com a borda do fMSX: 272x228 no MSX1 e 544x228 no
+MSX2 (512 de tela + 16 de borda de cada lado, linhas dobradas na exibicao). A
+borda superior/inferior e' de 18 linhas para 192 ou 8 para 212, e tem a cor de fundo.
 
 ## 4b. Jogos reais (verificacao manual)
 

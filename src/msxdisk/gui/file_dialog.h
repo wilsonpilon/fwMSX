@@ -23,4 +23,10 @@ std::optional<std::string> ShowOpenDskDialog(GLFWwindow *window);
 // usuario cancelar.
 std::optional<std::string> ShowSaveDskDialog(GLFWwindow *window, const std::string &initial_path);
 
+// Seletor generico: `title` na barra, `filter_name` e `patterns` (ex.: "*.rom;*.mx1")
+// para o filtro principal, alem de "Todos os arquivos". Devolve nullopt se cancelar
+// ou se a plataforma nao tem seletor nativo.
+std::optional<std::string> ShowOpenFileDialog(GLFWwindow *window, const std::string &title,
+                                              const std::string &filter_name, const std::string &patterns);
+
 } // namespace msxdisk::gui

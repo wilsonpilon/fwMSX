@@ -88,6 +88,32 @@ std::optional<std::string> ShowOpenDskDialog(GLFWwindow *window) {
     return std::nullopt;
 }
 
+std::optional<std::string> ShowOpenFileDialog(GLFWwindow *window, const std::string &title,
+                                              const std::string &filter_name, const std::string &patterns) {
+    CwdGuard guard;
+
+    wchar_t file_buf[MAX_PATH] = L"";
+    // Filtro no formato do GetOpenFileName: "nome\0padroes\0" pares, terminado em \0.
+    const std::wstring filter = Utf8ToWide(filter_name + " (" + patterns + ")") + std::wstring(1, L'\0') +
+                                Utf8ToWide(patterns) + std::wstring(1, L'\0') +
+                                L"Todos os arquivos (*.*)" + std::wstring(1, L'\0') + L"*.*" + std::wstring(1, L'\0');
+    const std::wstring title_wide = Utf8ToWide(title);
+
+    OPENFILENAMEW ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = (window != nullptr) ? glfwGetWin32Window(window) : nullptr;
+    ofn.lpstrFilter = filter.c_str();
+    ofn.lpstrFile = file_buf;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrTitle = title_wide.c_str();
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+    if (GetOpenFileNameW(&ofn)) {
+        return WideToUtf8(file_buf);
+    }
+    return std::nullopt;
+}
+
 std::optional<std::string> ShowSaveDskDialog(GLFWwindow *window, const std::string &initial_path) {
     CwdGuard guard;
 
@@ -124,6 +150,10 @@ namespace msxdisk::gui {
 std::optional<std::string> ShowOpenDskDialog(GLFWwindow *) { return std::nullopt; }
 
 std::optional<std::string> ShowSaveDskDialog(GLFWwindow *, const std::string &) { return std::nullopt; }
+
+std::optional<std::string> ShowOpenFileDialog(GLFWwindow *, const std::string &, const std::string &, const std::string &) {
+    return std::nullopt;
+}
 
 } // namespace msxdisk::gui
 

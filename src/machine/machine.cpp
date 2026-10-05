@@ -303,36 +303,40 @@ FrameSize Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
     const uint32_t border_px = PackRgba(border.r, border.g, border.b);
     const int width = vdp_render_width(&v);
     const int lines = vdp_render_height(&v);
+    // Borda vertical como RefreshBorder() do fMSX: FirstLine = 18 (192 linhas) ou 8 (212).
+    const int top = lines == 212 ? 8 : 18;
     std::vector<VdpRgb888> row(VDP_RENDER_MAX_WIDTH);
 
     FrameSize size;
+    size.height = kFrameHeight;
     if (model_ == Model::MSX1) {
-        // MSX1: 256x192, telas mais estreitas centralizadas sobre a borda
-        const int pad = (kFrameWidth - width) / 2;
+        // MSX1: 256 pixels de tela + 8 de borda de cada lado; telas mais estreitas
+        // (TEXT 40) ficam centralizadas dentro da area de 256.
+        const int side = (kFrameWidth - 256) / 2;
+        const int pad = side + (256 - width) / 2;
         size.width = kFrameWidth;
-        size.height = kFrameHeight;
         rgba.assign(static_cast<size_t>(size.width) * size.height, border_px);
-        for (int y = 0; y < size.height; ++y) {
+        for (int y = 0; y < lines; ++y) {
             vdp_render_line(&v, y, row.data());
-            uint32_t *dst = rgba.data() + static_cast<size_t>(y) * size.width + pad;
+            uint32_t *dst = rgba.data() + static_cast<size_t>(top + y) * size.width + pad;
             for (int x = 0; x < width; ++x) dst[x] = PackRgba(row[x].r, row[x].g, row[x].b);
         }
         return size;
     }
 
-    // MSX2: 512 pixels de largura. Modos de 256 (e o texto de 40 colunas, 240)
-    // saem dobrados na horizontal; os de 512 (SCREEN 6/7, TEXT80 de 480) saem
-    // como sao. O que sobra nas laterais e' a cor da borda.
-    size.width = 512;
-    size.height = lines;
+    // MSX2: 512 pixels de tela, com 16 de borda de cada lado (8 pixels de 256 dobrados).
+    // Modos de 256 (e o texto de 40 colunas, 240) saem dobrados na horizontal; os de
+    // 512 (SCREEN 6/7, TEXT80 de 480) saem como sao. Linhas dobradas na exibicao (y_scale).
+    const int side = 16;
+    size.width = 512 + 2 * side;
     size.y_scale = 2;
     rgba.assign(static_cast<size_t>(size.width) * size.height, border_px);
     const int factor = width <= 256 ? 2 : 1;
     const int out_width = width * factor;
-    const int pad = (size.width - out_width) / 2;
+    const int pad = side + (512 - out_width) / 2;
     for (int y = 0; y < lines; ++y) {
         vdp_render_line(&v, y, row.data());
-        uint32_t *dst = rgba.data() + static_cast<size_t>(y) * size.width + pad;
+        uint32_t *dst = rgba.data() + static_cast<size_t>(top + y) * size.width + pad;
         for (int x = 0; x < width; ++x) {
             const uint32_t px = PackRgba(row[x].r, row[x].g, row[x].b);
             if (factor == 2) {

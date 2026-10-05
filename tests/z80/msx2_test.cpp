@@ -232,7 +232,7 @@ int main() {
               "a BIOS deixa o mapper de RAM como o reset (3,2,1,0)");
         std::vector<uint32_t> rgba;
         machine::FrameSize fs = m->RenderFrame(rgba);
-        check(fs.width == 512 && fs.height == 192 && fs.y_scale == 2 && rgba.size() == 512u * 192u, "MSX2: imagem de 512 de largura com linhas dobradas na exibicao (y_scale=2)");
+        check(fs.width == 544 && fs.height == 228 && fs.y_scale == 2 && rgba.size() == 544u * 228u, "MSX2: imagem de 512 + borda de 16 com linhas dobradas na exibicao (y_scale=2)");
 
         // --- 6. BASIC desenhando pelo motor de comandos do V9938 -----------------------------
         // SCREEN 5 + LINE ,bf (LMMV) + a espera de uma tecla para o prompt nao voltar ao texto.
@@ -244,10 +244,11 @@ int main() {
         check(Pix5(*m, 19, 50) == 4 && Pix5(*m, 121, 50) == 4 && Pix5(*m, 50, 19) == 4 && Pix5(*m, 50, 81) == 4, "fora do retangulo: o fundo (cor 4) intacto");
         check(Pix5(*m, 10, 100) == 12 && Pix5(*m, 100, 100) == 12 && Pix5(*m, 200, 100) == 12 && Pix5(*m, 100, 101) == 4, "LINE (10,100)-(200,100): 191 pixels da cor 12 numa linha so'");
         fs = m->RenderFrame(rgba);
-        check(fs.width == 512 && fs.height == 212 && fs.y_scale == 2, "SCREEN 5 do BASIC usa 212 linhas (R#9 bit 7): imagem 512x212");
+        check(fs.width == 544 && fs.height == 228 && fs.y_scale == 2, "SCREEN 5 do BASIC usa 212 linhas (R#9 bit 7) dentro do quadro 544x228");
         // o pixel (50,50) aparece dobrado na horizontal em (100,50)/(101,50) com a cor 9 da paleta
         const uint32_t px9 = 0xFF000000u | (static_cast<uint32_t>(v.palette_b[9]) << 16) | (static_cast<uint32_t>(v.palette_g[9]) << 8) | v.palette_r[9];
-        check(rgba[50 * 512 + 100] == px9 && rgba[50 * 512 + 101] == px9, "RenderFrame: os pixels de 256 saem dobrados em largura com a cor da paleta");
+        // 212 linhas: borda superior de 8; pixel (50,50) de 256 -> colunas 100/101 do bloco de 512 (+16 de borda)
+        check(rgba[(8 + 50) * 544 + 16 + 100] == px9 && rgba[(8 + 50) * 544 + 16 + 101] == px9, "RenderFrame: os pixels de 256 saem dobrados em largura com a cor da paleta");
 
         // qualquer tecla termina o INPUT$ e o BASIC volta ao texto
         Type(*m, "x");
@@ -261,7 +262,7 @@ int main() {
         check(m->vdp_state().vram[0] == 0x55 && m->vdp_state().vram[49] == 0x55 && m->vdp_state().vram[50] == 0x54 && m->vdp_state().vram[51] == 0x44,
               "SCREEN 7: LINE ,bf pinta os pixels 0..100 (50 bytes + o nibble alto do 51o) e o fundo continua cor 4");
         fs = m->RenderFrame(rgba);
-        check(fs.width == 512 && fs.height == 212, "SCREEN 7: imagem 512x212");
+        check(fs.width == 544 && fs.height == 228, "SCREEN 7: imagem 512x212 dentro do quadro 544x228");
         Type(*m, "x");
         Frames(*m, 300);
         Type(*m, "screen 8:line (0,0)-(9,9),28,bf:a$=input$(1)|");
@@ -277,7 +278,7 @@ int main() {
         Frames(*m, 1200);
         check(m->vdp_state().scr_mode == VDP_MAXSCREEN + 1, "WIDTH 80: o VDP entra em TEXT80 (scr_mode 13)");
         fs = m->RenderFrame(rgba);
-        check(fs.width == 512 && fs.height == 192 && fs.y_scale == 2, "TEXT80: imagem 512x192 (480 pixels de texto + borda)");
+        check(fs.width == 544 && fs.height == 228 && fs.y_scale == 2, "TEXT80: imagem de 480 pixels de texto dentro do quadro 544x228");
         Type(*m, "x");
         Frames(*m, 300);
 
@@ -324,8 +325,8 @@ int main() {
             Frames(*m1, 250);
             std::vector<uint32_t> rgba;
             const machine::FrameSize fs = m1->RenderFrame(rgba);
-            check(!m1->is_msx2() && m1->mapper() == nullptr && fs.width == 256 && fs.height == 192 && fs.y_scale == 1 && m1->vdp_state().vram_mask == 0x3FFF,
-                  "MSX1: VDP de 16KB, sem mapper/RTC, imagem 256x192 sem dobrar linhas");
+            check(!m1->is_msx2() && m1->mapper() == nullptr && fs.width == 272 && fs.height == 228 && fs.y_scale == 1 && m1->vdp_state().vram_mask == 0x3FFF,
+                  "MSX1: VDP de 16KB, sem mapper/RTC, quadro 272x228 (256x192 + borda) sem dobrar linhas");
             check(VramHas(*m1, "MSX BASIC version 1.0"), "MSX1: continua subindo no BASIC 1.0");
         }
     }

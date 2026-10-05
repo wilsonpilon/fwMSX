@@ -13,6 +13,42 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.16.0 -- "Aleste: Janela e Video" (2026-10-05)
+
+**Fase:** interface da janela, menus do fMSX e filtros de video. Sem mudanca no nucleo de emulacao.
+
+### Destaques
+
+- **Quadro com borda, como o fMSX**: 272x228 no MSX1 e 544x228 no MSX2. As teclas de funcao e o
+  texto do BASIC nao encostam mais na borda.
+- **Menus do fMSX**: Arquivo, Maquina (Modelo MSX1/MSX2/MSX2+, Reiniciar, Pausar), Exibir, Video, Som,
+  Disco, Cartucho, Joystick, Ferramentas, Configuracoes e Ajuda. Trocar modelo ou cartucho recria a maquina.
+- **Configuracoes -> Interface**: tema escuro ou claro, tamanho da letra e borda com sombra da tela.
+- **Exibir**: zoom 2x, 3x, 4x e 6x; proporcao original, 4:3 corrigido ou 16:9 esticado; tela cheia com
+  o menu escondido ate o mouse chegar ao topo.
+- **Video**: interpolacao (Nearest Neighbor, Linear Scaling, EPX Scale 2x, Eagle, Scale 2x e 2xSal),
+  scanlines (TV, LCD, LCD Raster) e filtros de cor (Monochrome, Sepia, Green CRT, Amber CRT, CMY Raster,
+  RGB Raster). Escritos do zero a partir das descricoes publicas dos algoritmos.
+
+### Build usado para validar esta release
+
+- Windows: `.uild.ps1` gerou `distwMSX-1.16.0.zip`.
+- Linux: `build.sh` (WSL Ubuntu 26.04) gerou `dist/fwMSX-1.16.0-linux.tar.gz`.
+- `ctest`: 13 suites nas duas plataformas, incluindo `video_filters` (18 verificacoes) e a geometria do quadro.
+
+### Limitacoes conhecidas
+
+- Os menus, a tela cheia, as proporcoes 4:3 e 16:9 e os filtros de video foram conferidos
+  por codigo e testes, mas nao foram vistos na tela: a automacao nao opera a janela.
+- Itens do menu marcados "(em breve)": salvar estado, memoria, PAL, trapacas, POKE, DiskROM, fita,
+  MIDI, gravacao de som, novo disco, slot 2, dispositivos de entrada e mostrar sprites.
+- 2xSal e uma aproximacao do algoritmo original.
+- Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada sem causa
+  identificada; Mega Chase validado ate o titulo; F-1 Spirit 3D validado ate o titulo com os discos
+  A e B.
+
+---
+
 ## v1.15.0 -- "Metal Gear 2: Cores YJK" (2026-10-05)
 
 **Fase:** MSX2+ (V9958): modos YJK/YAE, scroll do SCREEN 12 e a BIOS MSX2+. Ver
