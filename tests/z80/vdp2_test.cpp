@@ -590,6 +590,128 @@ int main() {
         delete v;
     }
 
+    // --- 9. V9958 (MSX2+): scroll, MSK, YJK/YAE em SCREEN 10-12 ----------------------
+    {
+        VdpState *p = NewVdp(VDP_MODEL_MSX2P);
+        check((p->status[1] & 0x04) != 0, "V9958: bit 2 de S#1 ligado (ID do VDP, como o fMSX)");
+        check(VDP_MODEL_IS_V9938(p->model) && p->vram_mask == 0x1FFFF, "V9958: VRAM de 128KB, como o V9938");
+        Reg(*p, 5, 0x40); // tabela de sprites longe da linha 0
+        Reg(*p, 8, 0x02); // sprites desligados (SPD) -- so' o desenho do fundo importa aqui
+        Screen(*p, 8);
+        Reg(*p, 25, 0x08); // YJK
+        check(vdp_render_width(p) == 256, "V9958 YJK: a linha tem 256 pixels, como SCREEN 7/8");
+        for (int x = 0; x < 256; ++x) p->vram[x] = 0x80; // Y=16, J=K=0
+
+        // YJKColor(16,0,0): Y=16, bytes de crominancia 0 -> r=g=16, b=(80+2)/4=20; 5->8 bits
+        // por replicacao: 16 -> 132, 20 -> 165. Sem bloco de fundo nos primeiros pixels.
+        VdpRgb888 row[VDP_RENDER_MAX_WIDTH];
+        vdp_render_line(p, 0, row);
+        check(IsRgb(row[0], 132, 132, 165) && IsRgb(row[4], 132, 132, 165) && IsRgb(row[255], 132, 132, 165),
+              "YJK: pixels saem da conversao (16,0,0) -> (132,132,165), sem bloco de fundo");
+
+        // Scroll de 8: a tela le a VRAM a partir do pixel 8. O grupo 8..11 vira Y=20.
+        for (int x = 8; x < 12; ++x) p->vram[x] = 0xA0; // Y=20
+        Reg(*p, 26, 0x01);
+        vdp_render_line(p, 0, row);
+        // YJKColor(20,0,0): r=g=20 -> 165; b=(100+2)/4=25 -> 206
+        check(IsRgb(row[0], 165, 165, 206) && IsRgb(row[3], 165, 165, 206),
+              "scroll 8 (R#26=1): o pixel 0 da tela le o pixel 8 da VRAM (Y=20 -> 165,165,206)");
+        check(IsRgb(row[4], 132, 132, 165), "scroll 8: o pixel 4 da tela le o pixel 12 da VRAM (Y=16)");
+        Reg(*p, 26, 0x00);
+
+        // Scroll fino de 1 pixel (R#27=1): a tela inteira anda um pixel.
+        Reg(*p, 27, 0x01);
+        vdp_render_line(p, 0, row);
+        check(IsRgb(row[7], 165, 165, 206) && IsRgb(row[6], 132, 132, 165),
+              "scroll fino de 1 pixel (R#27=1): a tela le VRAM[x+1]");
+        Reg(*p, 27, 0x00);
+
+        // MSK (R#25 bit 1): os 8 primeiros pixels saem na cor de fundo (R#7=0 -> preto).
+        Reg(*p, 25, 0x0A);
+        vdp_render_line(p, 0, row);
+        // row[8] le VRAM[8] (ainda com Y=20 do teste de scroll): fora da mascara, cor normal.
+        check(IsRgb(row[0], 0, 0, 0) && IsRgb(row[7], 0, 0, 0) && IsRgb(row[8], 165, 165, 206),
+              "MSK (R#25 bit 1): os 8 primeiros pixels saem na cor de fundo, o 9o nao");
+        Reg(*p, 25, 0x08);
+
+        // HScroll512 (R#25 bit 0): com scroll 255, o pixel 1 da tela cai na segunda pagina (+64KB).
+        Reg(*p, 25, 0x09);
+        Reg(*p, 26, 0x00);
+        Reg(*p, 27, 0x07); // HScroll = 7 -> pixel x le VRAM[x+7]
+        p->vram[0x10000 + 0] = 0x55; // primeiro byte da segunda pagina
+        vdp_render_line(p, 0, row);
+        Reg(*p, 27, 0x00);
+        Reg(*p, 25, 0x08);
+        check(!IsRgb(row[0], 0, 0, 0), "HScroll512: a linha volta a ler a VRAM depois do scroll");
+
+        // YAE (R#25 bit 4, SCREEN 10): pixel de Y impar usa a cor de paleta Y>>1.
+        Reg(*p, 25, 0x18);
+        for (int x = 0; x < 256; ++x) p->vram[x] = 0x18; // Y=3 (impar), paleta 1
+        vdp_render_line(p, 0, row);
+        check(IsPal(*p, row[4], 1) && IsPal(*p, row[255], 1),
+              "SCREEN 10 (YAE): Y impar le a cor de paleta Y>>1 (Y=3 -> paleta 1)");
+        delete p;
+
+        // SCREEN 6 (512 pixels, 2 bits): scroll de 1 pixel anda a linha dentro de 512.
+        VdpState *s6 = NewVdp(VDP_MODEL_MSX2P);
+        Reg(*s6, 5, 0x40);
+        Reg(*s6, 8, 0x02);
+        Screen(*s6, 6);
+        s6->vram[0] = 0xE4; // pixels 0..3 = 3,2,1,0
+        VdpRgb888 r6[VDP_RENDER_MAX_WIDTH];
+        vdp_render_line(s6, 0, r6);
+        check(vdp_render_width(s6) == 512 && IsPal(*s6, r6[0], 3) && IsPal(*s6, r6[2], 1),
+              "SCREEN 6 V9958 sem scroll: pixel 0 = cor 3, pixel 2 = cor 1 (512 de largura)");
+        Reg(*s6, 27, 0x01);
+        vdp_render_line(s6, 0, r6);
+        check(IsPal(*s6, r6[0], 2) && IsPal(*s6, r6[1], 1), "SCREEN 6 com scroll 1: a tela le VRAM a partir do pixel 1");
+        delete s6;
+
+        // Diferencial: SCREEN 5/6/7/8 no V9958, sem scroll, deve bater com o V9938 (renderizador antigo).
+        const int modes[4] = {5, 6, 7, 8};
+        bool same = true;
+        for (int m = 0; m < 4; ++m) {
+            VdpState *a = NewVdp(VDP_MODEL_MSX2P), *b = NewVdp(VDP_MODEL_MSX2);
+            for (VdpState *t : {a, b}) {
+                Reg(*t, 5, 0x40);
+                Reg(*t, 8, 0x02);
+                Screen(*t, modes[m]);
+            }
+            uint32_t seed = 12345u + static_cast<uint32_t>(m);
+            for (int i = 0; i < 0x8000; ++i) {
+                seed = seed * 1103515245u + 12345u;
+                const uint8_t byte = static_cast<uint8_t>(seed >> 16);
+                a->vram[i] = byte;
+                b->vram[i] = byte;
+            }
+            VdpRgb888 ra[VDP_RENDER_MAX_WIDTH], rb[VDP_RENDER_MAX_WIDTH];
+            for (int y = 0; y < 16 && same; ++y) {
+                vdp_render_line(a, y, ra);
+                vdp_render_line(b, y, rb);
+                const int w = vdp_render_width(a);
+                for (int x = 0; x < w; ++x) {
+                    if (!IsRgb(ra[x], rb[x].r, rb[x].g, rb[x].b)) { same = false; break; }
+                }
+            }
+            delete a;
+            delete b;
+        }
+        check(same, "V9958 sem scroll, SCREEN 5-8: bate com o renderizador do V9938, pixel a pixel (VRAM aleatoria)");
+
+        // Controle: no V9938 o R#25 nao liga YJK -- SCREEN 8 normal (BPal[80h] = (0,145,0)).
+        VdpState *q = NewVdp(VDP_MODEL_MSX2);
+        Reg(*q, 5, 0x40);
+        Reg(*q, 8, 0x02);
+        Screen(*q, 8);
+        Reg(*q, 25, 0x08);
+        for (int x = 0; x < 256; ++x) q->vram[x] = 0x80;
+        vdp_render_line(q, 0, row);
+        check(IsRgb(row[4], 0, 145, 0) && vdp_render_width(q) == 256,
+              "V9938 com R#25 bit 3: continua SCREEN 8 normal (R#25 nao existe nesse chip)");
+        check(!(q->status[1] & 0x04), "V9938: bit 2 de S#1 desligado");
+        delete q;
+    }
+
     if (g_failures == 0) {
         std::printf("\nTodos os testes passaram.\n");
         return 0;

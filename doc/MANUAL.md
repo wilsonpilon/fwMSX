@@ -1,8 +1,8 @@
 # fwMSX -- Manual de compilacao e execucao
 
-> Documento ainda simples: por enquanto so cobre como compilar e executar
-> o esqueleto multi-linguagem da fase atual. Vai crescer conforme o
-> emulador for tomando forma (ver [SPEC.md](SPEC.md)).
+> Como compilar e executar o fwMSX (emulador MSX1/MSX2, `msxdisk` embutido e
+> o depurador do Z80). O estado de cada parte esta em [SPEC.md](SPEC.md) e nas
+> specs de fase (`doc/*-spec.md`).
 
 ## Pre-requisitos
 
@@ -318,6 +318,7 @@ para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 .\dist\fwMSX.exe --msx --disk msxdos1.dsk --disk-ro   # disco somente leitura (o MSX-DOS nao grava)
 .\dist\fwMSX.exe --msx --msx2                # MSX2 (MSX2.ROM + MSX2EXT.ROM): BASIC 2.1, SCREEN 0-8
 .\dist\fwMSX.exe --msx --msx2 --cart jogo2.rom   # cartucho MSX2 (ex.: Firebird)
+.\dist\fwMSX.exe --msx --msx2p                    # MSX2+ (V9958, BIOS MSX2P.ROM; SCREEN 10-12)
 .\dist\fwMSX.exe --msx --mute                # sem audio
 .\dist\fwMSX.exe --msx --frames 400 --keys "print 1234|" --shot tela.ppm   # sem janela
 ```

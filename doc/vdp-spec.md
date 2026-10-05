@@ -439,7 +439,8 @@ com precisao em `LICENSE-THIRD-PARTY.md` (dois autores, nao um).
       POINT/PSET/SRCH/LINE/LMMV/LMMM/LMCM/LMMC/HMMV/HMMM/YMMM/HMMC, adaptado de
       `V9938.c` (atribuicao dupla Fayzullin/Wulms), com a temporizacao por scanline
       do fMSX e o handshake TR. Desvio: o TR comeca limpo a cada comando.
-      **Falta (V9958/MSX2+)**: SCREEN 10-12 (YJK), rolagem horizontal, R#25-R#27.
+      **Feito na v1.15.0 (V9958, ver `doc/msx2p-spec.md`)**: SCREEN 10-12 (YJK/YAE),
+      rolagem horizontal (R#26/R#27) em 5-8 e YJK/YAE, mascara da esquerda (R#25 bit 1).
 
 *(Cada fase sera detalhada em sub-fases, como aconteceu em
 `doc/z80-core-spec.md` e `doc/memory-map-spec.md`, no momento em que a

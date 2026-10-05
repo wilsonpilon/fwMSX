@@ -4,7 +4,8 @@
 > `doc/vdp-spec.md`, `doc/ppi-spec.md` e `doc/psg-spec.md`: o que foi feito,
 > as decisoes e o que falta, para retomar do ponto exato onde parou.
 
-Estado: **concluido em 2026-10-02** para MSX1 (SCREEN 0/1/2 com sprites):
+Estado: **concluido em 2026-10-02** para MSX1 (SCREEN 0/1/2 com sprites), e
+estendido para MSX2 na v1.11.0 (`--msx2`, ver `doc/msx2-spec.md`):
 `fwmsx --msx` abre uma janela com a BIOS real rodando em tempo real, teclado
 do host e cartucho opcional. Ver a secao 5 para o que falta.
 
@@ -123,7 +124,7 @@ util para comparar a Fase 4 do VDP.
   O SCC tambem toca ao vivo (v1.13.0), somado ao PSG. Click de tecla/cassete
   (PPI) e FM ainda sem som.
 - **Modos de tela:** todos os do MSX1 e do V9938 (SCREEN 0-8, TEXT80) -- ver
-  `doc/msx2-spec.md`. Faltam so' os do MSX2+/V9958 (SCREEN 10-12).
+  `doc/msx2-spec.md`. O MSX2+ (V9958, `--msx2p`) esta em `doc/msx2p-spec.md`.
 - **Joystick:** setas + Z/Espaco (fogo A) + X (fogo B) na porta A e gamepads
   do GLFW (1o -> A, 2o -> B); sem mouse. **Disco:** ver `doc/fdc-spec.md`
   (`--disk`, MSX-DOS 1.8 boota).

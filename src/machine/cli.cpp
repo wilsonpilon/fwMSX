@@ -72,6 +72,8 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             config.bios_path = *v;
         } else if (a == "--msx2") {
             config.model = Model::MSX2;
+        } else if (a == "--msx2p") {
+            config.model = Model::MSX2P;
         } else if (a == "--ext") {
             const std::string *v = need("um arquivo");
             if (!v) return 2;
@@ -138,7 +140,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     }
 
     if (config.bios_path.empty()) {
-        const char *rom_name = config.model == Model::MSX2 ? "MSX2.ROM" : "MSX.ROM";
+        const char *rom_name = config.model == Model::MSX2P ? "MSX2P.ROM" : config.model == Model::MSX2 ? "MSX2.ROM" : "MSX.ROM";
         config.bios_path = FindDefaultBios(argv0, rom_name);
         if (config.bios_path.empty()) {
             std::cerr << "fwmsx --msx: BIOS nao encontrada (esperava resource/fMSX/ROMs/" << rom_name << "); use --bios <arquivo>" << std::endl;

@@ -7,8 +7,9 @@
 Estado: **concluido em 2026-10-02**. `fwmsx --msx --msx2` roda a BIOS MSX2
 (MSX BASIC 2.1) com o VDP V9938 completo (SCREEN 0-8 e TEXT80, sprites de modo
 2, motor de comandos), RAM de 128KB com mapper e relogio RTC. **O Firebird
-(Hi no Tori Hououhen, MSX2) roda e e' jogavel.** Faltam SCREEN 9-12 (V9958) e
-alguns detalhes do V9938 -- ver a secao 6.
+(Hi no Tori Hououhen, MSX2) roda e e' jogavel.** O V9958 (MSX2+) saiu depois,
+na v1.15.0 -- ver [msx2p-spec.md](msx2p-spec.md). Faltam alguns detalhes do
+V9938 -- ver a secao 6.
 
 ## 1. Uso
 
@@ -124,8 +125,8 @@ os 4 modos de pixel. Adaptado do `V9938.c` do fMSX (reescrito por Alex Wulms).
 
 ## 6. Limites e o que falta
 
-- **SCREEN 9-12 (V9958: YJK/YAE)**, scroll horizontal (R#26/R#27) e MSX2+ **nao
-  existem**: caem na cor de fundo. A `MSX2P.ROM` nao e' usada.
+- **V9958 (MSX2+)**: nao faz parte desta fase; ver `doc/msx2p-spec.md` (SCREEN
+  10-12, scroll e mascara da esquerda ja' prontos).
 - **Imagem por quadro, nao por scanline:** efeitos de rastreio no meio do quadro
   (trocar paleta/scroll por linha, tipico de alguns jogos) nao aparecem; so' o
   estado no fim do quadro e' desenhado. O motor de comandos, as interrupcoes de

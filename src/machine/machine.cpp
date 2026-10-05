@@ -91,7 +91,7 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
 
     m->model_ = config.model;
     m->disk_read_only_ = config.disk_read_only;
-    const bool msx2 = config.model == Model::MSX2;
+    const bool msx2 = config.model != Model::MSX1;
     const bool want_disk = config.disk_interface || !config.disk_a.empty() || !config.disk_b.empty();
     const std::string bios_dir = [&] {
         const size_t slash = config.bios_path.find_last_of("/\\");
@@ -105,7 +105,7 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
     if (msx2) {
         // VDP V9938 (128KB, comandos), RAM de 128KB com mapper (3:2), regras de
         // subslot do MSX2, e as portas do mapper (FCh-FFh) e do relogio (B4h/B5h).
-        m->startup_.vdp_device->SetModel(VDP_MODEL_MSX2);
+        m->startup_.vdp_device->SetModel(config.model == Model::MSX2P ? VDP_MODEL_MSX2P : VDP_MODEL_MSX2);
         memmap::MemorySystem &mem = *m->startup_.memory_system;
         mem.state().msx1_subslot_rules = 2;
         mem.AllocateMapperRam(3, 2, 8);
@@ -114,7 +114,8 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
         m->startup_.composite_bus->RegisterPortRange(0xFC, 0xFF, m->mapper_.get());
         m->startup_.composite_bus->RegisterPortRange(0xB4, 0xB5, m->rtc_.get());
 
-        std::string ext_path = config.ext_rom_path.empty() ? bios_dir + "MSX2EXT.ROM" : config.ext_rom_path;
+        const char *ext_name = config.model == Model::MSX2P ? "MSX2PEXT.ROM" : "MSX2EXT.ROM";
+        std::string ext_path = config.ext_rom_path.empty() ? bios_dir + ext_name : config.ext_rom_path;
         std::vector<uint8_t> ext;
         if (!ReadFile(ext_path, ext, error)) {
             error = "sub-ROM do MSX2: " + error;
@@ -263,14 +264,14 @@ bool Machine::KeysForChar(char c, std::string &key, bool &shift) {
     case '$': key = "4"; shift = true; return true;
     case '%': key = "5"; shift = true; return true;
     case '^': key = "6"; shift = true; return true;
-    case '&': key = "7"; shift = true; return true;
-    case '*': key = "8"; shift = true; return true;
-    case '(': key = "9"; shift = true; return true;
-    case ')': key = "0"; shift = true; return true;
+    case '&': key = "6"; shift = true; return true;
+    case '*': key = "'"; shift = true; return true;
+    case '(': key = "8"; shift = true; return true;
+    case ')': key = "9"; shift = true; return true;
     case '_': key = "-"; shift = true; return true;
     case '+': key = "="; shift = true; return true;
     case ':': key = ";"; shift = true; return true;
-    case '"': key = "'"; shift = true; return true;
+    case '"': key = "2"; shift = true; return true;
     case '<': key = ","; shift = true; return true;
     case '>': key = "."; shift = true; return true;
     case '?': key = "/"; shift = true; return true;

@@ -19,13 +19,13 @@ name mangling, calling conventions, linkedicao).
 
 ## Estado atual
 
-Ainda **nao existe emulacao de MSX completa** (sem PSG, sem janela
-grafica de verdade, sem PPI/teclado ainda). O `main()` de `fwMSX.exe`
-continua "inicializando" um modulo de cada linguagem (C++, C, Assembly
-e Fortran) via `init_cpp()`/`init_c()`/`init_asm()`/`init_fortran()`
-quando rodado sem argumentos, exatamente como no esqueleto original --
-essa e a base sobre a qual o emulador de fato foi sendo construido nas
-fases seguintes.
+O **fwMSX ja e' um emulador de MSX** (MSX1 e MSX2): `fwMSX.exe` sem argumentos
+abre a maquina numa janela (desde a v1.12.0). Estao prontos o Z80, o mapa de
+memoria com cartuchos e MegaROM, o VDP (TMS9918 e V9938, com comandos), teclado,
+PSG, SCC, disco (MSX-DOS 1.8) e joystick, e o MSX2+ (V9958, `--msx2p`, com YJK,
+scroll e mascara da esquerda). Faltam o chip FM e os efeitos de rastreio no meio
+do quadro -- ver [doc/SPEC.md](doc/SPEC.md), secao 5.0. O esqueleto dos quatro modulos (C++, C, Assembly e Fortran),
+que foi a base do projeto, continua acessivel com argumentos explicitos.
 
 A v1.2.x entregou o primeiro utilitario "de verdade" construido nesse
 processo de aprendizado: o **msxdisk**, um manipulador completo de
@@ -134,9 +134,9 @@ dos canais e' **Assembly** dual-ABI, a tabela de volume e' **Fortran**, e o
 protocolo do cartucho e' o `SccDevice` em **C++**. Ver
 [doc/scc-spec.md](doc/scc-spec.md).
 
-**Trabalho no core de emulacao continua em andamento** -- faltam SCREEN 9-12
-(V9958), o chip FM (OPLL/FMPAC) e efeitos de rastreio no meio do
-quadro para uma maquina MSX completa. Ver
+**Trabalho no core de emulacao continua em andamento** -- faltam o chip FM
+(OPLL/FMPAC) e efeitos de rastreio no meio do quadro para uma maquina MSX
+completa. Ver
 [doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
 registrados, pra retomar sem se perder.
 

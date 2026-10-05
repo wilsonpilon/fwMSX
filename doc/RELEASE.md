@@ -13,6 +13,34 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.15.0 -- "Metal Gear 2: Cores YJK" (2026-10-05)
+
+**Fase:** MSX2+ (V9958): modos YJK/YAE, scroll do SCREEN 12 e a BIOS MSX2+. Ver
+`doc/msx2p-spec.md`.
+
+### Destaques
+
+- **`fwmsx --msx --msx2p`** sobe a BIOS MSX2+ real (MSX BASIC 3.0) com o VDP V9958.
+- **SCREEN 10, 11 e 12** em YJK/YAE, com R#25. **Scroll horizontal** (R#26/R#27) em SCREEN 5-8, YJK e
+  YAE, e **mascara da esquerda** (R#25 bit 1).
+- **Correcao no `--keys`**: os simbolos com SHIFT do layout MSX (parenteses, `&`, aspas, `*`) saiam
+  trocados. Os exemplos de `LINE (...)` da documentacao agora funcionam.
+
+### Build usado para validar esta release
+
+- `vdp2test`: as verificacoes novas do V9958 (secao 9) passam; os valores de YJK foram calculados a mao.
+- Suite completa 12/12 (`ctest`) no Windows e no Linux.
+- Verificacao com BASIC real: BIOS MSX2+ sobe; SCREEN 12 e SCREEN 10 escrevem R#25 e desenham em YJK e YAE.
+- Pacote Windows: `.uild.ps1` gerou `distwMSX-1.15.0.zip`. Pacote Linux: `build.sh` (WSL Ubuntu 26.04) gerou `dist/fwMSX-1.15.0-linux.tar.gz`.
+
+### Limitacoes conhecidas
+
+- SCREEN 9 nao existe no MSX2+ (so' no MSX2 coreano), entao nao e' implementado.
+- As cores YJK seguem o openMSX (regra do azul de um turbo R), mas nao foram comparadas com um V9958 real.
+- Mesmas limitacoes da v1.14.0 para o restante (FM, SRAM, Lode Runner + SCC).
+
+---
+
 ## v1.14.0 -- "Hydlide: Busca Rapida" (2026-10-05)
 
 **Fase:** item menor adiado desde a Fase 3 do nucleo Z80 (`doc/SPEC.md`, secao 5.0): `CPIR`/`CPDR`

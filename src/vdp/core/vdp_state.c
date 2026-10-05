@@ -169,12 +169,12 @@ void vdp_write_register(VdpState *v, int reg, uint8_t value) {
             vdp_set_screen(v);
             break;
         case 44: /* dado da CPU para o motor de comandos (VDPWrite) */
-            if (v->model == VDP_MODEL_MSX2) vdp_cmd_write(v, value);
+            if (VDP_MODEL_IS_V9938(v->model)) vdp_cmd_write(v, value);
             v->regs[44] = value;
             break;
         case 46: /* dispara um comando (VDPDraw) */
             v->regs[46] = value;
-            if (v->model == VDP_MODEL_MSX2) vdp_cmd_draw(v, value);
+            if (VDP_MODEL_IS_V9938(v->model)) vdp_cmd_draw(v, value);
             break;
         default:
             if (reg >= 0 && reg < 64) v->regs[reg] = value;
@@ -184,7 +184,7 @@ void vdp_write_register(VdpState *v, int reg, uint8_t value) {
 
 static void ResetInternal(VdpState *v) {
     /* Aqui o modelo ja' esta' escolhido (v->model). */
-    if (v->model != VDP_MODEL_MSX2) {
+    if (!VDP_MODEL_IS_V9938(v->model)) {
         v->model = VDP_MODEL_MSX1;
         v->vram_pages = 1;
         v->vram_mask = 0x3FFFu;
@@ -202,11 +202,13 @@ static void ResetInternal(VdpState *v) {
     v->blink_count = 0;
     v->x_fg = 0;
     v->x_bg = 0;
-    if (v->model == VDP_MODEL_MSX2) {
+    if (VDP_MODEL_IS_V9938(v->model)) {
         /* VDPSInit[] do fMSX: S#0=9Fh, S#2=6Ch (os bits fixos em 1 do V9938) */
         v->status[0] = 0x9F;
         v->status[2] = 0x6C;
     }
+    /* "Set V9958 VDP version for MSX2+": bit 2 de S#1 (MSX.c do fMSX). */
+    if (v->model == VDP_MODEL_MSX2P) v->status[1] |= 0x04;
     v->vaddr = 0;
     v->vdata = 0;
     v->vkey = 1;
@@ -227,7 +229,7 @@ static void ResetInternal(VdpState *v) {
 }
 
 void vdp_set_model(VdpState *v, int model) {
-    v->model = (model == VDP_MODEL_MSX2) ? VDP_MODEL_MSX2 : VDP_MODEL_MSX1;
+    v->model = (model == VDP_MODEL_MSX2 || model == VDP_MODEL_MSX2P) ? model : VDP_MODEL_MSX1;
     ResetInternal(v);
 }
 
@@ -279,7 +281,7 @@ uint8_t vdp_in(VdpState *v, uint16_t port) {
                     SetVdpIrq(v, (uint8_t)~VDP_INT_IE1);
                     break;
                 case 7: /* S#7 = proximo pixel do LMCM (motor de comandos, MSX2) */
-                    if (v->model == VDP_MODEL_MSX2) v->status[7] = v->regs[44] = vdp_cmd_read(v);
+                    if (VDP_MODEL_IS_V9938(v->model)) v->status[7] = v->regs[44] = vdp_cmd_read(v);
                     break;
                 default:
                     break;
@@ -470,7 +472,7 @@ VdpStepResult vdp_step_scanline(VdpState *v) {
     }
 
     /* LoopVDP(): avanca o comando do V9938 em execucao (so' MSX2) */
-    if (v->model == VDP_MODEL_MSX2) vdp_cmd_loop(v);
+    if (VDP_MODEL_IS_V9938(v->model)) vdp_cmd_loop(v);
 
     result.irq_pending = v->irq_pending != 0;
     return result;

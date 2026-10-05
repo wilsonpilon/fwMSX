@@ -7,6 +7,40 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.15.0] - 2026-10-05 - "Metal Gear 2: Cores YJK"
+
+**Agora e' um MSX2+**: `fwmsx --msx --msx2p` roda a BIOS MSX2+ real (MSX BASIC 3.0) com o VDP
+V9958. Ver [doc/msx2p-spec.md](msx2p-spec.md).
+
+### Adicionado
+- **Modelo MSX2+** (`--msx2p`): BIOS `MSX2P.ROM`, sub-ROM `MSX2PEXT.ROM`, RAM de 128KB com mapper e
+  RTC, como o `--msx2`, com o VDP V9958. Bit 2 de S#1 ligado, como o fMSX.
+- **SCREEN 10, 11 e 12** (YJK/YAE) em `vdp_render.c`, a partir do `RefreshLine10()`/`RefreshLine12()`
+  e do `YJKColor()` do fMSX, com as correcoes descritas em `doc/msx2p-spec.md`. O modo e' ligado por
+  R#25 (bit 3 YJK, bit 4 YAE) em scr 7/8.
+- **Scroll horizontal** (R#26/R#27, 9 bits) em SCREEN 5-8, YJK e YAE, com HScroll512 (R#25 bit 0).
+- **Mascara da esquerda** (R#25 bit 1): 8 pixels (16 em modo de 512) na cor de fundo.
+- Teste novo no `vdp2test` (secao 9): verificacoes de YJK, scroll, mascara, YAE e um diferencial
+  SCREEN 5-8 contra o renderizador da V9938.
+
+### Corrigido
+- `--keys`: os simbolos com SHIFT do layout MSX estavam trocados. `(` e `)` saiam como `)` e `-`,
+  e `&`, `"` e `*` tambem estavam errados. Agora seguem o layout MSX: `SHIFT+8` = `(`, `SHIFT+9` =
+  `)`, `SHIFT+6` = `&`, `SHIFT+2` = `"`, `SHIFT+'` = `*`.
+
+### Verificado
+- BIOS MSX2+ sobe com `MSX BASIC version 3.0`.
+- Programa BASIC `screen 12` / `line (10,10)-(200,100),5,bf` escreve R#25 = `08h` e desenha em YJK;
+  `screen 10` escreve R#25 = `18h`. Na MSX2 comum o mesmo programa nao chega a trocar para o SCREEN 12.
+- `vdp2test` com as verificacoes novas do V9958 (secao 9) e suite completa 12/12.
+
+### Limitacoes conhecidas
+- Cores YJK conferidas contra o openMSX (regra do azul de um turbo R), e nao contra um V9958 real.
+- Atributo de SCREEN 10 e 11 nao e' distinguido (como no fMSX).
+- SCREEN 9 nao existe no MSX2+ (so' no MSX2 coreano); nao foi implementado.
+
+---
+
 ## [1.14.0] - 2026-10-05 - "Hydlide: Busca Rapida"
 
 **CPIR e CPDR ganham caminho rapido em Assembly**, no mesmo molde do LDIR/LDDR. Ver

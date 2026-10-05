@@ -17,8 +17,10 @@
 //     preencher). Por isso a largura de SCREEN 0 e' 240px e a de TEXT80 480px.
 //   - SCREEN 6/7 e TEXT80 saem com 512 pixels de verdade (como Wide.h do
 //     fMSX), nao reduzidos a 256 como a compilacao NARROW.
-//   - SEM modos YJK/YAE (SCREEN 10-12, V9958) e SEM scroll horizontal
-//     (R#26/R#27, V9958): fora do V9938.
+//   - V9958 (MSX2+): SCREEN 10-12 (YJK/YAE, so' com R#25 bit 3/4 em scr 7/8),
+//     scroll horizontal de 9 bits (R#26/R#27, HScroll512 em R#25 bit 0) em
+//     SCREEN 5-8 e em YJK/YAE, e mascara da esquerda (R#25 bit 1). Ver
+//     doc/msx2p-spec.md. Tudo so' no modelo VDP_MODEL_MSX2P.
 //   - SEM FontBuf/MSX_FIXEDFONT (conveniencia do fMSX para trocar a fonte).
 //   - A imagem e' montada por quadro (nao por scanline durante a execucao):
 //     efeitos de rastreio no meio do quadro (paleta/scroll por linha) nao

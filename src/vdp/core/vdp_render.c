@@ -246,9 +246,146 @@ static void RenderLine8(const VdpState *v, int y, const uint8_t *z, VdpRgb888 *o
     }
 }
 
+/* --- V9958 (MSX2+): modos bitmap com scroll e YJK/YAE (SCREEN 5-8, 10-12) ----------- */
+
+/* Modo YJK ligado (R#25 bit 3) em SCREEN 7/8 no V9958 -- como o fMSX, o modo nao
+ * ganha um numero proprio em scr_mode: o renderizador troca. R#25 bit 4 (YAE)
+ * escolhe a variante SCREEN 10/11; sem ele, SCREEN 12. */
+static int YjkActive(const VdpState *v) {
+    return v->model == VDP_MODEL_MSX2P && (v->scr_mode == 7 || v->scr_mode == 8) && (v->regs[25] & 0x08);
+}
+
+/* R#26/R#27: scroll horizontal de 9 bits, em pixels (so' no V9958). */
+static int HScrollPixels(const VdpState *v) {
+    return (v->regs[27] & 0x07) | ((v->regs[26] & 0x3F) << 3);
+}
+
+/* Deslocamento de pagina (64KB) e posicao dentro da linha de um pixel `x` da tela,
+ * com o scroll ja' aplicado. HScroll512 (R#25 bit 0) faz a linha de 256 pixels dar
+ * a volta em 512, saltando para a outra metade da VRAM. */
+static uint32_t ScrolledPos(const VdpState *v, int x, int width, int *q) {
+    int p = x + HScrollPixels(v);
+    uint32_t page = 0;
+    if (width == 256 && (v->regs[25] & 0x01)) {
+        p &= 0x1FF;
+        if (p >= 256) {
+            page = 0x10000u;
+            p -= 256;
+        }
+    } else {
+        p &= width - 1;
+    }
+    *q = p;
+    return page;
+}
+
+/* Cor de um pixel YJK: luminancia y (5 bits) e crominancias j/k (com sinal). Tres
+ * bits de cada, com o bit 5 de K/J como sinal; ver o comentario de YjkChroma. Cada
+ * canal tem 5 bits; a expansao para 8 bits replica os bits altos (x<<3 | x>>2). */
+static VdpRgb888 YjkColor(int y, int j, int k) {
+    int r = y + j;
+    int g = y + k;
+    int b = (5 * y - 2 * j - k + 2) / 4;
+    r = r < 0 ? 0 : r > 31 ? 31 : r;
+    g = g < 0 ? 0 : g > 31 ? 31 : g;
+    b = b < 0 ? 0 : b > 31 ? 31 : b;
+    {
+        VdpRgb888 c;
+        c.r = (uint8_t)((r << 3) | (r >> 2));
+        c.g = (uint8_t)((g << 3) | (g >> 2));
+        c.b = (uint8_t)((b << 3) | (b >> 2));
+        return c;
+    }
+}
+
+/* Crominancia do grupo de 4 pixels que contem o pixel `q` (groups alinhados em 4 bytes
+ * da VRAM): K vem dos bytes 0-1 e J dos bytes 2-3, cada um com 3 bits baixos e o bit
+ * 2 do segundo byte como sinal (como o fMSX e o openMSX). */
+static void YjkChroma(const VdpState *v, uint32_t group, int *j, int *k) {
+    const uint8_t t0 = VramAt(v, group), t1 = VramAt(v, group + 1);
+    const uint8_t t2 = VramAt(v, group + 2), t3 = VramAt(v, group + 3);
+    int kk = (t0 & 0x07) | ((t1 & 0x07) << 3);
+    int jj = (t2 & 0x07) | ((t3 & 0x07) << 3);
+    if (kk & 0x20) kk -= 64;
+    if (jj & 0x20) jj -= 64;
+    *j = jj;
+    *k = kk;
+}
+
+/* SCREEN 10/11/12 (YJK/YAE). Cada pixel e' um byte: Y nos 5 bits altos. Em YAE, o bit 3
+ * do byte escolhe a paleta (indice = bits altos) em vez de YJK. Pixel da tela x sai do
+ * pixel q = x + scroll da VRAM; sprites (z) substituem o fundo. */
+static void RenderYjkLine(const VdpState *v, const PalSet *pal, int y, const uint8_t *z, VdpRgb888 *out) {
+    const int yae = (v->regs[25] & 0x10) != 0;
+    const uint32_t row = v->chr_tab + ((((uint32_t)(y + v->regs[23])) << 8) & v->chr_tab_mask & 0xFFFF);
+    int x;
+    for (x = 0; x < 256; ++x) {
+        int q = 0;
+        const uint32_t page = ScrolledPos(v, x, 256, &q);
+        const uint32_t pix = row + page + (uint32_t)q;
+        const uint8_t b = VramAt(v, pix);
+        if (z[x]) {
+            out[x] = pal->c[z[x]];
+            continue;
+        }
+        if (yae && (b & 0x08)) {
+            out[x] = pal->c[b >> 4];
+            continue;
+        }
+        {
+            int j, k;
+            YjkChroma(v, (pix & ~3u), &j, &k);
+            out[x] = YjkColor(b >> 3, j, k);
+        }
+    }
+}
+
+/* Pixel bitmap de SCREEN 5-8 na posicao q da linha (ja' com scroll): valor cru da VRAM
+ * (indice de cor de 4, 16 ou 256 cores). */
+static uint8_t BitmapPixel(const VdpState *v, int scr, uint32_t row, int q, uint32_t page) {
+    switch (scr) {
+    case 5:
+    case 7: {
+        const uint8_t b = VramAt(v, row + page + (uint32_t)(q >> 1));
+        return (uint8_t)((q & 1) ? (b & 0x0F) : (b >> 4));
+    }
+    case 6: {
+        const uint8_t b = VramAt(v, row + page + (uint32_t)(q >> 2));
+        return (uint8_t)((b >> (6 - 2 * (q & 3))) & 0x03);
+    }
+    default: /* 8 */
+        return VramAt(v, row + page + (uint32_t)q);
+    }
+}
+
+/* SCREEN 5-8 no V9958: caminho completo, com scroll (R#26/R#27, HScroll512) e pixel a
+ * pixel. Com scroll zero reproduz exatamente RenderLine5..8 (teste diferencial). */
+static void RenderBitmapV9958(const VdpState *v, const PalSet *pal, int y, const uint8_t *z, VdpRgb888 *out) {
+    static const uint8_t spr_to_scr[16] = {0x00, 0x02, 0x10, 0x12, 0x80, 0x82, 0x90, 0x92,
+                                           0x49, 0x4B, 0x59, 0x5B, 0xC9, 0xCB, 0xD9, 0xDB};
+    const int scr = v->scr_mode;
+    const int wide = scr == 6 || scr == 7;
+    const int width = wide ? 512 : 256;
+    const uint32_t row = (scr == 5 || scr == 6) ? BitmapRow(v, y, 7, 0x7FFF) : BitmapRow(v, y, 8, 0xFFFF);
+    int x;
+    EnsureBpal();
+    for (x = 0; x < width; ++x) {
+        int q = 0;
+        const uint32_t page = ScrolledPos(v, x, width, &q);
+        const int zi = wide ? x >> 1 : x;
+        const uint8_t val = BitmapPixel(v, scr, row, q, page);
+        if (scr == 8) {
+            out[x] = g_bpal[z[zi] ? spr_to_scr[z[zi]] : val];
+        } else {
+            out[x] = pal->c[z[zi] ? z[zi] : val];
+        }
+    }
+}
+
 /* --- interface -------------------------------------------------------------------- */
 
 int vdp_render_width(const VdpState *v) {
+    if (YjkActive(v)) return VDP_RENDER_WIDTH_STD;
     switch (v->scr_mode) {
     case 0: return VDP_RENDER_WIDTH_TEXT40;
     case 6:
@@ -259,12 +396,16 @@ int vdp_render_width(const VdpState *v) {
 }
 
 int vdp_render_height(const VdpState *v) {
-    return (v->model == VDP_MODEL_MSX2 && (v->regs[9] & 0x80)) ? 212 : VDP_RENDER_HEIGHT;
+    return (VDP_MODEL_IS_V9938(v->model) && (v->regs[9] & 0x80)) ? 212 : VDP_RENDER_HEIGHT;
 }
 
 VdpRgb888 vdp_render_border_color(const VdpState *v) {
     PalSet pal;
     BuildPal(v, &pal);
+    if (YjkActive(v)) {
+        EnsureBpal();
+        return g_bpal[v->regs[7]];
+    }
     switch (v->scr_mode) {
     case 8:
         EnsureBpal();
@@ -272,6 +413,14 @@ VdpRgb888 vdp_render_border_color(const VdpState *v) {
     case 6: return pal.c[v->regs[7] & 0x03];
     default: return pal.c[v->regs[7] & 0x0F];
     }
+}
+
+/* R#25 bit 1 (MSK): os primeiros 8 pixels (16 em modo de 512) saem na cor de fundo. */
+static void V9958MaskLeft(const VdpState *v, int width, VdpRgb888 *out) {
+    int i;
+    const int n = (v->regs[25] & 0x02) ? (width == 512 ? 16 : 8) : 0;
+    const VdpRgb888 bg = vdp_render_border_color(v);
+    for (i = 0; i < n; ++i) out[i] = bg;
 }
 
 void vdp_render_line(const VdpState *v, int y, VdpRgb888 *out_row) {
@@ -284,6 +433,20 @@ void vdp_render_line(const VdpState *v, int y, VdpRgb888 *out_row) {
     /* Tela desligada (R#1 bit 6): so' a cor de fundo */
     if (!ScreenOn(v)) {
         Fill(out_row, width, vdp_render_border_color(v));
+        return;
+    }
+
+    if (YjkActive(v)) {
+        vdp_sprites_color_line(v, y, zbuf);
+        RenderYjkLine(v, &pal, y, zbuf + 32, out_row);
+        V9958MaskLeft(v, width, out_row);
+        return;
+    }
+
+    if (v->model == VDP_MODEL_MSX2P && v->scr_mode >= 5 && v->scr_mode <= 8) {
+        vdp_sprites_color_line(v, y, zbuf);
+        RenderBitmapV9958(v, &pal, y, zbuf + 32, out_row);
+        V9958MaskLeft(v, width, out_row);
         return;
     }
 
@@ -327,7 +490,7 @@ void vdp_render_line(const VdpState *v, int y, VdpRgb888 *out_row) {
         RenderLine8(v, y, zbuf + 32, out_row);
         return;
     default:
-        /* Modo nao suportado (SCREEN 9-12: V9958): cor de fundo */
+        /* SCREEN 9 nao existe no MSX2+ (so' no MSX2 coreano): cor de fundo */
         Fill(out_row, width, vdp_render_border_color(v));
         return;
     }

@@ -27,6 +27,10 @@ extern "C" {
 // modelo escolhe quanto usa (vram_pages/vram_mask) -- ver vdp_set_model().
 #define VDP_MODEL_MSX1 0
 #define VDP_MODEL_MSX2 1
+/* V9958 (MSX2+): V9938 mais modos YJK/YAE (SCREEN 10-12), R#25-R#27 e o bit 2 de
+   S#1. Tudo que e' "V9938" vale para ele tambem (ver VDP_MODEL_IS_V9938). */
+#define VDP_MODEL_MSX2P 2
+#define VDP_MODEL_IS_V9938(m) ((m) >= VDP_MODEL_MSX2)
 
 // MAXSCREEN do fMSX (resource/fMSX/fMSX/MSX.h) -- maior modo de tela
 // numerado (SCREEN 12); MAXSCREEN+1 e' o modo especial TEXT80 (SCREEN 0

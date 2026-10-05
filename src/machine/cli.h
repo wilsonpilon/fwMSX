@@ -11,6 +11,8 @@ namespace machine {
 // `args` sao os argumentos DEPOIS de "--msx"; `argv0` e' argv[0] (para achar a
 // BIOS padrao ao lado do executavel).
 //
+//   --msx2p                 maquina MSX2+ (VDP V9958: SCREEN 10-12 YJK/YAE, scroll
+//                           em SCREEN 12); a BIOS padrao vira MSX2P.ROM e a sub-ROM MSX2PEXT.ROM
 //   --msx2                  maquina MSX2 (VDP V9938, RAM de 128KB com mapper, RTC);
 //                           a BIOS padrao vira MSX2.ROM e a sub-ROM MSX2EXT.ROM
 //   --ext <arq>             sub-ROM do MSX2 (padrao: MSX2EXT.ROM ao lado da BIOS)

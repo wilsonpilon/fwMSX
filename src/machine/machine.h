@@ -27,7 +27,7 @@ namespace machine {
 // Modelo da maquina: MSX1 (TMS9918, 64KB de RAM, MSX.ROM) ou MSX2 (V9938 com
 // 128KB de VRAM e motor de comandos, RAM de 128KB com mapper, relogio RTC,
 // MSX2.ROM + MSX2EXT.ROM). Ver doc/msx2-spec.md.
-enum class Model { MSX1, MSX2 };
+enum class Model { MSX1, MSX2, MSX2P };
 
 // Tamanho da imagem de RenderFrame(): `width` x `height` pixels e quantas vezes
 // cada linha deve ser repetida ao exibir (`y_scale`): 2 nas imagens de 512 de
@@ -103,7 +103,8 @@ public:
     // dobrados; a imagem pede y_scale=2 ao exibir, ver FrameSize).
     FrameSize RenderFrame(std::vector<uint32_t> &rgba) const;
 
-    bool is_msx2() const { return model_ == Model::MSX2; }
+    // MSX2 e MSX2+ (V9938/V9958): o que a janela e o mapa de memoria tratam como 'MSX2'.
+    bool is_msx2() const { return model_ != Model::MSX1; }
     // Mapper de RAM e relogio (so' no MSX2; nullptr no MSX1).
     memmap::RamMapperDevice *mapper() { return mapper_.get(); }
     rtc::RtcDevice *rtc() { return rtc_.get(); }

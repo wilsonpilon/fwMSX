@@ -143,17 +143,19 @@ acompanhamento manual do autor a cada build):
 `src/common/version.h` e a fonte de verdade dos valores default
 (usados quando o executavel roda sem argumentos).
 
-## 5. Proximas fases (ainda nao iniciadas)
+## 5. Proximas fases
 
 - ~~Trazer para `resource/` os fontes do fMSX original e de outras
   referencias de MSX para estudo.~~ Feito -- `resource/` ja tem fMSX,
   fmsxgo, kizuna, msxide, paleobasic, msxDiskUtil, msxdos1/2 etc. (ver
   `resource/README.md`). O `msxdisk` (ver `doc/msxdisk-spec.md`) e o
   primeiro fruto direto disso.
-- Iniciar o core de emulacao propriamente dito (CPU Z80, VDP, PSG, etc.),
+- ~~Iniciar o core de emulacao propriamente dito (CPU Z80, VDP, PSG, etc.),
   decidindo em qual(is) modulo(s)/linguagem(ns) cada parte sera
   implementada, sempre respeitando a regra de ter as quatro linguagens
-  representadas em uso real.
+  representadas em uso real.~~ **Feito**: o core existe desde a v1.3.0 (Z80)
+  e a maquina completa desde a v1.9.0 (MSX1) e v1.11.0 (MSX2). Cada fase
+  segue a regra das quatro linguagens.
 
   **CPU Z80: Fases 1-4 concluidas em 2026-09-30** -- ver
   [doc/z80-core-spec.md](z80-core-spec.md) para o detalhamento completo.
@@ -180,15 +182,14 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Ainda faltam VDP e PSG para existir uma maquina MSX completa** --
-  ver a nota de "proximos passos" logo abaixo. SRAM persistente,
-  `MAP_GMASTER2`/`MAP_FMPAC` e a heuristica `MAP_GUESS` do mapa de
-  memoria ficaram deliberadamente de fora por dependerem de subsistemas
-  que ainda nao existem (som, save-state) -- ver
-  `doc/memory-map-spec.md`, secao 6, para o raciocinio completo de cada
-  item adiado.
+  **Estado atual (2026-10-05):** a maquina MSX1 e a MSX2 estao completas
+  (VDP, PSG, SCC, disco, joystick). Ver a nota de "proximos passos" logo
+  abaixo. Sobre o mapa de memoria: SRAM persistente, `MAP_GMASTER2` e
+  `MAP_FMPAC` dependem de save-state e de FM, que ainda nao existem; a
+  heuristica `MAP_GUESS` nao depende de nenhum deles e continua adiada por
+  escolha (ver `doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Proximos passos (para retomar sem se perder -- v1.10.0, 2026-10-02)
+### 5.0 Proximos passos (para retomar sem se perder -- atualizado na v1.15.0, 2026-10-05)
 
 O trabalho no core de emulacao segue em andamento; esta secao continua
 sendo o "onde paramos" oficial.
@@ -207,7 +208,10 @@ sendo o "onde paramos" oficial.
    janela. **Fase 3 (sprites de modo 1, SCREEN 1/2/3) concluida em 2026-10-01**.
    **Fases 4 e 5 (MSX2) concluidas em 2026-10-02**: todos os modos do V9938, sprites
    de modo 2 e o motor de comandos -- ver [doc/msx2-spec.md](msx2-spec.md); `fwmsx
-   --msx --msx2` roda o MSX BASIC 2.1 e o Firebird. **Falta**: so' o V9958 (MSX2+). Achado que vale lembrar: a BIOS real ainda nao chega a
+   --msx --msx2` roda o MSX BASIC 2.1 e o Firebird. O **V9958 (MSX2+)** fica pronto na
+   v1.15.0 (2026-10-05): SCREEN 10-12 (YJK/YAE) e scroll do SCREEN 12, com
+   `--msx --msx2p` -- ver [doc/msx2p-spec.md](msx2p-spec.md). Inclui o scroll
+   dos modos 5-8 e a mascara da esquerda. Achado que vale lembrar: a BIOS real ainda nao chega a
    habilitar a interrupcao de VBlank dentro de nenhum orcamento de
    ciclos testado -- ela poliniza hardware de teclado/PPI (portas
    `A9h`-`ABh`) que ainda nao existe no projeto, uma limitacao real e
@@ -228,8 +232,8 @@ sendo o "onde paramos" oficial.
    [doc/machine-spec.md](machine-spec.md). Roda a BIOS real em tempo real,
    com teclado do host e cartucho no slot 1. Audio ao vivo tambem pronto.
    Joystick pronto (v1.10) e **disco pronto: o MSX-DOS 1.8 boota**
-   ([doc/fdc-spec.md](fdc-spec.md)). Continuam faltando os modos MSX2 (Fase 4 do
-   VDP -- o Firebird e' um jogo MSX2 e espera por isso).
+   ([doc/fdc-spec.md](fdc-spec.md)). Os modos MSX2 (Fase 4 do VDP) ficaram
+   prontos na v1.11.0 (o Firebird roda).
 3. Itens menores registrados e conscientemente adiados, sem bloquear
    nada do acima:
    - ~~Validacao em execucao real (nao so montagem) da branch `elf64`/
@@ -245,9 +249,11 @@ sendo o "onde paramos" oficial.
      (2026-10-05): a busca (`REPNE SCASB`, `block_ops.asm`) vai para o
      Assembly; contagem, flags e PC saem do mesmo calculo do loop lento, a
      partir do ultimo byte examinado. Ver `doc/z80-core-spec.md`, secao 6.
-   - `MAP_GMASTER2`/`MAP_FMPAC`/SRAM persistente/`MAP_GUESS` no mapa de
-     memoria (ver `doc/memory-map-spec.md`, secao 6) -- dependem de
-     som/save-state, que ainda nao existem.
+   - `MAP_GMASTER2`/`MAP_FMPAC`/SRAM persistente no mapa de memoria (ver
+     `doc/memory-map-spec.md`, secao 6) -- dependem de save-state e de FM,
+     que ainda nao existem.
+   - `MAP_GUESS` (deteccao automatica de mapper): adiado por escolha, nao por
+     falta de subsistema. Ver `doc/memory-map-spec.md`, secao 6.
    - ~~Decidir, quando VDP/PSG existirem, se `fwMSX.exe` sem argumentos
      passa a abrir em modo GUI/maquina completa por padrao~~ **Feito na
      v1.12.0** (2026-10-05) -- ver secao 5.1 abaixo. `fwMSX.exe` sem

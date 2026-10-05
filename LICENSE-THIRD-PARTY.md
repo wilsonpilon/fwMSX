@@ -131,6 +131,11 @@ termos acima:
   Assembly (`src/scc/asm/render_channel.asm`), a tabela de volume linear (Fortran) e o
   `SccDevice` (C++) sao codigo original (BSD-3-Clause). Ver `doc/scc-spec.md`.
 
+- `src/vdp/core/vdp_render.c` (SCREEN 10-12 do V9958) -- base de `RefreshLine10()`/`RefreshLine12()` e
+  `YJKColor()` de `resource/fMSX/fMSX/Common.h` (decodificacao de crominancia, regra de YAE).
+  O scroll pixel a pixel, o arredondamento do azul, a expansao de 5 bits e a mascara da esquerda
+  sao do fwMSX, com o comportamento conferido no openMSX (GPL, so' como referencia: nenhum codigo
+  copiado). Ver `doc/msx2p-spec.md`.
 - `src/memmap/cpp/rom_guess.{h,cpp}` -- a heuristica de `GuessROM()` de
   `resource/fMSX/fMSX/MSX.c` (contagem de `LD (nnnn),A` nos enderecos de
   registrador de banco de cada mapper). **Nao** inclui a consulta a
