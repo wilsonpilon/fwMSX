@@ -35,6 +35,14 @@ const char *MapperName(MemMapMapperType mapper) {
 
 MemorySystem::MemorySystem() { memmap_init(&state_); }
 
+void MemorySystem::ClearSlot(int primary, int secondary) {
+    if (!ValidSlotIndex(primary, secondary)) return;
+    memmap_clear_slot(&state_, primary, secondary);
+    sram_file_size_[primary][secondary] = 0;
+    mapper_base_[primary][secondary] = nullptr;
+    mapper_segments_[primary][secondary] = 0;
+}
+
 void MemorySystem::AllocateRam(int primary, int secondary, std::size_t size) {
     const std::size_t max_size = static_cast<std::size_t>(MEMMAP_PAGES) * MEMMAP_PAGE_SIZE;
     if (size > max_size) size = max_size;
@@ -103,6 +111,12 @@ bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std:
         return false;
     }
 
+    // FM-PAC: o cartucho real e' uma ROM de 16KB (dois bancos de 8KB).
+    if (mapper == MEMMAP_MAPPER_FMPAC && size != 0x4000) {
+        if (error) *error = "FM-PAC: a ROM precisa ter 16KB (tem " + std::to_string(size) + " bytes)";
+        return false;
+    }
+
     // CRC32 calculado ANTES de tocar em chunk[]/owned_buffers_ -- se algo
     // desse errado aqui (nao da, rom_crc32 nao falha, mas por seguranca
     // contra mudanca futura), a combinacao de slot fica intacta.
@@ -126,7 +140,48 @@ bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std:
     }
     owned_buffers_.push_back(std::move(buffer));
     rom_crc32_[primary][secondary] = crc;
+
+    // SRAM de cartucho (ASCII8: 8KB; ASCII16: 2KB espelhada) -- ver doc/sram-spec.md.
+    sram_file_size_[primary][secondary] = 0;
+    if (mapper == MEMMAP_MAPPER_ASCII8 || mapper == MEMMAP_MAPPER_ASCII16 || mapper == MEMMAP_MAPPER_FMPAC) {
+        auto sram = std::make_unique<uint8_t[]>(MEMMAP_CHUNK_SIZE);
+        std::fill(sram.get(), sram.get() + MEMMAP_CHUNK_SIZE, static_cast<uint8_t>(0));
+        memmap_attach_sram(&state_, primary, secondary, sram.get());
+        sram_file_size_[primary][secondary] = (mapper == MEMMAP_MAPPER_ASCII16) ? 0x0800 : MEMMAP_CHUNK_SIZE;
+        owned_buffers_.push_back(std::move(sram));
+    }
     return true;
+}
+
+bool MemorySystem::HasSram(int primary, int secondary) const {
+    return ValidSlotIndex(primary, secondary) && sram_file_size_[primary][secondary] != 0;
+}
+
+std::size_t MemorySystem::SramFileSize(int primary, int secondary) const {
+    return ValidSlotIndex(primary, secondary) ? sram_file_size_[primary][secondary] : 0;
+}
+
+bool MemorySystem::LoadSram(int primary, int secondary, const uint8_t *data, std::size_t size) {
+    if (!HasSram(primary, secondary) || size != sram_file_size_[primary][secondary]) return false;
+    uint8_t *buf = state_.sram_base[primary][secondary];
+    // A SRAM de 2KB aparece repetida nos 8KB do buffer (como na janela de 16KB do cartucho).
+    for (std::size_t off = 0; off < MEMMAP_CHUNK_SIZE; ++off) buf[off] = data[off % size];
+    state_.sram_dirty[primary][secondary] = 0;
+    return true;
+}
+
+std::vector<uint8_t> MemorySystem::SramImage(int primary, int secondary) const {
+    if (!HasSram(primary, secondary)) return {};
+    const uint8_t *buf = state_.sram_base[primary][secondary];
+    return std::vector<uint8_t>(buf, buf + sram_file_size_[primary][secondary]);
+}
+
+bool MemorySystem::SramDirty(int primary, int secondary) const {
+    return HasSram(primary, secondary) && state_.sram_dirty[primary][secondary] != 0;
+}
+
+void MemorySystem::ClearSramDirty(int primary, int secondary) {
+    if (ValidSlotIndex(primary, secondary)) state_.sram_dirty[primary][secondary] = 0;
 }
 
 uint8_t MemorySystem::PeekSlot(int primary, int secondary, uint16_t addr) const {

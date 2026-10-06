@@ -164,6 +164,8 @@ dkms.conf
 /dist/machinetest.exe
 /dist/audiotest.exe
 /dist/scctest.exe
+/dist/fmtest.exe
+/dist/fmtest
 /dist/videofiltertest.exe
 /dist/videofiltertest
 /dist/scctest
@@ -192,3 +194,6 @@ dkms.conf
 # no diretorio onde o executavel foi rodado -- preferencia por maquina,
 # nao faz sentido versionar.
 imgui.ini
+
+# Arquivos de SRAM (.sav) gravados ao lado das ROMs (ex.: resource/fMSX/FMPAC.sav)
+*.sav

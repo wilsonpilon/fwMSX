@@ -48,7 +48,11 @@ typedef enum MemMapMapperType {
     MEMMAP_MAPPER_KONAMI5,
     MEMMAP_MAPPER_KONAMI4,
     MEMMAP_MAPPER_ASCII8,
-    MEMMAP_MAPPER_ASCII16
+    MEMMAP_MAPPER_ASCII16,
+    /* Panasonic FM-PAC (MAP_FMPAC do fMSX): ROM de 16KB em 4000h-7FFFh com
+       troca pela porta 7FF7h, e SRAM de 8KB em 4000h-5FFFh liberada por uma
+       chave escrita em 5FFEh/5FFFh. Ver doc/fm-spec.md, secao 4. */
+    MEMMAP_MAPPER_FMPAC
 } MemMapMapperType;
 
 #ifdef __cplusplus

@@ -124,8 +124,8 @@ util para comparar a Fase 4 do VDP.
 ## 5. Limites conhecidos e o que falta
 
 - **Audio:** o PSG toca ao vivo (ver `doc/audio-spec.md`); `--mute` desliga.
-  O SCC tambem toca ao vivo (v1.13.0), somado ao PSG. Click de tecla/cassete
-  (PPI) e FM ainda sem som.
+  O SCC tambem toca ao vivo (v1.13.0), e o FM (MSX-MUSIC/FM-PAC) desde a
+  v1.17.0, somados ao PSG. Click de tecla/cassete (PPI) ainda sem som.
 - **Modos de tela:** todos os do MSX1 e do V9938 (SCREEN 0-8, TEXT80) -- ver
   `doc/msx2-spec.md`. O MSX2+ (V9958, `--msx2p`) esta em `doc/msx2p-spec.md`.
 - **Joystick:** setas + Z/Espaco (fogo A) + X (fogo B) na porta A e gamepads
@@ -137,5 +137,6 @@ util para comparar a Fase 4 do VDP.
   GL, ImGui, textura, loop em tempo real, `--frames`): a digitacao pelo
   teclado do host (GLFW -> `Machine`) nao tem teste automatico, so' a
   `Machine::KeyDown/KeyUp` por baixo dela (`machinetest`).
-- Nao ha' selecao de cartucho/BIOS pela janela (so' pela linha de comando)
-  nem save-state.
+- Pela janela: cartucho, FM-PAC, disco e layout de slots (menu Configuracao de
+  slots, v1.17.0, ver `doc/slots-spec.md`). A BIOS e' escolhida no layout (0:0).
+  Save-state ainda nao existe.

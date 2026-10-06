@@ -475,11 +475,31 @@ int main() {
         check(mem.PeekSlot(2, 0, 0x8000) == 0x11, "ASCII8: porta 7000h troca quarto 2 para banco 1");
         check(mem.PeekSlot(2, 0, 0xA000) == 0x10, "ASCII8: porta 7800h troca quarto 3 para banco 0");
 
-        // Selecao de SRAM (bit mask+1 = 0x04) reconhecida mas ignorada --
-        // quarto 0 continua no banco 2 de antes, sem crash/corrupcao.
+        // Selecao de SRAM (bit mask+1 = 0x04): o quarto 0 vira a SRAM de 8KB, gravavel.
         bus.write(0x6000, 0x04);
-        check(mem.PeekSlot(2, 0, 0x4000) == 0x12,
-              "ASCII8: selecao de SRAM (V=04h) e' ignorada -- quarto 0 continua banco 2");
+        check(mem.HasSram(2, 0) && mem.SramFileSize(2, 0) == 0x2000 && !mem.SramDirty(2, 0),
+              "ASCII8: cartucho com SRAM de 8KB; ainda nao gravada");
+        check(mem.PeekSlot(2, 0, 0x4000) == 0x00, "ASCII8: SRAM selecionada aparece zerada (nao e' o banco 2)");
+        bus.write(0x4000, 0x5A);
+        check(mem.PeekSlot(2, 0, 0x4000) == 0x5A && mem.SramDirty(2, 0),
+              "ASCII8 SRAM: escrita grava na SRAM e marca como alterada");
+        bus.write(0x6000, 2); // volta ao banco 2 da ROM
+        check(mem.PeekSlot(2, 0, 0x4000) == 0x12, "ASCII8: trocar de volta mostra o banco 2 da ROM");
+        bus.write(0x6000, 0x04);
+        check(mem.PeekSlot(2, 0, 0x4000) == 0x5A, "ASCII8 SRAM: o conteudo sobrevive a trocar de banco");
+
+        // Persistencia: a imagem gravada no .sav volta a valer em outra instancia.
+        const std::vector<uint8_t> image = mem.SramImage(2, 0);
+        check(image.size() == 0x2000 && image[0] == 0x5A, "ASCII8: imagem de 8KB para o .sav com o conteudo");
+        memmap::MemorySystem mem2;
+        check(mem2.LoadRom(2, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_ASCII8), "ASCII8: segunda instancia");
+        check(mem2.LoadSram(2, 0, image.data(), image.size()) && !mem2.SramDirty(2, 0),
+              "ASCII8: LoadSram aceita a imagem de 8KB e nao marca como alterada");
+        memmap::SlotMemoryBus bus2(mem2);
+        SelectEverywhere(bus2, 2, 0);
+        bus2.write(0x6000, 0x04);
+        check(mem2.PeekSlot(2, 0, 0x4000) == 0x5A, "ASCII8: o .sav recarregado mostra o mesmo conteudo");
+        check(!mem2.LoadSram(2, 0, image.data(), 100), "ASCII8: LoadSram recusa imagem de tamanho errado");
     }
 
     // --- 20. MAP_ASCII16: granularidade de 16KB; quirk de rejeicao de -----
@@ -519,11 +539,16 @@ int main() {
         check(mem.PeekSlot(2, 1, 0x4000) == 0x10,
               "ASCII16: V=200 (lixo) em endereco alinhado a 4KB (6000h) e' aceito e mascarado para banco 0");
 
-        // Selecao de SRAM (V=mask+1=4, alinhado ou nao) reconhecida mas
-        // ignorada -- sem crash, sem mudanca de banco (continua o que o
-        // 6000h deixou acima).
+        // Selecao de SRAM (V=mask+1=4): a janela de 16KB vira a SRAM de 2KB espelhada.
         bus.write(0x6000, 4);
-        check(mem.PeekSlot(2, 1, 0x4000) == 0x10, "ASCII16: selecao de SRAM (V=04h) e' ignorada -- banco inalterado");
+        check(mem.HasSram(2, 1) && mem.SramFileSize(2, 1) == 0x0800, "ASCII16: cartucho com SRAM de 2KB");
+        check(mem.PeekSlot(2, 1, 0x4000) == 0x00, "ASCII16: SRAM selecionada aparece zerada");
+        bus.write(0x4123, 0x9C);
+        check(mem.PeekSlot(2, 1, 0x4123) == 0x9C && mem.SramDirty(2, 1), "ASCII16 SRAM: escrita grava e marca como alterada");
+        check(mem.PeekSlot(2, 1, 0x4923) == 0x9C, "ASCII16 SRAM: a mesma posicao aparece espelhada 2KB adiante");
+        const std::vector<uint8_t> image16 = mem.SramImage(2, 1);
+        check(image16.size() == 0x0800 && image16[0x123] == 0x9C, "ASCII16: imagem de 2KB para o .sav");
+        bus.write(0x6000, 0); // volta a ROM (banco 0) para as verificacoes seguintes
 
         // Registrador de controle da metade ALTA (7000h, bit12=1) --
         // protocolo real do ASCII16: 6000h e 7000h controlam metades
@@ -718,6 +743,61 @@ int main() {
         check(guess({0x6000, 0x7000, 0x77FF}) == MEMMAP_MAPPER_ASCII16, "GuessMapper: 6000h/7000h/77FFh -> ASCII16");
         const std::vector<uint8_t> blank(0x20000, 0);
         check(memmap::GuessMapper(blank.data(), blank.size()) == MEMMAP_MAPPER_GEN8, "GuessMapper: sem pistas -> Gen8 (o padrao)");
+    }
+
+    // --- 24. MAP_FMPAC (FM-PAC, doc/fm-spec.md, secao 4): ROM de 16KB em ----
+    //      4000h-7FFFh, SRAM de 8KB liberada pela chave 4Dh/69h em 5FFEh/5FFFh.
+    {
+        std::vector<uint8_t> rom(0x4000);
+        for (size_t i = 0; i < rom.size(); ++i) rom[i] = static_cast<uint8_t>(0x30 + (i >> 13) + (i & 0x7F));
+        memmap::MemorySystem mem;
+        std::string error;
+        check(!mem.LoadRom(2, 0, rom.data(), 0x8000, &error, MEMMAP_MAPPER_FMPAC),
+              "FM-PAC: ROM de 32KB e' recusada (o cartucho real tem 16KB)");
+        error.clear();
+        check(mem.LoadRom(2, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_FMPAC),
+              "FM-PAC: LoadRom aceita 16KB (" + error + ")");
+        check(mem.HasSram(2, 0) && mem.SramFileSize(2, 0) == 0x2000, "FM-PAC: tem SRAM de 8KB (arquivo .sav de 8192 bytes)");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 2, 0);
+        check(mem.PeekSlot(2, 0, 0x4000) == rom[0] && mem.PeekSlot(2, 0, 0x6000) == rom[0x2000],
+              "FM-PAC: ROM aparece em 4000h (banco 0) e 6000h (banco 1) ao ligar");
+        check(mem.PeekSlot(2, 0, 0x8000) == MEMMAP_EMPTY_BYTE && mem.PeekSlot(2, 0, 0xA000) == MEMMAP_EMPTY_BYTE,
+              "FM-PAC: 8000h-BFFFh vazia (o cartucho real so' tem a janela 4000h-7FFFh)");
+
+        bus.write(0x4123, 0xEE); // chave desligada: escrita em 4000h-5FFFh nao chega a lugar nenhum
+        check(mem.PeekSlot(2, 0, 0x4123) == rom[0x123] && !mem.SramDirty(2, 0),
+              "FM-PAC: sem a chave, 4000h-5FFFh continua ROM e a escrita e' descartada");
+
+        bus.write(0x5FFE, 0x4D);
+        check(mem.PeekSlot(2, 0, 0x4123) == rom[0x123], "FM-PAC: so' 4Dh em 5FFEh (5FFFh ainda 00h) nao liga a SRAM");
+        bus.write(0x5FFF, 0x69);
+        bus.write(0x4123, 0x5A);
+        check(mem.PeekSlot(2, 0, 0x4123) == 0x5A && mem.SramImage(2, 0)[0x123] == 0x5A && mem.SramDirty(2, 0),
+              "FM-PAC: com 694Dh a chave liga a SRAM e a escrita grava nela");
+        check(mem.PeekSlot(2, 0, 0x6000) == rom[0x2000],
+              "FM-PAC: com a SRAM ligada, 6000h-7FFFh continua no banco de ROM (diferenca do fMSX, ver doc)");
+
+        bus.write(0x7FF7, 0x00); // troca de pagina nao desliga a SRAM
+        bus.write(0x7FF6, 0x10); // 7FF6h e' ignorado (OPL), nao muda nada
+        check(mem.PeekSlot(2, 0, 0x4123) == 0x5A, "FM-PAC: 7FF7h/7FF6h nao desligam a SRAM");
+
+        bus.write(0x5FFE, 0x00);
+        check(mem.PeekSlot(2, 0, 0x4123) == rom[0x123],
+              "FM-PAC: trocar a chave de volta desliga a SRAM (4000h volta a ROM)");
+        check(mem.SramImage(2, 0)[0x123] == 0x5A, "FM-PAC: a SRAM guarda o conteudo mesmo com a chave desligada");
+
+        // Persistencia: uma segunda instancia carregada com a imagem ve o mesmo conteudo.
+        memmap::MemorySystem again;
+        again.LoadRom(2, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_FMPAC);
+        const std::vector<uint8_t> image = mem.SramImage(2, 0);
+        check(again.LoadSram(2, 0, image.data(), image.size()), "FM-PAC: LoadSram aceita a imagem de 8KB");
+        memmap::SlotMemoryBus bus2(again);
+        SelectEverywhere(bus2, 2, 0);
+        bus2.write(0x5FFF, 0x69);
+        bus2.write(0x5FFE, 0x4D);
+        check(again.PeekSlot(2, 0, 0x4123) == 0x5A, "FM-PAC: depois de recarregar o .sav, a SRAM mostra o mesmo byte");
     }
 
     if (g_failures == 0) {

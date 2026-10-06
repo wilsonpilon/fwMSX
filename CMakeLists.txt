@@ -321,6 +321,18 @@ set(SCC_LIB_SOURCES
         src/scc/fortran/scc_volume_table.f90
 )
 
+# --- Chip FM OPLL (MSX-MUSIC em 7Ch/7Dh e FM-PAC) -- ver doc/fm-spec.md
+#
+# Motor em C de 9 canais com 2 operadores (ym2413_state.c), timbres prontos
+# (dados do fMSX), tabelas de seno/atenuacao em Fortran (ym2413_tables.f90) e
+# soma de canal em Assembly dual-ABI (accumulate.asm). FmDevice (C++, header-only)
+# liga o chip ao barramento de portas. O mapper do FM-PAC fica no memmap.
+set(FM_LIB_SOURCES
+        src/fm/core/ym2413_state.c
+        src/fm/asm/accumulate.asm
+        src/fm/fortran/ym2413_tables.f90
+)
+
 # --- Controladora de disquete WD2793 (DiskROM em 3:1) -- ver doc/fdc-spec.md
 #
 # Motor em C adaptado do WD1793.c do fMSX (so' imagens .dsk cruas);
@@ -412,7 +424,7 @@ add_test(NAME psg_sound COMMAND psgtest)
 
 # machinetest: a maquina MSX1 completa em quadros, sem janela -- ver
 # doc/machine-spec.md.
-add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(machinetest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
 target_compile_definitions(machinetest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(machinetest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/machinetest)
@@ -445,7 +457,7 @@ add_test(NAME vdp_msx2 COMMAND vdp2test)
 
 # msx2test: maquina MSX2 (mapper de RAM, RTC, V9938 pelo BASIC e disco) -- ver
 # doc/msx2-spec.md.
-add_executable(msx2test tests/z80/msx2_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(msx2test tests/z80/msx2_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(msx2test PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/rtc)
 target_compile_definitions(msx2test PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(msx2test PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/msx2test)
@@ -457,7 +469,7 @@ add_test(NAME msx2_machine COMMAND msx2test)
 
 # audiotest: buffer circular, PSG ao vivo e dispositivo de audio -- ver
 # doc/audio-spec.md.
-add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${FDC_LIB_SOURCES})
 target_include_directories(audiotest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/audio)
 target_compile_definitions(audiotest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(audiotest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/audiotest)
@@ -477,6 +489,16 @@ if (MINGW)
 endif ()
 
 add_test(NAME scc_sound COMMAND scctest)
+
+# fmtest: chip FM (tabelas, kernel de soma contra C, frequencia, volume, envelope,
+# portas 7Ch/7Dh) -- ver doc/fm-spec.md.
+add_executable(fmtest tests/z80/fm_test.cpp ${FM_LIB_SOURCES})
+set_target_properties(fmtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fmtest)
+if (MINGW)
+    target_link_options(fmtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME fm_sound COMMAND fmtest)
 
 # videofiltertest: filtros de video da janela (interpolacao, scanlines, cor) -- sem janela.
 add_executable(videofiltertest tests/z80/video_filter_test.cpp src/machine/gui/video_filters.cpp)
@@ -504,7 +526,7 @@ add_executable(fwMSX
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
         ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES}
-        ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
+        ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 

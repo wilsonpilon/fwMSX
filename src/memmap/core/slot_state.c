@@ -129,13 +129,32 @@ uint8_t memmap_read(const SlotState *state, uint16_t addr) {
     return state->active_view[chunk_idx][offset];
 }
 
+/* Grava um byte num pedaco gravavel. SRAM espelhada (ASCII16) repete os 2KB
+   pelo pedaco de 8KB; qualquer SRAM marca a combinacao como alterada. */
+static void StoreToChunk(SlotState *state, int primary, int secondary, uint8_t *view, uint8_t mode, int offset,
+                         uint8_t value) {
+    if (mode == MEMMAP_WRITE_SRAM_MIRROR) {
+        const int base = offset & 0x07FF;
+        for (int copy = 0; copy < 4; ++copy) view[base + copy * 0x0800] = value;
+    } else {
+        view[offset] = value;
+    }
+    if (mode != MEMMAP_WRITE_RAM) state->sram_dirty[primary][secondary] = 1;
+}
+
 void memmap_write(SlotState *state, uint16_t addr, uint8_t value) {
     // Idem memmap_read(): os registradores do FDC (7FF8h/BFF8h/...) sao
     // atendidos pelo SlotMemoryBus (SlotMmio) antes de chegar aqui.
     const int chunk_idx = addr >> 13;
-    if (state->active_writable[chunk_idx]) {
-        const int offset = addr & (MEMMAP_CHUNK_SIZE - 1);
-        state->active_view[chunk_idx][offset] = value;
+    const int page = addr >> 14;
+    const uint8_t mode = state->active_writable[chunk_idx];
+    if (mode != MEMMAP_WRITE_NONE) {
+        // Com SRAM selecionada, os registradores de banco (6000h-7FFFh) continuam
+        // sendo registradores, como no fMSX: a escrita troca de banco e nao grava.
+        if (mode != MEMMAP_WRITE_RAM &&
+            memmap_try_bank_switch(state, state->psl[page], state->ssl[page], addr, value)) return;
+        StoreToChunk(state, state->psl[page], state->ssl[page], state->active_view[chunk_idx], mode,
+                     addr & (MEMMAP_CHUNK_SIZE - 1), value);
         return;
     }
 
@@ -144,7 +163,6 @@ void memmap_write(SlotState *state, uint16_t addr, uint8_t value) {
     // escrita esta acessando (mesmo raciocinio do MapROM() do fMSX: PS/SS
     // vem de PSL[A>>14]/SSL[A>>14], nao de uma combinacao escolhida a
     // parte) -- ver doc/memory-map-spec.md, secao 6.
-    const int page = addr >> 14;
     if (memmap_try_bank_switch(state, state->psl[page], state->ssl[page], addr, value)) return;
 
     // Nem RAM gravavel nem troca de banco reconhecida -- descartada em
@@ -161,9 +179,10 @@ uint8_t memmap_peek_slot(const SlotState *state, int primary, int secondary, uin
 void memmap_poke_slot(SlotState *state, int primary, int secondary, uint16_t addr, uint8_t value) {
     if (!ValidSlot(primary, secondary)) return;
     const int chunk_idx = addr >> 13;
-    if (!state->chunk_writable[primary][secondary][chunk_idx]) return;
-    const int offset = addr & (MEMMAP_CHUNK_SIZE - 1);
-    state->chunk[primary][secondary][chunk_idx][offset] = value;
+    const uint8_t mode = state->chunk_writable[primary][secondary][chunk_idx];
+    if (mode == MEMMAP_WRITE_NONE) return;
+    StoreToChunk(state, primary, secondary, state->chunk[primary][secondary][chunk_idx], mode,
+                 addr & (MEMMAP_CHUNK_SIZE - 1), value);
 }
 
 void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t *data, size_t size,
@@ -184,6 +203,7 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
     state->slot_kind[primary][secondary] = MEMMAP_KIND_ROM;
     state->slot_size[primary][secondary] = size;
     state->slot_mapper[primary][secondary] = mapper;
+    state->fmpac_key[primary][secondary] = 0;
     state->rom_base[primary][secondary] = data;
     state->rom_bank_mask[primary][secondary] = (uint8_t)(bank_count - 1);
 
@@ -200,6 +220,9 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
         const int chunk_idx = quarter + 2;
         state->chunk[primary][secondary][chunk_idx] = data + (bank << 13);
         state->chunk_writable[primary][secondary][chunk_idx] = 0;
+        // FM-PAC: so' existe a janela 4000h-7FFFh; 8000h-BFFFh fica vazia (como
+        // no cartucho real, sem espelho dos bancos -- ver doc/fm-spec.md, secao 4).
+        if (mapper == MEMMAP_MAPPER_FMPAC && quarter >= 2) state->chunk[primary][secondary][chunk_idx] = g_empty_chunk;
     }
 
     // Recomputa a vista ativa se essa combinacao ja estiver visivel agora
@@ -213,14 +236,37 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
 // memmap_try_bank_switch() em slot_state.h sobre por que essa checagem e'
 // necessaria pra ASCII8/ASCII16 e inofensiva (sempre verdadeira) pros
 // outros mappers.
-static void RefreshChunk(SlotState *state, int primary, int secondary, int chunk_idx, uint8_t *ptr) {
+static void RefreshChunk(SlotState *state, int primary, int secondary, int chunk_idx, uint8_t *ptr, uint8_t mode) {
     state->chunk[primary][secondary][chunk_idx] = ptr;
-    state->chunk_writable[primary][secondary][chunk_idx] = 0;
+    state->chunk_writable[primary][secondary][chunk_idx] = mode;
 
     const int page = chunk_idx / 2;
     if (state->psl[page] != primary || state->ssl[page] != secondary) return;
     state->active_view[chunk_idx] = ptr;
-    state->active_writable[chunk_idx] = 0;
+    state->active_writable[chunk_idx] = mode;
+}
+
+void memmap_attach_sram(SlotState *state, int primary, int secondary, uint8_t *buffer) {
+    if (!ValidSlot(primary, secondary)) return;
+    state->sram_base[primary][secondary] = buffer;
+    state->sram_dirty[primary][secondary] = 0;
+}
+
+void memmap_clear_slot(SlotState *state, int primary, int secondary) {
+    if (!ValidSlot(primary, secondary)) return;
+    for (int chunk_idx = 0; chunk_idx < MEMMAP_CHUNKS; ++chunk_idx) {
+        state->chunk[primary][secondary][chunk_idx] = g_empty_chunk;
+        state->chunk_writable[primary][secondary][chunk_idx] = 0;
+    }
+    state->slot_kind[primary][secondary] = MEMMAP_KIND_EMPTY;
+    state->slot_size[primary][secondary] = 0;
+    state->slot_mapper[primary][secondary] = MEMMAP_MAPPER_NONE;
+    state->rom_base[primary][secondary] = NULL;
+    state->rom_bank_mask[primary][secondary] = 0;
+    state->sram_base[primary][secondary] = NULL;
+    state->sram_dirty[primary][secondary] = 0;
+    state->fmpac_key[primary][secondary] = 0;
+    memmap_switch_primary(state, state->psl_reg);
 }
 
 void memmap_remap_ram_chunk(SlotState *state, int primary, int secondary, int chunk_idx, uint8_t *ptr) {
@@ -234,11 +280,59 @@ void memmap_remap_ram_chunk(SlotState *state, int primary, int secondary, int ch
     state->active_writable[chunk_idx] = 1;
 }
 
+/* FM-PAC (MAP_FMPAC do fMSX, MapROM()/WrMem): janela de 16KB em 4000h-7FFFh.
+   7FF7h troca o par de bancos de 8KB (V<<1 e V<<1|1); 5FFEh/5FFFh montam a
+   chave que liga a SRAM de 8KB no quarto 4000h-5FFFh; 7FF6h e' ignorado (no
+   fMSX so' guarda bits do OPL). Com a SRAM ligada, 6000h-7FFFh continua no
+   banco de ROM -- o fMSX mostra 0FFh ali; diferenca documentada em
+   doc/fm-spec.md, secao 4. */
+#define MEMMAP_FMPAC_KEY 0x694D
+
+static int FmpacBankSwitch(SlotState *state, int primary, int secondary, uint16_t addr, uint8_t value) {
+    const uint8_t mask = state->rom_bank_mask[primary][secondary];
+    uint8_t *const rom = state->rom_base[primary][secondary];
+    uint8_t *const sram = state->sram_base[primary][secondary];
+    const int sram_on = state->fmpac_key[primary][secondary] == MEMMAP_FMPAC_KEY && sram != NULL;
+
+    switch (addr) {
+    case 0x7FF7: {
+        const uint8_t bank = (uint8_t)((value << 1) & mask);
+        state->rom_bank[primary][secondary][0] = bank;
+        state->rom_bank[primary][secondary][1] = (uint8_t)(bank | 1);
+        if (!sram_on) RefreshChunk(state, primary, secondary, 2, rom + ((size_t)bank << 13), MEMMAP_WRITE_NONE);
+        RefreshChunk(state, primary, secondary, 3, rom + ((size_t)(bank | 1) << 13), MEMMAP_WRITE_NONE);
+        return 1;
+    }
+    case 0x5FFE:
+    case 0x5FFF: {
+        uint16_t key = state->fmpac_key[primary][secondary];
+        key = (addr & 1) ? (uint16_t)((key & 0x00FF) | ((uint16_t)value << 8))
+                         : (uint16_t)((key & 0xFF00) | value);
+        state->fmpac_key[primary][secondary] = key;
+        if (key == MEMMAP_FMPAC_KEY && sram) {
+            RefreshChunk(state, primary, secondary, 2, sram, MEMMAP_WRITE_SRAM);
+        } else {
+            const uint8_t bank = state->rom_bank[primary][secondary][0];
+            RefreshChunk(state, primary, secondary, 2, rom + ((size_t)bank << 13), MEMMAP_WRITE_NONE);
+        }
+        return 1;  /* 5FFEh/5FFFh sao registradores, nunca bytes de SRAM */
+    }
+    case 0x7FF6:
+        return 1;
+    default:
+        return 0;
+    }
+}
+
 int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_t addr, uint8_t value) {
     if (!ValidSlot(primary, secondary)) return 0;
     const MemMapMapperType mapper = state->slot_mapper[primary][secondary];
     if (mapper == MEMMAP_MAPPER_NONE) return 0;
     if (addr < 0x4000 || addr > 0xBFFF) return 0;
+    if (mapper == MEMMAP_MAPPER_FMPAC) {
+        if (addr >= 0x8000) return 0;
+        return FmpacBankSwitch(state, primary, secondary, addr, value);
+    }
 
     const uint8_t mask = state->rom_bank_mask[primary][secondary];
     uint8_t *const rom = state->rom_base[primary][secondary];
@@ -295,7 +389,14 @@ int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_
                nada, pra nao travar/corromper nada. */
             if (addr < 0x6000 || addr >= 0x8000) return 0;
             quarter = (addr & 0x1800) >> 11;
-            if (value & (uint8_t)(mask + 1)) return 1; /* SRAM nao suportada -- ignorada */
+            if (value & (uint8_t)(mask + 1)) {
+                /* SRAM: a pagina de 8KB passa a ser a SRAM do cartucho (gravavel). */
+                uint8_t *sram = state->sram_base[primary][secondary];
+                if (!sram) return 1;
+                state->rom_bank[primary][secondary][quarter] = 0xFF;
+                RefreshChunk(state, primary, secondary, quarter + 2, sram, MEMMAP_WRITE_SRAM);
+                return 1;
+            }
             bank = value & mask;
             break;
 
@@ -310,7 +411,16 @@ int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_
             const int accepted = (value <= (uint8_t)(mask + 1)) || ((addr & 0x0FFF) == 0);
             if (!accepted) return 0;
             quarter = (addr & 0x1000) >> 11; /* 0 ou 2 */
-            if (value & (uint8_t)(mask + 1)) return 1; /* SRAM nao suportada -- ignorada */
+            if (value & (uint8_t)(mask + 1)) {
+                /* SRAM de 2KB espelhada na janela de 16KB (dois pedacos de 8KB). */
+                uint8_t *sram = state->sram_base[primary][secondary];
+                if (!sram) return 1;
+                state->rom_bank[primary][secondary][quarter] = 0xFF;
+                state->rom_bank[primary][secondary][quarter + 1] = 0xFF;
+                RefreshChunk(state, primary, secondary, quarter + 2, sram, MEMMAP_WRITE_SRAM_MIRROR);
+                RefreshChunk(state, primary, secondary, quarter + 3, sram, MEMMAP_WRITE_SRAM_MIRROR);
+                return 1;
+            }
             bank = (value << 1) & mask;
             wide = 1;
             break;
@@ -337,10 +447,10 @@ int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_
     // desempenho aqui -- troca de banco e' rarissima comparada a
     // instrucoes de Z80 executadas), o codigo fica mais simples E correto.
     state->rom_bank[primary][secondary][quarter] = (uint8_t)bank;
-    RefreshChunk(state, primary, secondary, quarter + 2, rom + ((size_t)bank << 13));
+    RefreshChunk(state, primary, secondary, quarter + 2, rom + ((size_t)bank << 13), MEMMAP_WRITE_NONE);
     if (wide) {
         state->rom_bank[primary][secondary][quarter + 1] = (uint8_t)(bank | 1);
-        RefreshChunk(state, primary, secondary, quarter + 3, rom + (((size_t)bank + 1) << 13));
+        RefreshChunk(state, primary, secondary, quarter + 3, rom + (((size_t)bank + 1) << 13), MEMMAP_WRITE_NONE);
     }
     return 1;
 }

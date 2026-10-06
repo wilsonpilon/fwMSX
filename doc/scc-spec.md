@@ -104,7 +104,7 @@ abaixo do que o teste mede (1%).
   Nao investigado a fundo.
 - **Modo SCC+ de cartuchos**: o nucleo tem o modo SCC+ (enderecos com `2000h`),
   mas nenhum cartucho de referencia que temos o usa, e nao ha teste dedicado.
-- **FM (OPLL/FMPAC)**: outro chip, fase propria. O `FMPAC` continua sem som.
+- **FM (OPLL/FMPAC)**: outro chip, feito em `doc/fm-spec.md`.
 - **Clock do SCC**: o motor usa o clock do Z80 do NTSC. Um MSX PAL tem
   clock diferente e nao e' modelado.
 

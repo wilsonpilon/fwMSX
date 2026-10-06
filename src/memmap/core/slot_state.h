@@ -45,6 +45,9 @@ typedef struct SlotState {
        um ponteiro por pedaco de 8KB, se e' gravavel, e uma descricao de
        alto nivel (kind/tamanho) para a API de inspecao do depurador. */
     uint8_t *chunk[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS][MEMMAP_CHUNKS];
+    /* Tipo de escrita de cada pedaco: MEMMAP_WRITE_* (0 = so leitura). Um pedaco
+       gravavel de SRAM de cartucho nao e RAM comum: a escrita marca a SRAM como
+       alterada, e a SRAM de 2KB (ASCII16) se repete dentro do pedaco. */
     uint8_t chunk_writable[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS][MEMMAP_CHUNKS];
     MemMapKind slot_kind[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
     size_t slot_size[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
@@ -92,6 +95,16 @@ typedef struct SlotState {
     uint8_t *rom_base[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
     uint8_t rom_bank_mask[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
     uint8_t rom_bank[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS][4];
+
+    /* SRAM de cartucho (ASCII8/ASCII16) -- ver doc/sram-spec.md. O buffer e do
+       chamador (MemorySystem), sempre de 8KB; sram_dirty vira 1 a cada escrita
+       e volta a 0 quando o arquivo .sav e gravado. */
+    uint8_t *sram_base[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
+    uint8_t sram_dirty[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
+
+    /* Chave do FM-PAC (MAP_FMPAC): 5FFEh grava o byte baixo e 5FFFh o alto;
+       com 694Dh (4Dh, 69h) a SRAM aparece em 4000h-5FFFh. Ver doc/fm-spec.md. */
+    uint16_t fmpac_key[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
 } SlotState;
 
 /* Inicializa todas as 16 combinacoes como vazias (leitura =
@@ -120,6 +133,17 @@ void memmap_attach(SlotState *state, int primary, int secondary, uint8_t *data, 
    valida isso antes de chamar. Estado inicial: todos os 4 quartos
    mostram o banco 0 -- simplificacao deliberada em vez da heuristica de
    assinatura 'AB' do fMSX (ver doc/memory-map-spec.md, secao 6). */
+/* Entrega o buffer de 8KB da SRAM de cartucho desta combinacao (ASCII8/ASCII16). */
+void memmap_attach_sram(SlotState *state, int primary, int secondary, uint8_t *buffer);
+
+/* Esvazia a combinacao: todos os pedacos viram vazios e nenhuma ROM/RAM/SRAM fica ligada. */
+void memmap_clear_slot(SlotState *state, int primary, int secondary);
+
+#define MEMMAP_WRITE_NONE 0
+#define MEMMAP_WRITE_RAM 1
+#define MEMMAP_WRITE_SRAM 2
+#define MEMMAP_WRITE_SRAM_MIRROR 3
+
 void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t *data, size_t size,
                             MemMapMapperType mapper);
 

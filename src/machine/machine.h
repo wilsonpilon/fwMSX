@@ -19,6 +19,7 @@
 #include "../memmap/cpp/ram_mapper.h"
 #include "../rtc/rtc_device.h"
 #include "../scc/cpp/scc_device.h"
+#include "../fm/cpp/fm_device.h"
 #include "../z80/cpp/z80_cpu.h"
 #include "../z80/debug/z80_debug_shell_startup.h"
 
@@ -36,6 +37,38 @@ struct FrameSize {
     int width = 256;
     int height = 192;
     int y_scale = 1;
+};
+
+// Layout de slots: cada combinacao primario:secundario (celula) tem um conteudo.
+// Ver doc/slots-spec.md.
+enum class SlotKind {
+    Empty,   // nada ligado nesta celula
+    Rom,     // ROM: BIOS (0:0), BASIC, cartucho (ROM plana ou MegaROM)
+    SubRom,  // sub-ROM de 16KB na pagina 0 (MSX2EXT)
+    Ram,     // RAM comum (16, 32 ou 64 KB)
+    Mapper,  // RAM mapeada (memory mapper, portas FCh-FFh): 64 a 1024 KB
+    Disk,    // interface de disquete: DISK.ROM na pagina 1 + controladora WD2793
+    FmPac,   // FM-PAC: ROM de 16KB e SRAM de 8KB, com o OPLL
+};
+
+struct SlotItem {
+    SlotKind kind = SlotKind::Empty;
+    // Rom: ROM principal. SubRom: a sub-ROM. Disk: DISK.ROM. FmPac: FMPAC.ROM.
+    std::string path;
+    // Rom: segunda ROM de 16KB, que vai para a pagina 1 (ex.: BASIC, com a BIOS
+    // na pagina 0). Disk: sub-ROM do MSX2 (16KB, pagina 0). Vazio = nenhuma.
+    std::string path2;
+    // Rom de 16KB ou 32KB: pagina 0 (0000h) ou 1 (4000h). Uma ROM de 32KB em pagina 0
+    // ocupa 0000h-7FFFh (BIOS); em pagina 1 ocupa 4000h-BFFFh (cartucho).
+    int page = 1;
+    // Rom de cartucho: mapper. NONE = detecta pelo tamanho, como antes.
+    MemMapMapperType mapper = MEMMAP_MAPPER_NONE;
+    // Ram: 16, 32 ou 64. Mapper: 64, 128, 256, 512 ou 1024.
+    int size_kb = 64;
+};
+
+struct SlotLayout {
+    SlotItem cell[4][4]; // [primario][secundario]
 };
 
 struct MachineConfig {
@@ -65,7 +98,29 @@ struct MachineConfig {
     // gravacao: o MSX-DOS le normalmente e recusa escrever, e o arquivo da
     // imagem nunca e' alterado.
     bool disk_read_only = false;
+    // FM-PAC (Panasonic, OPLL + SRAM de 8KB): ROM de 16KB no slot 2:0. Vazio = sem
+    // FM-PAC. A ROM e' o FMPAC.ROM do fMSX. Ver doc/fm-spec.md, secao 4.
+    std::string fmpac_rom_path;
+
+    // Layout de slots. Enquanto `layout_set` for false, o layout sai dos campos
+    // acima (bios, cartucho, disco, sub-ROM, FM-PAC) pela regra padrao. Depois
+    // de editado pelo menu, vale o `layout` e os campos acima sao ignorados.
+    SlotLayout layout;
+    bool layout_set = false;
 };
+
+// Layout padrao (o mesmo de sempre) a partir dos campos de MachineConfig.
+SlotLayout DefaultLayout(const MachineConfig &config);
+// O layout que a maquina usa: o editado, se houver, senao o padrao.
+SlotLayout EffectiveLayout(const MachineConfig &config);
+// Recusa layouts que nao montam: BIOS em 0:0, uma so' RAM mapeada, tamanhos validos.
+bool ValidateLayout(const SlotLayout &layout, std::string &error);
+// Edicao pelos menus (marca layout_set): cartucho no slot 1:0, FM-PAC no slot 2:0.
+void SetCartridge(MachineConfig &config, const std::string &path);
+void SetFmPac(MachineConfig &config, const std::string &path);
+// Caminhos atuais no layout (vazio = nenhum).
+std::string CartridgePath(const MachineConfig &config);
+std::string FmPacPath(const MachineConfig &config);
 
 class Machine {
 public:
@@ -127,13 +182,21 @@ public:
     // Resumo do cartucho carregado ("" se nao ha'): tamanho e mapper.
     const std::string &cart_info() const { return cart_info_; }
 
+    // SRAM de cartucho (ASCII8/ASCII16) e do FM-PAC: arquivo .sav ao lado da ROM.
+    // SaveSram() grava so' o que mudou desde a ultima gravacao.
+    bool has_sram() const { return !sram_targets_.empty(); }
+    bool sram_dirty() const;
+    bool SaveSram(std::string &error);
+    const std::string &sram_path() const { return sram_targets_.empty() ? empty_path_ : sram_targets_[0].path; }
+
     uint64_t frame_count() const { return frame_count_; }
     const VdpState &vdp_state() const { return startup_.vdp_device->state(); }
     PpiState &ppi_state() { return startup_.ppi_device->state(); }
     psg::PsgDevice &psg() { return *startup_.psg_device; }
     scc::SccDevice &scc() { return *scc_; }
+    fm::FmDevice &fm() { return *fm_; }
 
-    // Saida de audio ao vivo: PSG e SCC somados (saturados em 16 bits). `out`
+    // Saida de audio ao vivo: PSG, SCC e FM somados (saturados em 16 bits). `out`
     // recebe as amostras acumuladas desde a ultima chamada.
     void EnableLiveAudio(bool on);
     void TakeLiveAudio(std::vector<int16_t> &out);
@@ -149,11 +212,20 @@ private:
     int vdp_pending_cycles_ = 0;
     uint64_t frame_count_ = 0;
     std::string cart_info_;
+    // SRAM de cada cartucho/FM-PAC com memoria de bateria: slot e arquivo .sav.
+    struct SramTarget {
+        int primary;
+        int secondary;
+        std::string path;
+    };
+    std::vector<SramTarget> sram_targets_;
+    std::string empty_path_;
     Model model_ = Model::MSX1;
     std::unique_ptr<memmap::RamMapperDevice> mapper_;
     std::unique_ptr<rtc::RtcDevice> rtc_;
     std::unique_ptr<fdc::FdcDevice> fdc_;
     std::unique_ptr<scc::SccDevice> scc_;
+    std::unique_ptr<fm::FmDevice> fm_;
     fdc::DiskImage disks_[2];
     bool disk_read_only_ = false;
 };

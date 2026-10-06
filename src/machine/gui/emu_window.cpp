@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <memory>
 #include <string>
 #include <utility>
@@ -181,6 +182,15 @@ void ApplyKeyEvents(Machine &m, std::vector<std::string> &deferred) {
 }
 
 // BIOS padrao de cada modelo, ao lado da BIOS atual (mesma pasta de ROMs).
+// FMPAC.ROM fica ao lado das ROMs do fMSX: resource/fMSX/ROMs/ -> resource/fMSX/FMPAC.ROM.
+// Vazio se nao existir.
+std::string FmpacNear(const std::string &bios_path) {
+    std::error_code ec;
+    const std::filesystem::path candidate =
+        std::filesystem::path(bios_path).parent_path().parent_path() / "FMPAC.ROM";
+    return std::filesystem::is_regular_file(candidate, ec) ? candidate.string() : std::string();
+}
+
 std::string BiosFor(const std::string &current_bios, Model model) {
     const char *name = model == Model::MSX2P ? "MSX2P.ROM" : model == Model::MSX2 ? "MSX2.ROM" : "MSX.ROM";
     const size_t slash = current_bios.find_last_of("/\\");
@@ -275,6 +285,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     bool paused = false;
     bool integer_scale = true;
     bool show_keys = false;
+    // Configuracao de slots (menu Maquina): o layout em edicao e a mensagem de erro dele.
+    bool show_slots = false;
+    SlotLayout slot_edit;
+    std::string slot_message;
     bool fullscreen = false;
     int saved_x = 0, saved_y = 0, saved_w = 0, saved_h = 0;
 
@@ -299,6 +313,9 @@ int RunEmulatorWindow(const WindowOptions &options) {
         return next;
     };
     auto reboot = [&](const MachineConfig &next) {
+        // A SRAM do cartucho atual e' gravada antes de a maquina ser recriada.
+        std::string save_error;
+        if (!machine->SaveSram(save_error)) disk_message = save_error;
         std::string reboot_error;
         std::unique_ptr<Machine> fresh = Machine::Create(next, reboot_error);
         if (!fresh) {
@@ -314,8 +331,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
         if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Abrir cartucho MSX", "Cartuchos MSX",
                                                                   "*.rom;*.mx1;*.mx2;*.bin")) {
             MachineConfig next = snapshot();
-            next.cart_path = *chosen;
-            next.cart_mapper = MEMMAP_MAPPER_NONE;
+            SetCartridge(next, *chosen);
             reboot(next);
         }
     };
@@ -455,6 +471,11 @@ int RunEmulatorWindow(const WindowOptions &options) {
             ImGui::GetIO().FontGlobalScale = kFontScales[ui_font];
             applied_font = ui_font;
         }
+        // SRAM de cartucho: grava de tempos em tempos, so' se houve escrita (sem perder o save se a janela cair).
+        if (machine->frame_count() % 300 == 0 && machine->sram_dirty()) {
+            std::string save_error;
+            if (!machine->SaveSram(save_error)) disk_message = save_error;
+        }
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -486,6 +507,11 @@ int RunEmulatorWindow(const WindowOptions &options) {
                             MachineConfig next = snapshot();
                             next.model = entry.model;
                             next.bios_path = BiosFor(current.bios_path, entry.model);
+                            // Trocar o modelo volta o layout ao padrao; cartucho e FM-PAC continuam.
+                            next.cart_path = CartridgePath(current);
+                            next.cart_mapper = EffectiveLayout(current).cell[1][0].mapper;
+                            next.fmpac_rom_path = FmPacPath(current);
+                            next.layout_set = false;
                             next.ext_rom_path.clear();
                             reboot(next);
                         }
@@ -493,6 +519,11 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     ImGui::Separator();
                     ImGui::TextDisabled("Trocar o modelo reinicia a maquina.");
                     ImGui::EndMenu();
+                }
+                if (ImGui::MenuItem("Configuracao de slots...")) {
+                    show_slots = true;
+                    slot_edit = EffectiveLayout(current);
+                    slot_message.clear();
                 }
                 if (ImGui::BeginMenu("Video")) {
                     ImGui::MenuItem("NTSC (EUA/Japao)", nullptr, true);
@@ -615,17 +646,36 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Cartucho")) {
-                ImGui::Text("Slot 1: %s", current.cart_path.empty() ? "(vazio)" : current.cart_path.c_str());
+                const std::string cart = CartridgePath(current);
+                ImGui::Text("Slot 1: %s", cart.empty() ? "(vazio)" : cart.c_str());
                 if (!machine->cart_info().empty()) ImGui::TextDisabled("%s", machine->cart_info().c_str());
                 ImGui::Separator();
                 if (ImGui::MenuItem("Inserir cartucho...")) LoadCartridgeFromDialog();
-                if (ImGui::MenuItem("Retirar cartucho", nullptr, false, !current.cart_path.empty())) {
+                if (ImGui::MenuItem("Retirar cartucho", nullptr, false, !cart.empty())) {
                     MachineConfig next = snapshot();
-                    next.cart_path.clear();
-                    next.cart_mapper = MEMMAP_MAPPER_NONE;
+                    SetCartridge(next, "");
                     reboot(next);
                 }
                 ImGui::Separator();
+                // FM-PAC (OPLL + SRAM de 8KB) no slot 2:0 -- ver doc/fm-spec.md.
+                if (!disk_message.empty()) ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+                // FM-PAC (OPLL + SRAM de 8KB) no slot 2:0 -- ver doc/fm-spec.md.
+                const bool fmpac_on = !FmPacPath(current).empty();
+                if (ImGui::MenuItem("FM-PAC (Panasonic, slot 2:0)", nullptr, fmpac_on)) {
+                    MachineConfig next = snapshot();
+                    if (!fmpac_on) {
+                        const std::string found = FmpacNear(current.bios_path);
+                        if (found.empty()) {
+                            disk_message = "FMPAC.ROM nao encontrada ao lado das ROMs do fMSX (resource/fMSX/)";
+                        } else {
+                            SetFmPac(next, found);
+                            reboot(next);
+                        }
+                    } else {
+                        SetFmPac(next, "");
+                        reboot(next);
+                    }
+                }
                 ImGui::MenuItem("Slot 2 (em breve)", nullptr, false, false);
                 ImGui::EndMenu();
             }
@@ -709,6 +759,112 @@ int RunEmulatorWindow(const WindowOptions &options) {
         ImGui::End();
         ImGui::PopStyleVar(2);
 
+        if (show_slots) {
+            ImGui::SetNextWindowSize(ImVec2(820, 560), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Configuracao da maquina", &show_slots)) {
+                ImGui::TextWrapped(
+                    "Cada linha e' uma celula do layout (slot primario:secundario). A BIOS fica em 0:0: "
+                    "um arquivo de 32KB ocupa a pagina 0 (BIOS, 16KB) e a pagina 1 (BASIC, 16KB); ou dois "
+                    "arquivos de 16KB, um para cada pagina (use o botao BASIC). Aplicar reinicia a maquina.");
+                const char *kind_names[] = {"Vazio", "ROM (BIOS, BASIC ou cartucho)", "Sub-ROM MSX2 (16KB)",
+                                            "RAM", "RAM mapeada (mapper)", "Disco (DISK.ROM)", "FM-PAC"};
+                if (ImGui::BeginTable("##slots", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
+                    ImGui::TableSetupColumn("Slot", ImGuiTableColumnFlags_WidthFixed, 48.0f);
+                    ImGui::TableSetupColumn("Conteudo", ImGuiTableColumnFlags_WidthFixed, 230.0f);
+                    ImGui::TableSetupColumn("Arquivo");
+                    ImGui::TableSetupColumn("Arquivo 2", ImGuiTableColumnFlags_WidthFixed, 190.0f);
+                    ImGui::TableSetupColumn("Opcoes", ImGuiTableColumnFlags_WidthFixed, 150.0f);
+                    ImGui::TableHeadersRow();
+                    for (int p = 0; p < 4; ++p) {
+                        for (int sec = 0; sec < 4; ++sec) {
+                            SlotItem &it = slot_edit.cell[p][sec];
+                            ImGui::PushID(p * 4 + sec);
+                            ImGui::TableNextRow();
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::Text("%d:%d", p, sec);
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            int kind = static_cast<int>(it.kind);
+                            if (ImGui::Combo("##kind", &kind, kind_names, 7)) {
+                                it = SlotItem{};
+                                it.kind = static_cast<SlotKind>(kind);
+                                if (it.kind == SlotKind::Rom) it.page = (p == 0 && sec == 0) ? 0 : 1;
+                                if (it.kind == SlotKind::Ram) it.size_kb = 64;
+                                if (it.kind == SlotKind::Mapper) it.size_kb = 128;
+                            }
+                            ImGui::TableSetColumnIndex(2);
+                            const bool has_file = it.kind == SlotKind::Rom || it.kind == SlotKind::SubRom ||
+                                                  it.kind == SlotKind::Disk || it.kind == SlotKind::FmPac;
+                            if (has_file) {
+                                ImGui::TextDisabled("%s", it.path.empty() ? "(nenhum)" : it.path.c_str());
+                                if (ImGui::SmallButton("Procurar...")) {
+                                    if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(
+                                            window, "Escolher ROM", "ROMs MSX", "*.rom;*.bin;*.mx1;*.mx2;*.dat")) {
+                                        it.path = *chosen;
+                                    }
+                                }
+                            }
+                            ImGui::TableSetColumnIndex(3);
+                            const bool second = (it.kind == SlotKind::Rom && p == 0 && sec == 0) || it.kind == SlotKind::Disk;
+                            if (second) {
+                                ImGui::TextDisabled("%s", it.path2.empty() ? "(nenhum)" : it.path2.c_str());
+                                if (ImGui::SmallButton(it.kind == SlotKind::Disk ? "Sub-ROM MSX2..." : "BASIC...")) {
+                                    if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(
+                                            window, "Escolher ROM", "ROMs MSX", "*.rom;*.bin;*.mx1;*.mx2;*.dat")) {
+                                        it.path2 = *chosen;
+                                    }
+                                }
+                                if (!it.path2.empty()) {
+                                    ImGui::SameLine();
+                                    if (ImGui::SmallButton("Limpar")) it.path2.clear();
+                                }
+                            }
+                            ImGui::TableSetColumnIndex(4);
+                            ImGui::SetNextItemWidth(-FLT_MIN);
+                            if (it.kind == SlotKind::Rom) {
+                                int page = it.page;
+                                const char *pages[] = {"pagina 0 (0000h)", "pagina 1 (4000h)"};
+                                if (ImGui::Combo("##page", &page, pages, 2)) it.page = page;
+                            } else if (it.kind == SlotKind::Ram) {
+                                int size = it.size_kb == 16 ? 0 : it.size_kb == 32 ? 1 : 2;
+                                const char *sizes[] = {"16 KB", "32 KB", "64 KB"};
+                                if (ImGui::Combo("##ram", &size, sizes, 3)) it.size_kb = size == 0 ? 16 : size == 1 ? 32 : 64;
+                            } else if (it.kind == SlotKind::Mapper) {
+                                static const int kMapperSizes[] = {64, 128, 256, 512, 1024};
+                                static const char *kMapperNames[] = {"64 KB", "128 KB", "256 KB", "512 KB", "1024 KB"};
+                                int index = 1;
+                                for (int i = 0; i < 5; ++i)
+                                    if (kMapperSizes[i] == it.size_kb) index = i;
+                                if (ImGui::Combo("##mapper", &index, kMapperNames, 5)) it.size_kb = kMapperSizes[index];
+                            }
+                            ImGui::PopID();
+                        }
+                    }
+                    ImGui::EndTable();
+                }
+                ImGui::Separator();
+                if (ImGui::Button("Padrao")) {
+                    slot_edit = DefaultLayout(current);
+                    slot_message.clear();
+                }
+                ImGui::SameLine();
+                if (ImGui::Button("Aplicar e reiniciar")) {
+                    std::string check_error;
+                    if (!ValidateLayout(slot_edit, check_error)) {
+                        slot_message = check_error;
+                    } else {
+                        MachineConfig next = snapshot();
+                        next.layout = slot_edit;
+                        next.layout_set = true;
+                        reboot(next);
+                        slot_message = disk_message;
+                    }
+                }
+                if (!slot_message.empty()) ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", slot_message.c_str());
+            }
+            ImGui::End();
+        }
+
         if (show_keys) {
             ImGui::SetNextWindowSize(ImVec2(420, 0), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Teclado", &show_keys)) {
@@ -747,6 +903,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     glDeleteTextures(1, &texture);
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    {
+        std::string save_error;
+        if (!machine->SaveSram(save_error)) std::fprintf(stderr, "fwmsx: %s\n", save_error.c_str());
+    }
     ImGui::DestroyContext();
     glfwDestroyWindow(window);
     glfwTerminate();

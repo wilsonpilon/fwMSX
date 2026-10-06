@@ -135,7 +135,8 @@ public:
         if ((static_cast<uint16_t>(last) >> 13) != chunk_idx) return nullptr;
 
         const SlotState &s = memory_.state();
-        if (!s.active_writable[chunk_idx]) return nullptr;
+        // So RAM comum: escrita em SRAM de cartucho precisa marcar o save (memmap_write).
+        if (s.active_writable[chunk_idx] != MEMMAP_WRITE_RAM) return nullptr;
         return s.active_view[chunk_idx] + (addr & (MEMMAP_CHUNK_SIZE - 1));
     }
 

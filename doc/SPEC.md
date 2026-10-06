@@ -182,118 +182,41 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-05):** a maquina MSX1 e a MSX2 estao completas
-  (VDP, PSG, SCC, disco, joystick). Ver a nota de "proximos passos" logo
-  abaixo. Sobre o mapa de memoria: SRAM persistente, `MAP_GMASTER2` e
-  `MAP_FMPAC` dependem de save-state e de FM, que ainda nao existem; a
-  heuristica `MAP_GUESS` nao depende de nenhum deles e continua adiada por
-  escolha (ver `doc/memory-map-spec.md`, secao 6).
+  **Estado atual (2026-10-06, v1.17.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  (VDP, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout de slots). Ver a secao 5.0 para
+  o que funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
+  (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Proximos passos (para retomar sem se perder -- atualizado na v1.15.0, 2026-10-05)
+### 5.0 Estado atual e proximos passos (atualizado na v1.17.0, 2026-10-06)
 
-**Situacao em 2026-10-05 (depois da v1.15.0, sem commit):**
+Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
+[CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-- [x] Maquina MSX1 e MSX2 completas; MSX2+ (V9958) com YJK/YAE, scroll e mascara da esquerda (v1.15.0).
-- [x] Janela: quadro com borda do fMSX, menus do fMSX, troca de modelo e cartucho, tema e fonte, zoom 2x-6x, proporcao 4:3/16:9, tela cheia com menu oculto, filtros de video (interpolacao, scanlines, cor).
-- [ ] Validar na tela: menus, tela cheia, 4:3, 16:9 e filtros de video (a automacao nao opera a janela).
-- [ ] Itens "(em breve)" do menu: salvar estado, memoria, PAL, trapacas, POKE, DiskROM, fita, MIDI, gravacao de som, novo disco, slot 2, dispositivos de entrada, mostrar sprites.
-- [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada ainda nao diagnosticada; Mega Chase so' validado ate o titulo; F-1 Spirit 3D (3 discos) validado ate o titulo com discos A e B, troca pela janela nao testada.
+**Funcionando (v1.17.0):**
+
+- [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco ate `A>`.
+- [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
+- [x] VDP completo: TMS9918 (SCREEN 0-3), V9938 (SCREEN 4-8, comandos, sprites) e V9958 (SCREEN 10-12, YJK/YAE, scroll).
+- [x] PSG, SCC e FM (OPLL): 9 canais melodicos, 15 timbres, modo ritmo; comandos de BASIC do MSX-MUSIC pelo FM-PAC.
+- [x] Janela com os menus do fMSX, zoom, proporcao, tela cheia e filtros de video.
+- [x] Configuracao de slots pelo menu: 16 celulas, BIOS em 0:0, RAM 16/32/64 KB, mapper ate 1024 KB, disco, sub-ROM, cartucho e FM-PAC.
+- [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 14 suites.
+
+**Pendencias abertas:**
+
+- [ ] Validar na tela: menus, tela cheia, 4:3, 16:9 e filtros (a automacao nao opera a janela).
+- [ ] Ouvir o FM e o SCC contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
+- [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao diagnosticada; Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
+- [ ] `CALL VOICECOPY` (a ROM do fMSX nao aceita); status e timers do OPLL.
+- [ ] Layout de slots pela linha de comando e salvar o layout em arquivo.
+- [ ] Cartuchos: MSX-DOS 2, GameMaster2 e o MSX-MUSIC com BIOS propria.
+- [ ] BIOS de outras maquinas (ex.: Gradiente Expert 1.1): testar se algum hardware especifico falta.
+- [ ] Save-state completo, incluindo o estado de PSG, SCC e OPLL.
+- [ ] Efeitos de rastreio no meio do quadro (troca de palheta e de scroll por linha).
+- [ ] Cores YJK do V9958 conferidas com hardware real.
+- [ ] Desempenho: medir o custo de CPU no pior caso (FM ativo, SCC, mapa de slots) em tempo real.
 - [ ] Licenca: README e LICENSE-THIRD-PARTY dizem que a autorizacao do fMSX e so' para estudo. Confirmar por escrito antes de mudar esse texto.
-- [ ] Chip FM (OPLL/FMPAC); efeitos de rastreio no meio do quadro; SRAM e save-state.
-- [ ] Cores YJK do V9958 nao conferidas com hardware real.
-
-O trabalho no core de emulacao segue em andamento; esta secao continua
-sendo o "onde paramos" oficial.
-
-1. **VDP** (TMS9918/V9938) -- o que da tela de verdade pela primeira vez.
-   **Fases 0.5, 1 e 2 concluidas em 2026-09-30** -- ver
-   [doc/vdp-spec.md](vdp-spec.md). Resumo: `CompositeBus` (multiplexa
-   I/O de porta entre mapa de memoria e VDP), motor "digital" do VDP em
-   **C** (registradores, protocolo de porta `98h`-`9Bh`, maquina de
-   estados de scanline/interrupcao -- **finalmente da uso real** ao
-   `Z80Cpu::interrupt()`, confirmado com um programa sintetico recebendo
-   a interrupcao de VBlank em `0x0038` de verdade), renderizacao real de
-   pixel para SCREEN 0/1/2 (texto mono, texto colorido, bitmap), tabela
-   de paleta de 512 cores em **Fortran** (finalmente com consumidor),
-   exportacao de frame como PPM (`vdpshot`) para inspecao/teste sem
-   janela. **Fase 3 (sprites de modo 1, SCREEN 1/2/3) concluida em 2026-10-01**.
-   **Fases 4 e 5 (MSX2) concluidas em 2026-10-02**: todos os modos do V9938, sprites
-   de modo 2 e o motor de comandos -- ver [doc/msx2-spec.md](msx2-spec.md); `fwmsx
-   --msx --msx2` roda o MSX BASIC 2.1 e o Firebird. O **V9958 (MSX2+)** fica pronto na
-   v1.15.0 (2026-10-05): SCREEN 10-12 (YJK/YAE) e scroll do SCREEN 12, com
-   `--msx --msx2p` -- ver [doc/msx2p-spec.md](msx2p-spec.md). Inclui o scroll
-   dos modos 5-8 e a mascara da esquerda. Achado que vale lembrar: a BIOS real ainda nao chega a
-   habilitar a interrupcao de VBlank dentro de nenhum orcamento de
-   ciclos testado -- ela poliniza hardware de teclado/PPI (portas
-   `A9h`-`ABh`) que ainda nao existe no projeto, uma limitacao real e
-   separada (nao um bug do VDP), documentada em `doc/vdp-spec.md`.
-2. **PSG** (AY-3-8910) -- som. **Fase 1 concluida em 2026-10-02**
-   (v1.9.0) -- ver [doc/psg-spec.md](psg-spec.md). Motor em
-   **C** que gera amostras PCM de verdade (tom, ruido, envelope, avancado
-   por ciclos de Z80), tabela de volume em **Fortran**, `PsgDevice` +
-   gravador de WAV em **C++**; flag `--psg` e comandos `psgregs`/`psgpoke`/
-   `psgrec` no depurador. A BIOS real programa o PSG e `BEEP` no BASIC sai
-   como onda de 1316 Hz (teste `psgtest`). **Audio ao vivo concluido em
-   2026-10-02** ([doc/audio-spec.md](audio-spec.md)). **Joystick (R14/R15) pronto em
-   v1.10.** O SCC (adiado na Fase 3 do mapa de memoria, ver
-   `doc/memory-map-spec.md`) foi feito na **v1.13.0** (2026-10-05) -- ver
-   [doc/scc-spec.md](scc-spec.md).
-   **Janela com teclado do host: concluida em 2026-10-02** (item 1 abaixo,
-   "janela de verdade") -- `fwmsx --msx`, ver
-   [doc/machine-spec.md](machine-spec.md). Roda a BIOS real em tempo real,
-   com teclado do host e cartucho no slot 1. Audio ao vivo tambem pronto.
-   Joystick pronto (v1.10) e **disco pronto: o MSX-DOS 1.8 boota**
-   ([doc/fdc-spec.md](fdc-spec.md)). Os modos MSX2 (Fase 4 do VDP) ficaram
-   prontos na v1.11.0 (o Firebird roda).
-3. Itens menores registrados e conscientemente adiados, sem bloquear
-   nada do acima:
-   - ~~Validacao em execucao real (nao so montagem) da branch `elf64`/
-     Linux do `.asm` dual-ABI.~~ **Feito na v1.4.1** (2026-09-30) --
-     `build.sh` rodado de verdade numa maquina Linux (WSL2) pelo autor:
-     build completo + `ctest` com as 328 verificacoes passando. Duas
-     correcoes de portabilidade reais foram necessarias em modulos
-     Assembly antigos (`src/asm/init_asm.asm`, `src/msxdisk/asm/
-     name_match.asm`, ambos Win64-only desde antes do nucleo Z80
-     existir) -- ver `doc/RELEASE.md`, v1.4.1, e `doc/z80-core-spec.md`,
-     secao 6 (Fase 3), para o relato completo.
-   - ~~`CPIR`/`CPDR` em Assembly (nucleo Z80, Fase 3)~~ **Feito na v1.14.0**
-     (2026-10-05): a busca (`REPNE SCASB`, `block_ops.asm`) vai para o
-     Assembly; contagem, flags e PC saem do mesmo calculo do loop lento, a
-     partir do ultimo byte examinado. Ver `doc/z80-core-spec.md`, secao 6.
-   - `MAP_GMASTER2`/`MAP_FMPAC`/SRAM persistente no mapa de memoria (ver
-     `doc/memory-map-spec.md`, secao 6) -- dependem de save-state e de FM,
-     que ainda nao existem.
-   - `MAP_GUESS` (deteccao automatica de mapper): adiado por escolha, nao por
-     falta de subsistema. Ver `doc/memory-map-spec.md`, secao 6.
-   - ~~Decidir, quando VDP/PSG existirem, se `fwMSX.exe` sem argumentos
-     passa a abrir em modo GUI/maquina completa por padrao~~ **Feito na
-     v1.12.0** (2026-10-05) -- ver secao 5.1 abaixo. `fwMSX.exe` sem
-     nenhum argumento agora chama `machine::RunMachineCommand({}, argv[0])`
-     direto (os mesmos padroes de `--msx`: BIOS MSX1 ao lado do
-     executavel, sem cartucho/disco, janela aberta). O esqueleto dos
-     quatro modulos (C++/C/Assembly/Fortran) continua alcancavel, mas so'
-     com argumentos explicitos que nao batem com nenhum modo conhecido
-     (ex.: `fwMSX.exe NomeDoProduto 1 2 3`) -- preservado por ser o
-     historico do projeto, nao removido.
-   - ~~PPI/teclado (portas `A8h`-`ABh`)~~ **Feito na v1.7.0**
-     (2026-10-01) -- ver `doc/ppi-spec.md`. O achado da Fase 1 do VDP
-     ("a BIOS fica presa esperando o PPI") estava *incompleto*: faltavam
-     tambem RAM no slot `3:2` e as regras de subslot do MSX1 (ambas
-     agora ligadas por `--ppi` quando ha' BIOS). **Causa real (achada na
-     v1.8.0): `Z80Cpu` nao chamava `z80_reset()` na construcao e as
-     tabelas de flag do Z80 ficavam zeradas** -- corrigido. **A BIOS MSX1
-     real agora sobe ate o prompt do MSX BASIC** (`MSX BASIC version 1.0
-     ... Ok`), renderizado pelo VDP, e `keydown`/`keyup` digitam nele
-     (`doc/ppi-spec.md`, secao 5).
-
-**Para retomar rapido**: leia esta secao, depois `doc/z80-core-spec.md`
-e `doc/memory-map-spec.md` (ambos documentos vivos, com todas as fases
-e decisoes registradas). O `--z80dbg --slots resource/fMSX/ROMs/MSX.ROM`
-e' o jeito mais rapido de ver o que ja funciona de verdade hoje --
-adicione `--ppi` pra teclado/PPI (`ppiregs`/`keys`/`keydown`) e `--vdp` pra ver tambem os comandos de VDP (`vdpregs`/
-`vdpshot`/etc.).
-- Definir empacotamento final (alem do ZIP de `dist/`) quando houver uma
-  versao executavel do emulador.
+- [ ] Commit e publicacao da v1.17.0 (pacotes gerados, aguardando revisao).
 
 ### 5.1 Visao registrada: `fwMSX.exe` como ponto de entrada unico do projeto
 

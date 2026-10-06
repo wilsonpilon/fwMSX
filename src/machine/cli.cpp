@@ -7,6 +7,9 @@
 #include <vector>
 
 #include "../vdp/cpp/ppm_writer.h"
+#include "../vdp/core/vdp_state.h"
+#include "../fm/cpp/fm_device.h"
+#include "../psg/cpp/wav_writer.h"
 #include "gui/emu_window.h"
 #include "machine.h"
 
@@ -46,15 +49,39 @@ std::string FindDefaultBios(const std::string &argv0, const char *rom_name) {
     return "";
 }
 
+// FMPAC.ROM (ROM de 16KB do FM-PAC, em resource/fMSX/): mesma busca da BIOS.
+std::string FindDefaultFmpac(const std::string &argv0) {
+    std::vector<fs::path> roots;
+    std::error_code ec;
+    roots.push_back(fs::current_path(ec));
+    const fs::path exe_dir = fs::absolute(fs::path(argv0), ec).parent_path();
+    roots.push_back(exe_dir);
+    for (fs::path p = exe_dir; p.has_parent_path() && p != p.parent_path(); p = p.parent_path()) roots.push_back(p.parent_path());
+
+    for (const fs::path &root : roots) {
+        for (const std::string &rel : {std::string("resource/fMSX/FMPAC.ROM"), std::string("FMPAC.ROM")}) {
+            const fs::path candidate = root / rel;
+            if (fs::is_regular_file(candidate, ec)) return candidate.string();
+        }
+    }
+    return "";
+}
+
 } // namespace
 
 int RunMachineCommand(const std::vector<std::string> &args, const std::string &argv0) {
     MachineConfig config;
+    config.fmpac_rom_path = "auto"; // FM-PAC ligado por padrao (--no-fmpac desliga)
     int frames = 0;
     std::string shot_path;
     std::string keys;
     bool mute = false;
     bool vdplog = false;
+    bool dump_text = false;
+    bool fm_stat = false;
+    bool fmpac_explicit = false;
+    std::string wav_path;
+    std::vector<int16_t> wav_samples;
     int wait_frames = 60;
 
     for (size_t i = 0; i < args.size(); ++i) {
@@ -74,6 +101,18 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             config.model = Model::MSX2;
         } else if (a == "--msx2p") {
             config.model = Model::MSX2P;
+        } else if (a == "--no-fmpac") {
+            // Sem FM-PAC (o padrao liga o FM-PAC se o FMPAC.ROM for encontrado).
+            config.fmpac_rom_path.clear();
+            fmpac_explicit = false;
+        } else if (a == "--fmpac") {
+            // FM-PAC no slot 2:0. Sem arquivo, usa resource/fMSX/FMPAC.ROM.
+            fmpac_explicit = true;
+            if (i + 1 < args.size() && args[i + 1].rfind("--", 0) != 0) {
+                config.fmpac_rom_path = args[++i];
+            } else {
+                config.fmpac_rom_path = "auto";
+            }
         } else if (a == "--ext") {
             const std::string *v = need("um arquivo");
             if (!v) return 2;
@@ -125,6 +164,14 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             const std::string *v = need("um numero de quadros");
             if (!v) return 2;
             wait_frames = std::atoi(v->c_str());
+        } else if (a == "--text") {
+            dump_text = true;
+        } else if (a == "--fmstat") {
+            fm_stat = true;
+        } else if (a == "--wav") {
+            const std::string *v = need("um arquivo .wav");
+            if (!v) return 2;
+            wav_path = *v;
         } else if (a == "--vdplog") {
             vdplog = true;
         } else if (a == "--mute") {
@@ -136,6 +183,16 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
         } else {
             std::cerr << "fwmsx --msx: argumento desconhecido: '" << a << "'" << std::endl;
             return 2;
+        }
+    }
+
+    if (config.fmpac_rom_path == "auto") {
+        config.fmpac_rom_path = FindDefaultFmpac(argv0);
+        if (config.fmpac_rom_path.empty() && !fmpac_explicit) {
+            // Padrao: sem o FMPAC.ROM, a maquina sobe sem FM-PAC.
+        } else if (config.fmpac_rom_path.empty()) {
+            std::cerr << "fwmsx --msx: FMPAC.ROM nao encontrada (esperava resource/fMSX/FMPAC.ROM); use --fmpac <arquivo>" << std::endl;
+            return 1;
         }
     }
 
@@ -168,6 +225,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
         uint8_t last_regs[64] = {};
         auto run_frame = [&]() {
             m->RunFrame();
+            if (!wav_path.empty()) m->TakeLiveAudio(wav_samples);
             if (!vdplog) return;
             const VdpState &vs = m->vdp_state();
             for (int r = 0; r < 47; ++r) {
@@ -178,6 +236,8 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
                 }
             }
         };
+        // --wav: a mistura de audio (PSG + SCC + FM) e' gravada quadro a quadro.
+        if (!wav_path.empty()) m->EnableLiveAudio(true);
         const int boot_frames = frames > 0 ? frames : 400;
         for (int i = 0; i < boot_frames; ++i) run_frame();
         for (char c : keys) {
@@ -196,6 +256,43 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
         }
         if (!keys.empty()) {
             for (int i = 0; i < wait_frames; ++i) run_frame();
+        }
+        if (!wav_path.empty()) {
+            std::string werr;
+            if (!psg::WriteWav(wav_path, wav_samples, psg::kSampleRate, werr)) {
+                std::cerr << "fwmsx --msx: " << werr << std::endl;
+                return 1;
+            }
+            std::cout << "audio salvo em " << wav_path << " (" << wav_samples.size() << " amostras)" << std::endl;
+        }
+        std::string save_error;
+        if (!m->SaveSram(save_error)) std::cerr << "fwmsx --msx: " << save_error << std::endl;
+        if (fm_stat) {
+            // Estado do chip FM: canal por canal, a nota ligada e o timbre.
+            const Ym2413State &fs = m->fm().state();
+            std::cout << "FM ritmo: " << (((fs.reg[0x0E] >> 5) & 1) ? "LIGADO" : "desligado")
+                      << " teclas " << static_cast<int>(fs.drum_keys) << std::endl;
+            for (int c = 0; c < YM2413_CHANNELS; ++c) {
+                const Ym2413Ch &ch = fs.ch[c];
+                std::cout << "FM canal " << (c + 1) << ": nota " << (ch.key ? "LIGADA" : "parada")
+                          << " timbre " << static_cast<int>(ch.inst) << " fnum " << ch.fnum
+                          << " bloco " << static_cast<int>(ch.block) << " volume " << static_cast<int>(ch.vol)
+                          << " env " << ch.op[1].env << std::endl;
+            }
+        }
+        if (dump_text) {
+            // Tela de texto (SCREEN 0: 40 colunas; SCREEN 1: 32), so' os caracteres imprimiveis.
+            const VdpState &vs = m->vdp_state();
+            const int cols = vs.scr_mode == 1 ? 32 : 40;
+            for (int row = 0; row < 24; ++row) {
+                std::string line;
+                for (int col = 0; col < cols; ++col) {
+                    const uint8_t c = vs.vram[(vs.chr_tab + row * cols + col) & (VDP_VRAM_SIZE - 1)];
+                    line += (c >= 0x20 && c < 0x7F) ? static_cast<char>(c) : ' ';
+                }
+                while (!line.empty() && line.back() == ' ') line.pop_back();
+                std::cout << line << std::endl;
+            }
         }
         if (shot_path.empty()) return 0;
 

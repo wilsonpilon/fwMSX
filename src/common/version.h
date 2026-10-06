@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 16
+#define FWMSX_VERSION_MINOR 17
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Aleste"
-#define FWMSX_SUBTITLE  "Janela e Video"
+#define FWMSX_CODENAME  "Xak"
+#define FWMSX_SUBTITLE  "Musica FM e Slots"

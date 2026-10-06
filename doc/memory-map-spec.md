@@ -413,6 +413,10 @@ elas embutidas, o que nunca deve acontecer.
     v1.13.0**: o barramento entrega essas leituras/escritas ao `SccDevice`
     antes do mapper (`memmap::SlotCartIo`, `src/memmap/cpp/slot_memory_bus.h`).
     Ver `doc/scc-spec.md`.
+  - **Atualizacao (2026-10-06):** SRAM de ASCII8 e ASCII16 implementada, com arquivo
+    `.sav` -- ver `doc/sram-spec.md`. **FM-PAC (`MAP_FMPAC`) implementado** (ROM
+    de 16KB, SRAM de 8KB pela chave 694Dh em 5FFEh/5FFFh; ver `doc/fm-spec.md`).
+    Continua fora: GameMaster2.
   - **SRAM** (bateria, selecionada por um bit no valor de troca de
     banco, persistida em arquivo) em `MAP_ASCII8`/`MAP_ASCII16` --
     exige infraestrutura de save-state que não existe ainda. Portada só
@@ -420,7 +424,7 @@ elas embutidas, o que nunca deve acontecer.
     selecionar SRAM é **reconhecida** (a escrita não cai no descarte
     genérico) mas **ignorada** -- sem crash, sem corrupção, só sem
     efeito.
-  - **`MAP_GMASTER2` e `MAP_FMPAC`** -- ambos só são interessantes por
+  - **`MAP_GMASTER2`** (e `MAP_FMPAC`, implementado depois -- ver a atualizacao acima) -- ambos só são interessantes por
     causa de SRAM (GameMaster2) ou SRAM+som FM (FMPAC); sem isso,
     degeneram pra uma troca de banco trivial não muito diferente do
     `MAP_KONAMI4`. Não implementados.

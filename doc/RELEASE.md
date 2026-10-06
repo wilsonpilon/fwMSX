@@ -13,6 +13,53 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.17.0 -- "Xak: Musica FM e Slots" (2026-10-06)
+
+**Fase:** chip FM (MSX-MUSIC e FM-PAC) com os comandos de BASIC, layout de slots configuravel
+pelo menu e SRAM do FM-PAC. Sem mudanca no nucleo Z80.
+
+### Destaques
+
+- **Chip FM (OPLL, YM2413)**: 9 canais melodicos com 2 operadores, envelope ADSR, feedback, tremolo,
+  vibrato, os 15 timbres prontos e o **modo ritmo** (bumbo, chimbal, caixa, tom e prato). Portas `7Ch`/`7Dh`.
+- **BASIC do MSX-MUSIC** pela ROM do FM-PAC: `CALL MUSIC`, `PLAY #n`, `CALL VOICE`, `CALL PITCH`,
+  `CALL AUDREG` e `CALL PLAY`. Depois do `Ok` a musica continua tocando em segundo plano.
+- **FM-PAC ligado por padrao** quando o `FMPAC.ROM` existe. O menu **Cartucho > FM-PAC** liga e desliga;
+  `--no-fmpac` desliga na linha de comando.
+- **Configuracao da maquina** (menu **Maquina > Configuracao de slots...**): 16 celulas (slot:subslot)
+  com BIOS, BASIC, RAM de 16, 32 ou 64 KB, mapper de 64 a 1024 KB, cartucho, sub-ROM do MSX2, disco e
+  FM-PAC. Uma BIOS de 32 KB ocupa a pagina 0 (BIOS) e a pagina 1 (BASIC) do slot escolhido; BIOS e BASIC
+  podem ser dois arquivos de 16 KB. Padrao igual ao de antes.
+- **SRAM de cartucho** (ASCII8 e ASCII16) e do **FM-PAC**, gravada no arquivo `.sav` ao lado da ROM.
+- **Diagnostico pela linha de comando**: `--text` (tela em texto), `--fmstat` (estado do FM) e
+  `--wav arquivo` (grava a mistura de audio).
+- **Teclado do `--keys` corrigido** para o layout do MSX: `(`, `)`, `*` e `"`.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.17.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.17.0-linux.tar.gz`.
+- `ctest`: 14 suites. Windows: 14/14. Linux: 14/14 (WSL, GCC 15.2).
+- Smoke tests: MSX1 chega a `MSX BASIC version 1.0`; MSX2 a `2.1`; MSX2+ a `3.0`; MSX-DOS 1.8 sobe
+  do `msxdos1.dsk` ate `A>`.
+
+### Limitacoes conhecidas
+
+- **FM sem validacao por ouvido**: o WAV gerado (`--wav`) tem sinal, mas o timbre e o nivel nao foram
+  comparados com um MSX-MUSIC real. Constantes de envelope, KSL e ganho sao estimativas.
+- **`CALL VOICECOPY` nao e' aceito** pela ROM do FM-PAC do fMSX ("Syntax error").
+- **Status e timers do OPLL** nao sao emulados (`7Ch` le 0).
+- **Layout de slots**: so' pelo menu (sem opcao de linha de comando); a BIOS so' funciona em 0:0
+  (o Z80 comeca la'); uma so' RAM mapeada por maquina. Uma BIOS que nao seja o fMSX (ex.: Gradiente
+  Expert 1.1) monta no layout, mas so' roda se o hardware que ela espera existir -- nao foi testada.
+- **Cartuchos**: MSX-DOS 2, GameMaster2 e o cartucho MSX-MUSIC com BIOS propria ainda nao existem.
+- **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao
+  diagnosticada; Mega Chase so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
+- **Janela**: menus, tela cheia, 4:3, 16:9 e filtros de video nao foram conferidos na tela (a automacao
+  nao opera a janela). A janela sobe sem erro.
+- **Cores YJK** do V9958 nao conferidas com hardware real.
+- **Ausentes**: save-state, efeitos de rastreio no meio do quadro, e o contador de CPU no pior caso.
+
 ## v1.16.0 -- "Aleste: Janela e Video" (2026-10-05)
 
 **Fase:** interface da janela, menus do fMSX e filtros de video. Sem mudanca no nucleo de emulacao.

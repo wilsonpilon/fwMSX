@@ -128,12 +128,16 @@ Assinaturas dos modulos:
 
 ## Distribuicao
 
-`dist\fwMSX.exe` e linkado estaticamente (`-static -static-libgcc
--static-libstdc++ -static-libgfortran`) e depende apenas do **UCRT**
-(`ucrtbase.dll`), nativo do Windows 10 versao 1607 ou mais recente -- ou
-seja, roda em outra maquina Windows sem precisar instalar o MSYS2 nem
-copiar DLLs. O ZIP gerado em `dist\fwMSX-X.Y.Z.zip` contem tudo o que e
-necessario para rodar (executavel + documentacao + licenca).
+Cada versao gera dois pacotes em `dist/`:
+
+- **Windows**: `fwMSX-X.Y.Z.zip` (executavel `fwMSX.exe`, `msxdisk.exe`, README, licenca, MANUAL e RELEASE).
+  `fwMSX.exe` e' linkado estaticamente e depende apenas do **UCRT** (`ucrtbase.dll`, nativo do Windows 10
+  versao 1607 ou mais recente): roda em outra maquina sem instalar o MSYS2.
+- **Linux**: `fwMSX-X.Y.Z-linux.tar.gz` (mesmos arquivos, executaveis `fwMSX` e `msxdisk`), gerado por
+  `build.sh` no WSL/Ubuntu.
+
+As BIOS, o BASIC, o FM-PAC e as ROMs de `resource/fMSX/` **nao** vao no pacote: ficam no repositorio
+(ver [LICENSE-THIRD-PARTY.md](../LICENSE-THIRD-PARTY.md)).
 
 ## msxdisk -- utilitario de imagens de disco MSX
 
@@ -308,33 +312,156 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX1 numa janela (`--msx`)
+## Emulador MSX (`--msx`) -- v1.17.0
+
+Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
+`--msx` escolhe a maquina e as opcoes abaixo.
+
+### Exemplos
 
 ```powershell
-.\dist\fwMSX.exe --msx                      # BIOS padrao (resource/fMSX/ROMs/MSX.ROM)
-.\dist\fwMSX.exe --msx --bios MSX.ROM --cart jogo.rom
-.\dist\fwMSX.exe --msx --cart megarom.rom ascii8   # MegaROM (gen8 gen16 konami5 konami4 ascii8 ascii16)
-.\dist\fwMSX.exe --msx --disk msxdos1.dsk    # MSX-DOS 1.8 (interface de disco + disquete em A:)
+.\dist\fwMSX.exe                                   # MSX1 numa janela (BIOS resource/fMSX/ROMs/MSX.ROM)
+.\dist\fwMSX.exe --msx --msx2                      # MSX2: MSX BASIC 2.1, SCREEN 0-8
+.\dist\fwMSX.exe --msx --msx2p                     # MSX2+: MSX BASIC 3.0, V9958, SCREEN 10-12
+.\dist\fwMSX.exe --msx --cart jogo.rom             # cartucho no slot 1:0 (ROM plana ou MegaROM detectada)
+.\dist\fwMSX.exe --msx --cart megarom.rom ascii8   # mapper escolhido: auto, gen8, gen16, konami5, konami4, ascii8, ascii16
+.\dist\fwMSX.exe --msx --disk msxdos1.dsk          # MSX-DOS 1.8 (interface de disco + disquete em A:)
 .\dist\fwMSX.exe --msx --disk msxdos1.dsk --disk-ro   # disco somente leitura (o MSX-DOS nao grava)
-.\dist\fwMSX.exe --msx --msx2                # MSX2 (MSX2.ROM + MSX2EXT.ROM): BASIC 2.1, SCREEN 0-8
-.\dist\fwMSX.exe --msx --msx2 --cart jogo2.rom   # cartucho MSX2 (ex.: Firebird)
-.\dist\fwMSX.exe --msx --msx2p                    # MSX2+ (V9958, BIOS MSX2P.ROM; SCREEN 10-12)
-.\dist\fwMSX.exe --msx --mute                # sem audio
-.\dist\fwMSX.exe --msx --frames 400 --keys "print 1234|" --shot tela.ppm   # sem janela
+.\dist\fwMSX.exe --msx --no-fmpac                  # sem FM-PAC (o padrao liga o FM-PAC)
+.\dist\fwMSX.exe --msx --mute                      # sem audio
+.\dist\fwMSX.exe --msx --keys "print 1234|" --wait 120 --shot tela.ppm   # sem janela: digita, espera e salva a tela
+.\dist\fwMSX.exe --msx --keys "call music(0,0,1)|play#2,\"v15c\"|" --wait 300 --wav musica.wav --mute
 ```
 
-Abre uma janela com o MSX BASIC rodando em tempo real e som ao vivo. Com `--disk`
-a maquina ganha a interface de disquete e boota o MSX-DOS; **as gravacoes vao
-direto para o arquivo `.dsk`** (faca backup) -- ver [fdc-spec.md](fdc-spec.md).
-Joystick: setas + Z/Espaco (A) + X (B), ou gamepad. Teclado
-posicional (layout US): Alt esquerdo = GRAPH, Alt direito = CODE, End =
-SELECT, Pause = STOP, F11 = tela cheia; menus **Arquivo**, **Maquina** (Reiniciar, Modelo MSX1/MSX2/MSX2+,
-Pausar), **Exibir**, **Som** (mudo/volume), **Disco**, **Cartucho**, **Joystick**,
-**Ferramentas** e **Ajuda**. Os itens marcados "(em breve)" ainda nao existem; o
-resto do menu do fMSX (trapacas, memoria, POKE, fita, DiskROM) esta listado ali.
-Trocar o modelo ou o cartucho reinicia a maquina. Cartuchos de ROM plana ate' 32KB ou
-MegaROM com mapper, no slot 1. Limites: so' SCREEN 0/1/2, sem joystick nem
-disco -- ver [machine-spec.md](machine-spec.md) e [audio-spec.md](audio-spec.md).
+### Opcoes da linha de comando
+
+| Opcao | Efeito |
+|---|---|
+| `--msx` | liga a maquina (MSX1 por padrao) |
+| `--msx2` / `--msx2p` | modelo MSX2 (BASIC 2.1) ou MSX2+ (BASIC 3.0) |
+| `--bios <arquivo>` | BIOS principal (padrao: `resource/fMSX/ROMs/MSX.ROM`, ou `MSX2.ROM` / `MSX2P.ROM`) |
+| `--ext <arquivo>` | sub-ROM do MSX2 (16KB; padrao: `MSX2EXT.ROM` / `MSX2PEXT.ROM` ao lado da BIOS) |
+| `--cart <arquivo> [mapper]` | cartucho no slot 1:0; sem mapper, ROM de ate 32KB e' plana e acima disso e' detectada |
+| `--disk` / `--diska <arquivo>` | disquete (`.dsk` cru) na unidade A: (liga a interface de disco) |
+| `--diskb <arquivo>` | disquete na unidade B: |
+| `--disk-ro` | discos entram protegidos contra gravacao (o arquivo nunca e' alterado) |
+| `--disk-interface` | liga a interface de disco mesmo sem disco montado |
+| `--diskrom <arquivo>` | `DISK.ROM` (padrao: ao lado da BIOS) |
+| `--fmpac [arquivo]` | FM-PAC no slot 2:0 (padrao: `resource/fMSX/FMPAC.ROM`) |
+| `--no-fmpac` | sem FM-PAC (o padrao o liga quando o `FMPAC.ROM` existe) |
+| `--keys "texto"` | digita o texto no teclado do MSX; `|` = Enter (`\"` para aspas; `(`, `)`, `*` e `@` ja' saem certos) |
+| `--wait N` | quadros de espera depois de `--keys` (padrao 60) |
+| `--shot <arquivo.ppm>` | salva a tela em PPM |
+| `--text` | imprime a tela em texto no fim (SCREEN 0 e 1) |
+| `--fmstat` | imprime o estado dos 9 canais do OPLL (nota, timbre, frequencia, volume) e o modo ritmo |
+| `--wav <arquivo.wav>` | grava a mistura de audio (PSG + SCC + FM) |
+| `--frames N` | quadros de boot antes dos comandos seguintes (sem janela) |
+| `--vdplog` | mostra os registradores do VDP que mudam, quadro a quadro |
+| `--mute` | sem audio |
+
+**Modo sem janela:** a maquina roda sem abrir janela quando ha `--keys` ou `--shot`. Nesse
+modo, `--text`, `--fmstat` e `--wav` funcionam no fim da execucao. Sem `--keys` nem `--shot`, a
+janela abre.
+
+### A janela
+
+- **Teclado**: mapeamento posicional (layout US). Alt esquerdo = GRAPH, Alt direito = CODE, End =
+  SELECT, Pause = STOP, F11 = tela cheia. Teclado numerico = o do MSX.
+- **Joystick**: setas + Z ou Espaco (botao A) + X (botao B); ou gamepad (menu Joystick).
+- **Arquivo**: Carregar cartucho, Sair.
+- **Maquina**: Reiniciar, **Modelo** (MSX1, MSX2, MSX2+), **Configuracao de slots...** (secao abaixo),
+  Pausar.
+- **Exibir**: zoom 2x, 3x, 4x, 6x; proporcao original, 4:3 corrigido ou 16:9 esticado; tela cheia (o menu
+  some e volta quando o mouse chega ao topo).
+- **Video**: interpolacao, scanlines e filtros de cor (Monochrome, Sepia, Green CRT, Amber CRT, CMY e RGB Raster).
+- **Som**: mudo e volume.
+- **Disco**: inserir e ejetar A: e B:.
+- **Cartucho**: inserir ou retirar o cartucho do slot 1:0; ligar ou desligar o **FM-PAC** (slot 2:0).
+- **Configuracoes > Interface**: tema escuro ou claro, tamanho da letra e moldura da tela.
+
+Trocar o modelo, o cartucho ou o FM-PAC reinicia a maquina. A SRAM (`.sav`) e' gravada antes.
+
+### Configuracao de slots (Maquina > Configuracao de slots...)
+
+A maquina e' montada a partir de uma tabela de 16 celulas (slot:subslot). Cada celula recebe um
+conteudo:
+
+- **Vazio**
+- **ROM (BIOS, BASIC ou cartucho)**: arquivo, pagina (0 = 0000h, 1 = 4000h) e, na BIOS, um segundo arquivo (BASIC)
+- **Sub-ROM MSX2 (16KB)**: pagina 0 (MSX2EXT)
+- **RAM**: 16, 32 ou 64 KB
+- **RAM mapeada (mapper)**: 64, 128, 256, 512 ou 1024 KB
+- **Disco (DISK.ROM)**: a controladora WD2793 no enderecos 7FF8h-7FFFh da celula; a sub-ROM do MSX2 pode ir na pagina 0
+- **FM-PAC**: ROM de 16KB com SRAM de 8KB
+
+Regras:
+
+- **A BIOS fica em 0:0** (o Z80 comeca la'). Sem ela, o layout e' recusado.
+- **BIOS de 32KB**: um arquivo ocupa a pagina 0 (BIOS) e a pagina 1 (BASIC) do slot escolhido.
+- **BIOS e BASIC em arquivos separados**: cada um com 16KB; um na pagina 0 e outro na pagina 1 da celula 0:0.
+- **Quatro bancos de RAM de 64KB no slot 2**: quatro celulas (2:0 a 2:3), cada uma com RAM de 64KB.
+- **Mapper de 1024KB em 3:1**: a celula 3:1 vira RAM mapeada. So' uma RAM mapeada por maquina.
+- **Discos**: precisam de uma celula de Disco no layout.
+- **Padrao**: o botao *Padrao* volta ao layout de sempre (MSX1: BIOS em 0:0, RAM de 64KB em 3:2;
+  MSX2: BIOS em 0:0, mapper de 128KB em 3:2, sub-ROM em 3:1). **Aplicar e reiniciar** valida e recria a
+  maquina; se o layout nao montar, o motivo aparece em vermelho.
+
+**Limite:** o layout so' se edita pela janela. Ainda nao ha opcao de linha de comando nem arquivo
+para salvar um layout ([doc/slots-spec.md](slots-spec.md)).
+
+### MSX-MUSIC e FM-PAC (chip FM)
+
+- As portas `7Ch`/`7Dh` do OPLL respondem sempre, como no fMSX.
+- Os **comandos de BASIC** do MSX-MUSIC vem na ROM do FM-PAC, que liga por padrao. Verificados nesta
+  versao: `CALL MUSIC`, `PLAY #n`, `CALL VOICE`, `CALL PITCH`, `CALL AUDREG` e `CALL PLAY`.
+
+```basic
+CALL MUSIC (0,0,1)              ' 1 canal de FM, sem bateria
+PLAY #2,"T120 V15 C4 D4 E4 F4 G4 A4 B4 >C4"
+CALL MUSIC (1,0,1,1,1,1,1)      ' liga a bateria (BD, HH, SD, TOM, TC) e 6 canais
+```
+
+- **Limite:** `CALL VOICECOPY` nao e' aceito pela ROM do fMSX. Status e timers do OPLL nao sao emulados.
+- **Limite:** o som do FM ainda nao foi comparado com um MSX-MUSIC real. Use `--wav` para gravar e ouvir.
+
+### SRAM (`.sav`)
+
+Cartuchos ASCII8 e ASCII16 e o FM-PAC tem memoria de bateria. O arquivo `.sav` fica ao lado da ROM
+(`jogo.rom` -> `jogo.sav`; `FMPAC.sav` em `resource/fMSX/`). Ele e' lido ao carregar e gravado quando
+muda: a cada 300 quadros, ao trocar cartucho ou modelo, e ao fechar. **Faca copia dos saves
+importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
+
+### O que funciona e o que nao funciona
+
+**Funciona (v1.17.0):**
+
+- MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
+- MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger).
+- Cartuchos ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16) e SCC (F1 Spirit toca a trilha de 5 canais).
+- VDP completo (SCREEN 0 a 8 no V9938; V9958 com SCREEN 10-12).
+- PSG, SCC e FM (MSX-MUSIC e FM-PAC) com os comandos de BASIC, modo ritmo e saida ao vivo.
+- Configuracao de slots pela janela (secao acima).
+
+**Nao funciona ou nao foi verificado:**
+
+- **Lode Runner + SCC** nao sobe. **Parodius (Smooth Scroll)** mostra tela fragmentada, causa nao
+  diagnosticada. **Mega Chase** foi validado so' ate o titulo. **F-1 Spirit 3D**: a troca de disco pela
+  janela nao foi testada.
+- **Menus, tela cheia, 4:3, 16:9 e filtros de video** nao foram conferidos na tela.
+- **Som do FM e do SCC**: nao comparados com hardware real.
+- **Cores YJK** do V9958: nao conferidas com hardware real.
+- **Sem**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, cartucho MSX-MUSIC
+  com BIOS propria, e `CALL VOICECOPY`.
+- **Outras BIOS** (ex.: Gradiente Expert 1.1): o layout aceita, mas o hardware que a BIOS espera nao foi testado.
+
+Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.md](SPEC.md), secao 5.0.
+
+### Documentacao por assunto
+
+[machine-spec.md](machine-spec.md) (maquina e janela), [slots-spec.md](slots-spec.md) (layout de slots),
+[fm-spec.md](fm-spec.md) (FM, MSX-MUSIC e FM-PAC), [sram-spec.md](sram-spec.md) (SRAM e `.sav`),
+[audio-spec.md](audio-spec.md) (audio), [fdc-spec.md](fdc-spec.md) (disco), [msx2-spec.md](msx2-spec.md) e
+[msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
 
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 

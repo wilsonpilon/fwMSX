@@ -131,6 +131,15 @@ termos acima:
   Assembly (`src/scc/asm/render_channel.asm`), a tabela de volume linear (Fortran) e o
   `SccDevice` (C++) sao codigo original (BSD-3-Clause). Ver `doc/scc-spec.md`.
 
+- `src/fm/core/ym2413_patches.h` -- os 15 timbres prontos do OPLL, copiados da tabela
+  `Synth2413` de `resource/fMSX/EMULib/YM2413.c` (fMSX, Copyright (C) Marat Fayzullin
+  1996-2021; uso para estudo autorizado pelo autor). Sao dados do chip, nao codigo. O motor
+  do OPLL (`src/fm/core/ym2413_state.c`) e' original do fwMSX; o `YM2413.c` do fMSX (um
+  wrapper que toca instrumentos MIDI) nao foi portado. O mapper `MAP_FMPAC`
+  (`src/memmap/core/slot_state.c`) segue o protocolo de `MAP_FMPAC` de
+  `resource/fMSX/fMSX/MSX.c`, e o FM-PAC usa a ROM `resource/fMSX/FMPAC.ROM`. Ver
+  `doc/fm-spec.md`.
+
 - `src/vdp/core/vdp_render.c` (SCREEN 10-12 do V9958) -- base de `RefreshLine10()`/`RefreshLine12()` e
   `YJKColor()` de `resource/fMSX/fMSX/Common.h` (decodificacao de crominancia, regra de YAE).
   O scroll pixel a pixel, o arredondamento do azul, a expansao de 5 bits e a mascara da esquerda

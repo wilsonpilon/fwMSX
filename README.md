@@ -17,131 +17,52 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual
+## Estado atual (v1.17.0 "Xak: Musica FM e Slots")
 
-A janela tem menus do fMSX, zoom, proporcao, tela cheia e filtros de video (menu Video). O **fwMSX ja e' um emulador de MSX** (MSX1 e MSX2): `fwMSX.exe` sem argumentos
-abre a maquina numa janela (desde a v1.12.0). Estao prontos o Z80, o mapa de
-memoria com cartuchos e MegaROM, o VDP (TMS9918 e V9938, com comandos), teclado,
-PSG, SCC, disco (MSX-DOS 1.8) e joystick, e o MSX2+ (V9958, `--msx2p`, com YJK,
-scroll e mascara da esquerda). Faltam o chip FM e os efeitos de rastreio no meio
-do quadro -- ver [doc/SPEC.md](doc/SPEC.md), secao 5.0. O esqueleto dos quatro modulos (C++, C, Assembly e Fortran),
-que foi a base do projeto, continua acessivel com argumentos explicitos.
+![fwMSX em janela](images/fwMSX-01.png)
 
-A v1.2.x entregou o primeiro utilitario "de verdade" construido nesse
-processo de aprendizado: o **msxdisk**, um manipulador completo de
-imagens de disco MSX (`.dsk`, FAT12, MSX-DOS 1/2 com subdiretorios), num
-unico executavel (`dist/msxdisk.exe`) com quatro modos -- CLI, shell
-interativo, TUI (Norton Commander/XTree) e GUI (Dear ImGui) -- tambem
-acessivel embutido via `fwmsx --msxdisk`. Ver
-[doc/msxdisk-spec.md](doc/msxdisk-spec.md) para a especificacao completa.
+O **fwMSX e um emulador de MSX** (MSX1, MSX2 e MSX2+) escrito em C, C++, Assembly e Fortran. Sem
+argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX BASIC.
 
-A v1.3.0 trouxe o **nucleo da CPU Z80**: motor de despacho fiel ao fMSX
-(C + wrapper C++), tabelas de flag geradas em Fortran, aceleracao de
-`LDIR`/`LDDR` em Assembly dual-ABI Win64/SysV (primeiro `.asm` do
-projeto portavel pra Linux -- ver `build.sh`), e um depurador embutido
-em `fwMSX.exe` (`fwmsx --z80dbg`: registradores, memoria, breakpoints e
-desmontador). Ver [doc/z80-core-spec.md](doc/z80-core-spec.md).
+**Funciona hoje:**
 
-A v1.4.0 trouxe o **mapa de memoria MSX** (slots/subslots): motor fiel
-ao fMSX em C, `MemorySystem`/`SlotMemoryBus` em C++ com uma API de
-depuracao que enxerga qualquer slot independente do que a CPU ve agora,
-carregamento de ROM real com CRC32 em Fortran, e seis mappers MegaROM de
-troca de banco (Konami/ASCII/generic). `fwmsx --z80dbg --slots
-resource/fMSX/ROMs/MSX.ROM` roda a **BIOS MSX1 real** no nucleo Z80. Ver
-[doc/memory-map-spec.md](doc/memory-map-spec.md).
+- **Maquinas**: MSX1 (BASIC 1.0), MSX2 (BASIC 2.1) e MSX2+ (BASIC 3.0, V9958), ate o prompt do BASIC.
+- **Disco**: MSX-DOS 1.8 a partir de `.dsk`, com leitura e gravacao (e protecao contra gravacao).
+- **Cartuchos**: ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SRAM com `.sav` e o SCC (F1 Spirit toca a trilha).
+- **Video**: VDP completo: SCREEN 0 a 8 no V9938 e 10 a 12 no V9958 (YJK, YAE e scroll).
+- **Som**: PSG, SCC e **FM (MSX-MUSIC e FM-PAC)** com os comandos de BASIC (`CALL MUSIC`, `PLAY #n`, `CALL VOICE`), modo ritmo e saida ao vivo.
+- **Configuracao**: menu **Maquina > Configuracao de slots...**: 16 celulas (BIOS, BASIC, RAM de 16 a 64 KB, mapper de 64 a 1024 KB, cartucho, disco, sub-ROM e FM-PAC).
+- **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video.
 
-A v1.4.1 **validou o build em Linux de verdade** (WSL2): build completo
-+ `ctest` (328 verificacoes) passando, incluindo a branch `elf64`/SysV
-do Assembly dual-ABI do nucleo Z80 -- so tinha sido montada antes, nunca
-linkada/executada. Duas correcoes reais de portabilidade em modulos
-Assembly mais antigos do projeto (`src/asm/init_asm.asm`,
-`src/msxdisk/asm/name_match.asm`, Win64-only desde antes do nucleo Z80
-existir). Pacote Linux (`.tar.gz`) disponivel, gerado por `build.sh`.
+**Limites (detalhes em [RELEASE.md](doc/RELEASE.md) e [SPEC.md](doc/SPEC.md), secao 5.0):**
 
-A v1.5.0 trouxe o **VDP** (TMS9918/V9938) -- a primeira vez que o
-projeto desenha pixels de verdade. `CompositeBus` (design proprio)
-multiplexa I/O de porta entre o mapa de memoria e o VDP; motor
-"digital" do VDP em **C** (registradores, protocolo de porta `98h`-
-`9Bh`, maquina de estados de scanline/interrupcao) finalmente da uso
-real ao `Z80Cpu::interrupt()`, confirmado com um programa sintetico
-recebendo a interrupcao de VBlank de verdade; renderizacao real de
-SCREEN 0/1/2 (texto mono, texto colorido, bitmap), exportavel como
-imagem PPM via `vdpshot` (a janela veio na v1.9.0); tabela de paleta de 512
-cores em **Fortran**, finalmente com consumidor. `fwmsx --z80dbg
---slots resource/fMSX/ROMs/MSX.ROM --vdp` e' o comando mais completo de
-depuracao que o projeto tem hoje. Ver [doc/vdp-spec.md](doc/vdp-spec.md).
+- O **som do FM e do SCC** nao foi comparado com hardware real. Use `--wav` para gravar e ouvir.
+- **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada; Mega Chase
+  so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
+- **Janela**: menus, tela cheia, 4:3, 16:9 e filtros nao foram conferidos na tela.
+- **Ausentes**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, `CALL VOICECOPY`
+  e opcao de linha de comando para o layout de slots.
+- **BIOS**: so' em 0:0. Outras BIOS (ex.: Gradiente Expert 1.1) montam no layout, mas nao foram testadas.
 
-A v1.6.0 trouxe os **sprites** do VDP (Fase 3): SCREEN 1/2/3 com 8x8/
-16x16, ampliacao, prioridade, limite de 4 por linha, flag de quinto
-sprite e de colisao, em **C**, adaptados do fMSX. Ver
-[doc/vdp-spec.md](doc/vdp-spec.md).
+**Configurar a maquina** (menus da janela; a lista completa de opcoes de linha de comando esta no
+[MANUAL](doc/MANUAL.md)):
 
-A v1.7.0 trouxe o **PPI i8255 e o teclado** (portas `A8h`-`ABh`): chip
-em **C** adaptado do fMSX, `PpiDevice` em **C++** ligado ao mapa de
-memoria (o slot primario passa a mudar pelo PPI, como no hardware),
-tabela de posicao das 87 teclas na matriz em **Fortran** e contagem de
-teclas pressionadas em **Assembly** dual-ABI. `fwmsx --z80dbg --slots
-resource/fMSX/ROMs/MSX.ROM --vdp --ppi` ganha `ppiregs`/`keys`/
-`keydown`/`keyup`. Ver [doc/ppi-spec.md](doc/ppi-spec.md).
+- **Maquina > Modelo**: MSX1, MSX2 ou MSX2+ (volta o layout ao padrao).
+- **Maquina > Configuracao de slots...**: monta o layout celula a celula. Exemplos que funcionam:
+  - uma BIOS de 32KB em 0:0 (a pagina 0 recebe a BIOS, a pagina 1 o BASIC);
+  - BIOS e BASIC em dois arquivos de 16KB, na mesma celula 0:0;
+  - quatro bancos de RAM de 64KB no slot 2 (celulas 2:0 a 2:3);
+  - um mapper de 1024KB no slot 3:1.
+- **Cartucho**: insere ou retira o cartucho do slot 1:0.
+- **FM-PAC**: liga ou desliga o FM-PAC no slot 2:0 (ligado por padrao quando o `FMPAC.ROM` existe).
+- **Disco**: insere e ejeta os discos A: e B:.
+- **Exibir, Video, Som e Configuracoes > Interface**: aparencia e audio.
 
-A v1.8.0 fez a **BIOS MSX1 real subir ate o prompt do MSX BASIC** --
-`MSX BASIC version 1.0 / Bytes free / Ok` renderizado pelo VDP do projeto
-(exporte com `vdpshot`), com `keydown`/`keyup` digitando nele. A causa
-real da BIOS "presa" desde a v1.4.0 era um bug do nucleo Z80: `Z80Cpu`
-nao chamava `z80_reset()` na construcao e as tabelas de flag ficavam
-zeradas. Ver [doc/ppi-spec.md, secao 5](doc/ppi-spec.md).
+Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 1.13.0 SCC;
+1.14.0 CPIR/CPDR em Assembly; 1.15.0 MSX2+ (V9958); 1.16.0 janela com menus e filtros; **1.17.0 FM com
+BASIC, layout de slots e SRAM do FM-PAC**. Detalhes em [CHANGELOG.md](doc/CHANGELOG.md).
 
-A v1.9.0 trouxe a **maquina de verdade**: `fwmsx --msx` abre uma janela
-(Dear ImGui + GLFW) com a BIOS MSX1 rodando em tempo real, **teclado do
-host**, **cartucho** no slot 1 (`--cart`) e **som ao vivo** -- o **PSG
-AY-3-8910** (motor em **C** que gera amostras PCM, tabela de volume em
-**Fortran**, `PsgDevice` em **C++**) toca pelo dispositivo de audio do
-sistema via miniaudio. `fwmsx --msx --frames N --shot tela.ppm --keys
-"print 1234|"` roda sem janela. Ver [doc/machine-spec.md](doc/machine-spec.md),
-[doc/psg-spec.md](doc/psg-spec.md) e [doc/audio-spec.md](doc/audio-spec.md).
-
-A v1.10.0 trouxe o **disco**: `fwmsx --msx --disk msxdos1.dsk` **boota o
-MSX-DOS 1.8** -- a `DISK.ROM` do fMSX no slot 3:1 conversa com uma controladora
-**WD2793** (motor em **C** adaptado do fMSX, imagem `.dsk` e dispositivo em
-**C++**), `dir` e `copy` funcionam e gravam no arquivo. Tambem chegaram o
-**joystick** (teclado e gamepad), a **deteccao automatica de mapper** de
-MegaROM e a correcao do estado inicial dos bancos: King's Valley e F1 Spirit
-rodam. Ver [doc/fdc-spec.md](doc/fdc-spec.md).
-
-A v1.11.0 trouxe o **MSX2**: `fwmsx --msx --msx2` roda a BIOS MSX2
-(MSX BASIC 2.1) com o **VDP V9938** completo -- SCREEN 0 a 8, TEXT80, sprites de
-modo 2 e o **motor de comandos** (adaptado do `V9938.c` do fMSX), RAM de 128KB com
-**mapper** e **relogio RTC**. Jogos MSX2 como o **Firebird** rodam, e o BASIC
-desenha `LINE`/`CIRCLE`/`PAINT` em SCREEN 5. Ver [doc/msx2-spec.md](doc/msx2-spec.md).
-
-A v1.12.0 fechou uma decisao que vinha registrada desde a v1.2.0
-([doc/SPEC.md, secao 5.1](doc/SPEC.md)): com o core de emulacao ja existindo
-de verdade, `fwmsx` **sem argumento nenhum** agora abre a maquina completa em
-janela (os mesmos padroes de `--msx`), em vez do esqueleto dos quatro modulos.
-O esqueleto continua acessivel com argumentos explicitos que nao batem com
-nenhum modo conhecido, preservado por ser o historico do projeto.
-
-![fwMSX rodando o MSX BASIC numa janela](images/fwMSX-00.png)
-
-*A v1.12.0 abre direto aqui: sem argumentos, `fwMSX.exe` sobe a BIOS MSX1 real
-e mostra o prompt do MSX BASIC.*
-
-A v1.13.0 trouxe o **chip de som SCC** (Konami): os cartuchos Konami5 e Gen8
-que ligam o SCC (escrita `3Fh` em `9000h`, ou em `8000h-9FFFh` no Gen8) agora
-tocam a trilha pela mesma saida de audio do PSG. O **F1 Spirit** programa os
-cinco canais de verdade. O motor do SCC e' um port do fMSX em **C**, a soma
-dos canais e' **Assembly** dual-ABI, a tabela de volume e' **Fortran**, e o
-protocolo do cartucho e' o `SccDevice` em **C++**. Ver
-[doc/scc-spec.md](doc/scc-spec.md).
-
-**Trabalho no core de emulacao continua em andamento** -- faltam o chip FM
-(OPLL/FMPAC) e efeitos de rastreio no meio do quadro para uma maquina MSX
-completa. Ver
-[doc/SPEC.md, secao 5.0](doc/SPEC.md) para os proximos passos
-registrados, pra retomar sem se perder.
-
-Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico
-de fases (documento vivo, atualizado a cada mudanca relevante).
+Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
 
 ## Estrutura do projeto
 
@@ -165,6 +86,7 @@ fwMSX/
 │   │               doc/ppi-spec.md)
 │   ├── psg/        PSG AY-3-8910 (core/cpp/fortran -- ver doc/psg-spec.md)
 │   ├── scc/        chip de som SCC (core/asm/fortran/cpp -- ver doc/scc-spec.md)
+│   ├── fm/         chip FM OPLL (MSX-MUSIC/FM-PAC; core/asm/fortran/cpp -- ver doc/fm-spec.md)
 │   ├── rtc/        relogio RTC do MSX2 (header-only -- ver doc/msx2-spec.md)
 │   ├── fdc/        controladora de disquete WD2793 (core/cpp -- ver
 │   │               doc/fdc-spec.md)
@@ -186,6 +108,9 @@ fwMSX/
 │   ├── ppi-spec.md      especificacao + fases do PPI/teclado
 │   ├── psg-spec.md      especificacao + fases do PSG
 │   ├── scc-spec.md      especificacao + fases do SCC
+│   ├── fm-spec.md       chip FM (MSX-MUSIC e FM-PAC) e comandos de BASIC
+│   ├── slots-spec.md    layout de slots e configuracao da maquina
+│   ├── sram-spec.md     SRAM de cartucho e FM-PAC (arquivos .sav)
 │   ├── machine-spec.md  maquina completa + janela com teclado do host
 │   ├── audio-spec.md    audio ao vivo
 │   ├── fdc-spec.md      disco: controladora WD2793 + MSX-DOS
@@ -193,6 +118,7 @@ fwMSX/
 │   ├── MANUAL.md       como compilar e executar
 │   ├── CHANGELOG.md    resumo das alteracoes entre versoes
 │   └── RELEASE.md       detalhes de cada release
+├── images/         imagens usadas nesta documentacao
 ├── dist/           pacote pronto para execucao (.exe + .zip)
 ├── resource/       codigo-fonte de terceiros usado como referencia/estudo
 ├── CMakeLists.txt  build raiz (CMake + Ninja)

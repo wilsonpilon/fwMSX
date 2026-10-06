@@ -94,6 +94,139 @@ int main() {
         check(VramHas(*m, "MSX BASIC version 1.0") && VramHas(*m, "Bytes free"), "boot em quadros: o prompt do MSX BASIC aparece na VRAM");
         check(m->psg().state().r[7] == 0xB8, "o PSG foi avancado/programado pela BIOS (R7=B8h)");
 
+        // --- 3b. Chip FM (MSX-MUSIC, portas 7Ch/7Dh) ligado na maquina ----------
+        {
+            m->fm().out(0x7C, 0x30);
+            m->fm().out(0x7D, 0x00);                // canal 0: timbre 0 (usuario), volume 0
+            m->fm().out(0x7C, 0x10);
+            m->fm().out(0x7D, 0x80);                // fnum baixo
+            m->fm().out(0x7C, 0x20);
+            m->fm().out(0x7D, 0x00);                // sem nota
+            // Timbre do usuario: portadora senoidal de ataque rapido e sustentacao
+            // (mesmo ajuste do fmtest).
+            m->fm().out(0x7C, 0x00); m->fm().out(0x7D, 0x21);
+            m->fm().out(0x7C, 0x01); m->fm().out(0x7D, 0x21);
+            m->fm().out(0x7C, 0x02); m->fm().out(0x7D, 0x3F);
+            m->fm().out(0x7C, 0x03); m->fm().out(0x7D, 0x00);
+            m->fm().out(0x7C, 0x04); m->fm().out(0x7D, 0xF0);
+            m->fm().out(0x7C, 0x05); m->fm().out(0x7D, 0xF0);
+            m->fm().out(0x7C, 0x06); m->fm().out(0x7D, 0x0F);
+            m->fm().out(0x7C, 0x07); m->fm().out(0x7D, 0x0F);
+            m->fm().out(0x7C, 0x20);
+            m->fm().out(0x7D, 0x18);                // KEY-ON, bloco 4, fnum bit 8 = 0 (fnum 128)
+            check(m->fm().in(0x7C) == 0x00 && m->fm().state().ch[0].key == 1,
+                  "FM na maquina: as portas 7Ch/7Dh gravam e ligam o canal 0");
+
+            m->EnableLiveAudio(true);
+            Frames(*m, 10);
+            std::vector<int16_t> samples;
+            m->TakeLiveAudio(samples);
+            int nonzero = 0;
+            for (int16_t v : samples) nonzero += v != 0;
+            check(nonzero > 1000, "FM na maquina: o audio ao vivo traz as amostras do chip (" +
+                                      std::to_string(nonzero) + " nao nulas)");
+            m->EnableLiveAudio(false);
+        }
+
+        // --- 3c. FM-PAC em 2:0 (ROM de 16KB com assinatura "AB"), boot continua ok --
+        {
+            MachineConfig fmpac = config;
+            fmpac.fmpac_rom_path = std::string(FWMSX_SOURCE_DIR) + "/resource/fMSX/FMPAC.ROM";
+            std::string fmpac_error;
+            std::unique_ptr<Machine> mf = Machine::Create(fmpac, fmpac_error);
+            if (!mf) {
+                std::printf("[SKIP] FM-PAC nao carregado (%s)\n", fmpac_error.c_str());
+            } else {
+                check(mf->memory().PeekSlot(2, 0, 0x4000) == 'A' && mf->memory().PeekSlot(2, 0, 0x4001) == 'B',
+                      "FM-PAC: assinatura 'AB' aparece em 4000h do slot 2:0");
+                check(mf->memory().HasSram(2, 0), "FM-PAC: a maquina tem a SRAM de 8KB do mapper");
+                Frames(*mf, 250);
+                check(VramHas(*mf, "MSX BASIC version 1.0") && VramHas(*mf, "Bytes free"),
+                      "FM-PAC na maquina: o boot continua e chega ao prompt do BASIC");
+            }
+        }
+
+        // --- 3d. Layout de slots (doc/slots-spec.md): BIOS e BASIC em arquivos
+        //         separados (16KB + 16KB), RAM em 2:0 e mapper de 1024KB em 3:1 ----
+        {
+            auto read_bytes = [](const std::string &path) {
+                std::ifstream f(path, std::ios::binary | std::ios::ate);
+                std::vector<uint8_t> bytes(static_cast<size_t>(f.tellg()));
+                f.seekg(0);
+                f.read(reinterpret_cast<char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+                return bytes;
+            };
+            auto write_bytes = [](const std::string &path, const std::vector<uint8_t> &bytes) {
+                std::ofstream f(path, std::ios::binary | std::ios::trunc);
+                f.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+            };
+            const std::vector<uint8_t> whole = read_bytes(rom);
+            const std::string bios16 = TempPath("fwmsx_layout_bios.rom");
+            const std::string basic16 = TempPath("fwmsx_layout_basic.rom");
+            write_bytes(bios16, std::vector<uint8_t>(whole.begin(), whole.begin() + 0x4000));
+            write_bytes(basic16, std::vector<uint8_t>(whole.begin() + 0x4000, whole.begin() + 0x8000));
+
+            MachineConfig split = config;
+            split.layout = machine::DefaultLayout(config);
+            split.layout_set = true;
+            split.layout.cell[0][0].path = bios16;
+            split.layout.cell[0][0].path2 = basic16;
+            split.layout.cell[2][0].kind = machine::SlotKind::Ram;
+            split.layout.cell[2][0].size_kb = 64;
+            split.layout.cell[3][1].kind = machine::SlotKind::Mapper;
+            split.layout.cell[3][1].size_kb = 1024;
+
+            std::string split_error;
+            std::unique_ptr<Machine> ms = Machine::Create(split, split_error);
+            check(ms != nullptr, "layout: BIOS 16KB (pagina 0) + BASIC 16KB (pagina 1) em arquivos separados monta (" + split_error + ")");
+            if (ms) {
+                check(ms->memory().PeekSlot(0, 0, 0x0000) == whole[0x0000] && ms->memory().PeekSlot(0, 0, 0x4000) == whole[0x4000],
+                      "layout: pagina 0 da BIOS e pagina 1 com o BASIC, na mesma celula 0:0");
+                check(ms->memory().MapperSegments(3, 1) == 64, "layout: mapper de 1024KB em 3:1 (64 segmentos de 16KB)");
+                Frames(*ms, 250);
+                check(VramHas(*ms, "MSX BASIC version 1.0"), "layout: a maquina montada pelo layout chega ao prompt do BASIC");
+            }
+            std::remove(bios16.c_str());
+            std::remove(basic16.c_str());
+
+            // Quatro bancos de RAM de 64KB no slot 2, um em cada subslot (2:0 a 2:3).
+            MachineConfig four_ram = config;
+            four_ram.layout = machine::DefaultLayout(config);
+            four_ram.layout_set = true;
+            for (int sec = 0; sec < 4; ++sec) {
+                four_ram.layout.cell[2][sec].kind = machine::SlotKind::Ram;
+                four_ram.layout.cell[2][sec].size_kb = 64;
+            }
+            std::string e4;
+            std::unique_ptr<Machine> mr = Machine::Create(four_ram, e4);
+            check(mr != nullptr && mr->memory().Describe(2, 3).kind == MEMMAP_KIND_RAM,
+                  "layout: quatro bancos de RAM no slot 2 (subslots 2:0 a 2:3) montam (" + e4 + ")");
+            if (mr) {
+                Frames(*mr, 250);
+                check(VramHas(*mr, "MSX BASIC version 1.0"), "layout: com RAM em 2:x a maquina chega ao prompt do BASIC");
+            }
+
+            // Layouts que nao montam sao recusados com a razao.
+            MachineConfig no_bios = config;
+            no_bios.layout = machine::DefaultLayout(config);
+            no_bios.layout_set = true;
+            no_bios.layout.cell[0][0] = machine::SlotItem{};
+            std::string e1;
+            check(Machine::Create(no_bios, e1) == nullptr && Contains(e1, "BIOS"), "layout: sem BIOS em 0:0 e recusado (" + e1 + ")");
+
+            MachineConfig two_mappers = split;
+            two_mappers.layout.cell[1][1].kind = machine::SlotKind::Mapper;
+            two_mappers.layout.cell[1][1].size_kb = 128;
+            std::string e2;
+            check(Machine::Create(two_mappers, e2) == nullptr && Contains(e2, "mapper"), "layout: duas RAMs mapeadas sao recusadas (" + e2 + ")");
+
+            MachineConfig bad_ram = split;
+            bad_ram.layout.cell[2][1].kind = machine::SlotKind::Ram;
+            bad_ram.layout.cell[2][1].size_kb = 48;
+            std::string e3;
+            check(Machine::Create(bad_ram, e3) == nullptr && Contains(e3, "RAM"), "layout: RAM de 48KB (fora de 16/32/64) e recusada (" + e3 + ")");
+        }
+
         // --- 4. RenderFrame ------------------------------------------------------
         std::vector<uint32_t> rgba;
         m->RenderFrame(rgba);

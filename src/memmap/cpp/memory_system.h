@@ -59,6 +59,9 @@ public:
     // existir. Chamar de novo na mesma combinacao substitui o que havia
     // antes (o buffer antigo e' liberado).
     void AllocateRam(int primary, int secondary, std::size_t size);
+    // Esvazia a combinacao (primary, secondary): nada fica ligado nela. Usado pelo
+    // layout de slots da maquina antes de montar a configuracao escolhida.
+    void ClearSlot(int primary, int secondary);
 
     // RAM com MAPPER (MSX2, portas FCh-FFh): `segments` (potencia de 2, >= 4)
     // segmentos de 16KB; cada uma das 4 paginas de 16KB da CPU mostra um
@@ -109,6 +112,17 @@ public:
     // esta na vista ativa da CPU agora -- a API de inspecao "por fora"
     // que o depurador usa (requisito vital do autor, ver
     // doc/memory-map-spec.md, secao 1/3.3).
+    // SRAM de cartucho (ASCII8/ASCII16) -- ver doc/sram-spec.md. Existe so' nos
+    // cartuchos desses mappers; o tamanho do arquivo .sav e' 8KB (ASCII8) ou 2KB (ASCII16).
+    bool HasSram(int primary, int secondary) const;
+    std::size_t SramFileSize(int primary, int secondary) const;
+    // Carrega uma imagem de tamanho SramFileSize(); false se o tamanho nao bate.
+    bool LoadSram(int primary, int secondary, const uint8_t *data, std::size_t size);
+    // Bytes da SRAM como vao para o arquivo .sav.
+    std::vector<uint8_t> SramImage(int primary, int secondary) const;
+    bool SramDirty(int primary, int secondary) const;
+    void ClearSramDirty(int primary, int secondary);
+
     uint8_t PeekSlot(int primary, int secondary, uint16_t addr) const;
     void PokeSlot(int primary, int secondary, uint16_t addr, uint8_t value);
 
@@ -123,6 +137,7 @@ private:
     // Mantem vivos os buffers passados para memmap_attach() -- SlotState
     // em C so guarda ponteiros crus, nao possui memoria.
     std::vector<std::unique_ptr<uint8_t[]>> owned_buffers_;
+    std::size_t sram_file_size_[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS] = {};
     // CRC32 por combinacao de slot (so relevante para MEMMAP_KIND_ROM) --
     // vive aqui em vez de em SlotState (C) porque e' metadado de
     // depurador, nao algo que o motor de troca de slot precisa conhecer.
