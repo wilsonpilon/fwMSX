@@ -52,3 +52,13 @@ Nada aqui e compilado como parte do build oficial do fwMSX/msxdisk (ver
 usados diretamente em nenhum codigo do projeto. Relevantes quando o core
 de emulacao (CPU Z80, VDP, PSG) comecar, conforme
 `doc/SPEC.md`, secao 5.
+
+## openMSX (provisorio, GPL-2.0-or-later)
+
+`resource/openMSX/` contem os fontes do **openMSX** (emulador de MSX, licenca **GPL**,
+versao 2 ou posterior; o texto esta em `resource/openMSX/doc/GPL.txt`).
+
+- Entrou no repositorio **provisoriamente**, para estudo de arquitetura (em especial o
+  controle externo por aplicativo, no estilo do openMSX). Nao faz parte do build do fwMSX.
+- Nenhum codigo daqui foi copiado para o fwMSX. Ideias e formatos sao reimplementados.
+- Sera removido quando o fwMSX estiver pronto, junto com o fMSX, que tambem e' so' referencia.

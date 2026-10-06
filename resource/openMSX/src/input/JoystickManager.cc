@@ -1,0 +1,232 @@
+#include "JoystickManager.hh"
+
+#include "CommandException.hh"
+#include "FloatSetting.hh"
+#include "Reactor.hh"
+
+#include "narrow.hh"
+#include "outer.hh"
+#include "strCat.hh"
+
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+
+namespace openmsx {
+
+JoystickManager::JoystickManager(Reactor& reactor)
+	: commandController(reactor.getCommandController())
+	, joystickInfo(reactor.getOpenMSXInfoCommand())
+{
+	// Note: we don't explicitly enumerate all joysticks which are already
+	// present at startup. Instead we rely on SDL_JOYDEVICEADDED events:
+	// these also get send for the initial joysticks.
+
+	// joysticks generate events
+	SDL_JoystickEventState(SDL_ENABLE); // is this needed?
+}
+
+JoystickManager::~JoystickManager()
+{
+	for (auto& info : infos) {
+		if (info.joystick) SDL_JoystickClose(info.joystick);
+	}
+}
+
+size_t JoystickManager::getFreeSlot()
+{
+	if (auto it = std::ranges::find(infos, nullptr, &Info::joystick); it != infos.end()) {
+		return std::distance(infos.begin(), it);
+	}
+	auto idx = infos.size();
+	infos.emplace_back();
+	auto& info = infos[idx];
+	info.deadZoneSetting = std::make_unique<FloatSetting>(
+		commandController,
+		tmpStrCat("joystick", idx + 1, "_deadzone"),
+		"(as a percentage) inputs below this threshold are clipped to zero (dead)",
+		25.0f, 0.0f, 100.0f);
+	info.midPointSetting = std::make_unique<FloatSetting>(
+		commandController,
+		tmpStrCat("joystick", idx + 1, "_midpoint"),
+		"(as a percentage) this input gets mapped to half-strength output, allows to select a non-linear curve",
+		75.0f, 0.0f, 100.0f);
+	info.saturationSetting = std::make_unique<FloatSetting>(
+		commandController,
+		tmpStrCat("joystick", idx + 1, "_saturation"),
+		"(as a percentage) inputs above this threshold get mapped to max-output",
+		90.0f, 0.0f, 100.0f);
+	return idx;
+}
+
+void JoystickManager::add(int deviceIndex)
+{
+	auto idx = getFreeSlot();
+	auto& info = infos[idx];
+	info.joystick = SDL_JoystickOpen(deviceIndex);
+	info.instanceId = info.joystick ? SDL_JoystickInstanceID(info.joystick) : -1;
+}
+
+void JoystickManager::remove(int instanceId)
+{
+	auto it = std::ranges::find(infos, instanceId, &Info::instanceId);
+	if (it == infos.end()) return; // this shouldn't happen
+
+	SDL_JoystickClose(it->joystick);
+	it->joystick = nullptr;
+	it->instanceId = -1;
+}
+
+std::vector<JoystickId> JoystickManager::getConnectedJoysticks() const
+{
+	// TODO c++20 std::views::filter | std::views::transform
+	std::vector<JoystickId> result;
+	for (auto i : xrange(infos.size())) {
+		if (!infos[i].joystick) continue;
+		result.emplace_back(unsigned(i));
+	}
+	return result;
+}
+
+int JoystickManager::getJoyDeadThreshold(JoystickId joyId) const
+{
+	unsigned id = joyId.raw();
+	return (id < infos.size()) ? int(infos[id].deadZoneSetting->getFloat() * (32768.0f / 100.0f)) : 8192;
+}
+
+float JoystickManager::getJoyValue(JoystickId joyId, const JoystickAxisMotionEvent& e) const
+{
+	unsigned id = joyId.raw();
+	if (id >= infos.size()) return 0.0f;
+
+	auto rawValue = float(e.getValue()); // [-32768, 32767]
+	auto value = std::abs(rawValue) * (1.0f / 32768.0f);
+
+	const auto& info = infos[id];
+	auto inner = info.deadZoneSetting->getFloat() * (1.0f / 100.0f);
+	if (value <= inner) return 0.0f;
+	auto outer = info.saturationSetting->getFloat() * (1.0f / 100.0f);
+	if (value >= outer) return std::copysign(1.0f, rawValue);
+
+	assert(inner < outer);
+	auto middle = info.midPointSetting->getFloat() * (1.0f / 100.0f);
+	middle = std::clamp(middle, inner, outer);
+	auto f = std::log(0.5f) / std::log((middle - inner) / (outer - inner));
+	auto output = std::pow((value - inner) / (outer - inner), f);
+	return std::copysign(output, rawValue);
+}
+
+JoystickManager::Info* JoystickManager::getSettings(JoystickId joyId)
+{
+	unsigned id = joyId.raw();
+	return (id < infos.size()) ? &infos[id] : nullptr;
+}
+
+std::string JoystickManager::getDisplayName(JoystickId joyId) const
+{
+	unsigned id = joyId.raw();
+	auto* joystick = (id < infos.size()) ? infos[id].joystick : nullptr;
+	return joystick ? SDL_JoystickName(joystick) : "[Not plugged in]";
+}
+
+std::optional<unsigned> JoystickManager::getNumAxes(JoystickId joyId) const
+{
+	unsigned id = joyId.raw();
+	auto* joystick = (id < infos.size()) ? infos[id].joystick : nullptr;
+	if (!joystick) return {};
+	return SDL_JoystickNumAxes(joystick);
+}
+
+std::optional<unsigned> JoystickManager::getNumBalls(JoystickId joyId) const
+{
+	unsigned id = joyId.raw();
+	auto* joystick = (id < infos.size()) ? infos[id].joystick : nullptr;
+	if (!joystick) return {};
+	return SDL_JoystickNumBalls(joystick);
+}
+
+std::optional<unsigned> JoystickManager::getNumButtons(JoystickId joyId) const
+{
+	unsigned id = joyId.raw();
+	auto* joystick = (id < infos.size()) ? infos[id].joystick : nullptr;
+	if (!joystick) return {};
+	return SDL_JoystickNumButtons(joystick);
+}
+
+std::optional<unsigned> JoystickManager::getNumHats(JoystickId joyId) const
+{
+	unsigned id = joyId.raw();
+	auto* joystick = (id < infos.size()) ? infos[id].joystick : nullptr;
+	if (!joystick) return {};
+	return SDL_JoystickNumHats(joystick);
+}
+
+std::optional<int16_t> JoystickManager::getAxis(JoystickId joyId, int axis) const
+{
+	unsigned id = joyId.raw();
+	auto* joystick = (id < infos.size()) ? infos[id].joystick : nullptr;
+	if (!joystick) return {};
+	return SDL_JoystickGetAxis(joystick, axis);
+}
+
+std::optional<JoystickId> JoystickManager::translateSdlInstanceId(SDL_Event& evt) const
+{
+	int instanceId = evt.jbutton.which; // any SDL joystick event
+	auto it = std::ranges::find(infos, instanceId, &Info::instanceId);
+	if (it == infos.end()) return {}; // should not happen
+	evt.jbutton.which = narrow<int>(std::distance(infos.begin(), it));
+	return JoystickId(evt.jbutton.which);
+}
+
+
+// JoystickInfo
+
+JoystickManager::JoystickInfo::JoystickInfo(InfoCommand& openMsxInfoCommand)
+	: InfoTopic(openMsxInfoCommand, "joystick")
+{
+}
+
+void JoystickManager::JoystickInfo::execute(std::span<const TclObject> tokens, TclObject& result) const
+{
+	checkNumArgs(tokens, Between{2, 3}, Prefix{2}, "?joystick-id?");
+	auto& manager = OUTER(JoystickManager, joystickInfo);
+	switch (tokens.size()) {
+	case 2:
+		for (auto i : xrange(manager.infos.size())) {
+			if (!manager.infos[i].joystick) continue;
+			result.addListElement(JoystickId(unsigned(i)).str());
+		}
+		break;
+	case 3: {
+		auto str = tokens[2].getString();
+		auto id = JoystickId::parse(str);
+		if (!id) {
+			throw CommandException("Invalid host joystick ID: ", str);
+		}
+		result.addDictKeyValue("name", manager.getDisplayName(*id));
+		if (auto n = manager.getNumAxes(*id)) {
+			result.addDictKeyValue("axes", *n);
+		}
+		if (auto n = manager.getNumBalls(*id)) {
+			result.addDictKeyValue("balls", *n);
+		}
+		if (auto n = manager.getNumButtons(*id)) {
+			result.addDictKeyValue("buttons", *n);
+		}
+		if (auto n = manager.getNumHats(*id)) {
+			result.addDictKeyValue("hats", *n);
+		}
+		break;
+	}
+	}
+}
+
+std::string JoystickManager::JoystickInfo::help(std::span<const TclObject> /*tokens*/) const
+{
+	return "Without argument: show list of available host joystick-IDs.\n"
+	       "With a joystick-ID argument: return a dict (key-values pairs) with extra info, for example:\n"
+	       "  the 'name' key contains the name for the given host joystick\n"
+	       "  'axes' / 'buttons' contains the number of axes / buttons this joystick has\n";
+}
+
+} // namespace openmsx

@@ -212,3 +212,21 @@ etc.) e material de terceiros incluido **apenas para estudo/referencia**,
 sob as licencas de seus proprios autores -- ver o aviso em
 [resource/README.md](resource/README.md). Nada disso e distribuido como
 parte do binario compilado do fwMSX/msxdisk.
+
+## Banco de ROMs (`src/romdb/`, nao lancado)
+
+- **miniz 3.0.2** (Rich Geldreich; licenca MIT ou dominio publico): biblioteca de ZIP baixada
+  pelo CMake (`FetchContent`) e compilada no projeto (`miniz.c`, `miniz_tdef.c`, `miniz_tinfl.c`,
+  `miniz_zip.c`). Nao e' codigo do fwMSX.
+- **curl** (programa externo, nao incluido no repositorio): usado para baixar os arquivos. Nao ha codigo
+  dele no fwMSX.
+- **Dados baixados pelo usuario, nao redistribuidos**: o pacote do fMSX 6.0 (`fMSX60-Windows-bin.zip`, de
+  `fms.komkon.org`), o "Full Set System ROMs for OpenMSX" (`download.file-hunter.com`) e o banco do
+  Vampier (`romdb.vampier.net`, `sql-msxromdb.zip`). As ROMs e o `CARTS.SHA` ficam na pasta `roms/`, que
+  esta fora do git. Os direitos sobre essas ROMs sao de seus titulares; o fwMSX so' le e organiza os arquivos.
+
+## openMSX (`resource/openMSX/`, provisorio)
+
+- **openMSX**: licenca GPL, versao 2 ou posterior (`resource/openMSX/doc/GPL.txt`). Material de
+  estudo, fora do build. Nao ha codigo dele no fwMSX. Sera retirado do repositorio quando o fwMSX
+  estiver pronto.

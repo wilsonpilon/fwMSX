@@ -1,0 +1,169 @@
+#ifndef FILE_HH
+#define FILE_HH
+
+#include "FileBase.hh"
+#include "MappedFile.hh"
+
+#include "zstring_view.hh"
+
+#include <bit>
+#include <cstdint>
+#include <ctime>
+#include <memory>
+#include <span>
+#include <type_traits>
+
+namespace openmsx {
+
+class File
+{
+public:
+	enum class OpenMode : uint8_t {
+		NORMAL,
+		TRUNCATE,
+		CREATE,
+		PRE_CACHE,
+	};
+
+	/** Create a closed file handle.
+	 * The only valid operations on such an object are is_open() and the
+	 * move-assignment operator.
+	 */
+	File();
+
+	/** Create file object and open underlying file.
+	 * @param filename Name of the file to be opened.
+	 * @param mode Mode to open the file in:
+	 * @throws FileNotFoundException if file not found
+	 * @throws FileException for other errors
+	 */
+	explicit File(zstring_view filename, OpenMode mode = OpenMode::NORMAL);
+
+	/** This constructor maps very closely on the fopen() libc function.
+	  * Compared to constructor above, it does not transparently
+	  * uncompress files.
+	  * @param filename Name of the file to be opened.
+	  * @param mode Open mode, same meaning as in fopen(), but we assert
+	  *             that it contains a 'b' character.
+	  */
+	File(zstring_view filename, const char* mode);
+
+	File(File&& other) noexcept;
+
+	/* Used by MemoryBufferFile. */
+	explicit File(std::unique_ptr<FileBase> file_);
+
+	~File();
+
+	File& operator=(File&& other) noexcept;
+
+	/** Return true iff this file handle refers to an open file. */
+	[[nodiscard]] bool is_open() const { return file != nullptr; }
+
+	/** Close the current file.
+	 * Equivalent to assigning a default constructed value to this object.
+	 */
+	void close();
+
+	/** Read from file.
+	 * @param buffer Destination buffer
+	 * @throws FileException
+	 */
+	void read(std::span<uint8_t> buffer);
+
+	template<typename T>
+	void read(std::span<T> buffer) {
+		read(std::span<uint8_t>{std::bit_cast<uint8_t*>(buffer.data()), buffer.size_bytes()});
+	}
+
+	/** Write to file.
+	 * @param buffer Source buffer
+	 * @throws FileException
+	 */
+	void write(std::span<const uint8_t> buffer);
+
+	template<typename T>
+	void write(std::span<T> buffer) {
+		write(std::span<const uint8_t>{std::bit_cast<const uint8_t*>(buffer.data()), buffer.size_bytes()});
+	}
+
+	/** Map file in memory.
+	 *
+	 * This returns a RAII object of type MappedFile<T>. And that makes the
+	 * data available as a std::span<T>.
+	 *
+	 * T can be 'const' or 'non-const', prefer 'const' when possible.
+	 * For a 'non-const T', changes to the buffer are not propagated back to
+	 * the file (IOW it's a private, non-shared mapping).
+	 *
+	 * Optionally the requested buffer can have some 'extra' elements at the
+	 * end. Initially the memory holding those extra elements is filled with
+	 * zeros. This can be useful if e.g. you want to append a zero-
+	 * terminator after the file. Often this implementation can do that
+	 * without extra cost (so no need to allocate a buffer, read the file
+	 * and add some zeros).
+	 */
+	template<typename T>
+	[[nodiscard]] MappedFile<T> mmap(size_t extra = 0) {
+		return MappedFile<T>(file->mmap(extra * sizeof(T), std::is_const_v<T>));
+	}
+
+	/** Returns the size of this file
+	 * @result The size of this file
+	 * @throws FileException
+	 */
+	[[nodiscard]] size_t getSize();
+
+	/** Move read/write pointer to the specified position.
+	 * @param pos Position in bytes from the beginning of the file.
+	 * @throws FileException
+	 */
+	void seek(size_t pos);
+
+	/** Get the current position of the read/write pointer.
+	 * @result Position in bytes from the beginning of the file.
+	 * @throws FileException
+	 */
+	[[nodiscard]] size_t getPos();
+
+	/** Truncate file size. Enlarging file size always works, but
+	 *  making file smaller doesn't work on some platforms (windows)
+	 * @throws FileException
+	 */
+	void truncate(size_t size);
+
+	/** Force a write of all buffered data to disk. There is no need to
+	 *  call this function before destroying a File object.
+	 */
+	void flush();
+
+	/** Get original filename for this file. Usually this returns an
+	 *  empty string. Only for compressed files that store the original
+	 *  name this can be non-empty.
+	 * @result Original file name
+	 * @throws FileException
+	 */
+	[[nodiscard]] zstring_view getOriginalName();
+
+	/** Check if this file is readonly
+	 * @result true iff file is readonly
+	 * @throws FileException
+	 */
+	[[nodiscard]] bool isReadOnly() const;
+
+	/** Get the date/time of last modification
+	 * @throws FileException
+	 */
+	[[nodiscard]] time_t getModificationDate();
+
+private:
+	friend class LocalFileReference;
+	/** This is an internal method used by LocalFileReference. */
+	[[nodiscard]] bool isLocalFile() const;
+
+	std::unique_ptr<FileBase> file;
+};
+
+} // namespace openmsx
+
+#endif

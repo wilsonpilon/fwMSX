@@ -1,0 +1,130 @@
+#include "File.hh"
+
+#include "GZFileAdapter.hh"
+#include "LocalFile.hh"
+#include "ZipFileAdapter.hh"
+
+#include "checked_cast.hh"
+#include "ranges.hh"
+
+#include <algorithm>
+#include <array>
+#include <memory>
+
+namespace openmsx {
+
+File::File() = default;
+
+[[nodiscard]] static std::unique_ptr<FileBase> init(zstring_view filename, File::OpenMode mode)
+{
+	static constexpr std::array<uint8_t, 3> GZ_HEADER  = {0x1F, 0x8B, 0x08};
+	static constexpr std::array<uint8_t, 4> ZIP_HEADER = {0x50, 0x4B, 0x03, 0x04};
+
+	std::unique_ptr<FileBase> file = std::make_unique<LocalFile>(filename, mode);
+	if (file->getSize() >= 4) {
+		std::array<uint8_t, 4> buf;
+		file->read(buf);
+		file->seek(0);
+		if (std::ranges::equal(subspan<3>(buf), GZ_HEADER)) {
+			file = std::make_unique<GZFileAdapter>(std::move(file), filename);
+		} else if (std::ranges::equal(subspan<4>(buf), ZIP_HEADER)) {
+			file = std::make_unique<ZipFileAdapter>(std::move(file), filename);
+		} else {
+			// only pre-cache non-compressed files
+			if (mode == File::OpenMode::PRE_CACHE) {
+				checked_cast<LocalFile*>(file.get())->preCacheFile();
+			}
+		}
+	}
+	return file;
+}
+
+File::File(zstring_view filename, OpenMode mode)
+	: file(init(filename, mode))
+{
+}
+
+File::File(zstring_view filename, const char* mode)
+	: file(std::make_unique<LocalFile>(filename, mode))
+{
+}
+
+File::File(File&& other) noexcept
+	: file(std::move(other.file))
+{
+}
+
+File::File(std::unique_ptr<FileBase> file_)
+	: file(std::move(file_))
+{
+}
+
+File::~File() = default;
+
+File& File::operator=(File&& other) noexcept
+{
+	file = std::move(other.file);
+	return *this;
+}
+
+void File::close()
+{
+	file.reset();
+}
+
+void File::read(std::span<uint8_t> buffer)
+{
+	file->read(buffer);
+}
+
+void File::write(std::span<const uint8_t> buffer)
+{
+	file->write(buffer);
+}
+
+size_t File::getSize()
+{
+	return file->getSize();
+}
+
+void File::seek(size_t pos)
+{
+	file->seek(pos);
+}
+
+size_t File::getPos()
+{
+	return file->getPos();
+}
+
+void File::truncate(size_t size)
+{
+	file->truncate(size);
+}
+
+void File::flush()
+{
+	file->flush();
+}
+
+bool File::isLocalFile() const
+{
+	return file->isLocalFile();
+}
+
+zstring_view File::getOriginalName()
+{
+	return file->getOriginalName();
+}
+
+bool File::isReadOnly() const
+{
+	return file->isReadOnly();
+}
+
+time_t File::getModificationDate()
+{
+	return file->getModificationDate();
+}
+
+} // namespace openmsx

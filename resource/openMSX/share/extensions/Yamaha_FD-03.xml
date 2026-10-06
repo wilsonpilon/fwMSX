@@ -1,0 +1,33 @@
+<?xml version="1.0"?>
+<!DOCTYPE msxconfig SYSTEM "msxconfig2.dtd">
+<msxconfig>
+  <info>
+    <name>3.5inch Floppydisk Drive 1DD</name>
+    <manufacturer>Yamaha</manufacturer>
+    <code>FD-03</code>
+    <release_year>1986</release_year>
+    <description>External single sided double density 3.5" disk drive.</description>
+    <type>external disk drive</type>
+  </info>
+  <!-- Note: the service manual says the FDC is M5W1793-02P, compatible with WD FD1793-02.
+       There are two versions of the ROM available.-->
+  <devices>
+    <primary slot="any">
+      <secondary slot="any">
+        <WD2793 id="Yamaha FD-03 diskROM/FDC">
+          <connectionstyle>Yamaha</connectionstyle>
+          <mem base="0x4000" size="0x8000"/> <!-- NOT VERIFIED! -->
+          <rom>
+            <sha1>e7cf9f5505d48a2ed442742133725ee20aef07e3</sha1> <!-- 32K ROM Version 3.8, Nov. 26 '85, with built in diagnostics software and 40 tracks support (replaced file offsets 0x3FC0-0x3FEF and 0x7FC0-0x7FEF with 0xFF) -->
+            <sha1>ea3c1d20310e7fbaacfdede839be0118ecea015e</sha1> <!-- 32K ROM Version 3.8, Nov. 26 '85, with built in diagnostics software and 40 tracks support (live register/RAM values in dump) -->
+            <sha1>9ac588d5f820daadf251a7984f6f80faa44d045d</sha1> <!-- 16K ROM Version 3.5. (replaced file offsets 0x3FC0-0x3FEF with 0xFF) -->
+            <sha1>5a5cc35ffb7f78ef440df9548c7360ab56719c5a</sha1> <!-- 16K ROM Version 3.5. (live register/RAM values in dump) -->
+            <filename>fd-03.rom</filename>
+          </rom>
+          <drives>1</drives>
+          <singlesided/>
+        </WD2793>
+      </secondary>
+    </primary>
+  </devices>
+</msxconfig>
