@@ -18,8 +18,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 ## 2. Onde estamos (2026-10-06)
 
 - **Versao publicada:** 1.17.0 "Xak: Musica FM e Slots" (tag/branch `main`, commit `dc7af78`).
-- **Trabalho de hoje:** branch **`estudo/openmsx`**, commit de hoje por cima de `main`, mais o commit
-  com o codigo do openMSX em `resource/openMSX/` (GPL, so' para estudo).
+- **Estado do git (2026-10-06, tarde):** tudo esta' no `main` (`56497f2`), ja' mesclado da
+  `estudo/openmsx` por fast-forward. Esse e' o repositorio completo: codigo, docs, testes,
+  `resource/` (inclui o openMSX, GPL, so' para estudo) e as midias de `dist/roms/` (inclusive o Full Set
+  do file-hunter). Nao ha nada pendente de commit.
 - **Testes:** `ctest` com **15 suites, todas passando** no estado commitado.
 - **Documentos vivos:** `doc/SPEC.md` (secao 5.0 = estado atual; 5.2 = fitas, a fazer),
   `doc/CHANGELOG.md` (secao "Nao lancado"), `doc/RELEASE.md`, `doc/MANUAL.md`, e os `*-spec.md`.
@@ -112,7 +114,7 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
   SHIFT+2 = `@`, SHIFT+' = `"`. Ja' corrigido; nao "corrigir" de volta.
 - **Teste de disco:** `msxdos1.dsk` (na raiz, rastreado) e' o disco de teste. Os testes copiam para
   temp. Se o `copy` de um teste manual gravar nele, restaure com `git checkout -- msxdos1.dsk`.
-- **Branch:** `main` = releases (1.17.0 publicado). Trabalho novo em `estudo/openmsx` (hoje). Decidir o merge.
+- **Branch:** trabalhe direto em `main` (decisao do usuario, 2026-10-06). `estudo/openmsx` ja' foi mesclada e pode ser apagada.
 - **`dist/`:** os `.exe` de teste sao ignorados pelo `.gitignore` (regras explicitas). `dist/fwMSX.exe`
   esta rastreado e foi regenerado no build de hoje.
 - **Nao usar `find /`** nem buscas amplas: demoram minutos (ja' aconteceu).
@@ -121,11 +123,12 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 
 ## 6. O que vai ao git e o que fica no PC
 
-- **Vai (provisorio, pessoal):** codigo, docs, testes; `resource/` inteiro (fMSX, openMSX, etc.);
-  `dist/roms/` **parte**: `bios/`, `interfaces/`, `tabelas/` (fMSX), os drivers
-  `ddx_3.0.rom` e `cdx-2.rom`, e `roms.db`.
-- **Fica so' no PC:** o restante de `dist/roms/` (Full Set do file-hunter, `filehunter/`, ~116 MB), e as
-  pastas de trabalho. Sem regra de `.gitignore` para isso ainda; os arquivos aparecem como nao rastreados.
+- **Vai agora (provisorio, pessoal):** codigo, docs, testes; `resource/` inteiro (fMSX, openMSX, CLK,
+  makeTSX, openMSX_TSXadv, etc.); `dist/roms/` **inteiro**, inclusive o Full Set do file-hunter
+  (`filehunter/15-08-2026/`, ~116 MB) e `roms.db`.
+- **Sem regra de `.gitignore` para midias.** Decisao do usuario: isso sera' revertido na versao final,
+  quando as midias de terceiros deixarem o repositorio.
+- **Clonar em outro PC:** `git clone` do `main` ja' traz tudo; nao precisa baixar as ROMs de novo.
 - **Quando liberar ao publico:** revisar midias de terceiros (`LICENSE-THIRD-PARTY.md`, politica); os
   arquivos contestados saem do repositorio e dos pacotes.
 
@@ -133,7 +136,7 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 
 1. **Validar na tela** o que so' foi compilado: menu ROMs, Banco de ROMs, Navegar file-hunter,
    Configuracao de disco (incluindo o seletor de ROM do driver), Configuracao de slots, tela cheia, filtros.
-2. **Merge** de `estudo/openmsx` no `main` (fast-forward) se a validacao passar. Depois, tag e release 1.18.0.
+2. **Tag e release 1.18.0** quando a validacao (item 1) passar. O merge ja' foi feito.
 3. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
    mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
 4. **Fitas (SPEC 5.2, ordem):** (a) leitor TZX/TSX e CAS sem janela; (b) CAS por hooks da BIOS
