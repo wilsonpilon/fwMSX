@@ -230,3 +230,14 @@ parte do binario compilado do fwMSX/msxdisk.
 - **openMSX**: licenca GPL, versao 2 ou posterior (`resource/openMSX/doc/GPL.txt`). Material de
   estudo, fora do build. Nao ha codigo dele no fwMSX. Sera retirado do repositorio quando o fwMSX
   estiver pronto.
+
+## Politica de distribuicao de midias de terceiros (2026-10-06)
+
+Hoje o repositorio e' pessoal. ROMs, discos, fitas e outras midias de terceiros (fMSX,
+file-hunter, Vampier, Microsol/DDX, TSX e CAS) podem ser versionadas e baixadas livremente
+pelo autor, sem restricao.
+
+**Aviso para a liberacao publica (a fazer):** antes de liberar o fwMSX ao publico, cada
+arquivo de midia de terceiros precisa de revisao. Se o detentor dos direitos de algum arquivo
+estiver em desacordo com a distribuicao, o arquivo sera removido do repositorio e dos pacotes,
+mediante pedido. O mesmo aviso deve constar no README da liberacao publica.

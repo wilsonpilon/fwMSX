@@ -217,12 +217,23 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
                     error = where + "RAM de 16, 32 ou 64 KB";
                     return false;
                 }
+                if (item.size_kb == 32) {
+                    const int next = p * 4 + s + 1;
+                    if (next >= 16) {
+                        error = where + "RAM de 32KB precisa da celula seguinte, que nao existe apos 3:3";
+                        return false;
+                    }
+                    if (layout.cell[next / 4][next % 4].kind != SlotKind::Empty) {
+                        error = where + "RAM de 32KB ocupa a celula seguinte (" + std::to_string(next / 4) + ":" +
+                                std::to_string(next % 4) + "), que precisa estar vazia";
+                        return false;
+                    }
+                }
                 break;
             case SlotKind::Mapper:
                 ++mappers;
-                if (item.size_kb != 64 && item.size_kb != 128 && item.size_kb != 256 && item.size_kb != 512 &&
-                    item.size_kb != 1024) {
-                    error = where + "mapper de 64, 128, 256, 512 ou 1024 KB";
+                if (item.size_kb < 64 || item.size_kb > 4096 || (item.size_kb & (item.size_kb - 1)) != 0) {
+                    error = where + "mapper de 64 KB a 4096 KB (potencia de 2)";
                     return false;
                 }
                 break;
@@ -231,10 +242,6 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
             default: break;
             }
         }
-    }
-    if (mappers > 1) {
-        error = "so' uma RAM mapeada (mapper) por maquina (portas FCh-FFh)";
-        return false;
     }
     if (disks > 1) {
         error = "so' uma interface de disquete por maquina";
@@ -280,6 +287,35 @@ std::string FmPacPath(const MachineConfig &config) {
     return item.kind == SlotKind::FmPac ? item.path : std::string();
 }
 
+namespace {
+
+// Porta FCh-FFh de todos os mappers: escrita vai a todos; leitura vem do primeiro.
+class MapperPorts : public z80::IBus {
+public:
+    explicit MapperPorts(std::vector<memmap::RamMapperDevice *> devices) : devices_(std::move(devices)) {}
+    uint8_t read(uint16_t) override { return 0xFF; }
+    void write(uint16_t, uint8_t) override {}
+    uint8_t in(uint16_t port) override { return devices_.empty() ? 0xFF : devices_.front()->in(port); }
+    void out(uint16_t port, uint8_t value) override {
+        for (memmap::RamMapperDevice *d : devices_) d->out(port, value);
+    }
+
+private:
+    std::vector<memmap::RamMapperDevice *> devices_;
+};
+
+} // namespace
+
+// Portas de E/S ja' ocupadas pelo sistema (VDP, PSG, PPI, FM, RTC, mapper). Usado para
+// recusar uma base de controladora de disco que colide com elas.
+bool PortRangeUsed(int first, int last) {
+    static const int kUsed[][2] = {{0x7C, 0x7D}, {0x98, 0x9B}, {0xA0, 0xA2}, {0xA8, 0xAB}, {0xB4, 0xB5}, {0xFC, 0xFF}};
+    for (const auto &r : kUsed) {
+        if (first <= r[1] && last >= r[0]) return true;
+    }
+    return false;
+}
+
 std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::string &error) {
     if (!config.layout_set && config.bios_path.empty()) {
         error = "nenhuma BIOS informada";
@@ -297,6 +333,7 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
 
     m->model_ = config.model;
     m->disk_read_only_ = config.disk_read_only;
+    m->disk_format_ = config.disk_format;
     const bool msx2 = config.model != Model::MSX1;
     if (msx2) {
         // VDP V9938/V9958 e regras de subslot do MSX2 (qualquer slot pode ser expandido).
@@ -358,15 +395,21 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                 break;
             }
             case SlotKind::Ram:
-                mem.AllocateRam(p, s, static_cast<size_t>(item.size_kb) * 1024);
+                if (item.size_kb == 32) {
+                    // 32KB = 16KB na pagina 2 desta celula + 16KB na pagina 3 da celula seguinte.
+                    const int next = p * 4 + s + 1;
+                    mem.AllocateRamChunks(p, s, 4, 2);
+                    mem.AllocateRamChunks(next / 4, next % 4, 6, 2);
+                } else {
+                    mem.AllocateRamTop(p, s, static_cast<size_t>(item.size_kb) * 1024);
+                }
                 break;
             case SlotKind::Mapper:
                 mem.AllocateMapperRam(p, s, item.size_kb / 16);
-                m->mapper_ = std::make_unique<memmap::RamMapperDevice>(mem, p, s);
-                m->startup_.composite_bus->RegisterPortRange(0xFC, 0xFF, m->mapper_.get());
+                m->mappers_.push_back(std::make_unique<memmap::RamMapperDevice>(mem, p, s));
                 break;
             case SlotKind::Disk: {
-                // DISK.ROM na pagina 1 (4000h-7FFFh); a sub-ROM do MSX2, se houver, na pagina 0.
+                // DISK.ROM (ou o driver de porta, DDX 3.0 / CDX-2) na pagina 1 (4000h-7FFFh); a sub-ROM do MSX2, se houver, na pagina 0.
                 std::vector<uint8_t> rom;
                 if (!ReadFile(item.path, rom, error)) {
                     error = "DISK.ROM: " + error;
@@ -389,8 +432,13 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                     error = "slot " + std::to_string(p) + ":" + std::to_string(s) + " (DISK.ROM): " + load_error;
                     return nullptr;
                 }
-                m->fdc_ = std::make_unique<fdc::FdcDevice>();
-                m->startup_.slot_bus->AttachMmio(p, s, m->fdc_.get());
+                // Pela memoria: o WD2793 aparece em 7FF8h-7FFFh desta celula. Pelas portas: so' a ROM
+                // do driver fica aqui; os registradores estao nas portas (ver abaixo).
+                if (config.disk_access == DiskAccess::Memory) {
+                    m->fdc_ = std::make_unique<fdc::FdcDevice>();
+                    m->fdc_engine_ = &m->fdc_->fdc();
+                    m->startup_.slot_bus->AttachMmio(p, s, m->fdc_.get());
+                }
                 break;
             }
             }
@@ -398,14 +446,44 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
     }
     m->cart_info_ = cart_info;
 
-    // Discos montados: precisam da interface de disquete (celula Disk) no layout.
+    // Portas FCh-FFh: todos os mappers do layout.
+    if (!m->mappers_.empty()) {
+        std::vector<memmap::RamMapperDevice *> devices;
+        for (auto &d : m->mappers_) devices.push_back(d.get());
+        m->mapper_ports_ = std::make_unique<MapperPorts>(devices);
+        m->startup_.composite_bus->RegisterPortRange(0xFC, 0xFF, m->mapper_ports_.get());
+    }
+
+    // Controladora por portas (sem DISK.ROM): pedida pela configuracao, com celula Disco no layout
+    // ou com discos pedidos. Os registradores vao para disk_port..disk_port+4.
     const bool has_disks = !config.disk_a.empty() || !config.disk_b.empty();
-    if (has_disks && !m->fdc_) {
+    bool has_disk_cell = false;
+    for (int p = 0; p < 4; ++p) {
+        for (int s = 0; s < 4; ++s) {
+            if (layout.cell[p][s].kind == SlotKind::Disk) has_disk_cell = true;
+        }
+    }
+    if (config.disk_access == DiskAccess::Port && (has_disk_cell || has_disks)) {
+        if (PortRangeUsed(config.disk_port, config.disk_port + fdc::PortFdcDevice::kPorts - 1)) {
+            error = "controladora de disco: portas " + std::to_string(config.disk_port) + ".." +
+                    std::to_string(config.disk_port + fdc::PortFdcDevice::kPorts - 1) +
+                    " ja' usadas por outro dispositivo (escolha outra base)";
+            return nullptr;
+        }
+        m->port_fdc_ = std::make_unique<fdc::PortFdcDevice>(static_cast<uint8_t>(config.disk_port));
+        m->fdc_engine_ = &m->port_fdc_->fdc();
+        m->startup_.composite_bus->RegisterPortRange(config.disk_port,
+                                                     config.disk_port + fdc::PortFdcDevice::kPorts - 1,
+                                                     m->port_fdc_.get());
+    }
+
+    // Discos montados: precisam da interface de disquete (celula Disk ou acesso por portas).
+    if (has_disks && !m->fdc_engine_) {
         error = "discos pedidos, mas o layout nao tem interface de disquete (celula Disco)";
         return nullptr;
     }
-    if (m->fdc_) {
-        for (int d = 0; d < 2; ++d) fdc_attach(&m->fdc_->fdc(), d, m->disks_[d].disk());
+    if (m->fdc_engine_) {
+        for (int d = 0; d < 2; ++d) fdc_attach(m->fdc_engine_, d, m->disks_[d].disk());
         const std::string *paths[2] = {&config.disk_a, &config.disk_b};
         for (int d = 0; d < 2; ++d) {
             if (paths[d]->empty()) continue;
@@ -506,29 +584,38 @@ void Machine::TakeLiveAudio(std::vector<int16_t> &out) {
 }
 
 bool Machine::InsertDisk(int drive, const std::string &path, std::string &error) {
-    if (!fdc_) {
+    if (!fdc_engine_) {
         error = "esta maquina nao tem interface de disquete (use --disk ou --disk-interface)";
         return false;
     }
     drive &= 1;
+    const std::string name = std::string(1, static_cast<char>('A' + drive));
     std::string load_error;
     if (!disks_[drive].Load(path, load_error, disk_read_only_)) {
-        error = "disco " + std::string(1, static_cast<char>('A' + drive)) + ": " + load_error;
+        error = "disco " + name + ": " + load_error;
         return false;
     }
-    fdc_attach(&fdc_->fdc(), drive, disks_[drive].disk());
+    // O formato configurado (180, 360 ou 720 KB) decide quais imagens o drive aceita.
+    if (!fdc::SizeAllowed(disk_format_, disks_[drive].disk()->size)) {
+        error = "disco " + name + ": o formato '" + fdc::FormatName(disk_format_) + "' nao aceita imagem de " +
+                std::to_string(disks_[drive].disk()->size) + " bytes";
+        disks_[drive].Eject();
+        return false;
+    }
+    if (disk_format_ != fdc::DiskFormat::Auto) fdc::ApplyFormat(disks_[drive].disk(), *fdc::SpecFor(disk_format_));
+    fdc_attach(fdc_engine_, drive, disks_[drive].disk());
     return true;
 }
 
 void Machine::EjectDisk(int drive) {
     drive &= 1;
     disks_[drive].Eject();
-    if (fdc_) fdc_attach(&fdc_->fdc(), drive, disks_[drive].disk());
+    if (fdc_engine_) fdc_attach(fdc_engine_, drive, disks_[drive].disk());
 }
 
 void Machine::Reset() {
-    if (fdc_) fdc_reset(&fdc_->fdc());
-    if (mapper_) mapper_->Reset();
+    if (fdc_engine_) fdc_reset(fdc_engine_);
+    for (auto &d : mappers_) d->Reset();
     cpu_->reset();
     startup_.vdp_device->Reset();
     startup_.ppi_device->Reset();
@@ -558,7 +645,7 @@ bool Machine::KeysForChar(char c, std::string &key, bool &shift) {
     case '$': key = "4"; shift = true; return true;
     case '%': key = "5"; shift = true; return true;
     case '^': key = "6"; shift = true; return true;
-    case '&': key = "6"; shift = true; return true;
+    case '&': key = "7"; shift = true; return true;
     // Layout MSX: SHIFT+8 = '*', SHIFT+9 = '(', SHIFT+0 = ')', SHIFT+7 = aspa simples.
     case '*': key = "8"; shift = true; return true;
     case '(': key = "9"; shift = true; return true;

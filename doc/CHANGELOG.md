@@ -7,6 +7,38 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [Nao lancado] - Banco de ROMs, disco por portas, layout e RAM
+
+### Resumo do dia (2026-10-06, commit em `estudo/openmsx`)
+- Banco de ROMs, layout de slots com RAM e mapper ampliados, controladora de disco por portas (DDX 3.0 e CDX-2), codigo do openMSX em `resource/openMSX/` para estudo, estudos de TSX/TZX e CAS (SPEC 5.2).
+- Midias de terceiros subidas parcialmente (fMSX 6.0, drivers DDX/CDX, banco); o Full Set do file-hunter fica so' no PC.
+
+### Adicionado
+- **Banco de ROMs** (SQLite, `fwmsx --romdb`): ROMs do disco pelo SHA-1, com nome, categoria, hardware, mapper,
+  notas e caminho. CRUD, busca, escanear pastas, adicionar arquivos. Ver [doc/romdb-spec.md](romdb-spec.md).
+- **Downloads** pelo menu **ROMs** da janela e pela CLI: fMSX 6.0 para Windows (separado por tipo), System ROMs
+  do file-hunter (o Full Set mais recente, ou navegar pelas pastas e baixar arquivos avulsos) e o banco do
+  Vampier (dump SQL importado no SQLite). As ROMs ficam em `roms/`, fora do git.
+- **Tabela de mappers** do `CARTS.SHA` do fMSX no banco.
+- **Identificacao**: ROMs cadastradas recebem o nome do jogo pelo banco do Vampier (SHA-1).
+- Testes: `romdbtest` (CTest `romdb_store`); regressao de RAM em C000h (`memmaptest`, secao 25).
+- Opcao `--slot P:S=tipo[:arg]` para montar o layout pela linha de comando.
+
+### Adicionado
+- **Controladora de disco por portas** no estilo Microsol (DDX 3.0 e CDX-2): WD2793 em `D0h`..`D4h`, com a ROM do driver no slot. O MSX-DOS sobe com os dois drivers. Escolha no menu Maquina > Configuracao de disco ou com `--disk-acesso porta --disk-porta D0h --diskrom <driver>`.
+- **Formatos de disco 180, 360 e 720 KB** pela configuracao do drive: 5 1/4 ou 3 1/2, face simples ou dupla, densidade simples ou dupla (ou automatico). `--disk-formato auto|ss525|ds525|ss35|ds35`.
+
+### Corrigido
+- **Tecla `&`**: era digitada como `^` (SHIFT+6); no MSX e' SHIFT+7.
+
+### Alterado
+- **RAM 32KB** ocupa a celula escolhida (pagina 2) e a seguinte (pagina 3). **RAM 64KB** ocupa a celula inteira.
+- **Mapper** de 64 KB a 4096 KB (potencias de 2); os segmentos 0 a 3 vao para as paginas 0 a 3 no reset. Pode haver mais de um mapper no layout.
+
+### Corrigido
+- **RAM de 16KB no slot**: ficava em 0000h da celula, e a BIOS nao subia (ex.: Gradiente Expert 1.1 com RAM em 3:x). Agora a RAM ocupa as ultimas paginas (C000h-FFFFh).
+- Nomes de arquivo com entidades HTML (`ROM&#39;s`) no indice do file-hunter.
+
 ## [1.17.0] - 2026-10-06 - "Xak: Musica FM e Slots"
 
 ### Adicionado

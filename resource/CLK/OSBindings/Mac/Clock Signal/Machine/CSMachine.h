@@ -1,0 +1,132 @@
+//
+//  CSMachine.h
+//  Clock Signal
+//
+//  Created by Thomas Harte on 04/01/2016.
+//  Copyright 2016 Thomas Harte. All rights reserved.
+//
+
+#import <Foundation/Foundation.h>
+
+#import "CSAudioQueue.h"
+#import "CSJoystickManager.h"
+#import "CSScanTargetView.h"
+#import "CSStaticAnalyser.h"
+
+@class CSMachine;
+@protocol CSMachineDelegate <NSObject>
+- (void)machineSpeakerDidChangeInputClock:(nonnull CSMachine *)machine;
+- (void)machine:(nonnull CSMachine *)machine led:(nonnull NSString *)led didChangeToLit:(BOOL)isLit;
+- (void)machine:(nonnull CSMachine *)machine ledShouldBlink:(nonnull NSString *)led;
+@end
+
+typedef NS_ENUM(NSInteger, CSMachineVideoSignal) {
+	CSMachineVideoSignalComposite,
+	CSMachineVideoSignalSVideo,
+	CSMachineVideoSignalRGB,
+	CSMachineVideoSignalMonochromeComposite
+};
+
+typedef NS_ENUM(NSInteger, CSMachineKeyboardInputMode) {
+	CSMachineKeyboardInputModeKeyboardPhysical,
+	CSMachineKeyboardInputModeKeyboardLogical,
+	CSMachineKeyboardInputModeJoystick,
+};
+
+typedef NS_ENUM(NSInteger, CSMachineChangeEffect) {
+	CSMachineChangeEffectNone,
+	CSMachineChangeEffectReinsertMedia,
+	CSMachineChangeEffectRestartMachine,
+};
+
+@interface CSMachineLED: NSObject
+@property(nonatomic, nonnull, readonly) NSString *name;
+@property(nonatomic, readonly) BOOL isPersisent;
+@end
+
+// Deliberately low; to ensure CSMachine has been declared as an @class already.
+#import "CSAtari2600.h"
+#import "CSZX8081.h"
+#import "CSAppleII.h"
+
+@interface CSMachine : NSObject
+
++ (BOOL)attemptInstallROM:(nonnull NSURL *)url;
+
+- (nonnull instancetype)init NS_UNAVAILABLE;
+
+/*!
+	Initialises an instance of CSMachine.
+
+	@param result The CSStaticAnalyser result that describes the machine needed.
+	@param missingROMs An array that is filled with a list of ROMs that the machine requested but which
+		were not found; populated only if this `init` has failed.
+*/
+- (nullable instancetype)initWithAnalyser:(nonnull CSStaticAnalyser *)result missingROMs:(nullable inout NSMutableString *)missingROMs NS_DESIGNATED_INITIALIZER;
+
+- (float)idealSamplingRateFromRange:(NSRange)range;
+@property (readonly, getter=isStereo) BOOL stereo;
+- (void)setAudioSamplingRate:(float)samplingRate bufferSize:(NSUInteger)bufferSize stereo:(BOOL)stereo;
+
+- (void)setView:(nullable CSScanTargetView *)view aspectRatio:(float)aspectRatio;
+
+- (void)start;
+- (void)stop;
+
+- (void)setKey:(uint16_t)key characters:(nullable NSString *)characters isPressed:(BOOL)isPressed isRepeat:(BOOL)isRepeat;
+- (void)clearAllKeys;
+
+- (void)setMouseButton:(int)button isPressed:(BOOL)isPressed;
+- (void)addMouseMotionX:(CGFloat)deltaX y:(CGFloat)deltaY;
+
+- (void)substitute:(nonnull CSStaticAnalyser *)machine;
+
+@property (nonatomic, strong, nullable) CSAudioQueue *audioQueue;
+@property (nonatomic, readonly, nonnull) CSScanTargetView *view;
+@property (nonatomic, weak, nullable) id<CSMachineDelegate> delegate;
+
+@property (nonatomic, readonly, nonnull) NSString *userDefaultsPrefix;
+
+- (void)paste:(nonnull NSString *)string;
+@property (nonatomic, readonly, nonnull) NSBitmapImageRep *imageRepresentation;
+
+@property (nonatomic, assign) BOOL useFastLoadingHack;
+@property (nonatomic, assign) CSMachineVideoSignal videoSignal;
+@property (nonatomic, assign) BOOL useAutomaticTapeMotorControl;
+@property (nonatomic, assign) BOOL useQuickBootingHack;
+@property (nonatomic, assign) BOOL useDynamicCropping;
+
+- (BOOL)supportsVideoSignal:(CSMachineVideoSignal)videoSignal;
+
+// Public media functions; use a CSMediaSet to insert.
+@property (nonatomic, readonly) BOOL canInsertMedia;
+- (CSMachineChangeEffect)effectForFileAtURLDidChange:(nonnull NSURL *)url;
+
+// Volume control.
+- (void)setVolume:(float)volume;
+@property (nonatomic, readonly) BOOL hasAudioOutput;
+
+// Input control.
+@property (nonatomic, readonly) BOOL hasExclusiveKeyboard;
+@property (nonatomic, readonly) BOOL shouldUsurpCommand;
+@property (nonatomic, readonly) BOOL hasJoystick;
+@property (nonatomic, readonly) BOOL hasMouse;
+@property (nonatomic, assign) CSMachineKeyboardInputMode inputMode;
+@property (nonatomic, nullable) CSJoystickManager *joystickManager;
+
+// Reset.
+- (void)hardReset;
+@property (nonatomic, readonly) BOOL canHardReset;
+
+- (void)softReset;
+@property (nonatomic, readonly) BOOL canSoftReset;
+
+// LED list.
+@property (nonatomic, readonly, nonnull) NSArray<CSMachineLED *> *leds;
+
+// Special-case accessors; undefined behaviour if accessed for a machine not of the corresponding type.
+@property (nonatomic, readonly, nullable) CSAtari2600 *atari2600;
+@property (nonatomic, readonly, nullable) CSZX8081 *zx8081;
+@property (nonatomic, readonly, nullable) CSAppleII *appleII;
+
+@end

@@ -37,10 +37,10 @@ public:
         memory_.SetMapperSegment(primary_, secondary_, page, v);
     }
 
-    // Estado de reset: paginas 0..3 -> segmentos 3,2,1,0 (como o fMSX).
+    // Estado de reset: pagina k -> segmento k (0,1,2,3): os 4 primeiros segmentos do mapper.
     void Reset() {
         for (int page = 0; page < 4; ++page) {
-            reg_[page] = static_cast<uint8_t>((3 - page) & Mask());
+            reg_[page] = static_cast<uint8_t>(page & Mask());
             memory_.SetMapperSegment(primary_, secondary_, page, reg_[page]);
         }
     }

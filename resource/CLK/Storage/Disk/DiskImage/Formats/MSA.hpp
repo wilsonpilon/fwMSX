@@ -1,0 +1,44 @@
+//
+//  MSA.hpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 03/10/2019.
+//  Copyright © 2019 Thomas Harte. All rights reserved.
+//
+
+#pragma once
+
+#include "Storage/Disk/DiskImage/DiskImage.hpp"
+#include "Storage/FileHolder.hpp"
+
+#include <filesystem>
+#include <vector>
+
+namespace Storage::Disk {
+
+/*!
+	Provides a @c DiskImage describing an Atari ST MSA disk image:
+	a track dump with some metadata and potentially patches of RLE compression.
+*/
+class MSA final: public DiskImage {
+public:
+	MSA(const std::filesystem::path &);
+
+	// Implemented to satisfy @c DiskImage.
+	HeadPosition maximum_head_position() const;
+	int head_count() const;
+	std::unique_ptr<Track> track_at_position(Track::Address) const;
+	bool is_read_only() const { return false; }
+	bool represents(const std::filesystem::path &) const;
+
+private:
+	mutable FileHolder file_;
+	uint16_t sectors_per_track_;
+	uint16_t sides_;
+	uint16_t starting_track_;
+	uint16_t ending_track_;
+
+	std::vector<std::vector<uint8_t>> uncompressed_tracks_;
+};
+
+}

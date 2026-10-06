@@ -150,7 +150,8 @@ if (FWMSX_MSXDISK_GUI)
     find_package(OpenGL REQUIRED)
 
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app.cpp src/msxdisk/gui/style.cpp src/msxdisk/gui/file_dialog.cpp)
-    set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window.cpp src/machine/gui/video_filters.cpp)
+    set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window.cpp src/machine/gui/video_filters.cpp
+            src/machine/gui/rom_manager.cpp)
 else ()
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app_stub.cpp)
     set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window_stub.cpp)
@@ -500,6 +501,51 @@ endif ()
 
 add_test(NAME fm_sound COMMAND fmtest)
 
+# --- Banco de ROMs (SQLite) e downloads -- ver doc/romdb-spec.md
+#
+# miniz (dominio publico) para extrair os ZIPs; o download usa o programa `curl`
+# (Windows 10+ e Linux). Banco: store/romdb.cpp (SQLite amalgamation, ja' usada
+# pelo msxdisk). Fluxos (fMSX, file-hunter, Vampier) em service.cpp; CLI em cli.cpp.
+FetchContent_Declare(
+        miniz
+        URL https://github.com/richgel999/miniz/archive/refs/tags/3.0.2.zip
+)
+FetchContent_GetProperties(miniz)
+if (NOT miniz_POPULATED)
+    FetchContent_Populate(miniz)
+endif()
+# miniz.h inclui "miniz_export.h" (gerado pelo CMake do miniz, que nao usamos): para
+# uma lib estatica basta a macro MINIZ_EXPORT vazia.
+file(WRITE ${CMAKE_BINARY_DIR}/miniz_include/miniz_export.h
+        "#pragma once\n#define MINIZ_EXPORT\n")
+add_library(miniz STATIC
+        ${miniz_SOURCE_DIR}/miniz.c
+        ${miniz_SOURCE_DIR}/miniz_tdef.c
+        ${miniz_SOURCE_DIR}/miniz_tinfl.c
+        ${miniz_SOURCE_DIR}/miniz_zip.c)
+target_include_directories(miniz PUBLIC ${miniz_SOURCE_DIR} ${CMAKE_BINARY_DIR}/miniz_include)
+
+set(ROMDB_LIB_SOURCES
+        src/romdb/core/hash.cpp
+        src/romdb/store/classify.cpp
+        src/romdb/net/web.cpp
+        src/romdb/net/listing.cpp
+        src/romdb/archive/unzip.cpp
+        src/romdb/store/romdb.cpp
+        src/romdb/service.cpp
+        src/romdb/cli.cpp
+)
+
+# romdbtest: hashes, classificacao, leitura de indices, ZIP (ida e volta) e o banco
+# (CRUD, busca, CARTS.SHA e dump do Vampier) -- sem rede.
+add_executable(romdbtest tests/romdb/romdb_test.cpp ${ROMDB_LIB_SOURCES})
+target_include_directories(romdbtest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(romdbtest PRIVATE sqlite3 miniz)
+if (MINGW)
+    target_link_options(romdbtest PRIVATE -static -static-libgcc -static-libstdc++)
+endif ()
+add_test(NAME romdb_store COMMAND romdbtest)
+
 # videofiltertest: filtros de video da janela (interpolacao, scanlines, cor) -- sem janela.
 add_executable(videofiltertest tests/z80/video_filter_test.cpp src/machine/gui/video_filters.cpp)
 target_include_directories(videofiltertest PRIVATE src/machine/gui)
@@ -522,6 +568,7 @@ add_executable(fwMSX
         src/asm/init_asm.asm
         src/fortran/init_fortran.f90
         ${MSXDISK_LIB_SOURCES}
+        ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
@@ -530,6 +577,7 @@ add_executable(fwMSX
         src/z80/debug/z80_debug_shell.cpp
 )
 
+target_link_libraries(fwMSX PRIVATE miniz)
 target_include_directories(fwMSX PRIVATE
         src/cpp
         src/c

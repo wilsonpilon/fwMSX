@@ -1,0 +1,62 @@
+//
+//  FAT12.cpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 07/01/2018.
+//  Copyright 2018 Thomas Harte. All rights reserved.
+//
+
+#include "FAT12.hpp"
+
+#include "Storage/Disk/DiskImage/Formats/Utility/ImplicitSectors.hpp"
+
+using namespace Storage::Disk;
+
+FAT12::FAT12(const std::filesystem::path &path) :
+	MFMSectorDump(path) {
+	// The only sanity check here is whether a sensible
+	// geometry is encoded in the first sector, or can be guessed.
+	const auto file_size = file_.stats().st_size;
+
+	if(file_size < 512) throw Error::InvalidFormat;
+
+	// Inspect the FAT.
+	file_.seek(11, Whence::SET);
+	sector_size_ = file_.get_le<uint16_t>();
+	file_.seek(19, Whence::SET);
+	const auto total_sectors = file_.get_le<uint16_t>();
+	file_.seek(24, Whence::SET);
+	sector_count_ = file_.get_le<uint16_t>();
+	head_count_ = file_.get_le<uint16_t>();
+
+	// Throw if there would seemingly be an incomplete track.
+	if(file_size != total_sectors*sector_size_) throw Error::InvalidFormat;
+	if(total_sectors % (head_count_ * sector_count_)) throw Error::InvalidFormat;
+	track_count_ = int(total_sectors / (head_count_ * sector_count_));
+
+	// Check that there is a valid power-of-two sector size.
+	uint8_t log_sector_size = 2;
+	while(log_sector_size < 5 && (1 << (7+log_sector_size)) != sector_size_) {
+		++log_sector_size;
+	}
+	if(log_sector_size >= 5) throw Error::InvalidFormat;
+
+	set_geometry(
+		sector_count_,
+		log_sector_size,
+		1,
+		sector_count_ > 10 ? Encodings::MFM::Density::High : Encodings::MFM::Density::Double
+	);
+}
+
+HeadPosition FAT12::maximum_head_position() const {
+	return HeadPosition(track_count_);
+}
+
+int FAT12::head_count() const {
+	return head_count_;
+}
+
+long FAT12::get_file_offset_for_position(const Track::Address address) const {
+	return (address.position.as_int() * head_count_ + address.head) * sector_size_ * sector_count_;
+}

@@ -18,6 +18,8 @@ struct WindowOptions {
     int autoquit_frames = 0;
     // false = nao abre dispositivo de audio (emulador mudo).
     bool audio = true;
+    // Pasta de ROMs e do banco (menu ROMs). Vazio = roms/ ao lado do executavel.
+    std::string rom_root;
 };
 
 // Abre a janela e roda a maquina em tempo real ate' ser fechada. Devolve o

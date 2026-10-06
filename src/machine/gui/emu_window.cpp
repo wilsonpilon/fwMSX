@@ -5,6 +5,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -17,6 +18,7 @@
 #include "../../msxdisk/gui/file_dialog.h"
 #include "../../msxdisk/gui/style.h"
 #include "video_filters.h"
+#include "rom_manager.h"
 #include "../../psg/cpp/psg_device.h"
 #include "../../psg/core/psg_state.h"
 #include <imgui.h>
@@ -182,6 +184,33 @@ void ApplyKeyEvents(Machine &m, std::vector<std::string> &deferred) {
 }
 
 // BIOS padrao de cada modelo, ao lado da BIOS atual (mesma pasta de ROMs).
+// Configuracao de disco: formato <-> escolhas do drive (tipo, faces, densidade).
+void DriveFormatToSelectors(fdc::DiskFormat format, int &type, int &sides, int &density) {
+    switch (format) {
+    case fdc::DiskFormat::Ss525Sd180: type = 0; sides = 0; density = 0; break;
+    case fdc::DiskFormat::Ds525Dd360: type = 0; sides = 1; density = 1; break;
+    case fdc::DiskFormat::Ss35Dd360: type = 1; sides = 0; density = 1; break;
+    case fdc::DiskFormat::Ds35Dd720: type = 1; sides = 1; density = 1; break;
+    default: break;  // automatico: mantem as escolhas
+    }
+}
+
+void CopyPortText(char *dst, size_t size, int port) {
+    std::snprintf(dst, size, "%02X", port & 0xFF);
+}
+
+// Base em hexadecimal (ex.: "D0", "0xD0", "D0h") entre 00 e FB; false se invalida.
+bool ParsePort(const std::string &text, int &port) {
+    std::string t = text;
+    while (!t.empty() && (t.back() == 'h' || t.back() == 'H')) t.pop_back();
+    if (t.size() > 2 && (t.compare(0, 2, "0x") == 0 || t.compare(0, 2, "0X") == 0)) t = t.substr(2);
+    if (t.empty() || t.find_first_not_of("0123456789abcdefABCDEF") != std::string::npos) return false;
+    const long value = std::strtol(t.c_str(), nullptr, 16);
+    if (value < 0 || value > 0xFB) return false;
+    port = static_cast<int>(value);
+    return true;
+}
+
 // FMPAC.ROM fica ao lado das ROMs do fMSX: resource/fMSX/ROMs/ -> resource/fMSX/FMPAC.ROM.
 // Vazio se nao existir.
 std::string FmpacNear(const std::string &bios_path) {
@@ -285,8 +314,19 @@ int RunEmulatorWindow(const WindowOptions &options) {
     bool paused = false;
     bool integer_scale = true;
     bool show_keys = false;
+    // Menu ROMs: downloads (fMSX, file-hunter, Vampier) e banco de ROMs (busca e CRUD).
+    RomManager rom_manager(options.rom_root);
     // Configuracao de slots (menu Maquina): o layout em edicao e a mensagem de erro dele.
     bool show_slots = false;
+    // Configuracao de disco (menu Maquina): acesso, tipo de drive, faces, densidade.
+    bool show_disk_cfg = false;
+    int disk_access_sel = 0;  // 0 = memoria (DISK.ROM), 1 = portas
+    char disk_port_buf[16] = "D0";
+    bool disk_auto = true;
+    int disk_type = 0;        // 0 = 5 1/4, 1 = 3 1/2
+    int disk_sides = 1;       // 0 = simples, 1 = dupla
+    int disk_density = 1;     // 0 = simples, 1 = dupla
+    std::string disk_rom_sel; // ROM do driver de porta (DDX 3.0 ou CDX-2)
     SlotLayout slot_edit;
     std::string slot_message;
     bool fullscreen = false;
@@ -520,6 +560,15 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     ImGui::TextDisabled("Trocar o modelo reinicia a maquina.");
                     ImGui::EndMenu();
                 }
+                if (ImGui::MenuItem("Configuracao de disco...")) {
+                    show_disk_cfg = true;
+                    disk_message.clear();
+                    disk_access_sel = current.disk_access == DiskAccess::Port ? 1 : 0;
+                    CopyPortText(disk_port_buf, sizeof disk_port_buf, current.disk_port);
+                    disk_auto = current.disk_format == fdc::DiskFormat::Auto;
+                    DriveFormatToSelectors(current.disk_format, disk_type, disk_sides, disk_density);
+                    disk_rom_sel = current.disk_rom_path;
+                }
                 if (ImGui::MenuItem("Configuracao de slots...")) {
                     show_slots = true;
                     slot_edit = EffectiveLayout(current);
@@ -686,6 +735,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("ROMs")) {
+                rom_manager.DrawMenu(window);
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Ferramentas")) {
                 ImGui::MenuItem("Dispositivos de entrada (em breve)", nullptr, false, false);
                 ImGui::MenuItem("Trapacas (em breve)", nullptr, false, false);
@@ -759,6 +812,84 @@ int RunEmulatorWindow(const WindowOptions &options) {
         ImGui::End();
         ImGui::PopStyleVar(2);
 
+        rom_manager.DrawWindows(window);
+        if (show_disk_cfg) {
+            ImGui::SetNextWindowSize(ImVec2(600, 0), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Configuracao de disco", &show_disk_cfg)) {
+                ImGui::TextWrapped(
+                    "Controladora WD2793 do MSX. Pela memoria: DISK.ROM no slot 3:1 (como sempre). "
+                    "Pelas portas: sem ROM, nas portas da base abaixo (base, base+1 ... base+4). "
+                    "Aplicar reinicia a maquina.");
+                ImGui::RadioButton("Pela memoria (DISK.ROM, slot 3:1)", &disk_access_sel, 0);
+                ImGui::RadioButton("Pelas portas", &disk_access_sel, 1);
+                if (disk_access_sel == 1) {
+                    ImGui::SetNextItemWidth(120);
+                    ImGui::InputText("Base (hexadecimal, ex.: D0)", disk_port_buf, sizeof disk_port_buf);
+                }
+                ImGui::Separator();
+                if (disk_access_sel == 1) {
+                    ImGui::TextWrapped("ROM do driver: %s",
+                                       disk_rom_sel.empty() ? "(nenhuma: escolha o DDX 3.0 ou o CDX-2)" : disk_rom_sel.c_str());
+                    if (ImGui::SmallButton("Escolher ROM do driver...")) {
+                        if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(
+                                window, "ROM do driver de disco", "ROMs de disco", "*.rom;*.bin")) {
+                            disk_rom_sel = *chosen;
+                        }
+                    }
+                }
+                ImGui::Checkbox("Automatico (aceita imagens de 180, 360 e 720 KB)", &disk_auto);
+                ImGui::BeginDisabled(disk_auto);
+                const char *types[] = {"5 1/4", "3 1/2"};
+                const char *sides[] = {"face simples", "face dupla"};
+                const char *densities[] = {"densidade simples (FM)", "densidade dupla (MFM)"};
+                ImGui::SetNextItemWidth(160);
+                ImGui::Combo("Tipo de drive", &disk_type, types, 2);
+                ImGui::SetNextItemWidth(160);
+                ImGui::Combo("Faces", &disk_sides, sides, 2);
+                ImGui::SetNextItemWidth(160);
+                ImGui::Combo("Densidade", &disk_density, densities, 2);
+                ImGui::EndDisabled();
+
+                fdc::DiskFormat chosen = fdc::DiskFormat::Auto;
+                const bool valid = fdc::FormatFromDrive(disk_type == 1, disk_sides + 1, disk_density == 1, chosen);
+                if (disk_auto) {
+                    ImGui::Text("Formato: automatico (180, 360 ou 720 KB)");
+                } else if (valid) {
+                    ImGui::Text("Formato: %s", fdc::FormatName(chosen));
+                } else {
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f),
+                                       "Essa combinacao nao existe no MSX (ex.: 5 1/4 de face dupla com densidade simples).");
+                }
+                ImGui::Separator();
+                if (ImGui::Button("Aplicar e reiniciar")) {
+                    fdc::DiskFormat format = fdc::DiskFormat::Auto;
+                    if (!disk_auto && !fdc::FormatFromDrive(disk_type == 1, disk_sides + 1, disk_density == 1, format)) {
+                        disk_message = "combinacao de drive invalida";
+                    } else {
+                        int port = current.disk_port;
+                        bool port_ok = true;
+                        if (disk_access_sel == 1) {
+                            port_ok = ParsePort(disk_port_buf, port);
+                        }
+                        if (disk_access_sel == 1 && disk_rom_sel.empty()) {
+                            disk_message = "escolha a ROM do driver (DDX 3.0 ou CDX-2) para o modo por portas";
+                        } else if (!port_ok) {
+                            disk_message = "base da porta invalida (use hexadecimal entre 00 e FB)";
+                        } else {
+                            MachineConfig next = snapshot();
+                            next.disk_access = disk_access_sel == 1 ? DiskAccess::Port : DiskAccess::Memory;
+                            next.disk_port = port;
+                            next.disk_format = disk_auto ? fdc::DiskFormat::Auto : format;
+                            if (disk_access_sel == 1) next.disk_rom_path = disk_rom_sel;
+                            reboot(next);
+                        }
+                    }
+                }
+                if (!disk_message.empty()) ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+            }
+            ImGui::End();
+        }
+
         if (show_slots) {
             ImGui::SetNextWindowSize(ImVec2(820, 560), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Configuracao da maquina", &show_slots)) {
@@ -827,15 +958,16 @@ int RunEmulatorWindow(const WindowOptions &options) {
                                 if (ImGui::Combo("##page", &page, pages, 2)) it.page = page;
                             } else if (it.kind == SlotKind::Ram) {
                                 int size = it.size_kb == 16 ? 0 : it.size_kb == 32 ? 1 : 2;
-                                const char *sizes[] = {"16 KB", "32 KB", "64 KB"};
+                                const char *sizes[] = {"16 KB", "32 KB (esta + a seguinte)", "64 KB"};
                                 if (ImGui::Combo("##ram", &size, sizes, 3)) it.size_kb = size == 0 ? 16 : size == 1 ? 32 : 64;
                             } else if (it.kind == SlotKind::Mapper) {
-                                static const int kMapperSizes[] = {64, 128, 256, 512, 1024};
-                                static const char *kMapperNames[] = {"64 KB", "128 KB", "256 KB", "512 KB", "1024 KB"};
+                                static const int kMapperSizes[] = {64, 128, 256, 512, 1024, 2048, 4096};
+                                static const char *kMapperNames[] = {"64 KB", "128 KB", "256 KB", "512 KB",
+                                                                     "1024 KB", "2048 KB", "4096 KB"};
                                 int index = 1;
-                                for (int i = 0; i < 5; ++i)
+                                for (int i = 0; i < 7; ++i)
                                     if (kMapperSizes[i] == it.size_kb) index = i;
-                                if (ImGui::Combo("##mapper", &index, kMapperNames, 5)) it.size_kb = kMapperSizes[index];
+                                if (ImGui::Combo("##mapper", &index, kMapperNames, 7)) it.size_kb = kMapperSizes[index];
                             }
                             ImGui::PopID();
                         }

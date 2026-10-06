@@ -165,6 +165,7 @@ dkms.conf
 /dist/audiotest.exe
 /dist/scctest.exe
 /dist/fmtest.exe
+/dist/romdbtest.exe
 /dist/fmtest
 /dist/videofiltertest.exe
 /dist/videofiltertest
@@ -197,3 +198,4 @@ imgui.ini
 
 # Arquivos de SRAM (.sav) gravados ao lado das ROMs (ex.: resource/fMSX/FMPAC.sav)
 *.sav
+

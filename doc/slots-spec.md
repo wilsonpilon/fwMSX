@@ -38,10 +38,12 @@ o padrao reproduz exatamente o que a maquina ja fazia.
   `page = 1` ocupa 4000h-BFFFh; acima de 32KB e' MegaROM (mapper detectado ou o
   escolhido). Uma ROM com a assinatura `AB` cujo INIT aponta para 8000h+ vai para
   8000h, como antes.
-- **RAM**: 16, 32 ou 64 KB numa celula. Quatro bancos de 64KB no slot 2 sao quatro
+- **RAM**: 16, 32 ou 64 KB numa celula. A RAM ocupa as **ultimas paginas** da celula (16KB = C000h-FFFFh, 32KB = 8000h-FFFFh), como as RAMs de cartucho do MSX. Com 16KB em 0000h a BIOS trava (bug corrigido: a BIOS da Gradiente Expert nao subia com RAM de 16KB em 3:x). Mais de uma RAM de 16KB no mesmo slot disputa o mesmo endereco. Quatro bancos de 64KB no slot 2 sao quatro
   celulas (2:0 a 2:3), cada uma com RAM de 64KB. Isso exige a regra de subslot do
   MSX2; `Create()` liga a regra sozinho quando ha subslot fora do slot 3.
-- **Mapper (RAM mapeada)**: uma so' por maquina (as portas FCh-FFh sao unicas).
+- **RAM 32KB**: 16KB na pagina 2 (8000h-BFFFh) da celula escolhida e 16KB na pagina 3 (C000h-FFFFh) da celula seguinte (ex.: 3:2 + 3:3). A celula seguinte precisa estar vazia; em 3:3 nao ha seguinte e o layout e' recusado.
+- **RAM 64KB**: a celula inteira, 16KB em cada pagina (0000h-FFFFh), como o MSX normal.
+- **Mapper (RAM mapeada)**: de 64 KB ate 4096 KB, em potencias de 2 (o limite de 256 segmentos de 16KB). Os segmentos 0 a 3 vao para as paginas 0 a 3 no reset. O mapper aparece quando a celula e' selecionada, como no hardware. Pode haver **mais de um mapper**; todos respondem as portas FCh-FFh (a escrita vai a todos, a leitura vem do primeiro).
   Tamanhos de 64 a 1024 KB; 1024 KB sao 64 segmentos de 16KB.
 - **Disco**: DISK.ROM na pagina 1 e a controladora WD2793 nos enderecos 7FF8h-7FFFh
   da celula. Uma so' por maquina. Com `path2`, a sub-ROM do MSX2 vai para a pagina 0.
@@ -90,7 +92,7 @@ Suite completa do CTest: 14/14.
 
 ## 6. O que falta
 
-- **CLI**: o layout so' se edita pelo menu. Falta uma opcao de linha de comando
+- **CLI**: a opcao `--slot P:S=tipo[:arg]` (tipo: empty, rom, sub, ram, mapper, disk, fmpac) monta o layout pela linha de comando, a partir do padrao. Ex.: `--slot 0:0=rom:expert.rom --slot 3:0=ram:16`. Pela janela, o layout tambem pode ser editado. (Antes: o layout so' se editava pelo menu.) Falta uma opcao de linha de comando
   para o layout (ex.: `--slot 2:0=ram:64`), util para testes automatizados.
 - **Outros cartuchos e ROMs**: MSX-DOS 2 (MSXDOS2.ROM), GameMaster2, o cartucho
   MSX-MUSIC com a propria BIOS. Os tipos atuais cobrem ROM, sub-ROM, RAM, mapper,
@@ -99,7 +101,7 @@ Suite completa do CTest: 14/14.
   0:0 e o layout monta, mas a BIOS so' funciona se o hardware que ela espera (portas,
   VDP, disco) existir aqui. Isso nao foi testado com nenhuma BIOS fora do fMSX.
 - **Uma BIOS fora de 0:0**: nao e' suportada, porque o Z80 comeca no slot 0:0.
-- **Mapper unico**: nao ha duas RAMs mapeadas (as portas FCh-FFh sao unicas).
+- **Mapper**: as portas FCh-FFh sao compartilhadas por todos os mappers do layout (como no hardware).
 - **Pagina 0 de cartucho em 16KB** e o caso de ROM de 16KB em pagina 0 (que nao e'
   BIOS) nao tem teste dedicado.
 - **Salvar o layout** em arquivo (para reabrir a mesma configuracao) ainda nao existe.

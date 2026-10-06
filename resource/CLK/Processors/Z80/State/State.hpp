@@ -1,0 +1,106 @@
+//
+//  State.hpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 13/05/2020.
+//  Copyright © 2020 Thomas Harte. All rights reserved.
+//
+
+#pragma once
+
+#include "Reflection/Enum.hpp"
+#include "Reflection/Struct.hpp"
+#include "Processors/Z80/Z80.hpp"
+
+namespace CPU {
+namespace Z80 {
+
+/*!
+	Provides a means for capturing or restoring complete Z80 state.
+
+	This is an optional adjunct to the Z80 class. If you want to take the rest of the Z80
+	implementation but don't want any of the overhead of my sort-of half-reflection as
+	encapsulated in Reflection/[Enum/Struct].hpp just don't use this class.
+*/
+struct State: public Reflection::StructImpl<State> {
+	/*!
+		Provides the current state of the well-known, published internal registers.
+	*/
+	struct Registers: public Reflection::StructImpl<Registers> {
+		uint8_t a;
+		uint8_t flags;
+		uint16_t bc, de, hl;
+		uint16_t af_dash, bc_dash, de_dash, hl_dash;
+		uint16_t ix, iy, ir;
+		uint16_t program_counter, stack_pointer;
+		uint16_t memptr;
+		int interrupt_mode;
+		bool iff1, iff2;
+
+	private:
+		friend Reflection::StructImpl<Registers>;
+		void declare_fields();
+	} registers;
+
+	/*!
+		Provides the current state of the processor's various input lines that aren't
+		related to an access cycle.
+	*/
+	struct Inputs: public Reflection::StructImpl<Inputs> {
+		bool irq = false;
+		bool nmi = false;
+		bool bus_request = false;
+		bool wait = false;
+
+	private:
+		friend Reflection::StructImpl<Inputs>;
+		void declare_fields();
+	} inputs;
+
+	/*!
+		Contains internal state used by this particular implementation of a 6502. Most of it
+		does not necessarily correlate with anything in a real 6502, and some of it very
+		obviously doesn't.
+	*/
+	struct ExecutionState: public Reflection::StructImpl<ExecutionState> {
+		bool is_halted = false;
+
+		uint8_t requests = 0;
+		uint8_t last_requests = 0;
+		uint8_t temp8 = 0;
+		uint8_t operation = 0;
+		uint16_t temp16 = 0;
+		unsigned int flag_adjustment_history = 0;
+		uint16_t pc_increment = 1;
+		uint16_t refresh_address = 0;
+
+		ReflectableEnum(Phase,
+			UntakenConditionalCall, Reset, IRQMode0, IRQMode1, IRQMode2,
+			NMI, FetchDecode, Operation
+		);
+
+		Phase phase = Phase::FetchDecode;
+		int half_cycles_into_step = 0;
+		int steps_into_phase = 0;
+		uint16_t instruction_page = 0;
+
+	private:
+		friend Reflection::StructImpl<ExecutionState>;
+		void declare_fields();
+	} execution_state;
+
+	State() {}
+
+	/// Instantiates a new State based on the processor @c src.
+	State(const ProcessorBase &src);
+
+	/// Applies this state to @c target.
+	void apply(ProcessorBase &target);
+
+private:
+	friend Reflection::StructImpl<State>;
+	void declare_fields();
+};
+
+}
+}

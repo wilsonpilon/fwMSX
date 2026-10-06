@@ -31,6 +31,9 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 - **Cartuchos**: ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SRAM com `.sav` e o SCC (F1 Spirit toca a trilha).
 - **Video**: VDP completo: SCREEN 0 a 8 no V9938 e 10 a 12 no V9958 (YJK, YAE e scroll).
 - **Som**: PSG, SCC e **FM (MSX-MUSIC e FM-PAC)** com os comandos de BASIC (`CALL MUSIC`, `PLAY #n`, `CALL VOICE`), modo ritmo e saida ao vivo.
+- **Controladora de disco por portas** (estilo Microsol): o MSX-DOS sobe com o driver DDX 3.0 e com o CDX-2 pelas portas D0h. Formatos 180, 360 e 720 KB pela configuracao do drive.
+- **Layout de slots mais amplo**: RAM de 16 KB no fim da celula, RAM de 32 KB em duas celulas, mapper de 64 KB a 4 MB (varios mappers), BIOS Expert 1.1 subindo.
+- **Banco de ROMs** (nao lancado): menu **ROMs** baixa o fMSX 6.0, o System ROMs do file-hunter e o banco do Vampier; busca, edicao e identificacao. As ROMs nao vem com o emulador (ver [romdb-spec.md](doc/romdb-spec.md)).
 - **Configuracao**: menu **Maquina > Configuracao de slots...**: 16 celulas (BIOS, BASIC, RAM de 16 a 64 KB, mapper de 64 a 1024 KB, cartucho, disco, sub-ROM e FM-PAC).
 - **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video.
 
@@ -63,6 +66,10 @@ Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 
 BASIC, layout de slots e SRAM do FM-PAC**. Detalhes em [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
+
+**Onde paramos e o que falta:** [OUTLINE.md](OUTLINE.md), feito para retomar o trabalho em outro computador ou com outra IA.
+
+**Politica de midias:** este repositorio e' pessoal. ROMs, discos e fitas de terceiros podem ser versionadas por enquanto. Antes de liberar o projeto ao publico, cada midia de terceiros sera revisada, e os arquivos cujos detentores de direitos estiverem em desacordo serao removidos (ver LICENSE-THIRD-PARTY.md).
 
 ## Estrutura do projeto
 

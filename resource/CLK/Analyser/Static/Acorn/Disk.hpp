@@ -1,0 +1,33 @@
+//
+//  Disk.hpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 18/09/2016.
+//  Copyright 2016 Thomas Harte. All rights reserved.
+//
+
+#pragma once
+
+#include "File.hpp"
+#include "Storage/Disk/Disk.hpp"
+
+namespace Analyser::Static::Acorn {
+
+/// Describes a DFS- or ADFS-format catalogue(/directory): the list of files available and the catalogue's boot option.
+struct Catalogue {
+	bool is_hugo = false;
+	bool has_large_sectors = false;
+	std::string name;
+	std::vector<File> files;
+	enum class BootOption {
+		None,
+		LoadBOOT,
+		RunBOOT,
+		ExecBOOT
+	} bootOption;
+};
+
+std::unique_ptr<Catalogue> GetDFSCatalogue(const Storage::Disk::Disk &);
+std::unique_ptr<Catalogue> GetADFSCatalogue(const Storage::Disk::Disk &);
+
+}

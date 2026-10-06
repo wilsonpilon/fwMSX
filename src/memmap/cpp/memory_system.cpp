@@ -43,6 +43,28 @@ void MemorySystem::ClearSlot(int primary, int secondary) {
     mapper_segments_[primary][secondary] = 0;
 }
 
+void MemorySystem::AllocateRamChunks(int primary, int secondary, int first, int count) {
+    if (!ValidSlotIndex(primary, secondary) || count <= 0 || first < 0 || first + count > MEMMAP_CHUNKS) return;
+    ClearSlot(primary, secondary);
+    const std::size_t bytes = static_cast<std::size_t>(count) * MEMMAP_CHUNK_SIZE;
+    auto buffer = std::make_unique<uint8_t[]>(bytes);
+    std::fill(buffer.get(), buffer.get() + bytes, uint8_t{0});
+    for (int i = 0; i < count; ++i) {
+        memmap_remap_ram_chunk(&state_, primary, secondary, first + i,
+                               buffer.get() + static_cast<std::size_t>(i) * MEMMAP_CHUNK_SIZE);
+    }
+    state_.slot_kind[primary][secondary] = MEMMAP_KIND_RAM;
+    state_.slot_size[primary][secondary] = bytes;
+    owned_buffers_.push_back(std::move(buffer));
+}
+
+void MemorySystem::AllocateRamTop(int primary, int secondary, std::size_t size) {
+    // RAM que ocupa as ultimas paginas (C000h-FFFFh para 16KB); 64KB ocupa a celula toda.
+    const std::size_t chunks = std::min<std::size_t>(MEMMAP_CHUNKS, (size + MEMMAP_CHUNK_SIZE - 1) / MEMMAP_CHUNK_SIZE);
+    if (chunks == 0) return;
+    AllocateRamChunks(primary, secondary, MEMMAP_CHUNKS - static_cast<int>(chunks), static_cast<int>(chunks));
+}
+
 void MemorySystem::AllocateRam(int primary, int secondary, std::size_t size) {
     const std::size_t max_size = static_cast<std::size_t>(MEMMAP_PAGES) * MEMMAP_PAGE_SIZE;
     if (size > max_size) size = max_size;
@@ -70,7 +92,8 @@ void MemorySystem::AllocateMapperRam(int primary, int secondary, int segments) {
     mapper_base_[primary][secondary] = buffer.get();
     mapper_segments_[primary][secondary] = n;
     owned_buffers_.push_back(std::move(buffer));
-    for (int page = 0; page < 4; ++page) SetMapperSegment(primary, secondary, page, 3 - page);
+    // Como o mapper de verdade apos o reset: segmento k na pagina k (0 a 3).
+    for (int page = 0; page < 4; ++page) SetMapperSegment(primary, secondary, page, page);
 }
 
 void MemorySystem::SetMapperSegment(int primary, int secondary, int page, int segment) {

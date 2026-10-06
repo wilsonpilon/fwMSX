@@ -1,0 +1,48 @@
+//
+//  TIASound.hpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 03/12/2016.
+//  Copyright 2016 Thomas Harte. All rights reserved.
+//
+
+#pragma once
+
+#include "Outputs/Speaker/Implementation/BufferSource.hpp"
+#include "Concurrency/AsyncTaskQueue.hpp"
+
+namespace Atari2600 {
+
+// This should be a divisor of 38; audio counters are updated every 38 cycles, though lesser dividers
+// will give greater resolution to changes in audio state. 1, 2 and 19 are the only divisors of 38.
+constexpr int CPUTicksPerAudioTick = 2;
+
+class TIASound: public Outputs::Speaker::BufferSource<TIASound, false> {
+public:
+	TIASound(Concurrency::AsyncTaskQueue<false> &);
+
+	void set_volume(int channel, uint8_t volume);
+	void set_divider(int channel, uint8_t divider);
+	void set_control(int channel, uint8_t control);
+
+	// To satisfy ::SampleSource.
+	template <Outputs::Speaker::Action action> void apply_samples(std::size_t, Outputs::Speaker::MonoSample *);
+	void set_sample_volume_range(std::int16_t);
+
+private:
+	Concurrency::AsyncTaskQueue<false> &audio_queue_;
+
+	uint8_t volume_[2];
+	uint8_t divider_[2];
+	uint8_t control_[2];
+
+	int poly4_counter_[2]{0x00f, 0x00f};
+	int poly5_counter_[2]{0x01f, 0x01f};
+	int poly9_counter_[2]{0x1ff, 0x1ff};
+	int output_state_[2];
+
+	int divider_counter_[2];
+	int16_t per_channel_volume_ = 0;
+};
+
+}

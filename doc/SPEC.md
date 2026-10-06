@@ -187,12 +187,12 @@ acompanhamento manual do autor a cada build):
   o que funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
   (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado na v1.17.0, 2026-10-06)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-06, depois da v1.17.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.17.0):**
+**Funcionando (v1.17.0, publicada):**
 
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco ate `A>`.
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
@@ -202,21 +202,40 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] Configuracao de slots pelo menu: 16 celulas, BIOS em 0:0, RAM 16/32/64 KB, mapper ate 1024 KB, disco, sub-ROM, cartucho e FM-PAC.
 - [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 14 suites.
 
-**Pendencias abertas:**
+**Feito depois da v1.17.0 (nao lancado, sem commit):**
 
-- [ ] Validar na tela: menus, tela cheia, 4:3, 16:9 e filtros (a automacao nao opera a janela).
-- [ ] Ouvir o FM e o SCC contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
+- [x] Banco de ROMs (SQLite, `fwmsx --romdb`): downloads do fMSX 6.0, do System ROMs do file-hunter (com navegacao) e do Vampier; CRUD, busca, identificacao, CARTS.SHA. Menu ROMs na janela. Ver `doc/romdb-spec.md`.
+- [x] Codigo do openMSX em `resource/openMSX/` (GPL), provisorio, para estudo. Branch `estudo/openmsx`.
+- [x] RAM de 16KB ocupa C000h-FFFFh (a BIOS Expert travava com a RAM em 0000h da celula).
+- [x] RAM de 32KB ocupa duas celulas (pagina 2 + pagina 3 da seguinte); mapper de 64KB a 4096KB, varios mappers, segmento k na pagina k.
+- [x] Controladora de disco por portas no estilo Microsol: DDX 3.0 e CDX-2 com o MSX-DOS 1.8 subindo pelas portas D0h. Formatos 180/360/720 KB pela configuracao do drive. Ver `doc/fdc-spec.md`, secao 6.
+- [x] Opcao `--slot P:S=tipo[:arg]` para montar o layout pela linha de comando; `--disk-acesso`, `--disk-porta`, `--disk-formato`, `--text`, `--fmstat`, `--wav`.
+- [x] Correcoes de teclado: `(`, `)`, `*`, `"` e `&` no layout do MSX.
+
+**Politica de midias (2026-10-06):** o repositorio e' pessoal; ROMs, discos e fitas de terceiros podem ser versionadas. Antes da liberacao publica, revisar cada midia e remover as que o detentor contestar (`LICENSE-THIRD-PARTY.md`).
+
+**Projeto futuro:** o fwMSX sera integrado ao msxide num utilitario de desenvolvimento MSX chamado **MSX-PoorManOS**. Ate la, sem preocupacao com redistribuicao.
+
+**Pendencias (ordem sugerida):**
+
+- [ ] Validar na tela o que so' foi compilado: menu ROMs, janelas Banco de ROMs e Navegar file-hunter, Configuracao de disco e de slots, tela cheia, 4:3, 16:9 e filtros.
+- [ ] Banco de ROMs: verificar as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o mapper ao carregar cartucho; importar o JSON do Vampier se for util.
+- [ ] Ouvir o FM, o SCC e o disco contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
 - [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao diagnosticada; Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
-- [ ] `CALL VOICECOPY` (a ROM do fMSX nao aceita); status e timers do OPLL.
-- [ ] Layout de slots pela linha de comando e salvar o layout em arquivo.
+- [ ] FM: `CALL VOICECOPY` (a ROM do fMSX nao aceita); status e timers do OPLL.
+- [ ] Disco: formatar disquetes (hoje so' le e grava); FM/MFM modelados; drives A e B com formatos diferentes; mais de um driver de porta (Sony, Philips, Spectravideo do openMSX) se quiser estudar.
+- [ ] Layout de slots: salvar e carregar o layout em arquivo; perfis de maquina salvos no banco.
+- [ ] Controle externo do emulador, no estilo openMSX (ideia de hoje): canal de controle opt-in em localhost (TCP ou pipe), comandos `status`, `reset`, `pause`/`resume`, `type`, `cart`, `disk`, `screenshot`, `peek`/`poke`, `quit`; eventos de troca de modelo e de midia. A thread de controle so' enfileira comandos; quem toca na maquina e' o laco de quadros. Ainda nao comecou.
 - [ ] Cartuchos: MSX-DOS 2, GameMaster2 e o MSX-MUSIC com BIOS propria.
-- [ ] BIOS de outras maquinas (ex.: Gradiente Expert 1.1): testar se algum hardware especifico falta.
-- [ ] Save-state completo, incluindo o estado de PSG, SCC e OPLL.
+- [ ] BIOS de outras maquinas (ex.: Gradiente Expert 1.1): a BIOS sobe, mas a tela sai com espacos entre as letras; investigar.
+- [ ] Save-state completo, incluindo o estado de PSG, SCC, OPLL, disco e VDP.
 - [ ] Efeitos de rastreio no meio do quadro (troca de palheta e de scroll por linha).
 - [ ] Cores YJK do V9958 conferidas com hardware real.
-- [ ] Desempenho: medir o custo de CPU no pior caso (FM ativo, SCC, mapa de slots) em tempo real.
-- [ ] Licenca: README e LICENSE-THIRD-PARTY dizem que a autorizacao do fMSX e so' para estudo. Confirmar por escrito antes de mudar esse texto.
-- [ ] Commit e publicacao da v1.17.0 (pacotes gerados, aguardando revisao).
+- [ ] Desempenho: medir o custo de CPU no pior caso (FM ativo, SCC, mapa de slots, disco) em tempo real.
+- [ ] Licenca: confirmar por escrito a autorizacao de uso do fMSX antes de mudar o texto de README e LICENSE-THIRD-PARTY. O openMSX (GPL) segue so' como referencia; decidir se sai do repositorio quando o fwMSX estiver pronto.
+- [ ] Frontend para jogar (biblioteca de jogos e imagens) sobre o banco de ROMs: depois.
+- [x] Commit e push do trabalho de 2026-10-06 (branch `estudo/openmsx`, que contem o openMSX em `resource/`).
+- [ ] Decidir: merge de `estudo/openmsx` no `main` (fast-forward), e tag/release da proxima versao (1.18.0) quando o banco de ROMs e o disco por portas estiverem validados na tela.
 
 ### 5.1 Visao registrada: `fwMSX.exe` como ponto de entrada unico do projeto
 
@@ -272,3 +291,69 @@ Fase 5c):
 
 *(Esta secao sera detalhada/movida para itens concluidos conforme o
 projeto avancar.)*
+### 5.2 Feature a desenvolver em breve: fitas (TSX, TZX e CAS) e banco de fitas
+
+Estado: **planejado, nao iniciado** (2026-10-06). Pedido do usuario: ler e criar TSX, ler e criar CAS,
+um banco de fitas com download pelo site oficial, e uma ferramenta de linha de comando e pelo menu para
+manipular esses arquivos. Ver tambem `doc/SPEC.md`, secao 5.0, e a viabilidade abaixo.
+
+**Formatos.**
+
+- **TSX** e' um superconjunto do **TZX 1.20** (fita do ZX Spectrum), com o bloco **ID 0x4B** (Kansas City
+  Standard, usado pelo MSX). Especificacao em `resource/makeTSX/docs/TZX_format.md` e no wiki do makeTSX.
+  Blocos do TZX que aparecem em fitas MSX: 10, 11, 12, 13, 14, 15, 19, 20, 21-28 (grupos, saltos, laços),
+  2A, 2B, 30, 31, 32, 33, 35, 4B e 5A. Os blocos 16, 17, 34 e 40 (C64, emulacao, snapshot) estao
+  descontinuados pela propria especificacao.
+- **Bloco 0x4B (KCS)**: 4 bytes de tamanho, pausa (ms), duracao do pulso de pilot, numero de pulsos do pilot,
+  duracao do pulso de ZERO e de UM (T-states), a configuracao de bits (pulsos por bit) e de bytes (bits de
+  inicio/fim, valor, ordem), e os dados. Os valores padrao usados pelo makeTSX sao ZERO = 855 e UM = 1710
+  T-states (base de 3,5 MHz); conferir no codigo antes de usar.
+- **CAS**: imagem binaria de fita do MSX (dados em blocos com cabecalho de arquivo: tipo BASIC, ASCII ou binario,
+  nome, endereco, tamanho). Nao tem pulsos; e' uma forma compacta da mesma informacao.
+
+**Viabilidade (por parte).**
+
+1. **Leitor de TZX/TSX (blocos listados acima): viavel, baixo a medio.** Referencias: `makeTSX` (MIT) e o
+   `TsxParser` do openMSX-TSX (GPL, so' estudo) e `CLK/Storage/Tape/Formats/TZX.cpp` (MIT). O CLK ja' le
+   o bloco 0x4B. Estimativa: 800 a 1200 linhas em C++ mais testes.
+2. **Escritor de TSX a partir de arquivos (.BIN, .BAS, ASCII): viavel, medio.** Gera blocos 0x4B com os
+   cabecalhos de arquivo do MSX (`BLOAD`, `CLOAD`, `RUN"CAS:"`). Primeiro passo util, sem analisar WAV.
+3. **Criar TSX a partir de WAV (o que o makeTSX faz): viavel, alto.** E' um port do makeTSX (MIT), com os
+   "rippers" (blocos 10 a 20, 4B). Fase posterior.
+4. **Emulacao de sinal de fita (pulsos no PPI): viavel, alto; e' o que torna TSX com protecao e loaders
+   proprios funcionais.** O PPI do fwMSX ainda nao modela a porta de cassete (porta C, `AAh`: bit 4 = motor,
+   bit 5 = saida; a entrada do cassete ainda sem definicao neste projeto -- validar no fMSX e no openMSX antes).
+   A reproducao gera a sequencia de pulsos a partir dos blocos e entrega o nivel de entrada na cadencia
+   de T-states da CPU, como o PSG faz com as amostras. Risco: temporizacao exata; os loaders de protecao
+   dependem de ciclos.
+5. **CAS por hooks da BIOS (como o fMSX faz): viavel, baixo.** O carregamento de `BLOAD "CAS:"` e `CLOAD`
+   pode ser interceptado no nivel da BIOS, sem sinal. Nao serve para fitas com protecao, mas resolve o caso
+   comum de programas em CAS. Dar prioridade a esta parte antes do sinal.
+6. **Banco de fitas com metadados (SQLite, nome TOSEC, titulo, empresa, ano, hash, arquivo local): viavel,
+   baixo.** Reaproveita o `romdb` (mesma estrutura de CRUD e busca).
+7. **Download do site (tsx.eslamejor.com, "TSX MSX Files Repository"): viavel tecnicamente, mas sem termos
+   de uso publicados.** Verificado em 2026-10-06: as paginas de termos, politica e FAQ nao existem (404). A
+   pagina principal diz que o objetivo e' "preservar fitas antigas de MSX" e que os responsaveis nao pretendem
+   "atentar contra qualquer direito autoral ainda em vigor". Isso nao e' uma licenca de uso. A colecao e' oferecida
+   como um arquivo `.torrent` (`files/tsx-files_20260402.torrent`), nao como downloads individuais. Nao foi
+   encontrada nenhuma loja ou venda no site (a unica referencia a app e' um link de terceiros na Google Play).
+   Consequencias: (a) o fwMSX nao redistribui fitas; (b) a busca e o download so' acontecem por acao do
+   usuario; (c) antes de implementar um download automatico, pedir confirmacao por escrito ao responsavel pelo
+   site sobre o uso programatico do arquivo e a permissao de baixar; (d) o banco guarda metadados e hash, nao o
+   arquivo da fita.
+8. **Ferramenta de linha de comando e menu: viavel, baixo.** `fwmsx --fita <comando>` (ler, criar, converter,
+   listar, buscar no banco) e um menu "Fita" na janela (inserir CAS/TSX, ejetar, rebobinar, banco de fitas).
+
+**Licencas.** makeTSX (MIT) e CLK (MIT): podem ser portados com aviso de copyright. openMSX-TSX (GPL): so' como
+referencia, sem copia de codigo. Os arquivos TSX/CAS de jogos sao de terceiros: nao entram no repositorio.
+
+**Ordem sugerida de implementacao.**
+
+- [ ] (a) Leitor de TZX/TSX e de CAS, sem janela; testes com arquivos de exemplo.
+- [ ] (b) CAS por hooks da BIOS (BLOAD e CLOAD), para programas que nao dependem de protecao.
+- [ ] (c) Escritor de TSX a partir de .BIN e .BAS.
+- [ ] (d) Porta de cassete no PPI e reproducao de pulsos (TSX e TZX completos).
+- [ ] (e) Banco de fitas (SQLite) e download pelo site, depois de conferir os termos.
+- [ ] (f) Port do makeTSX (WAV para TSX).
+- [ ] (g) CLI `fwmsx --fita` e menu "Fita" na janela.
+

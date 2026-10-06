@@ -355,6 +355,9 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 | `--text` | imprime a tela em texto no fim (SCREEN 0 e 1) |
 | `--fmstat` | imprime o estado dos 9 canais do OPLL (nota, timbre, frequencia, volume) e o modo ritmo |
 | `--wav <arquivo.wav>` | grava a mistura de audio (PSG + SCC + FM) |
+| `--disk-acesso mem\|porta` | controladora de disco pela memoria (DISK.ROM, padrao) ou pelas portas (sem ROM) |
+| `--disk-porta D0h` | base das 5 portas da controladora por portas (padrao D0h) |
+| `--disk-formato auto\|ss525\|ds525\|ss35\|ds35` | formato dos drives: auto (180/360/720 KB), 5 1/4 face simples (180), 5 1/4 face dupla (360), 3 1/2 face simples (360), 3 1/2 face dupla (720) |
 | `--frames N` | quadros de boot antes dos comandos seguintes (sem janela) |
 | `--vdplog` | mostra os registradores do VDP que mudam, quadro a quadro |
 | `--mute` | sem audio |
@@ -462,6 +465,37 @@ Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.
 [fm-spec.md](fm-spec.md) (FM, MSX-MUSIC e FM-PAC), [sram-spec.md](sram-spec.md) (SRAM e `.sav`),
 [audio-spec.md](audio-spec.md) (audio), [fdc-spec.md](fdc-spec.md) (disco), [msx2-spec.md](msx2-spec.md) e
 [msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
+
+## Banco de ROMs (`--romdb`) -- nao lancado
+
+O banco guarda as ROMs que voce tem no disco (pelo SHA-1), com nome, tipo de hardware, mapper e
+notas. As ROMs **nao** vem com o emulador: voce baixa de fontes publicas, pelo menu **ROMs** da
+janela ou pela CLI. Elas ficam em `roms/` (ao lado do executavel, ou `--roms <pasta>`), separadas por
+tipo (`bios`, `interfaces`, `cartuchos`, `discos`, `tabelas`, `outros`). O banco e' `roms/roms.db`.
+
+```powershell
+.\dist\fwMSX.exe --romdb fmsx                          # fMSX 6.0 para Windows (ROMs e CARTS.SHA)
+.\dist\fwMSX.exe --romdb filehunter                    # lista a pasta System ROMs do file-hunter
+.\dist\fwMSX.exe --romdb filehunter-full               # baixa o Full Set System ROMs mais recente
+.\dist\fwMSX.exe --romdb filehunter-full --data 26-08-2025   # ou o de outra data
+.\dist\fwMSX.exe --romdb vampier                       # banco do Vampier (referencia de nomes)
+.\dist\fwMSX.exe --romdb cartsha roms\tabelas\CARTS.SHA   # mappers do fMSX
+.\dist\fwMSX.exe --romdb scan roms                     # cadastra as ROMs de uma pasta
+.\dist\fwMSX.exe --romdb identify                      # da nome as ROMs que o Vampier conhece
+.\dist\fwMSX.exe --romdb search gradius --cat cartucho
+.\dist\fwMSX.exe --romdb show 655
+.\dist\fwMSX.exe --romdb edit 655 --hw "Konami SCC" --notas "minha copia"
+.\dist\fwMSX.exe --romdb del 655                       # tira do banco (o arquivo nao e' apagado)
+```
+
+Na janela, o menu **ROMs** tem os downloads, a navegacao pelo file-hunter e a janela **Banco de ROMs**
+(busca, edicao, exclusao e busca no Vampier). Downloads rodam em segundo plano.
+
+**Requisitos**: o programa `curl` (Windows 10 1803+ ja tem; Linux, instale o pacote `curl`).
+
+**Limites**: o menu e as janelas foram compilados, mas nao foram operados visualmente. O JSON do Vampier
+nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual do site. O emulador ainda nao
+usa o banco para escolher o mapper ao carregar um cartucho. Ver [romdb-spec.md](romdb-spec.md).
 
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 

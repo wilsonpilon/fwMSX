@@ -1,0 +1,55 @@
+//
+//  RawSectorDump.hpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 01/05/2021.
+//  Copyright © 2021 Thomas Harte. All rights reserved.
+//
+
+#pragma once
+
+#include "Storage/MassStorage/MassStorageDevice.hpp"
+#include "Storage/FileHolder.hpp"
+
+#include <cassert>
+#include <filesystem>
+
+namespace Storage::MassStorage {
+
+template <long sector_size> class RawSectorDump: public MassStorageDevice {
+public:
+	RawSectorDump(const std::filesystem::path &path, long offset = 0, long length = -1) :
+		file_(path),
+		file_size_((length == -1) ? long(file_.stats().st_size) : length),
+		file_start_(offset)
+	{
+		// Is the file a multiple of sector_size bytes in size?
+		if(file_size_ % sector_size) throw std::exception();
+	}
+
+	/* MassStorageDevices overrides. */
+	size_t get_block_size() const final {
+		return sector_size;
+	}
+
+	size_t get_number_of_blocks() const final {
+		return size_t(file_size_ / sector_size);
+	}
+
+	std::vector<uint8_t> get_block(const size_t address) const final {
+		file_.seek(file_start_ + long(address * sector_size), Whence::SET);
+		return file_.read(sector_size);
+	}
+
+	void set_block(const size_t address, const std::vector<uint8_t> &contents) final {
+		assert(contents.size() == sector_size);
+		file_.seek(file_start_ + long(address * sector_size), Whence::SET);
+		file_.write(contents);
+	}
+
+private:
+	mutable FileHolder file_;
+	const long file_size_, file_start_;
+};
+
+}

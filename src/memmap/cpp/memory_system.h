@@ -59,6 +59,13 @@ public:
     // existir. Chamar de novo na mesma combinacao substitui o que havia
     // antes (o buffer antigo e' liberado).
     void AllocateRam(int primary, int secondary, std::size_t size);
+    // RAM que ocupa as ULTIMAS paginas da celula (C000h-FFFFh para 16KB), como as RAMs
+    // de cartucho do MSX. A BIOS procura a area de trabalho ali; 16KB no inicio da
+    // celula (0000h) travam o boot. Com 64KB e igual a AllocateRam().
+    void AllocateRamTop(int primary, int secondary, std::size_t size);
+    // RAM em `count` pedacos de 8KB a partir de `first` (0 = 0000h ... 7 = E000h). Ex.: 16KB
+    // na pagina 2 = (4, 2); 16KB na pagina 3 = (6, 2). A celula fica so' com essa RAM.
+    void AllocateRamChunks(int primary, int secondary, int first, int count);
     // Esvazia a combinacao (primary, secondary): nada fica ligado nela. Usado pelo
     // layout de slots da maquina antes de montar a configuracao escolhida.
     void ClearSlot(int primary, int secondary);

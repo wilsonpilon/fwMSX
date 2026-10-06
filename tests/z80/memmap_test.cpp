@@ -800,6 +800,20 @@ int main() {
         check(again.PeekSlot(2, 0, 0x4123) == 0x5A, "FM-PAC: depois de recarregar o .sav, a SRAM mostra o mesmo byte");
     }
 
+    // --- 25. RAM de 16KB ocupa as ultimas paginas (C000h-FFFFh), nao 0000h -----
+    //      (a BIOS da Gradiente Expert trava se a RAM comeca em 0000h da celula).
+    {
+        memmap::MemorySystem mem;
+        mem.AllocateRamTop(3, 0, 0x4000);
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 3, 0);
+        bus.write(0xC123, 0x5A);
+        check(mem.PeekSlot(3, 0, 0xC123) == 0x5A, "RAM 16KB: escrita em C123h e' lida de volta");
+        check(mem.PeekSlot(3, 0, 0x0123) == MEMMAP_EMPTY_BYTE, "RAM 16KB: 0000h-3FFFh da celula continua vazia");
+        check(mem.PeekSlot(3, 0, 0x8123) == MEMMAP_EMPTY_BYTE, "RAM 16KB: 8000h-BFFFh continua vazia");
+        check(mem.Describe(3, 0).kind == MEMMAP_KIND_RAM, "RAM 16KB: a celula e' RAM");
+    }
+
     if (g_failures == 0) {
         std::printf("\nTodos os testes passaram.\n");
         return 0;

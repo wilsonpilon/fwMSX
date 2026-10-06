@@ -11,6 +11,7 @@
 #include "../fm/cpp/fm_device.h"
 #include "../psg/cpp/wav_writer.h"
 #include "gui/emu_window.h"
+#include "../romdb/service.h"
 #include "machine.h"
 
 namespace machine {
@@ -67,6 +68,57 @@ std::string FindDefaultFmpac(const std::string &argv0) {
     return "";
 }
 
+// --slot P:S=tipo[:arg] (ver doc/slots-spec.md, secao 4): tipo = empty, rom, sub,
+// ram, mapper, disk, fmpac. Para rom/sub/disk/fmpac o argumento e' o arquivo; para
+// ram/mapper, o tamanho em KB. Devolve false com a razao.
+bool ApplySlotSpec(const std::string &spec, machine::SlotLayout &layout, std::string &error) {
+    const size_t eq = spec.find('=');
+    const size_t colon = spec.find(':');
+    if (eq == std::string::npos || colon == std::string::npos || colon > eq) {
+        error = "--slot: use P:S=tipo[:arg], ex.: --slot 3:0=ram:16";
+        return false;
+    }
+    const int p = std::atoi(spec.substr(0, colon).c_str());
+    const int sec = std::atoi(spec.substr(colon + 1, eq - colon - 1).c_str());
+    if (p < 0 || p > 3 || sec < 0 || sec > 3) {
+        error = "--slot: slot " + spec.substr(0, eq) + " invalido (primario 0-3, secundario 0-3)";
+        return false;
+    }
+    const std::string rest = spec.substr(eq + 1);
+    const size_t c2 = rest.find(':');
+    const std::string kind = rest.substr(0, c2);
+    const std::string arg = c2 == std::string::npos ? std::string() : rest.substr(c2 + 1);
+
+    machine::SlotItem &item = layout.cell[p][sec];
+    item = machine::SlotItem{};
+    if (kind == "empty") {
+        // celula vazia
+    } else if (kind == "rom") {
+        item.kind = machine::SlotKind::Rom;
+        item.path = arg;
+        item.page = (p == 0 && sec == 0) ? 0 : 1;
+    } else if (kind == "sub") {
+        item.kind = machine::SlotKind::SubRom;
+        item.path = arg;
+    } else if (kind == "ram") {
+        item.kind = machine::SlotKind::Ram;
+        item.size_kb = std::atoi(arg.c_str());
+    } else if (kind == "mapper") {
+        item.kind = machine::SlotKind::Mapper;
+        item.size_kb = std::atoi(arg.c_str());
+    } else if (kind == "disk") {
+        item.kind = machine::SlotKind::Disk;
+        item.path = arg;
+    } else if (kind == "fmpac") {
+        item.kind = machine::SlotKind::FmPac;
+        item.path = arg;
+    } else {
+        error = "--slot: tipo desconhecido '" + kind + "' (use empty, rom, sub, ram, mapper, disk ou fmpac)";
+        return false;
+    }
+    return true;
+}
+
 } // namespace
 
 int RunMachineCommand(const std::vector<std::string> &args, const std::string &argv0) {
@@ -80,6 +132,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     bool dump_text = false;
     bool fm_stat = false;
     bool fmpac_explicit = false;
+    std::vector<std::string> slot_specs;
     std::string wav_path;
     std::vector<int16_t> wav_samples;
     int wait_frames = 60;
@@ -101,6 +154,45 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             config.model = Model::MSX2;
         } else if (a == "--msx2p") {
             config.model = Model::MSX2P;
+        } else if (a == "--slot") {
+            const std::string *v = need("P:S=tipo[:arg]");
+            if (!v) return 2;
+            slot_specs.push_back(*v);
+        } else if (a == "--disk-acesso") {
+            // Controladora de disco: pela memoria (padrao, DISK.ROM) ou pelas portas.
+            const std::string *v = need("mem ou porta");
+            if (!v) return 2;
+            if (*v == "mem") config.disk_access = DiskAccess::Memory;
+            else if (*v == "porta") config.disk_access = DiskAccess::Port;
+            else {
+                std::cerr << "fwmsx --msx: --disk-acesso aceita mem ou porta" << std::endl;
+                return 2;
+            }
+        } else if (a == "--disk-porta") {
+            const std::string *v = need("uma porta, ex.: D0h ou 208");
+            if (!v) return 2;
+            config.disk_port = static_cast<int>(std::strtol(v->c_str(), nullptr, 0));
+            if (v->size() > 1 && (v->back() == 'h' || v->back() == 'H')) {
+                config.disk_port = static_cast<int>(std::strtol(v->substr(0, v->size() - 1).c_str(), nullptr, 16));
+            }
+            if (config.disk_port < 0 || config.disk_port > 0xFB) {
+                std::cerr << "fwmsx --msx: --disk-porta precisa estar entre 00h e FBh (4 portas livres)" << std::endl;
+                return 2;
+            }
+        } else if (a == "--disk-formato") {
+            // 180, 360 ou 720 KB: ss525 (5 1/4, face simples), ds525 (5 1/4, face dupla),
+            // ss35 (3 1/2, face simples), ds35 (3 1/2, face dupla); auto aceita os tres tamanhos.
+            const std::string *v = need("auto, ss525, ds525, ss35 ou ds35");
+            if (!v) return 2;
+            if (*v == "auto") config.disk_format = fdc::DiskFormat::Auto;
+            else if (*v == "ss525") config.disk_format = fdc::DiskFormat::Ss525Sd180;
+            else if (*v == "ds525") config.disk_format = fdc::DiskFormat::Ds525Dd360;
+            else if (*v == "ss35") config.disk_format = fdc::DiskFormat::Ss35Dd360;
+            else if (*v == "ds35") config.disk_format = fdc::DiskFormat::Ds35Dd720;
+            else {
+                std::cerr << "fwmsx --msx: --disk-formato aceita auto, ss525, ds525, ss35 ou ds35" << std::endl;
+                return 2;
+            }
         } else if (a == "--no-fmpac") {
             // Sem FM-PAC (o padrao liga o FM-PAC se o FMPAC.ROM for encontrado).
             config.fmpac_rom_path.clear();
@@ -207,6 +299,19 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
 
     // Sem janela: roda os quadros pedidos, opcionalmente digita um texto, e
     // salva a tela.
+    if (!slot_specs.empty()) {
+        // Layout explicito pela linha de comando: parte do padrao e troca as celulas pedidas.
+        config.layout = machine::DefaultLayout(config);
+        config.layout_set = true;
+        for (const std::string &spec : slot_specs) {
+            std::string slot_error;
+            if (!ApplySlotSpec(spec, config.layout, slot_error)) {
+                std::cerr << "fwmsx --msx: " << slot_error << std::endl;
+                return 2;
+            }
+        }
+    }
+
     if (!shot_path.empty() || !keys.empty()) {
         std::string error;
         std::unique_ptr<Machine> m = Machine::Create(config, error);
@@ -216,7 +321,11 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
         }
         if (!m->cart_info().empty()) std::cout << "cartucho: " << m->cart_info() << std::endl;
         if (m->has_disk_interface()) {
-            std::cout << "disco: interface de disquete ligada (DISK.ROM em 3:1)";
+            if (m->disk_access_is_port()) {
+                std::cout << "disco: controladora por portas (base " << std::hex << config.disk_port << std::dec << "h), formato " << fdc::FormatName(m->disk_format());
+            } else {
+                std::cout << "disco: interface de disquete ligada (DISK.ROM em 3:1), formato " << fdc::FormatName(m->disk_format());
+            }
             for (int d = 0; d < 2; ++d)
                 if (m->disk(d).loaded()) std::cout << ", " << static_cast<char>('A' + d) << ": " << m->disk(d).path();
             std::cout << std::endl;
@@ -323,6 +432,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
 
     gui::WindowOptions options;
     options.machine = config;
+    options.rom_root = romdb::DefaultRomPaths(argv0).root;
     options.autoquit_frames = frames;
     options.audio = !mute;
     return gui::RunEmulatorWindow(options);

@@ -1,0 +1,20 @@
+//
+//  StaticAnalyser.hpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 15/09/2016.
+//  Copyright 2016 Thomas Harte. All rights reserved.
+//
+
+#pragma once
+
+#include "Analyser/Static/StaticAnalyser.hpp"
+#include "Storage/TargetPlatforms.hpp"
+
+#include <filesystem>
+
+namespace Analyser::Static::Atari2600 {
+
+TargetList GetTargets(const Media &, const std::filesystem::path &, TargetPlatform::IntType, bool);
+
+}

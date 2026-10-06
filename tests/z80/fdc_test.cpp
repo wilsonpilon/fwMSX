@@ -7,7 +7,9 @@
 #include <vector>
 
 #include "../../src/fdc/cpp/disk_image.h"
+#include "../../src/fdc/cpp/disk_format.h"
 #include "../../src/fdc/cpp/fdc_device.h"
+#include "../../src/fdc/cpp/fdc_port.h"
 #include "../../src/fdc/core/fdc_state.h"
 #include "../../src/memmap/cpp/memory_system.h"
 #include "../../src/memmap/cpp/slot_memory_bus.h"
@@ -303,6 +305,75 @@ int main() {
         bus.out(0xA8, 0x00);
         bus.write(0x7FFC, 0x01);
         check(dev.fdc().side == 0, "com outro slot na pagina 1, 7FFCh e' memoria normal (nao muda o lado)");
+    }
+
+    // --- Formatos (180, 360, 720 KB) e acesso por portas (doc/fdc-spec.md, secao 6) -----
+    {
+        using fdc::DiskFormat;
+        check(fdc::SizeAllowed(DiskFormat::Auto, 184320) && fdc::SizeAllowed(DiskFormat::Auto, 368640) &&
+                  fdc::SizeAllowed(DiskFormat::Auto, 737280) && !fdc::SizeAllowed(DiskFormat::Auto, 163840),
+              "formato automatico: aceita 180, 360 e 720 KB e recusa 160 KB");
+        check(fdc::SizeAllowed(DiskFormat::Ss525Sd180, 184320) && !fdc::SizeAllowed(DiskFormat::Ss525Sd180, 368640),
+              "5 1/4 face simples (180 KB): aceita so' 180 KB");
+        check(fdc::SizeAllowed(DiskFormat::Ds35Dd720, 737280) && !fdc::SizeAllowed(DiskFormat::Ds35Dd720, 368640),
+              "3 1/2 face dupla (720 KB): aceita so' 720 KB");
+        fdc::DiskFormat f = DiskFormat::Auto;
+        check(fdc::FormatFromDrive(false, 1, false, f) && f == DiskFormat::Ss525Sd180, "escolha 5 1/4 / 1 face / simples = 180 KB");
+        check(fdc::FormatFromDrive(false, 2, true, f) && f == DiskFormat::Ds525Dd360, "escolha 5 1/4 / 2 faces / dupla = 360 KB");
+        check(fdc::FormatFromDrive(true, 1, true, f) && f == DiskFormat::Ss35Dd360, "escolha 3 1/2 / 1 face / dupla = 360 KB");
+        check(fdc::FormatFromDrive(true, 2, true, f) && f == DiskFormat::Ds35Dd720, "escolha 3 1/2 / 2 faces / dupla = 720 KB");
+        check(!fdc::FormatFromDrive(false, 2, false, f), "5 1/4 de face dupla com densidade simples nao existe no MSX");
+
+        // Um 360 KB de 3 1/2 (80 trilhas x 1 lado) e' lido com a geometria do formato, nao a do tamanho.
+        fdc::DiskImage img;
+        std::string error;
+        img.CreateBlank(368640, error);
+        fdc::ApplyFormat(img.disk(), *fdc::SpecFor(DiskFormat::Ss35Dd360));
+        check(img.disk()->tracks == 80 && img.disk()->sides == 1 && img.disk()->sectors == 9,
+              "3 1/2 SS 360 KB: geometria 80 trilhas x 1 lado x 9 setores");
+    }
+
+    {
+        // Controladora por portas e por memoria: mesmo motor, mesmo setor, mesmos bytes.
+        fdc::DiskImage img;
+        std::string error;
+        img.CreateBlank(737280, error);
+        Fill(img);
+
+        fdc::FdcDevice mem;
+        fdc_attach(&mem.fdc(), 0, img.disk());
+        fdc::PortFdcDevice port(0xD0);
+        fdc_attach(&port.fdc(), 0, img.disk());
+
+        // Setor 2 da trilha 1, lado 0: leitura pela porta, byte a byte.
+        port.out(0xD1, 1);                   // trilha
+        port.out(0xD2, 2);                   // setor
+        port.out(0xD0, 0x80);                // READ SECTOR
+        fdc_write(&mem.fdc(), FDC_REG_TRACK, 1);   // o mesmo comando, pela memoria
+        fdc_write(&mem.fdc(), FDC_REG_SECTOR, 2);
+        fdc_write(&mem.fdc(), FDC_REG_COMMAND, 0x80);
+        bool same = true;
+        for (int i = 0; i < 512; ++i) {
+            const uint8_t pv = port.in(0xD3);
+            const uint8_t mv = fdc_read(&mem.fdc(), FDC_REG_DATA); // leitura pela memoria, em paralelo
+            if (pv != mv) same = false;
+        }
+        check(same, "porta e memoria leem o mesmo setor (512 bytes iguais)");
+
+        // Registradores pela porta e pela memoria apontam para o mesmo estado.
+        check(port.in(0xD1) == 1 && port.in(0xD2) == 2, "registradores de trilha e setor respondem pela porta");
+
+        // base+4: bit 0 = lado (0 = lado 1), bit 1 = drive (1 = B), como o 7FFCh/7FFDh.
+        port.out(0xD4, 0x12);                // drive B (bit 1), lado 1 (bit 4): convencao do Microsol
+        check(port.fdc().drive == 1 && port.fdc().side == 1, "base+4 = 12h: drive B e lado 1 (bits 1 e 4, como MicrosolFDC do openMSX)");
+        port.out(0xD4, 0x01);                // drive A (bit 0), lado 0
+        check(port.fdc().drive == 0 && port.fdc().side == 0, "base+4 = 01h: drive A e lado 0");
+        port.out(0xD4, 0x20);                // so' motor (bit 5): nao muda drive nem lado
+        check(port.fdc().drive == 0 && port.fdc().side == 0, "base+4 = 20h (motor): drive e lado continuam");
+
+        // Fora da faixa de portas nao responde (0xD5 nao e' da controladora).
+        check(port.in(0xD5) == 0xFF, "porta fora da base+0..base+4 nao responde (FFh)");
+        check(fdc::PortFdcDevice::kPorts == 5, "a controladora ocupa 5 portas");
     }
 
     if (g_failures == 0) {

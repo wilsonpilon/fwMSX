@@ -14,7 +14,9 @@
 #include <vector>
 
 #include "../fdc/cpp/disk_image.h"
+#include "../fdc/cpp/disk_format.h"
 #include "../fdc/cpp/fdc_device.h"
+#include "../fdc/cpp/fdc_port.h"
 #include "../memmap/core/slot_state.h"
 #include "../memmap/cpp/ram_mapper.h"
 #include "../rtc/rtc_device.h"
@@ -38,6 +40,10 @@ struct FrameSize {
     int height = 192;
     int y_scale = 1;
 };
+
+// Acesso da controladora de disco: pela memoria (DISK.ROM no slot 3:1, como sempre) ou pelas
+// portas (WD2793 em disk_port..disk_port+4, sem ROM). Ver doc/fdc-spec.md, secao 6.
+enum class DiskAccess { Memory, Port };
 
 // Layout de slots: cada combinacao primario:secundario (celula) tem um conteudo.
 // Ver doc/slots-spec.md.
@@ -102,6 +108,12 @@ struct MachineConfig {
     // FM-PAC. A ROM e' o FMPAC.ROM do fMSX. Ver doc/fm-spec.md, secao 4.
     std::string fmpac_rom_path;
 
+    // Controladora de disco e formato dos drives (180, 360 ou 720 KB). Padrao: pela memoria e
+    // formato automatico (aceita qualquer um dos tres tamanhos).
+    DiskAccess disk_access = DiskAccess::Memory;
+    int disk_port = 0xD0;
+    fdc::DiskFormat disk_format = fdc::DiskFormat::Auto;
+
     // Layout de slots. Enquanto `layout_set` for false, o layout sai dos campos
     // acima (bios, cartucho, disco, sub-ROM, FM-PAC) pela regra padrao. Depois
     // de editado pelo menu, vale o `layout` e os campos acima sao ignorados.
@@ -164,7 +176,8 @@ public:
     // MSX2 e MSX2+ (V9938/V9958): o que a janela e o mapa de memoria tratam como 'MSX2'.
     bool is_msx2() const { return model_ != Model::MSX1; }
     // Mapper de RAM e relogio (so' no MSX2; nullptr no MSX1).
-    memmap::RamMapperDevice *mapper() { return mapper_.get(); }
+    // Primeiro mapper do layout (nullptr sem mapper). Ha' um por celula Mapper.
+    memmap::RamMapperDevice *mapper() { return mappers_.empty() ? nullptr : mappers_.front().get(); }
     rtc::RtcDevice *rtc() { return rtc_.get(); }
 
     // Joystick das portas A (0) e B (1): mascara de PSG_JOY_* (1 = pressionado).
@@ -173,11 +186,14 @@ public:
     // Interface de disquete: true se o DISK.ROM esta no slot 3:1. Inserir/ejetar
     // disco em A: (0) / B: (1) a qualquer momento; as escritas do MSX vao
     // direto para o arquivo da imagem.
-    bool has_disk_interface() const { return fdc_ != nullptr; }
+    bool has_disk_interface() const { return fdc_ != nullptr || port_fdc_ != nullptr; }
     bool InsertDisk(int drive, const std::string &path, std::string &error);
     void EjectDisk(int drive);
     const fdc::DiskImage &disk(int drive) const { return disks_[drive & 1]; }
     fdc::FdcDevice *fdc() { return fdc_.get(); }
+    fdc::PortFdcDevice *port_fdc() { return port_fdc_.get(); }
+    fdc::DiskFormat disk_format() const { return disk_format_; }
+    bool disk_access_is_port() const { return port_fdc_ != nullptr; }
 
     // Resumo do cartucho carregado ("" se nao ha'): tamanho e mapper.
     const std::string &cart_info() const { return cart_info_; }
@@ -221,9 +237,14 @@ private:
     std::vector<SramTarget> sram_targets_;
     std::string empty_path_;
     Model model_ = Model::MSX1;
-    std::unique_ptr<memmap::RamMapperDevice> mapper_;
+    // Um mapper por celula Mapper do layout; as portas FCh-FFh chegam a todos (como o hardware).
+    std::vector<std::unique_ptr<memmap::RamMapperDevice>> mappers_;
+    std::unique_ptr<z80::IBus> mapper_ports_;
     std::unique_ptr<rtc::RtcDevice> rtc_;
     std::unique_ptr<fdc::FdcDevice> fdc_;
+    std::unique_ptr<fdc::PortFdcDevice> port_fdc_;
+    ::Fdc *fdc_engine_ = nullptr;  // o WD2793 em uso (por memoria ou por portas)
+    fdc::DiskFormat disk_format_ = fdc::DiskFormat::Auto;
     std::unique_ptr<scc::SccDevice> scc_;
     std::unique_ptr<fm::FmDevice> fm_;
     fdc::DiskImage disks_[2];

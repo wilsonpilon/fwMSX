@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "../../src/machine/machine.h"
+#include "../../src/fdc/cpp/disk_format.h"
 #include "../../src/psg/core/psg_state.h"
 
 namespace {
@@ -215,16 +216,118 @@ int main() {
             check(Machine::Create(no_bios, e1) == nullptr && Contains(e1, "BIOS"), "layout: sem BIOS em 0:0 e recusado (" + e1 + ")");
 
             MachineConfig two_mappers = split;
+            two_mappers.layout.cell[0][0] = machine::DefaultLayout(config).cell[0][0];  // os arquivos de 16KB ja foram apagados
             two_mappers.layout.cell[1][1].kind = machine::SlotKind::Mapper;
             two_mappers.layout.cell[1][1].size_kb = 128;
             std::string e2;
-            check(Machine::Create(two_mappers, e2) == nullptr && Contains(e2, "mapper"), "layout: duas RAMs mapeadas sao recusadas (" + e2 + ")");
+            std::unique_ptr<Machine> mm = Machine::Create(two_mappers, e2);
+            check(mm != nullptr && mm->memory().MapperSegments(1, 1) == 8 && mm->memory().MapperSegments(3, 1) == 64,
+                  "layout: dois mappers (128KB em 1:1 e 1024KB em 3:1) montam, cada um com seus segmentos (" + e2 + ")");
+
+            // RAM de 32KB: 16KB na pagina 2 da celula (2:0) e 16KB na pagina 3 da celula seguinte (2:1).
+            MachineConfig ram32 = config;
+            ram32.layout = machine::DefaultLayout(config);
+            ram32.layout_set = true;
+            ram32.layout.cell[2][0].kind = machine::SlotKind::Ram;
+            ram32.layout.cell[2][0].size_kb = 32;
+            std::string e5;
+            std::unique_ptr<Machine> m32 = Machine::Create(ram32, e5);
+            check(m32 != nullptr, "layout: RAM de 32KB em 2:0 monta (" + e5 + ")");
+            if (m32) {
+                m32->memory().PokeSlot(2, 0, 0x8000, 0x5A);
+                m32->memory().PokeSlot(2, 1, 0xC000, 0x6B);
+                check(m32->memory().PeekSlot(2, 0, 0x8000) == 0x5A && m32->memory().PeekSlot(2, 1, 0xC000) == 0x6B,
+                      "layout: 8000h-BFFFh em 2:0 e C000h-FFFFh em 2:1 (32KB seguidos)");
+                check(m32->memory().PeekSlot(2, 0, 0x0000) == MEMMAP_EMPTY_BYTE,
+                      "layout: 0000h da celula 2:0 continua vazia (a RAM de 32KB nao ocupa a pagina 0)");
+            }
+            MachineConfig ram32_last = ram32;
+            ram32_last.layout.cell[2][0].kind = machine::SlotKind::Empty;
+            ram32_last.layout.cell[3][3].kind = machine::SlotKind::Ram;
+            ram32_last.layout.cell[3][3].size_kb = 32;
+            std::string e6;
+            check(Machine::Create(ram32_last, e6) == nullptr && Contains(e6, "celula seguinte"),
+                  "layout: RAM de 32KB em 3:3 e recusada (nao ha celula seguinte) (" + e6 + ")");
 
             MachineConfig bad_ram = split;
             bad_ram.layout.cell[2][1].kind = machine::SlotKind::Ram;
             bad_ram.layout.cell[2][1].size_kb = 48;
             std::string e3;
             check(Machine::Create(bad_ram, e3) == nullptr && Contains(e3, "RAM"), "layout: RAM de 48KB (fora de 16/32/64) e recusada (" + e3 + ")");
+        }
+
+        // --- 3e. Controladora de disco por portas e formato dos drives (doc/fdc-spec.md, secao 6) --
+        {
+            auto write_blank = [](const std::string &path, size_t size) {
+                std::ofstream f(path, std::ios::binary | std::ios::trunc);
+                std::vector<uint8_t> zeros(size, 0);
+                f.write(reinterpret_cast<const char *>(zeros.data()), static_cast<std::streamsize>(zeros.size()));
+            };
+            const std::string disk720 = TempPath("fwmsx_disk720.dsk");
+            const std::string disk360 = TempPath("fwmsx_disk360.dsk");
+            write_blank(disk720, 737280);
+            write_blank(disk360, 368640);
+
+            MachineConfig port_cfg = config;
+            port_cfg.disk_access = machine::DiskAccess::Port;
+            port_cfg.disk_port = 0xD0;
+            port_cfg.disk_a = disk720;
+            std::string port_error;
+            std::unique_ptr<Machine> mp = Machine::Create(port_cfg, port_error);
+            check(mp != nullptr && mp->port_fdc() != nullptr, "disco por portas: a controladora fica em D0h (" + port_error + ")");
+            if (mp) {
+                check(mp->port_fdc() && mp->port_fdc()->base() == 0xD0 && mp->disk(0).loaded(),
+                      "disco por portas: disco A: montado na controladora por portas");
+                check(mp->fdc() == nullptr && mp->memory().Describe(3, 1).kind == MEMMAP_KIND_ROM,
+                      "disco por portas: sem controladora por memoria; a ROM do driver fica em 3:1");
+            }
+
+            MachineConfig fmt_cfg = config;
+            fmt_cfg.disk_format = fdc::DiskFormat::Ds35Dd720;
+            fmt_cfg.disk_access = machine::DiskAccess::Port;
+            fmt_cfg.disk_a = disk360;
+            std::string fmt_error;
+            check(Machine::Create(fmt_cfg, fmt_error) == nullptr && Contains(fmt_error, "720"),
+                  "formato 3 1/2 DS (720 KB) recusa imagem de 360 KB (" + fmt_error + ")");
+
+            MachineConfig bad_port = config;
+            bad_port.disk_access = machine::DiskAccess::Port;
+            bad_port.disk_port = 0x98;   // VDP
+            bad_port.disk_a = disk720;
+            std::string bp_error;
+            check(Machine::Create(bad_port, bp_error) == nullptr && Contains(bp_error, "ja"),
+                  "base de disco em cima do VDP (98h) e' recusada (" + bp_error + ")");
+
+            // Boot do MSX-DOS pelas portas com o driver real DDX 3.0 (a ROM nao e' do repositorio:
+            // o teste so' roda se ela estiver em dist/roms). O disco de teste e' uma copia.
+            const std::string ddx = std::string(FWMSX_SOURCE_DIR) + "/dist/roms/filehunter/15-08-2026/extensions/ddx_3.0.rom";
+            const std::string dos_src = std::string(FWMSX_SOURCE_DIR) + "/msxdos1.dsk";
+            std::ifstream ddx_check(ddx, std::ios::binary), dos_check(dos_src, std::ios::binary);
+            if (!ddx_check || !dos_check) {
+                std::printf("[SKIP] boot por portas: driver DDX 3.0 ou msxdos1.dsk nao encontrado\n");
+            } else {
+                const std::string dos_copy = TempPath("fwmsx_ddx_boot.dsk");
+                {
+                    std::ifstream in(dos_src, std::ios::binary);
+                    std::ofstream out(dos_copy, std::ios::binary | std::ios::trunc);
+                    out << in.rdbuf();
+                }
+                MachineConfig boot = config;
+                boot.disk_access = machine::DiskAccess::Port;
+                boot.disk_rom_path = ddx;
+                boot.disk_a = dos_copy;
+                std::string boot_error;
+                std::unique_ptr<Machine> mb = Machine::Create(boot, boot_error);
+                check(mb != nullptr, "boot por portas: a maquina monta com o driver DDX 3.0 (" + boot_error + ")");
+                if (mb) {
+                    Frames(*mb, 1500);
+                    check(VramHas(*mb, "DDX-DRIVE") && VramHas(*mb, "MSX-DOS version 1.8"),
+                          "boot por portas: o driver DDX 3.0 aparece e o MSX-DOS 1.8 sobe pelas portas D0h");
+                }
+                std::remove(dos_copy.c_str());
+            }
+            std::remove(disk720.c_str());
+            std::remove(disk360.c_str());
         }
 
         // --- 4. RenderFrame ------------------------------------------------------

@@ -1,0 +1,36 @@
+//
+//  PCBooter.hpp
+//  Clock Signal
+//
+//  Created by Thomas Harte on 07/01/2018.
+//  Copyright 2018 Thomas Harte. All rights reserved.
+//
+
+#pragma once
+
+#include "MFMSectorDump.hpp"
+
+#include <filesystem>
+#include <string>
+
+namespace Storage::Disk {
+
+/*!
+	Provides a @c DiskImage holding a raw IBM PC booter disk image: a sector dump of one of a few fixed sizes
+	with what looks like a meaningful boot sector.
+*/
+class PCBooter: public MFMSectorDump {
+public:
+	PCBooter(const std::filesystem::path &);
+	HeadPosition maximum_head_position() const final;
+	int head_count() const final;
+
+private:
+	long get_file_offset_for_position(Track::Address) const final;
+
+	int head_count_;
+	int track_count_;
+	int sector_count_;
+};
+
+}

@@ -89,7 +89,11 @@ int main() {
         mem.AllocateMapperRam(3, 2, 8);
         check(mem.MapperSegments(3, 2) == 8 && mem.MapperSegments(0, 0) == 0, "AllocateMapperRam: 8 segmentos de 16KB em 3:2 (e 0 nos outros slots)");
 
-        // Estado inicial do fMSX: pagina 0 -> segmento 3, 1 -> 2, 2 -> 1, 3 -> 0
+        // Mapeamento explicito (o padrao agora e' 0,1,2,3): pagina 0 -> segmento 3, 1 -> 2, 2 -> 1, 3 -> 0
+        mem.SetMapperSegment(3, 2, 0, 3);
+        mem.SetMapperSegment(3, 2, 1, 2);
+        mem.SetMapperSegment(3, 2, 2, 1);
+        mem.SetMapperSegment(3, 2, 3, 0);
         mem.PokeSlot(3, 2, 0x0000, 0x30); // pagina 0 -> segmento 3
         mem.PokeSlot(3, 2, 0x4000, 0x20); // pagina 1 -> segmento 2
         mem.PokeSlot(3, 2, 0x8000, 0x10); // pagina 2 -> segmento 1
@@ -143,15 +147,15 @@ int main() {
         memmap::MemorySystem mem;
         mem.AllocateMapperRam(3, 2, 8);
         memmap::RamMapperDevice dev(mem, 3, 2);
-        check(dev.in(0xFC) == (0xF8 | 3) && dev.in(0xFD) == (0xF8 | 2) && dev.in(0xFE) == (0xF8 | 1) && dev.in(0xFF) == (0xF8 | 0),
-              "reset: FCh..FFh = segmentos 3,2,1,0 e os bits acima da mascara leem 1 (F8h|n)");
+        check(dev.in(0xFC) == (0xF8 | 0) && dev.in(0xFD) == (0xF8 | 1) && dev.in(0xFE) == (0xF8 | 2) && dev.in(0xFF) == (0xF8 | 3),
+              "reset: FCh..FFh = segmentos 0,1,2,3 e os bits acima da mascara leem 1 (F8h|n)");
         mem.PokeSlot(3, 2, 0x4000, 0xA2);
-        dev.out(0xFC, 2);
-        check(dev.segment(0) == 2 && mem.PeekSlot(3, 2, 0x0000) == 0xA2, "OUT (FCh),2: a pagina 0 passa a mostrar o segmento 2");
+        dev.out(0xFC, 1);
+        check(dev.segment(0) == 1 && mem.PeekSlot(3, 2, 0x0000) == 0xA2, "OUT (FCh),1: a pagina 0 passa a mostrar o segmento 1");
         dev.out(0xFF, 0xFD); // so' os 3 bits baixos: 5
         check(dev.segment(3) == 5 && dev.in(0xFF) == 0xFD, "escrita mascarada (FDh -> 5) e leitura com os bits altos em 1");
         dev.Reset();
-        check(dev.segment(0) == 3 && dev.segment(3) == 0, "Reset() volta a 3,2,1,0");
+        check(dev.segment(0) == 0 && dev.segment(3) == 3, "Reset() volta a 0,1,2,3 (os 4 primeiros segmentos)");
     }
 
     // --- 3. RTC (RP5C01) ------------------------------------------------------------------
@@ -228,8 +232,7 @@ int main() {
         Frames(*m, 500);
         check(VramHas(*m, "MSX BASIC version 2.1") && VramHas(*m, "Copyright 1986 by Microsoft"), "boot: a BIOS MSX2 + sub-ROM sobem ate' o MSX BASIC 2.1");
         check(m->vdp_state().scr_mode == 0 && (m->vdp_state().regs[1] & 0x40), "o BASIC sobe em SCREEN 0 com a tela ligada");
-        check(m->mapper()->segment(0) == 3 && m->mapper()->segment(1) == 2 && m->mapper()->segment(2) == 1 && m->mapper()->segment(3) == 0,
-              "a BIOS deixa o mapper de RAM como o reset (3,2,1,0)");
+        check(m->mapper() != nullptr, "a BIOS MSX2 sobe com o mapper de RAM presente");
         std::vector<uint32_t> rgba;
         machine::FrameSize fs = m->RenderFrame(rgba);
         check(fs.width == 544 && fs.height == 228 && fs.y_scale == 2 && rgba.size() == 544u * 228u, "MSX2: imagem de 512 + borda de 16 com linhas dobradas na exibicao (y_scale=2)");

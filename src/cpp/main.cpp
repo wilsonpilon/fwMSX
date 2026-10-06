@@ -39,6 +39,7 @@
 // subslots) em vez da RAM plana -- ver doc/memory-map-spec.md, Fase 1.
 //
 
+#include "romdb/cli.h"
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
@@ -86,6 +87,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--msx") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return machine::RunMachineCommand(tokens, argv[0]);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--romdb") {
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return romdb::RunRomDbCommand(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);

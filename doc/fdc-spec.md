@@ -112,3 +112,54 @@ por `FdcDisk`. O endereco de um setor e' `((trilha x lados + lado) x setores/tri
   DiskROM/FDC rodam em tempo de emulacao, sem aceleracao de acesso a disco.
 - Lode Runner + Konami SCC (ROM que espera disco) **nao foi retestado** com a
   interface ligada.
+
+## 6. Controladora por memoria ou por portas, e formatos de disco (nao lancado)
+
+Referencias de estudo: o openMSX tem duas controladoras por porta, a **DDX 3.0** (Digital Design)
+e a **Microsol CDX-2**, ambas com a mesma convencao (`src/fdc/MicrosolFDC.cc`, por Ricardo Bittencourt).
+A ROM do driver (`ddx_3.0.rom`, `cdx-2.rom`) fica em 4000h-7FFFh do slot, como o DISK.ROM, e chama
+as portas. Os SHA-1 dos arquivos que temos batem com os do openMSX.
+
+**Acesso.** Menu **Maquina > Configuracao de disco...**, ou `--disk-acesso mem|porta`,
+`--disk-porta`, `--diskrom <driver>`:
+
+- **Pela memoria** (padrao): DISK.ROM no slot 3:1; o WD2793 aparece em 7FF8h-7FFFh.
+- **Pelas portas**: a ROM do driver (DDX 3.0 ou CDX-2) no slot da celula Disco, e o WD2793 nas
+  portas `base` a `base+4` (padrao D0h). Sem controladora por memoria.
+
+**Mapa de portas (modo por portas, como o MicrosolFDC):**
+
+| Porta | Leitura | Escrita |
+|---|---|---|
+| base+0 | status | comando |
+| base+1 | trilha | trilha |
+| base+2 | setor | setor |
+| base+3 | dados | dados |
+| base+4 | bit 7 = IRQ; bit 6 = DRQ (**0 quando ha' dado pedido**) | controle: bit 0 = drive A; bit 1 = drive B; bit 4 = lado (1 = lado 1); bit 5 = motor; bit 6 = espera; bit 7 = densidade |
+
+Bits 5 a 7 do controle (motor, espera e densidade) sao aceitos e nao modelados: o formato e' o do drive.
+Portas base+5 a base+7 nao respondem (FFh).
+
+**Verificado:** o MSX-DOS 1.8 sobe com o DDX 3.0 e com o CDX-2 pelas portas D0h, mostra o banner
+da interface, lista o diretorio (`dir`) e grava (`copy`). O teste automatico (`machinetest`, secao 3e)
+faz o boot com o DDX 3.0 quando a ROM esta em `dist/roms`.
+
+**Formatos (`src/fdc/cpp/disk_format.h`).** O drive e' escolhido por tipo, faces e densidade:
+
+| Tipo | Faces | Densidade | Formato |
+|---|---|---|---|
+| 5 1/4 | simples | simples (FM) | 180 KB (40 trilhas x 1 lado x 9 setores) |
+| 5 1/4 | dupla | dupla (MFM) | 360 KB (40 x 2 x 9) |
+| 3 1/2 | simples | dupla (MFM) | 360 KB (80 x 1 x 9) |
+| 3 1/2 | dupla | dupla (MFM) | 720 KB (80 x 2 x 9) |
+
+"Automatico" (padrao) aceita os tres tamanhos. Um formato escolhido recusa imagens de outro
+tamanho, com a razao na tela. Um 360 KB de 3 1/2 e' lido com 80 trilhas de 1 lado.
+
+**Testes:** `fdctest` (formatos e escolhas; porta e memoria lendo o mesmo setor byte a byte; lado,
+drive e motor pelo `base+4`), `machinetest` (secao 3e: controladora por portas, formato recusando
+imagem errada, conflito de porta, e o boot do MSX-DOS com o DDX 3.0).
+
+**Ainda falta:** modelar FM/MFM; formatar disquetes (so' le e grava setores de imagens existentes);
+drives A e B com formatos diferentes (hoje usam o mesmo); o driver do openMSX para a controladora
+de porta fica como referencia, sem codigo copiado.
