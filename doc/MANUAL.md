@@ -381,10 +381,15 @@ janela abre.
 - **Video**: interpolacao, scanlines e filtros de cor (Monochrome, Sepia, Green CRT, Amber CRT, CMY e RGB Raster).
 - **Som**: mudo e volume.
 - **Disco**: inserir e ejetar A: e B:.
-- **Fita**: inserir, ejetar e rebobinar a fita (`.cas`, `.tsx` ou `.tzx`); trocar entre carregamento
-  **rapido** (sem som) e **normal** (pulsos de verdade, com o barulho do gravador); mostrar a janela
-  visual "Fita K7" (rolos girando enquanto o motor esta' ligado, barra de progresso, arquivos
-  encontrados). Trocar de fita ou de modo NAO reinicia a maquina. Ver `doc/tape-spec.md`.
+- **Fita**: inserir ou criar uma **fita nova (.tsx)**, ejetar e rebobinar; trocar entre carregamento
+  **rapido** (sem som) e **normal** (pulsos de verdade, com o barulho do gravador); **destravar/travar
+  contra gravacao** (uma fita de arquivo entra sempre travada; uma fita nova entra destravada) e
+  escolher o **modo de gravacao** (incluir no final da fita, sobrescrever o ponto marcado, ou nova
+  fita); mostrar a janela visual "Fita K7" (rolos girando enquanto o motor esta' ligado, contagiros,
+  barra de progresso, lista de arquivos -- clicar num arquivo marca o ponto de carga/gravacao, clicar
+  de novo desmarca). `CSAVE`/`BSAVE "CAS:"` gravam na fita destravada, pelo modo escolhido; a gravacao
+  e' salva no arquivo imediatamente. Trocar de fita ou de modo NAO reinicia a maquina. Ver
+  `doc/tape-spec.md`.
 - **Cartucho**: inserir ou retirar o cartucho do slot 1:0; ligar ou desligar o **FM-PAC** (slot 2:0).
 - **Configuracoes > Interface**: tema escuro ou claro, tamanho da letra e moldura da tela.
 

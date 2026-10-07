@@ -141,6 +141,40 @@ std::optional<std::string> ShowSaveDskDialog(GLFWwindow *window, const std::stri
     return std::nullopt;
 }
 
+std::optional<std::string> ShowSaveFileDialog(GLFWwindow *window, const std::string &title,
+                                              const std::string &filter_name, const std::string &patterns,
+                                              const std::string &default_ext, const std::string &initial_path) {
+    CwdGuard guard;
+
+    wchar_t file_buf[MAX_PATH] = L"";
+    const std::wstring initial_wide = Utf8ToWide(initial_path);
+    if (!initial_wide.empty()) {
+        const size_t copy_len = std::min(initial_wide.size(), static_cast<size_t>(MAX_PATH - 1));
+        std::copy_n(initial_wide.begin(), copy_len, file_buf);
+        file_buf[copy_len] = L'\0';
+    }
+    const std::wstring filter = Utf8ToWide(filter_name + " (" + patterns + ")") + std::wstring(1, L'\0') +
+                                Utf8ToWide(patterns) + std::wstring(1, L'\0') +
+                                L"Todos os arquivos (*.*)" + std::wstring(1, L'\0') + L"*.*" + std::wstring(1, L'\0');
+    const std::wstring title_wide = Utf8ToWide(title);
+    const std::wstring ext_wide = Utf8ToWide(default_ext);
+
+    OPENFILENAMEW ofn{};
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = (window != nullptr) ? glfwGetWin32Window(window) : nullptr;
+    ofn.lpstrFilter = filter.c_str();
+    ofn.lpstrFile = file_buf;
+    ofn.nMaxFile = MAX_PATH;
+    ofn.lpstrTitle = title_wide.c_str();
+    ofn.lpstrDefExt = ext_wide.c_str();
+    ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
+
+    if (GetSaveFileNameW(&ofn)) {
+        return WideToUtf8(file_buf);
+    }
+    return std::nullopt;
+}
+
 } // namespace msxdisk::gui
 
 #else // !_WIN32
@@ -152,6 +186,11 @@ std::optional<std::string> ShowOpenDskDialog(GLFWwindow *) { return std::nullopt
 std::optional<std::string> ShowSaveDskDialog(GLFWwindow *, const std::string &) { return std::nullopt; }
 
 std::optional<std::string> ShowOpenFileDialog(GLFWwindow *, const std::string &, const std::string &, const std::string &) {
+    return std::nullopt;
+}
+
+std::optional<std::string> ShowSaveFileDialog(GLFWwindow *, const std::string &, const std::string &, const std::string &,
+                                              const std::string &, const std::string &) {
     return std::nullopt;
 }
 

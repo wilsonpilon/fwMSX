@@ -306,6 +306,164 @@ int main() {
         check((psg_read_data(&psg) & 0x80) == 0, "PSG R14: bit 7 reflete o nivel da fita (0)");
     }
 
+    // --- 7. Gravacao (TAPOON/TAPOUT/TAPOOF), fita nova, proteção e modos ----
+    {
+        memmap::MemorySystem mem;
+        std::vector<uint8_t> bios(0x4000, 0);
+        std::string load_error;
+        check(mem.LoadRom(0, 0, bios.data(), bios.size(), &load_error), "ROM de teste carregada em 0:0 p/ gravacao (" + load_error + ")");
+        mem.AllocateRamTop(1, 0, 0x4000);
+        memmap_switch_primary(&mem.state(), 0x40);
+        mem.PokeSlot(1, 0, 0xC000, 0x76);
+
+        memmap::SlotMemoryBus bus(mem);
+        tape::TapeEngine engine(mem);
+        bus.AttachTapeHook(&engine);
+        engine.SetMode(tape::TapeMode::Fast);
+
+        z80::Z80Cpu cpu(bus);
+        cpu.reset();
+
+        auto call_vector = [&](uint16_t addr, int a_reg = -1) {
+            if (a_reg >= 0) cpu.set_af(static_cast<uint16_t>((a_reg << 8) | (cpu.af() & 0x00FF)));
+            cpu.set_sp(0xFFFC);
+            mem.PokeSlot(1, 0, 0xFFFC, 0x00);
+            mem.PokeSlot(1, 0, 0xFFFD, 0xC0);
+            cpu.set_pc(addr);
+            cpu.run(40);
+        };
+
+        std::string tape_error;
+
+        // --- fita nova, destravada, e um round-trip simples -----------------
+        const std::string blank_path = TempPath("fwmsx_tape_test_new.tsx");
+        check(engine.NewBlank(blank_path, tape_error), "fita nova criada (" + tape_error + ")");
+        check(engine.inserted() && !engine.read_only(), "fita nova: inserida e destravada");
+        check(engine.files().empty(), "fita nova: sem arquivos");
+
+        call_vector(0x00EA); // TAPOON
+        check((cpu.af() & Z80_C_FLAG) == 0, "TAPOON (fita nova): sucesso");
+        const uint8_t written[5] = {0x11, 0x22, 0x33, 0x44, 0x55};
+        bool out_ok = true;
+        for (uint8_t b : written) {
+            call_vector(0x00ED, b); // TAPOUT
+            if (cpu.af() & Z80_C_FLAG) out_ok = false;
+        }
+        check(out_ok, "TAPOUT: os 5 bytes escritos com sucesso");
+        call_vector(0x00F0); // TAPOOF
+        check((cpu.af() & Z80_C_FLAG) == 0, "TAPOOF: sucesso");
+
+        engine.Rewind();
+        call_vector(0x00E1); // TAPION
+        check((cpu.af() & Z80_C_FLAG) == 0, "TAPION depois de gravar: acha o cabecalho escrito");
+        bool all_match = true;
+        for (uint8_t expect : written) {
+            call_vector(0x00E4);
+            if (((cpu.af() >> 8) & 0xFF) != expect) all_match = false;
+        }
+        check(all_match, "TAPIN depois de gravar: le os mesmos 5 bytes escritos (round-trip)");
+
+        tape::TapeImage reread;
+        std::string reread_error;
+        check(tape::LoadTzxImage(blank_path, reread, reread_error), "o .tsx gravado no disco e' valido (" + reread_error + ")");
+        check(reread.fast_bytes.size() >= tape::kCasHeader.size() + 5 &&
+                  std::equal(written, written + 5, reread.fast_bytes.end() - 5),
+              "o .tsx no disco tem os 5 bytes gravados (persistencia)");
+
+        // --- protecao contra gravacao (fita de arquivo comeca travada) -----
+        const std::string ro_path = TempPath("fwmsx_tape_test_ro.cas");
+        {
+            std::ifstream in(cas_path, std::ios::binary);
+            std::ofstream out(ro_path, std::ios::binary);
+            out << in.rdbuf();
+        }
+        check(engine.Insert(ro_path, tape_error), "fita de arquivo inserida (copia dedicada, " + tape_error + ")");
+        check(engine.read_only(), "fita de arquivo: comeca travada (so' leitura)");
+        call_vector(0x00EA);
+        check((cpu.af() & Z80_C_FLAG) != 0, "TAPOON com a fita travada: falha (carry ligado)");
+        engine.SetReadOnly(false);
+        call_vector(0x00EA);
+        check((cpu.af() & Z80_C_FLAG) == 0, "TAPOON depois de destravar: sucesso");
+        call_vector(0x00F0);
+
+        // --- modo "nova fita" (ao gravar, limpa tudo) -----------------------
+        engine.SetWriteMode(tape::TapeWriteMode::NewTape);
+        call_vector(0x00EA);
+        call_vector(0x00ED, 0x7A);
+        call_vector(0x00F0);
+        tape::TapeImage reread_new;
+        check(tape::LoadCasImage(ro_path, reread_new, reread_error), "modo NewTape: o arquivo persistido abre (" + reread_error + ")");
+        check(reread_new.fast_bytes.size() == tape::kCasHeader.size() + 1 && reread_new.fast_bytes.back() == 0x7A,
+              "modo NewTape: so' sobra o que foi gravado agora (o resto foi apagado)");
+
+        // --- modo "incluir no final" (o padrao) -----------------------------
+        engine.SetWriteMode(tape::TapeWriteMode::AppendAtEnd);
+        const std::size_t size_before_append = reread_new.fast_bytes.size();
+        call_vector(0x00EA);
+        call_vector(0x00ED, 0x7B);
+        call_vector(0x00F0);
+        tape::TapeImage reread_append;
+        check(tape::LoadCasImage(ro_path, reread_append, reread_error), "modo AppendAtEnd: o arquivo persistido abre");
+        check(reread_append.fast_bytes.size() > size_before_append && reread_append.fast_bytes.back() == 0x7B,
+              "modo AppendAtEnd: o que ja' existia continua, o novo byte vai depois");
+
+        // --- marcar um arquivo (SeekToFile) e sobrescrever a partir dali ----
+        check(!engine.SeekToFile(999), "SeekToFile com indice invalido devolve false");
+        std::vector<uint8_t> two_files;
+        two_files.insert(two_files.end(), tape::kCasHeader.begin(), tape::kCasHeader.end());
+        two_files.insert(two_files.end(), 10, tape::kCasIdBasic);
+        two_files.insert(two_files.end(), {'A', ' ', ' ', ' ', ' ', ' '});
+        two_files.insert(two_files.end(), tape::kCasHeader.begin(), tape::kCasHeader.end());
+        two_files.insert(two_files.end(), {0x01, 0x02});
+        two_files.insert(two_files.end(), tape::kCasHeader.begin(), tape::kCasHeader.end());
+        two_files.insert(two_files.end(), 10, tape::kCasIdBasic);
+        two_files.insert(two_files.end(), {'B', ' ', ' ', ' ', ' ', ' '});
+        two_files.insert(two_files.end(), tape::kCasHeader.begin(), tape::kCasHeader.end());
+        two_files.insert(two_files.end(), {0x03, 0x04, 0x05});
+        const std::string two_files_path = TempPath("fwmsx_tape_test_two.cas");
+        WriteFile(two_files_path, two_files);
+
+        check(engine.Insert(two_files_path, tape_error), "fita com 2 arquivos inserida");
+        check(engine.files().size() == 2, "fita com 2 arquivos: os 2 foram achados");
+        engine.SetReadOnly(false);
+        check(engine.SeekToFile(1), "marca o 2o arquivo (indice 1, 'B')");
+        check(engine.marked_file() == 1, "marked_file() reflete a marcacao");
+
+        engine.SetWriteMode(tape::TapeWriteMode::OverwriteAtPoint);
+        call_vector(0x00EA);
+        check((cpu.af() & Z80_C_FLAG) == 0, "TAPOON (sobrescrever o ponto): sucesso");
+        // Escreve um cabecalho de arquivo completo (16 bytes: 10x ID + 6 de
+        // nome) no lugar de 'B', para ScanCasFiles() reconhecer o resultado
+        // como um arquivo novo ('C') -- so' o ultimo byte (0xFF) nao seria
+        // reconhecido como arquivo nenhum, so' como lixo no fim da fita.
+        for (uint8_t b : {tape::kCasIdAscii, tape::kCasIdAscii, tape::kCasIdAscii, tape::kCasIdAscii, tape::kCasIdAscii,
+                           tape::kCasIdAscii, tape::kCasIdAscii, tape::kCasIdAscii, tape::kCasIdAscii, tape::kCasIdAscii,
+                           uint8_t('C'), uint8_t(' '), uint8_t(' '), uint8_t(' '), uint8_t(' '), uint8_t(' ')}) {
+            call_vector(0x00ED, b);
+        }
+        call_vector(0x00F0);
+        tape::TapeImage reread_overwrite;
+        check(tape::LoadCasImage(two_files_path, reread_overwrite, reread_error), "modo OverwriteAtPoint: o arquivo persistido abre");
+        check(reread_overwrite.files.size() == 2, "modo OverwriteAtPoint: 'A' continua, e 'C' aparece no lugar de 'B'");
+        if (reread_overwrite.files.size() == 2) {
+            check(reread_overwrite.files[0].name == "A", "o 1o arquivo ('A') nao foi tocado");
+            check(reread_overwrite.files[1].name == "C" && reread_overwrite.files[1].type == tape::TapeFileType::Ascii,
+                  "o 2o arquivo agora e' 'C' (ASCII), no lugar de 'B'");
+        }
+
+        // --- contagiros (odometro) ------------------------------------------
+        engine.SetMode(tape::TapeMode::Normal);
+        engine.Rewind();
+        check(engine.odometer() == 0, "contagiros comeca em 0 apos rebobinar");
+        engine.SetMotor(true);
+        // O contagiros e' so' ~15 "giros" por segundo de fita (ver
+        // TapeEngine::odometer()): avanca o equivalente a ~1s de CPU para
+        // garantir uma leitura > 0 (100 pulsos de piloto, por exemplo, so'
+        // seriam ~0.05s -- pouco demais para arredondar acima de zero).
+        engine.Advance(3579545);
+        check(engine.odometer() > 0, "contagiros avanca conforme a fita roda");
+    }
+
     if (g_failures == 0) {
         std::printf("\nTodos os testes de fita passaram.\n");
         return 0;

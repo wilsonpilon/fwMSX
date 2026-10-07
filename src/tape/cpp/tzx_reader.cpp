@@ -131,6 +131,8 @@ bool LoadTzxImage(const std::string &path, TapeImage &out, std::string &error) {
             out.skipped_blocks.push_back(what);
     };
 
+    std::vector<std::pair<std::size_t, std::size_t>> marks; // (posicao em fast_bytes, indice em pulses) por bloco #4B
+
     Cursor cur(file.data(), file.size());
     cur.skip(10); // cabecalho (assinatura + versao)
 
@@ -291,6 +293,7 @@ bool LoadTzxImage(const std::string &path, TapeImage &out, std::string &error) {
             cfg.zero_len = zero;
             cfg.one_len = one;
 
+            const std::size_t pulse_mark = out.pulses.size();
             for (uint16_t i = 0; i < pilot_count; ++i) out.pulses.push_back(pilot);
             for (uint32_t i = 0; i < n; ++i) kcs_emit_byte(&cfg, data[i], &SinkAppend, &out.pulses);
             EmitPauseMs(out.pulses, pause);
@@ -313,6 +316,7 @@ bool LoadTzxImage(const std::string &path, TapeImage &out, std::string &error) {
             if (out.fast_bytes.size() % kCasHeader.size()) {
                 out.fast_bytes.resize(out.fast_bytes.size() + (kCasHeader.size() - out.fast_bytes.size() % kCasHeader.size()), 0);
             }
+            marks.push_back({out.fast_bytes.size(), pulse_mark});
             out.fast_bytes.insert(out.fast_bytes.end(), kCasHeader.begin(), kCasHeader.end());
             out.fast_bytes.insert(out.fast_bytes.end(), data, data + n);
             break;
@@ -331,7 +335,7 @@ bool LoadTzxImage(const std::string &path, TapeImage &out, std::string &error) {
         return false;
     }
 
-    out.files = ScanCasFiles(out.fast_bytes);
+    out.files = ScanCasFiles(out.fast_bytes, marks);
     return true;
 }
 

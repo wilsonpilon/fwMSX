@@ -17,15 +17,19 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-07)
 
+- **Versao em preparo:** 1.20.0 "King's Valley: Gravacao em K7" -- codigo e docs prontos, build e
+  testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda estiver aqui.
 - **Ultima versao publicada em `main`:** 1.19.1 "Yie Ar Kung-Fu: Fita K7: Corrigindo o Carregamento".
   A 1.19.0 (fita, primeira versao) **nunca foi comitada** -- o usuario achou dois bugs reais ao testar
-  com um .TSX de verdade antes do commit, corrigidos direto na 1.19.1 (ver `doc/CHANGELOG.md`), e
-  depois **confirmou pelo ouvido/jogando**: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou um
-  pouco, som da fita nitido. **Proximo passo avisado pelo usuario: melhoria no sistema de fitas,
-  provavelmente uma 1.19.2** -- ainda sem detalhe do que e'; pedir ao usuario se nao estiver registrado
-  mais abaixo nesta secao quando esta sessao for retomada.
+  com um .TSX de verdade antes do commit, corrigidos direto na 1.19.1, e depois **confirmou pelo
+  ouvido/jogando**: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou um pouco, som da fita nitido.
+  Depois disso pediu uma **melhoria no sistema de fitas: gravacao (CSAVE/BSAVE), fita nova em branco,
+  protecao contra gravacao, janela com o conteudo navegavel/marcavel e um contagiros** -- isso e' a
+  1.20.0 (o usuario sugeriu "1.19.2 ou algo assim", mas pela politica do proprio projeto -- Y sobe a
+  cada feature nova -- isto e' uma MINOR, nao um patch; expliquei isso a ele).
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
-- **Testes:** `ctest` com **16 suites**, todas passando (inclui `tape_load`, novo, com 46 checagens).
+- **Testes:** `ctest` com **16 suites**, todas passando (`tape_load` com **68 checagens**, 22 novas de
+  gravacao/protecao/modos/marcacao/contagiros).
 - **Documentos vivos:** `doc/SPEC.md` (secao 5.0 = estado atual; 5.2 = fitas), `doc/CHANGELOG.md`,
   `doc/RELEASE.md`, `doc/MANUAL.md`, e os `*-spec.md` (inclui `doc/tape-spec.md`, novo).
 
@@ -43,14 +47,18 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   usuario em 2026-10-07**, assim como o menu ROMs, Banco de ROMs, Navegar file-hunter, Configuracao de
   disco e de slots.
 - Banco de ROMs (SQLite) com downloads do fMSX 6.0, do file-hunter e do Vampier, CRUD e busca.
-- **Fita** (.CAS e .TSX/.TZX): leitura completa (bloco #4B do TZX com pulsos e dados; os outros blocos
-  pulados com seguranca); carregamento rapido (gancho de BIOS, sem som) e normal (pulsos de verdade,
-  com som); menu "Fita" e janela visual "Fita K7". Ver `doc/tape-spec.md`. **Validado de ponta a ponta
-  pelo usuario em 2026-10-07** com um .TSX real (`resource/fmsxgo/media/*.tsx`, "A.M.C.", Dinamic
-  1990): inseriu pela janela, viu a "Fita K7", carregou o jogo completo (modo normal) e OUVIU o
-  barulho do carregamento ("bem nitido"), e jogou um pouco depois de carregar. Primeira feature deste
-  projeto validada por jogo completo, nao so' por tela de boot.
-- Pacotes publicados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (`main`).
+- **Fita, leitura/carregamento** (.CAS e .TSX/.TZX): leitura completa (bloco #4B do TZX com pulsos e
+  dados; os outros blocos pulados com seguranca); carregamento rapido (gancho de BIOS, sem som) e
+  normal (pulsos de verdade, com som). **Validado de ponta a ponta pelo usuario em 2026-10-07** com um
+  .TSX real (`resource/fmsxgo/media/*.tsx`, "A.M.C.", Dinamic 1990): inseriu pela janela, viu a "Fita
+  K7", carregou o jogo completo (modo normal) e OUVIU o barulho do carregamento ("bem nitido"), e jogou
+  um pouco depois de carregar. Primeira feature deste projeto validada por jogo completo.
+- **Fita, gravacao (1.20.0, 2026-10-07)**: `CSAVE`/`BSAVE "CAS:"` sempre pelo gancho de BIOS; fita nova
+  em branco (.tsx); protecao contra gravacao por padrao (fita de arquivo trava, fita nova nao); 3
+  modos de gravacao (incluir no final, sobrescrever o ponto marcado, nova fita); marcar um arquivo da
+  lista (janela "Fita K7", clicavel) como ponto de carga/gravacao; contagiros simulado. **So' validado
+  por `tapetest` (68 checagens) -- ninguem clicou nos novos itens de menu ainda.**
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -60,8 +68,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   lado com um gravador/MSX de verdade.
 - `CALL VOICECOPY` nao e' aceito pela ROM do fMSX; status/timers do OPLL nao emulados.
 - BIOS Expert: a tela sai com espacos entre as letras ("G r a d i e n t e"). Nao investigado.
-- Fita: sem escrita (CSAVE/BSAVE), sem banco de fitas nem download, sem navegar blocos de controle do
-  TZX (grupos/lacos/saltos) -- ver `doc/tape-spec.md`, secao 5.
+- Fita: sem banco de fitas nem download, sem navegar blocos de controle do TZX (grupos/lacos/saltos),
+  sem a ferramenta de linha de comando para empacotar .BIN/.BAS em .TSX sem o emulador -- ver
+  `doc/tape-spec.md`, secao 5. A sintese de pulsos do modo normal trata o preenchimento de alinhamento
+  (zeros antes de um cabecalho) como dado de verdade -- so' afeta a REPRODUCAO por pulsos de uma fita
+  GRAVADA por este emulador, o modo rapido nao sofre com isso.
 - Sem save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro.
 - Cores YJK do V9958 nao conferidas com hardware real.
 
@@ -156,15 +167,16 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 1. **[FEITO em 2026-10-07] Ver a janela "Fita K7" e ouvir o modo normal** -- o usuario confirmou:
    carregou o jogo completo (`A.M.C.`, Dinamic) pelo modo normal, ouviu o barulho do carregamento
    ("bem nitido") e jogou um pouco. Ver secao 2.
-2. **Melhoria no sistema de fitas pedida pelo usuario (2026-10-07), provavelmente 1.19.2** -- o
-   usuario avisou que o proximo passo e' uma melhoria no sistema de fitas, SEM detalhar ainda o que' e.
-   Se esta nota ainda estiver aqui sem mais detalhe quando a sessao for retomada, **perguntar ao
-   usuario o que ele tem em mente** antes de supor (pode ser qualquer um dos itens 3/5 abaixo, ou algo
-   novo que ele so' comentou de boca).
-3. **Fitas, o que falta** (`doc/SPEC.md`, secao 5.2): (c) escritor de TSX a partir de `.BIN`/`.BAS`;
-   (e) banco de fitas (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX
-   (WAV -> TSX, MIT); navegar os blocos de controle do TZX (grupos/lacos/saltos); saida de cassete
-   (CSAVE). Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT),
+2. **[FEITO em 2026-10-07, 1.20.0] Gravacao em fita** -- a melhoria que o usuario pediu: CSAVE/BSAVE,
+   fita nova, protecao, 3 modos de gravacao, marcar o ponto, contagiros. Ver secao 2 e
+   `doc/tape-spec.md`, secoes 6-7. **Validar na janela** (ninguem clicou nos itens novos do menu Fita
+   ainda -- nova fita, travar/destravar, os 3 modos, marcar/desmarcar na lista, o contagiros girando).
+3. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): ferramenta de linha de comando para
+   empacotar `.BIN`/`.BAS` em `.TSX` sem passar pelo emulador (resto do item c); (e) banco de fitas
+   (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT);
+   navegar os blocos de controle do TZX (grupos/lacos/saltos); corrigir a sintese de pulsos do modo
+   normal para nao tratar o preenchimento de alinhamento como dado de verdade (ver
+   `doc/tape-spec.md`, secao 5). Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT),
    `resource/openMSX_TSXadv/` (GPL, so' estudo).
 4. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
    mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
@@ -206,9 +218,21 @@ corrigida) foi comitada, taggeada e com push para `main` (commit `2fb6d23`). Dep
 foi encerrada com `main` em dia, sem nada pendente de commit (so' esta atualizacao final do
 `OUTLINE.md` registrando a confirmacao).
 
-**O usuario avisou que o proximo passo (quando a sessao for retomada) e' uma melhoria no sistema de
-fitas, possivelmente virando a 1.19.2** -- sem detalhar ainda o que' e'. Pergunte a ele qual melhoria
-tem em mente antes de supor.
+**Depois disso, o usuario pediu a melhoria no sistema de fitas**: gravacao (CSAVE/BSAVE "CAS:"), fita
+nova em branco (.tsx), protecao contra gravacao por padrao (fita de arquivo trava, fita nova nao),
+tres modos de gravacao (incluir no final/sobrescrever o ponto marcado/nova fita), marcar um arquivo da
+lista na janela "Fita K7" como ponto de carga/gravacao, e um contagiros simulado. Tudo implementado e
+testado (`tapetest`, 68 checagens, 16/16 no `ctest`) nesta mesma sessao, escrito como versao `1.20.0`
+(o usuario sugeriu "1.19.2 ou algo assim"; expliquei que a politica do projeto -- Y sobe a cada
+feature nova -- pede uma MINOR aqui, nao um patch). **Se o `git log` de `main` nao mostrar um commit
+de release da 1.20.0 ainda**, essa e' a proxima acao: `git add` dos arquivos certos (nao `git add -A`),
+commit com `Co-Authored-By`, `git tag 1.20.0`, `git branch v1.20.0`, `git push origin main 1.20.0 v1.20.0`.
+
+**A gravacao em si nunca foi clicada na janela por ninguem** -- so' validada por `tapetest` (um Z80 de
+verdade exercitando TAPOON/TAPOUT/TAPOOF via um script, nao a GUI). Primeira coisa a fazer quando a
+sessao for retomada: abrir o menu Fita, criar uma fita nova, travar/destravar, gravar um programinha de
+verdade (`CSAVE"TESTE"` ou similar) e recarregar, marcar/desmarcar um arquivo na lista, e ver o
+contagiros girando.
 
 **Licao para a proxima vez:** ao implementar um leitor de formato binario a partir so' da
 especificacao escrita (sem um arquivo real para testar), desconfiar de deslocamentos em hexadecimal

@@ -357,6 +357,7 @@ set(TAPE_LIB_SOURCES
         src/tape/asm/pulse_sum.asm
         src/tape/cpp/cas_reader.cpp
         src/tape/cpp/tzx_reader.cpp
+        src/tape/cpp/tsx_writer.cpp
         src/tape/cpp/tape_device.cpp
 )
 

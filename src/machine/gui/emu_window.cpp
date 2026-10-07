@@ -704,11 +704,22 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 // Ver doc/tape-spec.md: carregamento rapido (gancho de BIOS, sem
                 // som) ou normal (pulsos de verdade, com o barulho do gravador).
                 ImGui::Text("K7: %s", machine->tape().inserted() ? machine->tape().path().c_str() : "(vazia)");
+                if (machine->tape().inserted()) {
+                    ImGui::TextDisabled("%s", machine->tape().read_only() ? "Protegida contra gravacao" : "Destravada (pode gravar)");
+                }
                 if (ImGui::MenuItem("Inserir fita...")) {
                     if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Inserir fita", "Fitas MSX",
                                                                               "*.cas;*.tsx;*.tzx")) {
                         std::string tape_error;
                         if (!machine->InsertTape(*chosen, tape_error)) tape_message = tape_error;
+                        else tape_message.clear();
+                    }
+                }
+                if (ImGui::MenuItem("Nova fita (.tsx)...")) {
+                    if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Nova fita MSX", "Fitas TSX",
+                                                                             "*.tsx", "tsx", "")) {
+                        std::string tape_error;
+                        if (!machine->NewBlankTape(*chosen, tape_error)) tape_message = tape_error;
                         else tape_message.clear();
                     }
                 }
@@ -726,6 +737,21 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 const bool tape_fast = machine->tape().mode() == tape::TapeMode::Fast;
                 if (ImGui::RadioButton("Rapido (sem som)", tape_fast)) machine->SetTapeMode(tape::TapeMode::Fast);
                 if (ImGui::RadioButton("Normal (com o som do gravador)", !tape_fast)) machine->SetTapeMode(tape::TapeMode::Normal);
+                ImGui::Separator();
+                ImGui::TextDisabled("Gravacao (CSAVE/BSAVE \"CAS:\")");
+                {
+                    const bool ro = machine->tape().read_only();
+                    if (ImGui::MenuItem("Fita protegida contra gravacao", nullptr, ro, machine->tape().inserted()))
+                        machine->tape().SetReadOnly(!ro);
+                }
+                ImGui::TextDisabled("Ao gravar:");
+                const tape::TapeWriteMode wmode = machine->tape().write_mode();
+                if (ImGui::RadioButton("Incluir no final da fita", wmode == tape::TapeWriteMode::AppendAtEnd))
+                    machine->tape().SetWriteMode(tape::TapeWriteMode::AppendAtEnd);
+                if (ImGui::RadioButton("Sobrescrever o ponto marcado", wmode == tape::TapeWriteMode::OverwriteAtPoint))
+                    machine->tape().SetWriteMode(tape::TapeWriteMode::OverwriteAtPoint);
+                if (ImGui::RadioButton("Nova fita (apaga tudo)", wmode == tape::TapeWriteMode::NewTape))
+                    machine->tape().SetWriteMode(tape::TapeWriteMode::NewTape);
                 ImGui::Separator();
                 ImGui::MenuItem("Mostrar fita K7", nullptr, &show_tape_window);
                 ImGui::EndMenu();
@@ -936,8 +962,23 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     const size_t tslash = tpath.find_last_of("/\\");
                     const std::string tlabel = tslash == std::string::npos ? tpath : tpath.substr(tslash + 1);
                     ImGui::TextUnformatted(tlabel.c_str());
-                    ImGui::TextDisabled("%s - motor %s", tp.mode() == tape::TapeMode::Fast ? "rapido" : "normal",
-                                        tp.motor_on() ? "ligado" : "parado");
+                    ImGui::TextDisabled("%s - motor %s - %s", tp.mode() == tape::TapeMode::Fast ? "rapido" : "normal",
+                                        tp.motor_on() ? "ligado" : "parado", tp.read_only() ? "protegida" : "destravada");
+
+                    // "Contagiros": um odometro mecanico simulado, como os
+                    // gravadores de fita antigos (ver TapeEngine::odometer()).
+                    ImGui::AlignTextToFramePadding();
+                    ImGui::TextDisabled("Contagiros");
+                    ImGui::SameLine();
+                    char odo[16];
+                    std::snprintf(odo, sizeof odo, "%05ld", tp.odometer() % 100000);
+                    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.08f, 0.08f, 0.08f, 1.0f));
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.75f, 0.1f, 1.0f));
+                    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 3.0f);
+                    ImGui::SetNextItemWidth(70);
+                    ImGui::InputText("##contagiros", odo, sizeof odo, ImGuiInputTextFlags_ReadOnly);
+                    ImGui::PopStyleVar();
+                    ImGui::PopStyleColor(2);
 
                     // Desenho da fita K7: corpo + 2 rolos, com raios que giram
                     // enquanto o motor esta' ligado (so' um efeito visual --
@@ -979,14 +1020,23 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     }
                     if (!tp.files().empty()) {
                         ImGui::Separator();
-                        ImGui::TextDisabled("Arquivos encontrados:");
-                        for (const tape::TapeFileEntry &f : tp.files()) {
+                        ImGui::TextDisabled("Arquivos na fita (clique para marcar o ponto de carga/gravacao):");
+                        for (std::size_t i = 0; i < tp.files().size(); ++i) {
+                            const tape::TapeFileEntry &f = tp.files()[i];
                             const char *kind = f.type == tape::TapeFileType::Binary ? "BIN"
                                                : f.type == tape::TapeFileType::Basic ? "BAS"
                                                : f.type == tape::TapeFileType::Ascii ? "ASC"
                                                                                      : "?";
-                            ImGui::BulletText("%s [%s] (%zu bytes)", f.name.empty() ? "(sem nome)" : f.name.c_str(), kind,
-                                               f.data_bytes);
+                            char label[128];
+                            std::snprintf(label, sizeof label, "%s [%s] (%zu bytes)##tapefile%zu",
+                                          f.name.empty() ? "(sem nome)" : f.name.c_str(), kind, f.data_bytes, i);
+                            if (ImGui::Selectable(label, tp.marked_file() == i)) {
+                                if (tp.marked_file() == i) tp.ClearMark();
+                                else tp.SeekToFile(i);
+                            }
+                        }
+                        if (tp.marked_file() != tape::kNoMark) {
+                            ImGui::TextDisabled("Marcado: arquivo %zu (clique de novo para desmarcar)", tp.marked_file());
                         }
                     }
                 }

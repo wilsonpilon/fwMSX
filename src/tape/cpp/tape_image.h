@@ -18,6 +18,11 @@ struct TapeFileEntry {
     TapeFileType type = TapeFileType::Unknown;
     std::string name;             // 6 bytes do cabecalho, sem espacos a direita
     std::size_t data_bytes = 0;   // bytes de dados depois do segundo cabecalho
+    // Posicao do INICIO deste arquivo (o primeiro cabecalho de 8 bytes),
+    // em `fast_bytes` e em `pulses` -- usado para marcar o ponto de carga
+    // (TapeEngine::SeekToFile()) nos dois modos. Ver doc/tape-spec.md.
+    std::size_t fast_byte_offset = 0;
+    std::size_t pulse_index = 0;
 };
 
 // Imagem pronta para os dois modos de carregamento (ver doc/tape-spec.md):

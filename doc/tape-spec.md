@@ -1,11 +1,14 @@
 # Fita (.CAS e .TSX/.TZX) -- fwMSX
 
-Modulo `src/tape/`. Implementa os passos (a), (b) e parte do (d)/(g) da
-ordem sugerida em `doc/SPEC.md`, secao 5.2 ("Feature a desenvolver em
-breve: fitas"): leitura de .CAS e .TSX/.TZX, carregamento pela BIOS (modo
-rapido) e carregamento por pulsos de verdade (modo normal, com som). Nao
-inclui escrita (nenhum `CSAVE`/`BSAVE` para fita), banco de fitas nem
-download -- isso continua para depois (itens (c), (e) e (f)).
+Modulo `src/tape/`. Implementa os passos (a), (b), (d) e (g), e parte do
+(c), da ordem sugerida em `doc/SPEC.md`, secao 5.2 ("Feature a
+desenvolver em breve: fitas"): leitura e GRAVACAO de .CAS e .TSX/.TZX,
+carregamento pela BIOS (modo rapido) e carregamento por pulsos de
+verdade (modo normal, com som), fita nova em branco, protecao contra
+gravacao, marcar o ponto de carga/gravacao e um contagiros simulado. Nao
+inclui banco de fitas nem download -- isso continua para depois (itens
+(e) e (f)); a gravacao em "modo normal" (pulsos reais capturados do
+sinal, nao so' do gancho de BIOS) tambem nao -- ver secao 7.
 
 ## 1. Dois modos de carregamento
 
@@ -139,10 +142,6 @@ fita, so' latcheia o bit -- a sincronia fica na Machine, como o
 
 ## 5. Limites (nesta fase)
 
-- **Sem escrita**: nenhum `CSAVE`/`BSAVE "CAS:"` grava fita (TAPOON/
-  TAPOUT/TAPOOF nao sao tocados; o modo normal roda a rotina real da
-  BIOS, que teria que escrever pela porta de saida de cassete -- ainda
-  nao modelada).
 - **Blocos de controle do TZX** (grupos 21/22, saltos 23, lacos 24/25,
   chamadas 26/27, selecao 28) sao pulados com seguranca (o comprimento e'
   sempre conhecido), mas SEM NAVEGAR -- o arquivo e' lido em sequencia,
@@ -159,13 +158,87 @@ fita, so' latcheia o bit -- a sincronia fica na Machine, como o
   ordem do SPEC).
 - **A janela "Fita K7"** e' so' visual (reels girando quando o motor
   esta' ligado) -- nao mostra a posicao real da fita nos rolos, so' a
-  barra de progresso em segundos.
+  barra de progresso em segundos; o contagiros (secao 6) tambem e' uma
+  simulacao, nao fisicamente exata.
+- **Sintese de pulsos de uma fita gravada**: `SynthesizeCasPulses()`
+  trata TUDO entre dois cabecalhos de 8 bytes como conteudo de verdade,
+  inclusive os bytes de preenchimento (zeros) que o proprio gancho de
+  gravacao insere para alinhar o PROXIMO cabecalho (ver secao 6). Isso
+  significa que o modo NORMAL (pulsos reais) de uma fita que foi
+  GRAVADA por este emulador pode incluir alguns pulsos extras (os
+  zeros de preenchimento) no fim de cada bloco -- o modo RAPIDO nao e'
+  afetado (le' so' os bytes que o programa pediu, exatamente como a
+  BIOS real faria). Corrigir isso exigiria saber o tamanho real de cada
+  bloco (um "ripper" te'm que decidir onde o conteudo de verdade
+  termina), o que ainda nao existe.
 
-## 6. CLI e menu
+## 6. Gravacao (CSAVE/BSAVE "CAS:", fita nova, protecao, marcar o ponto)
+
+A gravacao e' SEMPRE pelo gancho de BIOS (TAPOON/TAPOUT/TAPOOF, 00EAh/
+00EDh/00F0h, mesmo mecanismo "ED FE" da leitura rapida) -- nao existe um
+"modo normal" de gravar: precisaria decodificar os pulsos que o proprio
+programa gera de volta em bytes (como um "ripper" de WAV), que e' muito
+mais trabalho do que decodificar um arquivo ja' pronto (os bytes ja'
+vem certos; so' as duracoes dos pulsos teriam que ser classificadas em
+tempo real). Por isso TAPOON/TAPOUT/TAPOOF ficam PATCHEADOS SEMPRE,
+independente do modo de leitura escolhido (`TapeEngine::ApplyWritePatch()`,
+chamado uma vez na construcao do motor).
+
+**TAPOON** (00EAh): falha (carry ligado, "Device I/O error" na BASIC) se
+nao houver fita ou se ela estiver protegida contra gravacao
+(`read_only()`). Caso contrario, decide ONDE escrever conforme o
+`TapeWriteMode` escolhido (fitas sao lineares -- gravar a partir de um
+ponto destroi fisicamente o que vinha depois, exatamente como um
+gravador de fita de verdade):
+
+- `AppendAtEnd` (padrao): escreve depois do ultimo arquivo -- "ir
+  enchendo a fita com programas pequenos".
+- `OverwriteAtPoint`: trunca a fita a partir do arquivo MARCADO
+  (`SeekToFile()`, janela "Fita K7") e grava ali.
+- `NewTape`: esquece tudo que havia (como se a fita tivesse sido
+  apagada) e comeca do zero.
+
+Em qualquer caso, alinha a posicao a um multiplo de 8 bytes antes de
+escrever o cabecalho de 8 bytes (a MESMA regra do TAPION/TAPOON de
+verdade -- ver secao 3/o comentario no caso #4B de `tzx_reader.cpp`).
+**TAPOUT** (00EDh) so' funciona depois de um TAPOON com sucesso; cada
+chamada acrescenta um byte (registrador A) ao fluxo. **TAPOOF** (00F0h)
+sempre devolve sucesso; se havia uma gravacao em andamento, reconstroi
+`files()`/`pulses()` a partir do fluxo atualizado e GRAVA o arquivo no
+disco imediatamente (um `.tsx` valido -- um bloco #4B por cabecalho, com
+os parametros padrao do MSX -- ou um `.cas` cru, pela extensao do
+caminho da fita). Escritas vao direto para o arquivo, mesma filosofia
+do disco ("as gravacoes do MSX-DOS vao direto para o arquivo").
+
+**Protecao contra gravacao** (`TapeEngine::read_only()`): uma fita
+inserida de um ARQUIVO (`Insert()`) comeca SEMPRE travada -- o usuario
+destrava pelo menu Fita antes de gravar. Uma fita NOVA (`NewBlank()`)
+comeca DESTRAVADA (e' o motivo de criar uma).
+
+**Fita nova** (`TapeEngine::NewBlank()`, menu "Nova fita (.tsx)..."):
+cria uma imagem vazia em memoria e grava, na hora, um `.tsx` valido (so'
+o cabecalho `ZXTape!`, sem blocos) no caminho escolhido -- para o
+arquivo existir no disco desde ja'.
+
+**Marcar o ponto** (`TapeEngine::SeekToFile()`/`marked_file()`, janela
+"Fita K7"): cada `TapeFileEntry` guarda `fast_byte_offset` (posicao no
+fluxo "rapido") e `pulse_index` (posicao nos pulsos do modo normal) de
+onde ele comeca. Marcar um arquivo da lista faz DUAS coisas ao mesmo
+tempo: (1) o PROXIMO `TAPION` (carregamento) comeca a busca a partir
+dali, em vez do inicio da fita -- como avancar manualmente a fita
+rebobinada ate' o programa certo; (2) se o modo de gravacao for
+`OverwriteAtPoint`, e' ali que a proxima gravacao trunca e escreve.
+
+## 7. CLI e menu
 
 - `--fita <arquivo>`: insere a fita (`.cas`, `.tsx` ou `.tzx`, pela
-  extensao) ao iniciar.
-- `--fita-modo rapido|normal`: escolhe o modo (padrao: rapido).
-- Menu **Fita** da janela: inserir, ejetar, rebobinar, trocar de modo (a
-  qualquer momento, sem reiniciar a maquina) e mostrar a janela visual
-  "Fita K7".
+  extensao) ao iniciar -- SEMPRE protegida contra gravacao (so' o menu
+  cria fita nova ou destrava uma existente).
+- `--fita-modo rapido|normal`: escolhe o modo de CARREGAMENTO (padrao:
+  rapido). Gravacao nao tem essa opcao (ver secao 6).
+- Menu **Fita** da janela: inserir, **nova fita (.tsx)...**, ejetar,
+  rebobinar, trocar o modo de carregamento, **destravar/travar contra
+  gravacao**, **modo de gravacao** (incluir no final / sobrescrever o
+  ponto marcado / nova fita), e mostrar a janela visual "Fita K7" --
+  nela, clicar num arquivo da lista marca o ponto (seção 6); clicar de
+  novo desmarca. Tudo a qualquer momento, sem reiniciar a maquina.

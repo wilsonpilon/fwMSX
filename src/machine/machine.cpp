@@ -522,6 +522,7 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
 }
 
 bool Machine::InsertTape(const std::string &path, std::string &error) { return tape_->Insert(path, error); }
+bool Machine::NewBlankTape(const std::string &path, std::string &error) { return tape_->NewBlank(path, error); }
 void Machine::EjectTape() { tape_->Eject(); }
 void Machine::RewindTape() { tape_->Rewind(); }
 void Machine::SetTapeMode(tape::TapeMode mode) { tape_->SetMode(mode); }

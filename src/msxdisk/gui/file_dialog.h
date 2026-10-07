@@ -29,4 +29,12 @@ std::optional<std::string> ShowSaveDskDialog(GLFWwindow *window, const std::stri
 std::optional<std::string> ShowOpenFileDialog(GLFWwindow *window, const std::string &title,
                                               const std::string &filter_name, const std::string &patterns);
 
+// Salvar Como generico: mesmos parametros de ShowOpenFileDialog, mais `default_ext`
+// (sem o ponto, ex.: "tsx") para completar o nome se o usuario nao digitar extensao,
+// e `initial_path` (pode ser vazio) para o campo de nome inicial. Devolve nullopt se
+// cancelar ou se a plataforma nao tem seletor nativo.
+std::optional<std::string> ShowSaveFileDialog(GLFWwindow *window, const std::string &title,
+                                              const std::string &filter_name, const std::string &patterns,
+                                              const std::string &default_ext, const std::string &initial_path);
+
 } // namespace msxdisk::gui

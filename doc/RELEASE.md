@@ -13,6 +13,49 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.20.0 -- "King's Valley: Gravacao em K7" (2026-10-07)
+
+**Fase:** gravacao de fita (CSAVE/BSAVE "CAS:"), fita nova em branco, protecao contra gravacao por
+padrao, tres modos de gravacao e marcar o ponto de carga/gravacao na janela "Fita K7", com um
+contagiros simulado. Pedido do usuario, depois de validar a 1.19.1 (leitura) jogando um jogo completo.
+Numero de versao: o usuario sugeriu "1.19.2 ou algo assim", mas pela politica do proprio projeto (Y
+sobe a cada feature nova incorporada, nao so' Z) isto vira 1.20.0 -- gravacao e' uma feature nova, nao
+um ajuste da 1.19.x.
+
+### Destaques
+
+- **TAPOON/TAPOUT/TAPOOF sempre pelo gancho de BIOS** ("ED FE", o mesmo mecanismo do carregamento
+  rapido), independente do modo de carregamento escolhido -- gravar sempre "funciona na hora", sem som.
+- **Fita nova** (menu Fita > "Nova fita (.tsx)..."): cria uma fita vazia e destravada, gravada no disco
+  na hora (so' o cabecalho).
+- **Protecao contra gravacao por padrao**: toda fita inserida de um arquivo comeca travada; o usuario
+  destrava pelo menu quando quiser gravar nela.
+- **Tres modos de gravacao**: incluir no final (o padrao, para "ir enchendo a fita"), sobrescrever o
+  ponto marcado, ou nova fita (apaga tudo).
+- **Marcar um arquivo** na janela "Fita K7" (clicavel): decide de onde carregar, ou onde sobrescrever.
+- **Contagiros**: um odometro simulado, girando conforme a fita "roda".
+- A gravacao persiste no arquivo imediatamente (um `.tsx` valido, com blocos #4B; ou um `.cas` cru).
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.20.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.20.0-linux.tar.gz`.
+- `ctest`: 16 suites (`tapetest` com 68 checagens, 22 novas). Windows: 16/16. Linux: 16/16.
+- Smoke test: o leitor continua lendo o `.tsx` real do usuario sem regressao (mesmo resultado da 1.19.1).
+- A gravacao em si (TAPOON/TAPOUT/TAPOOF, protecao, os 3 modos, marcar/desmarcar, contagiros) foi
+  validada por um Z80 de verdade dentro do `tapetest` (round-trip completo), **mas ainda nao foi
+  clicada na janela por ninguem**.
+
+### Limitacoes conhecidas
+
+- **Sintese de pulsos do modo normal**: o preenchimento de alinhamento (zeros antes de um cabecalho)
+  entra como se fosse dado de verdade -- so' afeta a reproducao por pulsos de uma fita GRAVADA por este
+  emulador; o modo rapido nao e' afetado. Ver `doc/tape-spec.md`, secao 5.
+- **Sem navegar os blocos de controle do TZX** (grupos, lacos, saltos) -- herdado da 1.19.x.
+- **Sem banco de fitas, download, nem o "ripper" de .BIN/.BAS independente do emulador** (itens (e)/
+  (f)/parte do (c) de `doc/SPEC.md`, secao 5.2).
+- **A gravacao pela janela nunca foi vista/clicada por ninguem** -- so' testada por unidade.
+
 ## v1.19.1 -- "Yie Ar Kung-Fu: Fita K7: Corrigindo o Carregamento" (2026-10-07)
 
 **Fase:** correcao de dois bugs no leitor de .TSX, encontrados pelo usuario ao testar a 1.19.0 com um

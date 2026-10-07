@@ -210,6 +210,8 @@ public:
     // decide se o modo normal esta' de fato avancando a fita.
     tape::TapeEngine &tape() { return *tape_; }
     bool InsertTape(const std::string &path, std::string &error);
+    // Fita nova, vazia (.tsx), destravada para gravar -- ver doc/tape-spec.md, secao 6.
+    bool NewBlankTape(const std::string &path, std::string &error);
     void EjectTape();
     void RewindTape();
     void SetTapeMode(tape::TapeMode mode);

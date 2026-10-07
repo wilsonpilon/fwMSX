@@ -7,6 +7,37 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.20.0] - 2026-10-07 - "King's Valley: Gravacao em K7"
+
+### Adicionado
+- **Gravacao de fita** (`CSAVE`/`BSAVE "CAS:"`): TAPOON/TAPOUT/TAPOOF (00EAh/00EDh/00F0h) sempre pelo
+  gancho de BIOS "ED FE" -- independente do modo de carregamento escolhido (nao ha' "modo normal" de
+  gravar; precisaria de um "ripper" de pulsos em tempo real, fora de escopo).
+- **Fita nova em branco** (`.tsx`, menu Fita > "Nova fita..."): cria uma imagem vazia e grava um .tsx
+  valido no disco na hora, para o usuario salvar programas do zero.
+- **Protecao contra gravacao**: uma fita inserida de um arquivo entra sempre travada (so' leitura); uma
+  fita nova entra destravada. Travar/destravar pelo menu Fita, a qualquer momento.
+- **Tres modos de gravacao** (fitas sao lineares, como as de verdade -- gravar a partir de um ponto
+  destroi o que vinha depois): **incluir no final** (padrao, "ir enchendo a fita com programas
+  pequenos"), **sobrescrever o ponto marcado**, ou **nova fita** (apaga tudo e comeca do zero).
+- **Marcar um arquivo da fita**: a janela "Fita K7" agora lista os arquivos de forma clicavel -- marcar
+  um deles decide de onde o proximo carregamento comeca a procurar, e onde a proxima gravacao (no modo
+  "sobrescrever o ponto") trunca e escreve.
+- **Contagiros**: um odometro simulado na janela "Fita K7", avancando conforme a fita "roda" -- a
+  mesma sensacao dos gravadores de fita antigos.
+- Escritor generico de .CAS para .TSX (`src/tape/cpp/tsx_writer.cpp`), usado pela gravacao e pela fita
+  nova; diálogo "Salvar Como" generico na GUI (`ShowSaveFileDialog`, antes so' existia para `.dsk`).
+- Testes: `tapetest` ganhou 22 checagens novas (gravacao round-trip, protecao, os 3 modos, marcar/
+  desmarcar, contagiros) -- 68 no total.
+
+### Limitacoes conhecidas
+- A sintese de pulsos do modo normal (`SynthesizeCasPulses`) trata o preenchimento de alinhamento
+  (zeros inseridos pelo proprio TAPOON antes de um cabecalho) como se fosse dado de verdade -- so'
+  afeta a reproducao por PULSOS (modo normal) de uma fita GRAVADA por este emulador; o modo rapido nao
+  e' afetado. Ver `doc/tape-spec.md`, secao 5.
+- A gravacao/protecao/marcacao so' foi validada por teste automatizado; ninguem clicou nos novos itens
+  de menu ainda.
+
 ## [1.19.1] - 2026-10-07 - "Yie Ar Kung-Fu: Fita K7: Corrigindo o Carregamento"
 
 ### Corrigido

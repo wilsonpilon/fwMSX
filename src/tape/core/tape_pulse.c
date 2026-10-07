@@ -13,6 +13,19 @@ void tape_cursor_rewind(TapePulseCursor *c) {
     c->remaining = (c->count > 0) ? (long)c->durations[0] : 0;
 }
 
+void tape_cursor_seek(TapePulseCursor *c, uint32_t index) {
+    if (index > c->count) index = c->count;
+    c->index = index;
+    c->level = (int)(index & 1u);
+    if (index >= c->count) {
+        c->finished = 1;
+        c->remaining = 0;
+    } else {
+        c->finished = 0;
+        c->remaining = (long)c->durations[index];
+    }
+}
+
 int tape_cursor_advance(TapePulseCursor *c, long cycles) {
     while (cycles > 0 && !c->finished) {
         if (cycles < c->remaining) {

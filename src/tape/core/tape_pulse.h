@@ -37,6 +37,12 @@ void tape_cursor_rewind(TapePulseCursor *c);
 // silencio) e marca `finished`.
 int tape_cursor_advance(TapePulseCursor *c, long cycles);
 
+// Pula DIRETO para o pulso `index` (sem gerar som nem consumir ciclos --
+// usado por TapeEngine::SeekToFile() para marcar o ponto de carga). O
+// nivel sai certo (a paridade de quantos pulsos foram "consumidos" desde
+// o inicio, ja' que cada um alterna o nivel uma vez).
+void tape_cursor_seek(TapePulseCursor *c, uint32_t index);
+
 #ifdef __cplusplus
 }
 #endif

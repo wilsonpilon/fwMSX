@@ -187,12 +187,12 @@ acompanhamento manual do autor a cada build):
   o que funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
   (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-07, depois da v1.18.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-07, depois da v1.19.1)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.18.0, publicada em `main`):**
+**Funcionando (v1.19.1, publicada em `main`):**
 
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`.
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
@@ -201,15 +201,20 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] Janela com os menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- **confirmados na tela pelo usuario em 2026-10-07**, junto com o menu ROMs, Banco de ROMs, Navegar file-hunter, Configuracao de disco e de slots.
 - [x] Configuracao de slots pelo menu ou `--slot`: 16 celulas, BIOS em 0:0, RAM 16/32/64 KB (16KB no fim da celula), mapper ate 4096 KB (varios mappers), disco, sub-ROM, cartucho e FM-PAC.
 - [x] Banco de ROMs (SQLite, `fwmsx --romdb`): downloads do fMSX 6.0, do System ROMs do file-hunter e do Vampier; CRUD, busca, identificacao, CARTS.SHA. Ver `doc/romdb-spec.md`.
+- [x] **Fita** (.CAS e .TSX/.TZX): leitura completa, carregamento rapido (sem som) e normal (pulsos de verdade, com som), menu "Fita" e janela visual "Fita K7". **Confirmado pelo usuario em 2026-10-07**: carregou um jogo completo (modo normal) e jogou um pouco, som nitido. Ver `doc/tape-spec.md`.
 - [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 16 suites.
 
-**Feito depois da v1.18.0 (nao lancado ainda -- fitas, 2026-10-07):**
+**Feito depois da v1.19.1 (nao lancado ainda -- gravacao em fita, 2026-10-07):**
 
-- [x] Leitura de .CAS e .TSX/.TZX (todos os blocos do TZX 1.20, os que importam para o MSX -- #4B -- com pulsos e dados completos; os demais pulados com seguranca).
-- [x] Carregamento rapido (gancho de BIOS "ED FE" em TAPION/TAPIN/TAPIOF, sem som) e normal (pulsos de verdade, com o barulho do gravador), trocaveis sem reiniciar a maquina.
-- [x] Entrada de cassete no PSG (R14, bit 7) e motor no PPI (porta C, bit 4); audio sintetizado somado a mistura.
-- [x] `--fita`/`--fita-modo` e menu "Fita" (inserir, ejetar, rebobinar, trocar de modo, janela visual "Fita K7" com os rolos girando). Testes: `tapetest` (CTest `tape_load`, 39 checagens).
-- [x] Ver `doc/tape-spec.md` para o detalhamento (enderecos da BIOS, layout do bloco #4B, limites: sem escrita, sem banco de fitas, sem navegar blocos de controle do TZX).
+- [x] **Gravacao** (`CSAVE`/`BSAVE "CAS:"`, sempre pelo gancho de BIOS TAPOON/TAPOUT/TAPOOF, independente do modo de carregamento escolhido).
+- [x] **Fita nova em branco** (`.tsx`, menu "Nova fita...") para o usuario salvar programas do zero.
+- [x] **Protecao contra gravacao**: fita de arquivo entra sempre travada (so' leitura); fita nova entra destravada. Travar/destravar pelo menu.
+- [x] **Tres modos de gravacao** (fitas sao lineares, como as de verdade): incluir no final (padrao, "ir enchendo a fita"), sobrescrever o ponto marcado, ou nova fita (apaga tudo).
+- [x] **Marcar um arquivo da lista** (janela "Fita K7", clicavel) como o ponto onde o proximo carregamento comeca a buscar, ou onde a proxima gravacao (no modo "sobrescrever") trunca e escreve.
+- [x] **Contagiros** (odometro simulado) na janela "Fita K7", avancando conforme a fita "roda".
+- [x] Escritor generico de .CAS -> .TSX (`src/tape/cpp/tsx_writer.cpp`), usado pela gravacao e pela criacao de fita nova.
+- [x] Testes: `tapetest` (CTest `tape_load`, 68 checagens -- 22 novas para gravacao/protecao/modos/marcacao/contagiros).
+- [x] Ver `doc/tape-spec.md`, secoes 5-7, para o detalhamento completo (inclusive os limites conhecidos).
 
 **Politica de midias (2026-10-06):** o repositorio e' pessoal; ROMs, discos e fitas de terceiros podem ser versionadas. Antes da liberacao publica, revisar cada midia e remover as que o detentor contestar (`LICENSE-THIRD-PARTY.md`).
 
@@ -217,7 +222,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 
 **Pendencias (ordem sugerida):**
 
-- [ ] Fitas: escritor de TSX a partir de .BIN/.BAS (item c), banco de fitas e download (item e, depois de confirmar com o site), port do makeTSX (item f, WAV -> TSX); navegar blocos de controle do TZX (grupos/lacos/saltos); saida de cassete (CSAVE).
+- [ ] Fitas: ferramenta de linha de comando para empacotar um .BIN/.BAS solto em .TSX sem passar pelo emulador (resto do item c); banco de fitas e download (item e, depois de confirmar com o site); port do makeTSX (item f, WAV -> TSX); navegar blocos de controle do TZX (grupos/lacos/saltos); corrigir a sintese de pulsos do modo normal para nao incluir o preenchimento de alinhamento como se fosse dado de verdade (ver `doc/tape-spec.md`, secao 5); validar na tela a gravacao (Nova fita, travar/destravar, 3 modos, marcar/desmarcar na janela "Fita K7") -- so' testada por unidade ainda, ninguem clicou nos novos itens de menu.
 - [ ] Banco de ROMs: verificar as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o mapper ao carregar cartucho; importar o JSON do Vampier se for util.
 - [ ] Ouvir o FM, o SCC, o disco e a fita (modo normal) contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
 - [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao diagnosticada; Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
@@ -290,13 +295,16 @@ Fase 5c):
 projeto avancar.)*
 ### 5.2 Feature a desenvolver em breve: fitas (TSX, TZX e CAS) e banco de fitas
 
-Estado: **leitura e carregamento prontos (2026-10-07)**; escrita, banco de fitas e download ainda nao
+Estado: **leitura, carregamento e gravacao prontos (2026-10-07)**; banco de fitas e download ainda nao
 comecaram. Pedido do usuario: ler e criar TSX, ler e criar CAS, um banco de fitas com download pelo
 site oficial, e uma ferramenta de linha de comando e pelo menu para manipular esses arquivos, com duas
-opcoes de carregamento (rapido, sem som; normal, com o barulho do gravador) e algo visual para a fita K7.
-Os itens (a), (b), (g) e a parte de pulsos/som do (d) estao feitos -- ver `doc/tape-spec.md` para o
-detalhamento completo (enderecos da BIOS, layout do bloco #4B, limites). Ver tambem `doc/SPEC.md`,
-secao 5.0, e a viabilidade abaixo (mantida como registro da analise original).
+opcoes de carregamento (rapido, sem som; normal, com o barulho do gravador), uma fita K7 nova e limpa
+em .TSX para salvar programas, uma janela com o conteudo da fita (marcar o ponto de carga), tres modos
+de gravacao (sobrescrever o ponto/nova fita/incluir no final), protecao contra gravacao por padrao em
+fitas existentes, e um contagiros simulado. Os itens (a), (b), (d), (g) e parte do (c) estao feitos --
+ver `doc/tape-spec.md` para o detalhamento completo (enderecos da BIOS, layout do bloco #4B, gravacao,
+limites). Ver tambem `doc/SPEC.md`, secao 5.0, e a viabilidade abaixo (mantida como registro da analise
+original).
 
 **Formatos.**
 
@@ -352,14 +360,24 @@ referencia, sem copia de codigo. Os arquivos TSX/CAS de jogos sao de terceiros: 
 
 **Ordem sugerida de implementacao.**
 
-- [x] (a) Leitor de TZX/TSX e de CAS, sem janela; testes com arquivos sinteticos (`tapetest`, CTest `tape_load`).
+- [x] (a) Leitor de TZX/TSX e de CAS, sem janela; testes com arquivos sinteticos e um .TSX real
+      (`tapetest`, CTest `tape_load`, 68 checagens).
 - [x] (b) CAS/TSX por gancho de BIOS (TAPION/TAPIN/TAPIOF -- carregamento "rapido", sem som).
-- [ ] (c) Escritor de TSX a partir de .BIN e .BAS.
-- [x] (d, parte de pulsos/som) Entrada de cassete no PSG (R14) e motor no PPI; reproducao de pulsos (TSX
-      #4B/#10-#14/#20 e CAS sintetizado) com som real -- carregamento "normal". Falta: saida de cassete
-      (gravacao) e navegacao pelos blocos de controle do TZX (grupos/lacos/saltos).
+- [x] (c, parcial -- 2026-10-07) Escritor de TSX: a parte GENERICA existe (`src/tape/cpp/tsx_writer.cpp`,
+      um .CAS -> um .TSX valido com blocos #4B), usada pela gravacao em uso real (TAPOON/TAPOUT/TAPOOF,
+      ver item abaixo). Falta so' uma FERRAMENTA DE LINHA DE COMANDO que empacote um .BIN/.BAS solto
+      (sem passar pelo emulador) -- a necessidade principal (`CSAVE`/`BSAVE "CAS:"` de dentro do MSX)
+      esta' resolvida.
+- [x] (d) Entrada de cassete no PSG (R14) e motor no PPI; reproducao de pulsos (TSX #4B/#10-#14/#20 e
+      CAS sintetizado) com som real -- carregamento "normal". **Gravacao** (2026-10-07): TAPOON/TAPOUT/
+      TAPOOF sempre pelo gancho de BIOS (nao ha' "modo normal" de gravar -- precisaria de um "ripper" de
+      pulsos em tempo real); fita nova em branco; protecao contra gravacao (fita de arquivo trava por
+      padrao); 3 modos de gravacao (incluir no final, sobrescrever o ponto marcado, nova fita); marcar
+      um arquivo da lista como ponto de carga/gravacao; persistencia imediata no arquivo. Falta:
+      navegacao pelos blocos de controle do TZX (grupos/lacos/saltos). Ver `doc/tape-spec.md`, secoes 5-6.
 - [ ] (e) Banco de fitas (SQLite) e download pelo site, depois de conferir os termos.
 - [ ] (f) Port do makeTSX (WAV para TSX).
-- [x] (g) CLI `fwmsx --fita`/`--fita-modo` e menu "Fita" na janela (inserir, ejetar, rebobinar, trocar de
-      modo, janela visual "Fita K7" com os rolos girando).
+- [x] (g) CLI `fwmsx --fita`/`--fita-modo` e menu "Fita" na janela (inserir, nova fita, ejetar, rebobinar,
+      trocar de modo de carregamento, travar/destravar gravacao, modo de gravacao, janela visual "Fita K7"
+      com os rolos girando, contagiros e a lista de arquivos clicavel para marcar o ponto).
 
