@@ -358,7 +358,21 @@ set(TAPE_LIB_SOURCES
         src/tape/cpp/cas_reader.cpp
         src/tape/cpp/tzx_reader.cpp
         src/tape/cpp/tsx_writer.cpp
+        src/tape/cpp/cas_pack.cpp
         src/tape/cpp/tape_device.cpp
+)
+
+# Leitor/escritor de .CAS/.TSX e o empacotador (cas_pack.cpp), SEM o
+# motor de gravacao (tape_device.cpp) -- este nao depende do Z80/mapa de
+# memoria, so' usado pela ferramenta de linha de comando "fwmsx --cas"
+# (src/tape/cli/cas_tool.cpp) e pelo teste dela (castooltest), pra nao
+# arrastar Z80_LIB_SOURCES/MEMMAP_LIB_SOURCES so' pra empacotar bytes.
+set(CAS_PACK_SOURCES
+        src/tape/core/kcs_codec.c
+        src/tape/cpp/cas_reader.cpp
+        src/tape/cpp/tzx_reader.cpp
+        src/tape/cpp/tsx_writer.cpp
+        src/tape/cpp/cas_pack.cpp
 )
 
 # --- Maquina MSX1 completa + janela (fwmsx --msx) -- ver doc/machine-spec.md
@@ -473,6 +487,18 @@ if (MINGW)
 endif ()
 
 add_test(NAME tape_load COMMAND tapetest)
+
+# castooltest: empacotador .BIN/.BAS -> .TSX/.CAS ("fwmsx --cas") -- sem
+# Z80/mapa de memoria (CAS_PACK_SOURCES), so' leitura/escrita de arquivo e
+# os blocos .CAS -- ver doc/tape-spec.md, secao 8.
+add_executable(castooltest tests/z80/cas_pack_test.cpp ${CAS_PACK_SOURCES} src/tape/cli/cas_tool.cpp)
+target_include_directories(castooltest PRIVATE src/tape)
+set_target_properties(castooltest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/castooltest)
+if (MINGW)
+    target_link_options(castooltest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME cas_pack COMMAND castooltest)
 
 # vdp2test: VDP MSX2 (V9938) -- modos SCREEN 3-8, sprites de modo 2 e motor de
 # comandos -- ver doc/vdp-spec.md (Fases 4 e 5).
@@ -604,6 +630,7 @@ add_executable(fwMSX
         ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES}
         ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${TAPE_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
+        src/tape/cli/cas_tool.cpp
 )
 
 target_link_libraries(fwMSX PRIVATE miniz)

@@ -13,6 +13,39 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.21.0 -- "King's Valley: Empacotador de Fita (BIN/BAS -> TSX)" (2026-10-08)
+
+**Fase:** primeiro item da lista de pendencias de fita (`doc/SPEC.md`, secao 5.2) depois da
+gravacao (1.20.x): uma ferramenta de linha de comando para empacotar um `.BIN`/`.BAS` solto num
+`.TSX` sem passar pelo emulador -- para quem ja tem o binario/programa tokenizado pronto (de um
+cross-assembler, de uma extracao, ou de um `BSAVE` anterior dentro do fwMSX) e so' quer uma fita
+pronta, sem precisar abrir a janela so' para isso.
+
+### O que foi feito
+
+- `fwmsx --cas pack --tipo bin|bas --nome NOME [opcoes] <entrada> <saida.tsx|.cas>`: monta os
+  MESMOS dois blocos que um `CSAVE`/`BSAVE` de verdade grava (cabecalho com nome + dados -- ver
+  `doc/tape-spec.md`, secao 6, e o bug da 1.20.3) fora do gancho de BIOS, direto a partir do
+  arquivo de entrada. `--tipo bin` precisa de `--inicio`/`--fim`/`--exec` (enderecos em
+  hexadecimal) para montar os 6 bytes de endereco na frente do binario puro; `--tipo bas` espera o
+  arquivo ja tokenizado (decidido por ser mais simples e mais correto que tentar tokenizar texto
+  solto, ja que um programa BASIC do MSX embute ponteiros de memoria que dependem de onde ele vai
+  ser carregado). `--anexar <arquivo>` acrescenta no final de uma fita existente.
+- `fwmsx --cas list <arquivo>`: lista os arquivos de uma fita, reaproveitando o leitor existente
+  (`LoadTzxImage`/`LoadCasImage`) -- confirma o resultado do `pack` sem abrir a janela.
+- Reusa o escritor existente (`WriteTsxFromCas()`), o MESMO caminho que `TapeEngine` usa para
+  gravar pela BIOS -- nenhuma logica de formato duplicada. A nova logica de montagem de blocos
+  (`src/tape/cpp/cas_pack.{h,cpp}`) e' so' uma fatia do que `TapeEngine::OnTapoon()`/
+  `FinalizeWrite()` ja fazem, sem motor, sem BIOS, sem Z80.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.21.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.21.0-linux.tar.gz`.
+- `ctest`: 17 suites (nova: `castooltest`/`cas_pack`, sem depender de Z80/mapa de memoria --
+  pack de `.bin`/`.bas`, `--anexar`, `list`, validacao de argumentos). Windows: 17/17. Linux:
+  17/17.
+
 ## v1.20.3 -- "King's Valley: Gravacao em K7: Um Corte So'" (2026-10-08)
 
 **Fase:** mais um bug real relatado pelo usuario, logo depois de testar a correcao da 1.20.2 pela

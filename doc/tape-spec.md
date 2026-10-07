@@ -287,3 +287,58 @@ rebobinada ate' o programa certo; (2) se o modo de gravacao for
   ponto marcado / nova fita), e mostrar a janela visual "Fita K7" --
   nela, clicar num arquivo da lista marca o ponto (seção 6); clicar de
   novo desmarca. Tudo a qualquer momento, sem reiniciar a maquina.
+
+## 8. Empacotador .BIN/.BAS -> .TSX (`fwmsx --cas`)
+
+Ferramenta de linha de comando (`src/tape/cli/cas_tool.cpp`, roteada em
+`src/cpp/main.cpp`) para empacotar um arquivo solto num `.TSX` (ou
+`.CAS`) valido **sem precisar abrir o emulador** -- util para quem ja
+tem o binario/programa tokenizado pronto (de um cross-assembler, de uma
+extracao, ou de um `BSAVE` feito antes dentro do proprio fwMSX) e so'
+quer uma fita pronta para `BLOAD`/`CLOAD "CAS:"`.
+
+```
+fwmsx --cas pack --tipo bin|bas --nome NOME [opcoes] <entrada> <saida.tsx|.cas>
+fwmsx --cas list <arquivo.tsx|.tzx|.cas>
+```
+
+- `--tipo bin`: para `BLOAD "CAS:"`. Precisa de `--inicio`/`--fim`/
+  `--exec` (enderecos em hexadecimal, ex. `0x8000`) -- os mesmos 6 bytes
+  (3 enderecos de 16 bits, little-endian) que um `BSAVE` de verdade
+  grava ANTES dos bytes crus do arquivo de entrada (ver secao 2.1). O
+  arquivo de entrada e' so' o conteudo binario puro, sem cabecalho
+  nenhum -- a ferramenta monta o cabecalho a partir das 3 opcoes.
+- `--tipo bas`: para `CLOAD "CAS:"`. O arquivo de entrada tem que estar
+  **ja tokenizado** -- os bytes exatos que um `CSAVE` gravaria (um
+  programa BASIC do MSX embute ponteiros de memoria entre as linhas, e
+  so' faz sentido tokenizar sabendo o endereco onde vai ficar carregado
+  -- por isso esta ferramenta nao tokeniza texto solto, so' empacota
+  bytes que ja estao no formato certo). `BSAVE` dentro do proprio fwMSX
+  (do inicio ao fim do programa na memoria) e' uma forma facil de obter
+  esse arquivo.
+- `--nome`: vai para o cabecalho de 6 bytes do `.CAS` (secao 2.1) --
+  maiusculas (convencao do MSX) e truncado com aviso se for maior.
+- `--anexar <arquivo>`: carrega uma fita existente (`.cas`/`.tsx`/
+  `.tzx`, pela extensao) e acrescenta o novo arquivo no FINAL dela, em
+  vez de criar uma fita so' com ele -- a saida pode ser o MESMO caminho
+  do `--anexar` (reescreve a fita com um arquivo mais).
+- A saida e' sempre um `.tsx` valido (reusa `WriteTsxFromCas()`, o
+  MESMO escritor que `TapeEngine` usa para gravar -- ver secao 6) ou um
+  `.cas` cru, pela extensao do caminho.
+- `list`: mostra indice, tipo, nome e tamanho dos dados de cada arquivo
+  de uma fita -- util para confirmar o resultado do `pack` sem abrir a
+  janela "Fita K7".
+
+Os dois blocos escritos por `pack` (cabecalho com nome + dados) sao
+exatamente os mesmos dois blocos que um `CSAVE`/`BSAVE` de verdade
+grava (ver secao 6 e o bug da 1.20.3) -- a ferramenta so' monta esses
+blocos fora do gancho de BIOS, sem motor, sem Z80
+(`src/tape/cpp/cas_pack.{h,cpp}`). Testes: `castooltest` (CTest
+`cas_pack`).
+
+**Fora de escopo (por enquanto):** `--tipo ascii` (o formato ASCII em
+blocos de 256 bytes com preenchimento `1Ah` e' mais complexo, e nao foi
+pedido); tokenizar um `.BAS` em TEXTO puro (precisaria de um tokenizador
+completo do MSX BASIC, incluindo os ponteiros de linha dependentes do
+endereco de carga -- um projeto bem maior que "empacotar um arquivo
+solto").

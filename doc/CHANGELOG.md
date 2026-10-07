@@ -7,6 +7,28 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.21.0] - 2026-10-08 - "King's Valley: Empacotador de Fita (BIN/BAS -> TSX)"
+
+### Adicionado
+- **`fwmsx --cas pack`**: empacota um `.BIN`/`.BAS` solto (ja no formato binario/tokenizado do
+  MSX) num `.TSX` (ou `.CAS`) valido, pronto para `BLOAD`/`CLOAD "CAS:"`, sem precisar abrir o
+  emulador. `--tipo bin` monta o cabecalho de 6 bytes de endereco (inicio/fim/execucao,
+  `--inicio`/`--fim`/`--exec` em hexadecimal) na frente do binario; `--tipo bas` empacota os bytes
+  tokenizados como estao (um programa BASIC do MSX embute ponteiros de memoria entre linhas, por
+  isso a ferramenta nao tokeniza texto solto -- so' empacota bytes que ja estao no formato certo,
+  por exemplo extraidos com `BSAVE` dentro do proprio emulador). `--anexar <arquivo>` carrega uma
+  fita existente e acrescenta o novo arquivo no final, em vez de criar uma fita so' com ele.
+- **`fwmsx --cas list`**: lista indice, tipo, nome e tamanho dos dados de cada arquivo de uma
+  fita (`.cas`/`.tsx`/`.tzx`) -- util para confirmar o resultado do `pack` sem abrir a janela
+  "Fita K7".
+- Reaproveita o MESMO escritor (`WriteTsxFromCas()`) que `TapeEngine` usa para gravar pela BIOS --
+  os blocos gerados (cabecalho com nome + dados) sao exatamente os dois blocos que um
+  `CSAVE`/`BSAVE` de verdade produziria. Primeiro item da lista de pendencias de fita (`doc/SPEC.md`,
+  secao 5.2) a ser fechado.
+- Testes: `castooltest` (CTest `cas_pack`) -- pack de `.bin`/`.bas`, `--anexar`, `list`, e
+  validacao de argumentos, sem precisar de Z80/mapa de memoria (`CAS_PACK_SOURCES`, so' leitura/
+  escrita de arquivo). Ver `doc/tape-spec.md`, secao 8.
+
 ## [1.20.3] - 2026-10-08 - "King's Valley: Gravacao em K7: Um Corte So'"
 
 ### Corrigido

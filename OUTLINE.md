@@ -17,10 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08)
 
-- **Versao em preparo:** 1.20.3 "King's Valley: Gravacao em K7: Um Corte So'" -- codigo e docs
-  prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda
-  estiver aqui.
-- **Ultima versao publicada em `main`:** 1.20.2 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
+- **Versao em preparo:** 1.21.0 "King's Valley: Empacotador de Fita (BIN/BAS -> TSX)" -- codigo e
+  docs prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota
+  ainda estiver aqui.
+- **Ultima versao publicada em `main`:** 1.20.3 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
   usuario achou dois bugs reais ao testar com um .TSX de verdade antes do commit, corrigidos direto na
   1.19.1, e depois confirmou pelo ouvido/jogando: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou
   um pouco, som nitido. Pediu a melhoria seguinte (gravacao, fita nova, protecao, 3 modos, marcar o
@@ -81,7 +81,15 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   da mudanca. **Revalidado pelo usuario na janela em 2026-10-08**: gravou num ponto no meio da
   fita, sobrescrevendo um programa existente -- funcionou. So' o modo "nova fita" ainda nao foi
   testado pela janela.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.3.*` (ver secao 9).
+- **`fwmsx --cas pack`/`list` (1.21.0, 2026-10-08)**: ferramenta de linha de comando para
+  empacotar um `.BIN`/`.BAS` solto (ja no formato binario/tokenizado do MSX) num `.TSX`/`.CAS`
+  valido sem passar pelo emulador -- fecha o resto do item (c) da lista de fitas pendentes.
+  `--tipo bin` monta os 6 bytes de endereco (inicio/fim/exec); `--tipo bas` empacota bytes ja
+  tokenizados como estao; `--anexar` acrescenta numa fita existente; `list` confirma o resultado.
+  Reusa o escritor `WriteTsxFromCas()` existente. Testado via CLI direta (smoke test com `--cas
+  pack`/`list` no `fwMSX.exe` de verdade) e `castooltest` (17 checagens). Ver secao 9 e
+  `doc/tape-spec.md`, secao 8.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.21.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -115,7 +123,7 @@ wsl -d Ubuntu-26.04 -- bash -lc 'cd /mnt/c/dos/fwMSX && ./build.sh'
 
 Build incremental de um alvo: `cmake --build build --target fwMSX` (ou `romdbtest`, `machinetest`,
 `fdctest`, `memmaptest`, `msx2test`, `fmtest`, `scctest`, `psgtest`, `ppitest`, `vdptest`, `vdp2test`,
-`tapetest`).
+`tapetest`, `castooltest`).
 
 **Midias (nao versionadas por completo):** `dist/roms/` tem o banco de ROMs baixado. Esta pasta
 e' so' local (tem 116 MB no PC de hoje); so' parte dela vai ao git (ver secao 6). Os testes que precisam
@@ -200,28 +208,31 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    na janela em 2026-10-08**: gravou num ponto no meio da fita, sobrescrevendo um programa
    existente, com sucesso. Ver secao 2, secao 9 e `doc/tape-spec.md`, secoes 5-7. **Ainda nao
    testado na janela:** o modo "nova fita".
-3. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): ferramenta de linha de comando para
-   empacotar `.BIN`/`.BAS` em `.TSX` sem passar pelo emulador (resto do item c); (e) banco de fitas
-   (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT);
-   navegar os blocos de controle do TZX (grupos/lacos/saltos); preenchimento de alinhamento ainda
-   adivinhado so' para `.cas` cru carregado direto do disco (ver `doc/tape-spec.md`, secao 5).
+3. **[FEITO em 2026-10-08, 1.21.0] Empacotador de fita por linha de comando** -- `fwmsx --cas
+   pack --tipo bin|bas` empacota um `.BIN`/`.BAS` solto num `.TSX`/`.CAS` sem abrir o emulador
+   (resto do item c); `fwmsx --cas list` confirma o resultado. Ver secao 9 e `doc/tape-spec.md`,
+   secao 8.
+4. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): (e) banco de fitas (metadados, sem
+   download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT); navegar os
+   blocos de controle do TZX (grupos/lacos/saltos); preenchimento de alinhamento ainda adivinhado
+   so' para `.cas` cru carregado direto do disco (ver `doc/tape-spec.md`, secao 5).
    Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT), `resource/openMSX_TSXadv/` (GPL,
    so' estudo).
-4. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
+5. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
    mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
-5. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
+6. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
-6. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
+7. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
    de Sony/Philips/Spectravideo do openMSX (so' como referencia).
-7. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
+8. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
    `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
    Ainda nao comecou.
-8. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
-9. **BIOS Expert:** texto com espacos na tela; investigar.
-10. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
-11. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
-12. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
-13. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+9. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
+10. **BIOS Expert:** texto com espacos na tela; investigar.
+11. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
+12. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
+13. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
+14. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
     com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
@@ -345,7 +356,59 @@ usuario na janela de verdade em 2026-10-08**: gravou num ponto no meio da fita, 
 programa existente -- funcionou. So' o modo "nova fita" ainda nao foi testado pela janela (so' por
 teste automatizado).
 
+### Rodada seguinte (2026-10-08): 1.21.0 -- "passo 1": empacotador .BIN/.BAS -> .TSX
+
+Com a gravacao de fita (1.20.x) fechada e revalidada, o usuario pediu para seguir para o "passo 1"
+da lista de pendencias de fita (`doc/SPEC.md`, secao 5.2): uma ferramenta de linha de comando para
+empacotar um `.BIN`/`.BAS` solto num `.TSX` sem passar pelo emulador.
+
+Decisoes de projeto tomadas nesta rodada (nao pedidas explicitamente, julgamento proprio):
+- **Nova flag do executavel principal** (`fwmsx --cas ...`), nao um executavel separado --
+  diferente do `msxdisk.exe`, que e' um produto grande por conta propria (shell/TUI/GUI). Este e'
+  um empacotador de uma tacada so', do mesmo porte que `fwmsx --romdb`/`--z80dbg`, que tambem
+  roteiam para um modulo pelo `main.cpp` em vez de ganhar um binario proprio.
+- **`--tipo bas` NAO tokeniza texto solto** -- so' empacota bytes que ja estao no formato
+  tokenizado do MSX (como um `BSAVE` dentro do proprio emulador produziria). Motivo: um programa
+  BASIC do MSX embute ponteiros de memoria ENTRE as linhas (o proximo-endereco de cada linha), que
+  dependem de onde o programa vai ficar carregado -- tokenizar de verdade seria escrever um
+  tokenizador completo do MSX BASIC, um projeto bem maior que "empacotar um arquivo solto" (fora
+  de escopo, documentado em `doc/tape-spec.md`, secao 8).
+- **Reaproveitou `WriteTsxFromCas()`** (o MESMO escritor que `TapeEngine` usa para gravar pela
+  BIOS) em vez de duplicar logica de formato -- a nova peca (`src/tape/cpp/cas_pack.{h,cpp}`) so'
+  monta os bytes "crus" no formato .CAS (cabecalho de sincronismo + bloco de 16 bytes com nome +
+  bloco de dados), os MESMOS dois blocos que um CSAVE/BSAVE de verdade produz (ver o bug da
+  1.20.3), so' que fora do gancho de BIOS, sem motor, sem Z80.
+- **Teste novo e leve** (`castooltest`/CTest `cas_pack`): como o empacotador nao depende do Z80/
+  mapa de memoria (so' le/escreve arquivo e monta bytes), ganhou um source-set proprio
+  (`CAS_PACK_SOURCES`, sem `tape_device.cpp`/Z80/memmap) em vez de reusar `TAPE_LIB_SOURCES` por
+  completo -- mantem o teste rapido e sem dependencias desnecessarias.
+
+Build Windows e Linux (WSL) rodados, `ctest` 17/17 nos dois (suite nova `cas_pack`, 25 checagens).
+Smoke test manual com o `fwMSX.exe` de verdade (`--cas pack --tipo bas ...` seguido de `--cas
+list`) confirmou o fluxo completo fora dos testes automatizados. Escrito como versao `1.21.0`
+(minor, nao patch -- e' uma feature nova, nao uma correcao, pela politica do projeto) com o mesmo
+codename e um subtitulo novo: "Empacotador de Fita (BIN/BAS -> TSX)". Ver
+`doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.21.0]`, e `doc/tape-spec.md`, secao 8 (nova).
+
+**Se o `git log` de `main` nao mostrar um commit de release da 1.21.0 ainda**, essa e' a proxima
+acao: `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag
+1.21.0`, `git branch v1.21.0`, `git push origin main 1.21.0 v1.21.0`.
+
+**Cuidado ao gerar pacotes de release em rodadas seguidas sem bumpar a versao primeiro**: nesta
+mesma rodada, o build do Linux foi disparado ANTES de bumpar `version.h` de 1.20.3 para 1.21.0,
+sobrescrevendo por engano o `.tar.gz` da 1.20.3 JA LANCADA (ja' tinha acontecido uma vez antes, na
+rodada da 1.20.3 sobre a 1.20.2) -- corrigido com `git checkout -- <arquivo>` antes de gerar os
+pacotes certos. Sempre bumpar `version.h` ANTES do primeiro build de uma rodada nova, nao depois.
+
+**Ainda nao testado na janela:** o `--cas` e' so' CLI, sem equivalente na GUI -- nao se aplica. O
+modo "nova fita" da gravacao continua pendente de teste na janela (ver rodada anterior).
+
 **Licoes para a proxima vez:**
+- **Bumpar `version.h` ANTES do primeiro build de uma rodada de release, nunca depois** -- rodar o
+  build (Windows ou Linux) com a versao ANTIGA ainda no `version.h` sobrescreve o pacote JA
+  LANCADO daquela versao com conteudo novo (sob o nome errado). Aconteceu duas vezes nesta mesma
+  sessao (1.20.2 -> 1.20.3 e 1.20.3 -> 1.21.0) antes de ser corrigido com `git checkout --
+  dist/fwMSX-X.Y.Z-linux.tar.gz`. A ordem certa e': bumpar a versao, DEPOIS buildar.
 - Ao implementar um leitor/escritor de formato binario a partir so' da especificacao escrita (sem um
   arquivo real para testar), desconfiar de deslocamentos em hexadecimal que "parecem" decimais (ex.:
   "0x10" = 16, nao 10) e de qualquer suposicao de alinhamento entre partes concatenadas de tamanho

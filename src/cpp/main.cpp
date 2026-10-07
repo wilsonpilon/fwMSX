@@ -38,6 +38,11 @@
 // "fwmsx --z80dbg --slots" liga o mapa de memoria de verdade (slots/
 // subslots) em vez da RAM plana -- ver doc/memory-map-spec.md, Fase 1.
 //
+// "fwmsx --cas pack --tipo bin|bas --nome NOME ..." empacota um .BIN/.BAS
+// solto num .TSX/.CAS valido sem passar pelo emulador; "fwmsx --cas list
+// <arquivo>" lista os arquivos de uma fita -- ver doc/tape-spec.md,
+// secao 8.
+//
 
 #include "romdb/cli.h"
 #include <cstdint>
@@ -56,6 +61,7 @@
 
 #include "msxdisk/entry.h"
 #include "machine/cli.h"
+#include "tape/cli/cas_tool.h"
 #include "z80/debug/z80_debug_shell.h"
 
 namespace {
@@ -95,6 +101,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return z80::debug::RunZ80DebugShell(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--cas") {
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return tape::RunCasToolCommand(tokens, argv[0]);
     }
 
     std::cout << "Copyright (c) 1972-2026 Cybernostra, Inc." << std::endl;
