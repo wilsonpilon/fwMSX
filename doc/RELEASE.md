@@ -46,6 +46,8 @@ comecar a gravar, o que vem a seguir so' pode ir para a frente.
 - `ctest`: 16 suites (`tapetest` com checagens novas que simulam os 2 blocos reais de um CSAVE --
   nome + dados -- no modo "sobrescrever o ponto", confirmando que os dois sobrevivem). Windows:
   16/16. Linux: 16/16.
+- **Revalidado pelo usuario na janela de verdade em 2026-10-08**: gravou num ponto no meio da
+  fita, sobrescrevendo um programa existente -- funcionou.
 
 ## v1.20.2 -- "King's Valley: Gravacao em K7: Protecao e Preenchimento" (2026-10-08)
 

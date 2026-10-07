@@ -78,7 +78,9 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   tinha acabado de escrever. Corrigido fazendo o corte rodar uma so' vez. Ver secao 9 e
   `doc/CHANGELOG.md`, `[1.20.3]`. O usuario tambem confirmou que a mudanca na UI do menu Fita
   (1.20.2) nao precisava ser desfeita -- foi um engano dele usando o menu antigo, nao um problema
-  da mudanca.
+  da mudanca. **Revalidado pelo usuario na janela em 2026-10-08**: gravou num ponto no meio da
+  fita, sobrescrevendo um programa existente -- funcionou. So' o modo "nova fita" ainda nao foi
+  testado pela janela.
 - Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.3.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
@@ -194,9 +196,10 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    do piloto (zero/um trocados + piloto curto); os 3 bugs achados testando os outros 2 modos pela
    janela (Device I/O error ao reinserir a mesma fita destravada, preenchimento gravado como dado,
    contagiros "parado" que nao era bug); e o bug do corte repetido em "sobrescrever o ponto"
-   (apagava o cabecalho que o proprio CSAVE tinha acabado de escrever). Ver secao 2, secao 9 e
-   `doc/tape-spec.md`, secoes 5-7. **Ainda nao revalidado na janela apos a 1.20.3:** os modos
-   "sobrescrever"/"nova fita" e a marcacao, com um CSAVE de verdade (2 blocos).
+   (apagava o cabecalho que o proprio CSAVE tinha acabado de escrever). **Revalidado pelo usuario
+   na janela em 2026-10-08**: gravou num ponto no meio da fita, sobrescrevendo um programa
+   existente, com sucesso. Ver secao 2, secao 9 e `doc/tape-spec.md`, secoes 5-7. **Ainda nao
+   testado na janela:** o modo "nova fita".
 3. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): ferramenta de linha de comando para
    empacotar `.BIN`/`.BAS` em `.TSX` sem passar pelo emulador (resto do item c); (e) banco de fitas
    (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT);
@@ -337,13 +340,10 @@ ir para a frente. Teste de regressao novo em `tapetest` simula os 2 blocos reais
 (WSL) rodados de novo, `ctest` 16/16 nos dois. Escrito como versao `1.20.3` (mesmo codename,
 subtitulo novo: "Um Corte So'"). Ver `doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.20.3]`.
 
-**Se o `git log` de `main` nao mostrar um commit de release da 1.20.3 ainda**, essa e' a proxima
-acao: `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag
-1.20.3`, `git branch v1.20.3`, `git push origin main 1.20.3 v1.20.3`.
-
-**Ainda nao revalidado na janela apos a 1.20.3:** os modos "sobrescrever"/"nova fita" e a marcacao
-de arquivo com um CSAVE de verdade (2 blocos) -- a correcao foi validada por um teste automatizado
-que simula os 2 blocos, nao pelo usuario na janela ainda.
+A 1.20.3 foi comitada (`48f5c88`), taggeada e com push para `main` no mesmo dia. **Revalidado pelo
+usuario na janela de verdade em 2026-10-08**: gravou num ponto no meio da fita, sobrescrevendo um
+programa existente -- funcionou. So' o modo "nova fita" ainda nao foi testado pela janela (so' por
+teste automatizado).
 
 **Licoes para a proxima vez:**
 - Ao implementar um leitor/escritor de formato binario a partir so' da especificacao escrita (sem um
