@@ -31,6 +31,12 @@ enum class TapeMode { Fast, Normal };
 // O que fazer no PROXIMO TAPOON com sucesso (ver doc/tape-spec.md, secao 6):
 // fitas de verdade sao lineares -- gravar a partir de um ponto destroi
 // fisicamente o que vinha depois, entao so' ha' estas tres opcoes.
+// NewTape/OverwriteAtPoint sao de UM SO' TAPOON: depois de cortar/limpar
+// uma vez, o motor volta sozinho para AppendAtEnd (ver o comentario em
+// TapeEngine::OnTapoon()) -- um unico CSAVE/BSAVE chama TAPOON varias
+// vezes (cabecalho com nome + dados do programa), e so' a PRIMEIRA chamada
+// pode cortar; as de depois (do mesmo CSAVE ou de um CSAVE futuro) tem que
+// so' acrescentar, senao a 2a chamada corta o que a 1a acabou de escrever.
 enum class TapeWriteMode {
     AppendAtEnd,      // grava depois do ultimo arquivo (o padrao: "ir enchendo a fita")
     OverwriteAtPoint, // trunca a partir do arquivo marcado (SeekToFile()) e grava ali

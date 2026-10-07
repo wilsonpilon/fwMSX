@@ -7,6 +7,25 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.20.3] - 2026-10-08 - "King's Valley: Gravacao em K7: Um Corte So'"
+
+### Corrigido
+- **"Sobrescrever o ponto marcado" apagava TUDO (o antigo e o novo)**: um CSAVE/BSAVE de verdade
+  chama TAPOON/TAPOUT/TAPOOF DUAS vezes -- um bloco so' para o cabecalho com o nome do programa,
+  outro so' para os dados -- e `OnTapoon()` reaplicava o corte ("sobrescrever o ponto marcado") em
+  CADA chamada, nao so' na primeira. Na 2a chamada (bloco de dados), "o ponto marcado" passava a
+  ser o PROPRIO cabecalho com nome que a 1a chamada tinha acabado de escrever -- apagando-o e
+  deixando so' os dados, sem nome nenhum. Resultado: nem o programa antigo (de verdade apagado,
+  como esperado) nem o novo (com o cabecalho destruido) ficavam reconheciveis -- "como se o
+  programa tivesse sumido". "Nova fita" tinha o mesmo problema (limpava tudo de novo na 2a
+  chamada). Corrigido: depois de cortar/limpar UMA VEZ, o modo volta sozinho para "incluir no
+  final" -- qualquer bloco seguinte (do mesmo CSAVE ou de um CSAVE futuro) so' acrescenta, nunca
+  corta de novo. Equivale ao comportamento fisico de uma fita de verdade: depois de cortar e
+  comecar a gravar, o que vem a seguir so' pode ir para a frente. Relatado pelo usuario testando
+  "sobrescrever o ponto marcado" pela janela de verdade; teste de regressao novo em `tapetest`
+  simula os 2 blocos de um CSAVE real e confere que o nome e os dados do novo programa sobrevivem
+  os dois.
+
 ## [1.20.2] - 2026-10-08 - "King's Valley: Gravacao em K7: Protecao e Preenchimento"
 
 ### Corrigido

@@ -256,12 +256,25 @@ bool TapeEngine::OnTapoon(uint16_t &af) {
     writing_ = false;
     if (!inserted_ || read_only_) return true; // fita protegida (ou nenhuma): "Device I/O error"
 
+    // NewTape/OverwriteAtPoint sao operacoes de corte, de UMA VEZ SO' --
+    // mas um unico CSAVE/BSAVE de verdade chama TAPOON/TAPOOF varias vezes
+    // (um bloco para o cabecalho com o nome, outro para os dados do
+    // programa). Sem o auto-retorno para AppendAtEnd abaixo, a 2a chamada
+    // desta MESMA gravacao cortaria de novo -- so' que agora "o ponto
+    // marcado" e' o cabecalho com nome que a 1a chamada acabou de escrever,
+    // apagando-o e deixando so' os dados, sem nome: o programa "desaparece"
+    // por completo (nem o antigo nem o novo ficam legiveis). Bug real
+    // encontrado pelo usuario em 2026-10-08 testando "sobrescrever o ponto
+    // marcado" pela janela. Equivale ao comportamento fisico de uma fita de
+    // verdade: depois de cortar e comecar a gravar, o que vem a seguir (no
+    // mesmo CSAVE ou num CSAVE futuro) so' pode ir para a frente.
     switch (write_mode_) {
     case TapeWriteMode::NewTape:
         image_.fast_bytes.clear();
         image_.pulses.clear();
         image_.marks.clear();
         marked_file_ = kNoMark;
+        write_mode_ = TapeWriteMode::AppendAtEnd;
         break;
     case TapeWriteMode::OverwriteAtPoint:
         if (marked_file_ != kNoMark && marked_file_ < image_.files.size()) {
@@ -275,6 +288,8 @@ bool TapeEngine::OnTapoon(uint16_t &af) {
             }
             image_.marks = kept;
         }
+        marked_file_ = kNoMark;
+        write_mode_ = TapeWriteMode::AppendAtEnd;
         break;
     case TapeWriteMode::AppendAtEnd:
         break; // grava depois do que ja' existe

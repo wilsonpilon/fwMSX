@@ -13,6 +13,40 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.20.3 -- "King's Valley: Gravacao em K7: Um Corte So'" (2026-10-08)
+
+**Fase:** mais um bug real relatado pelo usuario, logo depois de testar a correcao da 1.20.2 pela
+janela: "Sobreescrever no ponto marcado, eu escolhi um ponto e mandei dar um csave, e como se o
+programa sumisse, perdeu o anterior e o novo no ponto salvo. Incluir um novo programa no final
+funcionou direitinho." (confirmou tambem que a mudanca na UI do menu Fita, feita na 1.20.2, nao
+precisava ser desfeita -- foi so' um engano do proprio usuario ao usar o menu antigo).
+
+### Causa e correcao
+
+Um CSAVE/BSAVE de verdade chama `TAPOON`/`TAPOUT`/`TAPOOF` DUAS vezes: um bloco so' para o
+cabecalho com o nome do programa, outro so' para os dados de verdade (cada bloco tem seu proprio
+piloto/sincronismo, igual numa fita de cassete real). `OnTapoon()` reaplicava a logica de
+"sobrescrever o ponto marcado" em TODA chamada, nao so' na primeira -- entao, na 2a chamada (bloco
+de dados), "o ponto marcado" ja' nao era mais o programa antigo, e sim o CABECALHO COM NOME que a
+1a chamada tinha acabado de escrever. Resultado: o cabecalho recem-escrito era apagado, e so'
+sobravam os dados, sem nome nenhum -- nem o programa antigo (de verdade apagado, como esperado)
+nem o novo (com o cabecalho destruido) ficavam reconheciveis. "Nova fita" tinha exatamente o mesmo
+problema (limpava tudo de novo na 2a chamada, perdendo o cabecalho que tinha acabado de escrever).
+
+Corrigido fazendo o corte/limpeza rodar UMA SO' VEZ: depois da 1a chamada que corta (ou limpa),
+`OnTapoon()` agora troca o modo de volta para "incluir no final" sozinho -- qualquer bloco
+seguinte (do mesmo CSAVE, ou de um CSAVE futuro, se o usuario nao marcar outro ponto) so'
+acrescenta, nunca corta de novo. Equivale ao comportamento fisico real: depois de cortar a fita e
+comecar a gravar, o que vem a seguir so' pode ir para a frente.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.20.3.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.20.3-linux.tar.gz`.
+- `ctest`: 16 suites (`tapetest` com checagens novas que simulam os 2 blocos reais de um CSAVE --
+  nome + dados -- no modo "sobrescrever o ponto", confirmando que os dois sobrevivem). Windows:
+  16/16. Linux: 16/16.
+
 ## v1.20.2 -- "King's Valley: Gravacao em K7: Protecao e Preenchimento" (2026-10-08)
 
 **Fase:** tres bugs reais relatados pelo usuario ao testar a 1.20.1 na GUI de verdade: "dando CLOAD

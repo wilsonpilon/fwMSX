@@ -219,6 +219,22 @@ gravador de fita de verdade):
 - `NewTape`: esquece tudo que havia (como se a fita tivesse sido
   apagada) e comeca do zero.
 
+**`OverwriteAtPoint`/`NewTape` cortam/limpam UMA SO' VEZ -- corrigido na
+1.20.3**: um CSAVE/BSAVE de verdade chama `TAPOON`/`TAPOUT`/`TAPOOF` DUAS
+vezes (um bloco so' para o cabecalho com o nome, outro so' para os dados
+de verdade -- cada bloco tem seu proprio piloto/sincronismo). Ate' a
+1.20.2, `OnTapoon()` reaplicava o corte/limpeza em CADA chamada, nao so'
+na primeira -- na 2a chamada (bloco de dados), "o ponto marcado" ja' nao
+era mais o programa antigo, e sim o CABECALHO COM NOME que a 1a chamada
+tinha acabado de escrever, apagando-o e deixando so' os dados, sem nome
+nenhum (o programa "desaparecia" por completo, nem o antigo nem o novo
+ficavam reconheciveis). Corrigido: depois da 1a chamada que corta/limpa,
+`write_mode_` volta sozinho para `AppendAtEnd` -- qualquer bloco seguinte
+(do mesmo CSAVE, ou de um CSAVE futuro sem marcar outro ponto) so'
+acrescenta, nunca corta de novo. Equivale ao comportamento fisico real:
+depois de cortar a fita e comecar a gravar, o que vem a seguir so' pode
+ir para a frente.
+
 Em qualquer caso, alinha a posicao a um multiplo de 8 bytes antes de
 escrever o cabecalho de 8 bytes (a MESMA regra do TAPION/TAPOON de
 verdade -- ver secao 3/o comentario no caso #4B de `tzx_reader.cpp`).

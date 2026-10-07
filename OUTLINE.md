@@ -17,11 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08)
 
-- **Versao em preparo:** 1.20.2 "King's Valley: Gravacao em K7: Protecao e Preenchimento" -- codigo e
-  docs prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda
+- **Versao em preparo:** 1.20.3 "King's Valley: Gravacao em K7: Um Corte So'" -- codigo e docs
+  prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda
   estiver aqui.
-- **Ultima versao publicada em `main`:** 1.19.1 (ou 1.20.1, se o commit/push dela ja' tiver sido feito
-  -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
+- **Ultima versao publicada em `main`:** 1.20.2 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
   usuario achou dois bugs reais ao testar com um .TSX de verdade antes do commit, corrigidos direto na
   1.19.1, e depois confirmou pelo ouvido/jogando: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou
   um pouco, som nitido. Pediu a melhoria seguinte (gravacao, fita nova, protecao, 3 modos, marcar o
@@ -72,7 +71,15 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   `[1.20.2]`: o contagiros nao era bug; o resto era `TapeEngine::Insert()` travando a fita de novo
   ao reinserir a MESMA fita ja' destravada, e o preenchimento de alinhamento sendo gravado como
   dado de verdade ao reler uma fita gravada por este emulador.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.2.*` (ver secao 9).
+- **Fita, bug da 1.20.3 (2026-10-08)**: logo depois de testar a 1.20.2, o usuario testou
+  "sobrescrever o ponto marcado" de verdade e achou mais um bug: o programa gravado "sumia" por
+  completo (nem o antigo nem o novo apareciam). Causa: um CSAVE de verdade chama TAPOON/TAPOOF
+  duas vezes (nome + dados), e o corte reaplicava nas duas, apagando o cabecalho que a 1a chamada
+  tinha acabado de escrever. Corrigido fazendo o corte rodar uma so' vez. Ver secao 9 e
+  `doc/CHANGELOG.md`, `[1.20.3]`. O usuario tambem confirmou que a mudanca na UI do menu Fita
+  (1.20.2) nao precisava ser desfeita -- foi um engano dele usando o menu antigo, nao um problema
+  da mudanca.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.3.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -182,13 +189,14 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 1. **[FEITO em 2026-10-07] Ver a janela "Fita K7" e ouvir o modo normal** -- o usuario confirmou:
    carregou o jogo completo (`A.M.C.`, Dinamic) pelo modo normal, ouviu o barulho do carregamento
    ("bem nitido") e jogou um pouco. Ver secao 2.
-2. **[FEITO em 2026-10-07/08, 1.20.0/1.20.1/1.20.2] Gravacao em fita** -- a melhoria que o usuario
+2. **[FEITO em 2026-10-07/08, 1.20.0 a 1.20.3] Gravacao em fita** -- a melhoria que o usuario
    pediu: CSAVE/BSAVE, fita nova, protecao, 3 modos de gravacao, marcar o ponto, contagiros; o bug
-   do piloto (zero/um trocados + piloto curto); e os 3 bugs achados testando os outros 2 modos pela
+   do piloto (zero/um trocados + piloto curto); os 3 bugs achados testando os outros 2 modos pela
    janela (Device I/O error ao reinserir a mesma fita destravada, preenchimento gravado como dado,
-   contagiros "parado" que nao era bug). Ver secao 2, secao 9 e `doc/tape-spec.md`, secoes 5-7.
-   **Ainda nao revalidado na janela apos a 1.20.2:** os modos "sobrescrever"/"nova fita" e a
-   marcacao, agora que o bug que impedia o teste foi corrigido.
+   contagiros "parado" que nao era bug); e o bug do corte repetido em "sobrescrever o ponto"
+   (apagava o cabecalho que o proprio CSAVE tinha acabado de escrever). Ver secao 2, secao 9 e
+   `doc/tape-spec.md`, secoes 5-7. **Ainda nao revalidado na janela apos a 1.20.3:** os modos
+   "sobrescrever"/"nova fita" e a marcacao, com um CSAVE de verdade (2 blocos).
 3. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): ferramenta de linha de comando para
    empacotar `.BIN`/`.BAS` em `.TSX` sem passar pelo emulador (resto do item c); (e) banco de fitas
    (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT);
@@ -303,6 +311,40 @@ acao: `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-
 de arquivo, agora que o bug que impedia o teste foi corrigido -- a correcao em si foi validada so'
 por diagnostico direto (sem GUI), nao pelo usuario na janela ainda.
 
+### Rodada seguinte (2026-10-08): 1.20.3 -- "sobrescrever o ponto" apagava tudo
+
+Logo depois da 1.20.2, o usuario testou "sobrescrever o ponto marcado" pela janela de verdade e
+relatou: "Sobreescrever no ponto marcado, eu escolhi um ponto e mandei dar um csave, e como se o
+programa sumisse, perdeu o anterior e o novo no ponto salvo. Incluir um novo programa no final
+funcionou direitinho." Tambem disse que a mudanca na UI do menu Fita (1.20.2) nao precisava ser
+desfeita -- foi um engano dele usando o menu antigo, nao um problema da mudanca em si.
+
+Causa: um CSAVE/BSAVE de verdade chama `TAPOON`/`TAPOUT`/`TAPOOF` DUAS vezes -- um bloco so' para
+o cabecalho com o nome do programa, outro so' para os dados de verdade (cada bloco tem seu proprio
+piloto/sincronismo, igual numa fita real). `OnTapoon()` reaplicava a logica de "sobrescrever o
+ponto marcado" em TODA chamada, nao so' na primeira. Na 2a chamada (bloco de dados), "o ponto
+marcado" ja' nao era mais o programa antigo -- era o CABECALHO COM NOME que a 1a chamada tinha
+acabado de escrever. Resultado: o cabecalho recem-escrito era apagado, so' sobravam os dados sem
+nome -- nem o antigo (de verdade apagado, como esperado) nem o novo (com o cabecalho destruido)
+ficavam reconheciveis. "Nova fita" tinha o mesmo problema.
+
+Corrigido fazendo o corte/limpeza rodar UMA SO' VEZ: depois da 1a chamada que corta ou limpa,
+`write_mode_` volta sozinho para `AppendAtEnd` -- qualquer bloco seguinte (do mesmo CSAVE, ou de
+um CSAVE futuro sem marcar outro ponto) so' acrescenta, nunca corta de novo. Equivale ao
+comportamento fisico real: depois de cortar a fita e comecar a gravar, o que vem a seguir so' pode
+ir para a frente. Teste de regressao novo em `tapetest` simula os 2 blocos reais de um CSAVE (nome
++ dados) no modo "sobrescrever o ponto" e confere que ambos sobrevivem. Build Windows e Linux
+(WSL) rodados de novo, `ctest` 16/16 nos dois. Escrito como versao `1.20.3` (mesmo codename,
+subtitulo novo: "Um Corte So'"). Ver `doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.20.3]`.
+
+**Se o `git log` de `main` nao mostrar um commit de release da 1.20.3 ainda**, essa e' a proxima
+acao: `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag
+1.20.3`, `git branch v1.20.3`, `git push origin main 1.20.3 v1.20.3`.
+
+**Ainda nao revalidado na janela apos a 1.20.3:** os modos "sobrescrever"/"nova fita" e a marcacao
+de arquivo com um CSAVE de verdade (2 blocos) -- a correcao foi validada por um teste automatizado
+que simula os 2 blocos, nao pelo usuario na janela ainda.
+
 **Licoes para a proxima vez:**
 - Ao implementar um leitor/escritor de formato binario a partir so' da especificacao escrita (sem um
   arquivo real para testar), desconfiar de deslocamentos em hexadecimal que "parecem" decimais (ex.:
@@ -319,3 +361,9 @@ por diagnostico direto (sem GUI), nao pelo usuario na janela ainda.
   os mesmos campos do formato, mas um bug na GERACAO so' aparece ao reler o que o proprio codigo
   escreveu. O modo RAPIDO tambem escondeu esse bug (nao usa pulso nenhum): so' apareceu testando o
   MODO NORMAL de uma fita GRAVADA, nao de uma fita so' lida.
+- **Uma operacao "destrutiva" acionada por um gancho de BIOS (TAPOON aqui) precisa pensar em QUANTAS
+  VEZES esse gancho e' chamado por uma UNICA operacao logica do usuario**, nao so' na primeira vez.
+  Um CSAVE chama TAPOON duas vezes (nome + dados); o teste que so' simulava UM TAPOON/TAPOOF (por
+  simplicidade) passava, mas escondia o bug real -- so' apareceu com um teste que simula a sequencia
+  de chamadas de verdade. Pensar "o que a BIOS real faz, passo a passo, com UM comando do BASIC"
+  antes de assumir que um gancho so' e' chamado uma vez por acao do usuario.

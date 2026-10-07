@@ -508,6 +508,52 @@ int main() {
                   "o 2o arquivo agora e' 'C' (ASCII), no lugar de 'B'");
         }
 
+        // Regressao (2026-10-08, bug real relatado pelo usuario): um CSAVE
+        // de verdade chama TAPOON/TAPOOF DUAS vezes (um bloco so' para o
+        // cabecalho com o nome, outro so' para os dados do programa) -- o
+        // teste acima usa UM bloco so' (simplificado). Sem o auto-retorno
+        // para AppendAtEnd em OnTapoon(), a 2a chamada desta MESMA gravacao
+        // cortava de NOVO, so' que agora "o ponto marcado" e' o cabecalho
+        // com nome que a 1a chamada tinha acabado de escrever -- apagando-o
+        // e deixando so' os dados, sem nome nenhum. Resultado: o programa
+        // "desaparecia" por completo (nem o antigo nem o novo apareciam na
+        // lista), exatamente como o usuario relatou: "e' como se o programa
+        // sumisse, perdeu o anterior e o novo no ponto salvo".
+        check(engine.Insert(two_files_path, tape_error), "CSAVE de 2 blocos: fita com 'A'/'C' reinserida");
+        check(engine.files().size() == 2, "CSAVE de 2 blocos: 'A' e 'C' achados de novo");
+        engine.SetReadOnly(false);
+        check(engine.SeekToFile(1), "CSAVE de 2 blocos: marca o 2o arquivo ('C')");
+        engine.SetWriteMode(tape::TapeWriteMode::OverwriteAtPoint);
+
+        call_vector(0x00EA); // TAPOON -- bloco 1: cabecalho com o nome "NOVO"
+        check((cpu.af() & Z80_C_FLAG) == 0, "CSAVE de 2 blocos, bloco 1 (nome): TAPOON com sucesso");
+        for (uint8_t b : {tape::kCasIdBasic, tape::kCasIdBasic, tape::kCasIdBasic, tape::kCasIdBasic, tape::kCasIdBasic,
+                           tape::kCasIdBasic, tape::kCasIdBasic, tape::kCasIdBasic, tape::kCasIdBasic, tape::kCasIdBasic,
+                           uint8_t('N'), uint8_t('O'), uint8_t('V'), uint8_t('O'), uint8_t(' '), uint8_t(' ')}) {
+            call_vector(0x00ED, b);
+        }
+        call_vector(0x00F0); // TAPOOF -- fecha o bloco 1
+        check(engine.write_mode() == tape::TapeWriteMode::AppendAtEnd,
+              "CSAVE de 2 blocos: depois do bloco 1, o modo volta sozinho para AppendAtEnd");
+
+        call_vector(0x00EA); // TAPOON -- bloco 2: dados do programa
+        check((cpu.af() & Z80_C_FLAG) == 0, "CSAVE de 2 blocos, bloco 2 (dados): TAPOON com sucesso (nao corta de novo)");
+        const uint8_t program_data[3] = {0x09, 0x08, 0x07};
+        for (uint8_t b : program_data) call_vector(0x00ED, b);
+        call_vector(0x00F0); // TAPOOF -- fecha o bloco 2 e persiste
+
+        tape::TapeImage reread_two_block;
+        check(tape::LoadCasImage(two_files_path, reread_two_block, reread_error),
+              "CSAVE de 2 blocos: o arquivo persistido abre (" + reread_error + ")");
+        check(reread_two_block.files.size() == 2, "CSAVE de 2 blocos: 'A' continua, e 'NOVO' aparece no lugar de 'C' (nao desaparece)");
+        if (reread_two_block.files.size() == 2) {
+            check(reread_two_block.files[0].name == "A", "CSAVE de 2 blocos: o 1o arquivo ('A') nao foi tocado");
+            check(reread_two_block.files[1].name == "NOVO" && reread_two_block.files[1].type == tape::TapeFileType::Basic,
+                  "CSAVE de 2 blocos: o 2o arquivo agora e' 'NOVO' (BASIC), com o nome intacto");
+            check(reread_two_block.files[1].data_bytes == sizeof(program_data),
+                  "CSAVE de 2 blocos: os dados do 2o bloco (3 bytes) estao la', separados do nome");
+        }
+
         // --- contagiros (odometro) ------------------------------------------
         engine.SetMode(tape::TapeMode::Normal);
         engine.Rewind();
