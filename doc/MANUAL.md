@@ -312,7 +312,7 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX (`--msx`) -- v1.17.0
+## Emulador MSX (`--msx`) -- v1.23.0
 
 Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
 `--msx` escolhe a maquina e as opcoes abaixo.
@@ -447,13 +447,19 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 ### O que funciona e o que nao funciona
 
-**Funciona (v1.17.0):**
+**Funciona (v1.23.0):**
 
 - MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
-- MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger).
+- MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
+  memoria (DISK.ROM) ou pelas portas (DDX 3.0/CDX-2, estilo Microsol).
 - Cartuchos ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16) e SCC (F1 Spirit toca a trilha de 5 canais).
 - VDP completo (SCREEN 0 a 8 no V9938; V9958 com SCREEN 10-12).
 - PSG, SCC e FM (MSX-MUSIC e FM-PAC) com os comandos de BASIC, modo ritmo e saida ao vivo.
+- **Fita** (`.cas`, `.tsx`/`.tzx`): leitura (rapida e normal, com som), gravacao (`CSAVE`/`BSAVE "CAS:"`,
+  fita nova, protecao, 3 modos, marcar o ponto, contagiros), janela "Fita K7", e a ferramenta de linha
+  de comando `fwmsx --cas` (empacotar, "ripar" `.wav`, listar). Navegacao completa dos blocos de
+  controle do TZX. Ver a secao acima e [tape-spec.md](tape-spec.md).
+- **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao e identificacao.
 - Configuracao de slots pela janela (secao acima).
 
 **Nao funciona ou nao foi verificado:**
@@ -461,9 +467,16 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 - **Lode Runner + SCC** nao sobe. **Parodius (Smooth Scroll)** mostra tela fragmentada, causa nao
   diagnosticada. **Mega Chase** foi validado so' ate o titulo. **F-1 Spirit 3D**: a troca de disco pela
   janela nao foi testada.
-- **Menus, tela cheia, 4:3, 16:9 e filtros de video** nao foram conferidos na tela.
-- **Som do FM e do SCC**: nao comparados com hardware real.
+- **Som do FM, do SCC e da fita (modo normal)**: nao comparados com hardware real.
 - **Cores YJK** do V9958: nao conferidas com hardware real.
+- **Fita**: banco de fitas/metadados ainda nao existe; `.cas` cru sem gravacao previa deste emulador
+  ainda adivinha o preenchimento de alinhamento; um ASCII multi-bloco de verdade (256 bytes por bloco)
+  aparece fragmentado na lista; "Selecao" (#28 do TZX) escolhe sempre a 1a opcao (sem como mostrar um
+  menu de verdade numa ferramenta batch); o modo "nova fita" de gravacao ainda nao foi testado na
+  janela de verdade (so' "sobrescrever o ponto" e "incluir no final" foram). Ver
+  [tape-spec.md](tape-spec.md), secoes 5, 9 e 10.
+- **Banco de ROMs**: ainda nao escolhe o mapper ao carregar um cartucho, nem verifica o SHA-1 das
+  ROMs baixadas.
 - **Sem**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, cartucho MSX-MUSIC
   com BIOS propria, e `CALL VOICECOPY`.
 - **Outras BIOS** (ex.: Gradiente Expert 1.1): o layout aceita, mas o hardware que a BIOS espera nao foi testado.
@@ -477,7 +490,7 @@ Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.
 [audio-spec.md](audio-spec.md) (audio), [fdc-spec.md](fdc-spec.md) (disco), [msx2-spec.md](msx2-spec.md) e
 [msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
 
-## Banco de ROMs (`--romdb`) -- nao lancado
+## Banco de ROMs (`--romdb`)
 
 O banco guarda as ROMs que voce tem no disco (pelo SHA-1), com nome, tipo de hardware, mapper e
 notas. As ROMs **nao** vem com o emulador: voce baixa de fontes publicas, pelo menu **ROMs** da
@@ -504,9 +517,37 @@ Na janela, o menu **ROMs** tem os downloads, a navegacao pelo file-hunter e a ja
 
 **Requisitos**: o programa `curl` (Windows 10 1803+ ja tem; Linux, instale o pacote `curl`).
 
-**Limites**: o menu e as janelas foram compilados, mas nao foram operados visualmente. O JSON do Vampier
-nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual do site. O emulador ainda nao
-usa o banco para escolher o mapper ao carregar um cartucho. Ver [romdb-spec.md](romdb-spec.md).
+**Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
+do site. O emulador ainda nao usa o banco para escolher o mapper ao carregar um cartucho, nem verifica
+as ROMs baixadas contra o SHA-1 conhecido. Ver [romdb-spec.md](romdb-spec.md).
+
+## Fita por linha de comando (`fwmsx --cas`)
+
+Empacota um `.BIN`/`.BAS` solto num `.TSX` valido, "ripa" uma gravacao real (`.wav`) de volta para
+`.TSX`, ou lista o conteudo de uma fita -- tudo sem abrir o emulador. Ver [tape-spec.md](tape-spec.md),
+secoes 8 e 9, para o detalhamento completo.
+
+```powershell
+# Empacotar um binario (BLOAD "CAS:") -- precisa dos enderecos de inicio/fim/execucao
+.\dist\fwMSX.exe --cas pack --tipo bin --nome JOGO --inicio 0x8000 --fim 0x81FF --exec 0x8000 jogo.bin saida.tsx
+
+# Empacotar um programa BASIC ja tokenizado (CLOAD "CAS:") -- ex.: extraido com BSAVE dentro do emulador
+.\dist\fwMSX.exe --cas pack --tipo bas --nome TESTE programa.bas saida.tsx
+
+# Acrescentar mais um arquivo numa fita existente, em vez de criar uma nova
+.\dist\fwMSX.exe --cas pack --tipo bin --nome N2 --inicio 0x9000 --fim 0x9100 --exec 0x9000 --anexar saida.tsx entrada2.bin saida.tsx
+
+# "Ripar" uma gravacao real de fita (.wav PCM mono, 8 ou 16 bits) para .TSX
+.\dist\fwMSX.exe --cas rip --tolerancia 25 gravacao.wav saida.tsx
+
+# Listar o conteudo de uma fita (indice, tipo, nome, tamanho dos dados)
+.\dist\fwMSX.exe --cas list saida.tsx
+```
+
+**Limites**: `--tipo bas` espera o arquivo JA tokenizado (nao tokeniza texto solto -- um programa BASIC
+do MSX embute ponteiros de memoria entre linhas, dependentes do endereco de carga); so' `.BIN`/`.BAS`
+(sem `--tipo ascii`); o `rip` nao tem os modos interativo/preditivo do makeTSX original (um bit ambiguo
+termina o bloco corrente, em vez de tentar adivinhar); um `.wav` estereo e' rejeitado (so' mono).
 
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 

@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.17.0 "Xak: Musica FM e Slots")
+## Estado atual (v1.23.0 "King's Valley: Navegacao de Blocos do TZX")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -27,22 +27,31 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 **Funciona hoje:**
 
 - **Maquinas**: MSX1 (BASIC 1.0), MSX2 (BASIC 2.1) e MSX2+ (BASIC 3.0, V9958), ate o prompt do BASIC.
-- **Disco**: MSX-DOS 1.8 a partir de `.dsk`, com leitura e gravacao (e protecao contra gravacao).
+- **Disco**: MSX-DOS 1.8 a partir de `.dsk`, com leitura e gravacao (e protecao contra gravacao); tambem pela
+  controladora por portas (estilo Microsol, driver DDX 3.0/CDX-2), formatos 180/360/720 KB.
+- **Fita** (`.cas`, `.tsx`/`.tzx`): leitura (modo rapido e normal, com som), gravacao (`CSAVE`/`BSAVE "CAS:"`,
+  fita nova, protecao, 3 modos, marcar o ponto, contagiros), janela visual "Fita K7", e a ferramenta de linha
+  de comando `fwmsx --cas` (empacotar `.BIN`/`.BAS` num `.TSX`, "ripar" uma gravacao `.wav` real, listar o
+  conteudo de uma fita). Navegacao completa dos blocos de controle do TZX (grupos/lacos/saltos/chamadas/
+  selecao). Ver [tape-spec.md](doc/tape-spec.md).
 - **Cartuchos**: ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SRAM com `.sav` e o SCC (F1 Spirit toca a trilha).
 - **Video**: VDP completo: SCREEN 0 a 8 no V9938 e 10 a 12 no V9958 (YJK, YAE e scroll).
 - **Som**: PSG, SCC e **FM (MSX-MUSIC e FM-PAC)** com os comandos de BASIC (`CALL MUSIC`, `PLAY #n`, `CALL VOICE`), modo ritmo e saida ao vivo.
-- **Controladora de disco por portas** (estilo Microsol): o MSX-DOS sobe com o driver DDX 3.0 e com o CDX-2 pelas portas D0h. Formatos 180, 360 e 720 KB pela configuracao do drive.
 - **Layout de slots mais amplo**: RAM de 16 KB no fim da celula, RAM de 32 KB em duas celulas, mapper de 64 KB a 4 MB (varios mappers), BIOS Expert 1.1 subindo.
-- **Banco de ROMs** (nao lancado): menu **ROMs** baixa o fMSX 6.0, o System ROMs do file-hunter e o banco do Vampier; busca, edicao e identificacao. As ROMs nao vem com o emulador (ver [romdb-spec.md](doc/romdb-spec.md)).
+- **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): baixa o fMSX 6.0, o System ROMs do file-hunter e o banco
+  do Vampier; busca, edicao e identificacao. As ROMs nao vem com o emulador (ver [romdb-spec.md](doc/romdb-spec.md)).
 - **Configuracao**: menu **Maquina > Configuracao de slots...**: 16 celulas (BIOS, BASIC, RAM de 16 a 64 KB, mapper de 64 a 1024 KB, cartucho, disco, sub-ROM e FM-PAC).
-- **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video.
+- **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- confirmados na tela.
 
 **Limites (detalhes em [RELEASE.md](doc/RELEASE.md) e [SPEC.md](doc/SPEC.md), secao 5.0):**
 
-- O **som do FM e do SCC** nao foi comparado com hardware real. Use `--wav` para gravar e ouvir.
+- O **som do FM, do SCC e da fita (modo normal)** ainda nao foram comparados com hardware real. Use `--wav` para gravar e ouvir.
+- **Fita**: banco de fitas/metadados ainda nao existe; `.cas` cru sem gravacao previa deste emulador ainda
+  adivinha o preenchimento de alinhamento; um arquivo ASCII multi-bloco de verdade (256 bytes por bloco)
+  aparece fragmentado na lista; "Selecao" (#28 do TZX) nao tem como mostrar um menu de verdade numa
+  ferramenta batch -- escolhe sempre a 1a opcao. Ver [tape-spec.md](doc/tape-spec.md), secoes 5, 9 e 10.
 - **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada; Mega Chase
   so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
-- **Janela**: menus, tela cheia, 4:3, 16:9 e filtros nao foram conferidos na tela.
 - **Ausentes**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, `CALL VOICECOPY`
   e opcao de linha de comando para o layout de slots.
 - **BIOS**: so' em 0:0. Outras BIOS (ex.: Gradiente Expert 1.1) montam no layout, mas nao foram testadas.
@@ -59,11 +68,16 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 - **Cartucho**: insere ou retira o cartucho do slot 1:0.
 - **FM-PAC**: liga ou desliga o FM-PAC no slot 2:0 (ligado por padrao quando o `FMPAC.ROM` existe).
 - **Disco**: insere e ejeta os discos A: e B:.
+- **Fita**: inserir, criar fita nova, ejetar, rebobinar, trocar o modo de carregamento, destravar/travar
+  contra gravacao, escolher o modo de gravacao, e a janela visual "Fita K7".
 - **Exibir, Video, Som e Configuracoes > Interface**: aparencia e audio.
 
 Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 1.13.0 SCC;
-1.14.0 CPIR/CPDR em Assembly; 1.15.0 MSX2+ (V9958); 1.16.0 janela com menus e filtros; **1.17.0 FM com
-BASIC, layout de slots e SRAM do FM-PAC**. Detalhes em [CHANGELOG.md](doc/CHANGELOG.md).
+1.14.0 CPIR/CPDR em Assembly; 1.15.0 MSX2+ (V9958); 1.16.0 janela com menus e filtros; 1.17.0 FM com
+BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas; 1.19.x fita (leitura);
+1.20.x fita (gravacao); 1.21.0 empacotador `.BIN`/`.BAS` -> `.TSX` (`--cas pack`); 1.22.0 ripper de
+`.WAV` (`--cas rip`); **1.23.0 navegacao de blocos de controle do TZX**. Detalhes em
+[CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
 
@@ -97,15 +111,21 @@ fwMSX/
 │   ├── rtc/        relogio RTC do MSX2 (header-only -- ver doc/msx2-spec.md)
 │   ├── fdc/        controladora de disquete WD2793 (core/cpp -- ver
 │   │               doc/fdc-spec.md)
+│   ├── tape/       fita (.CAS, .TSX/.TZX), gancho de BIOS, pulsos KCS e
+│   │               a CLI `fwmsx --cas` (core/cpp/fortran/asm/cli -- ver
+│   │               doc/tape-spec.md)
+│   ├── romdb/      banco de ROMs (SQLite, downloads, CLI `--romdb` --
+│   │               ver doc/romdb-spec.md)
 │   ├── audio/      saida de audio ao vivo (miniaudio -- ver
 │   │               doc/audio-spec.md)
 │   └── machine/    maquina MSX1 completa + janela (`--msx` -- ver
 │                   doc/machine-spec.md)
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
-├── tests/z80/      testes do nucleo Z80, memoria, VDP, PPI, PSG, maquina e
-│                   audio e disco (CTest -- z80test/z80dbgtest/memmaptest/
-│                   vdptest/vdp2test/ppitest/psgtest/machinetest/msx2test/
-│                   audiotest/fdctest)
+├── tests/z80/      testes do nucleo Z80, memoria, VDP, PPI, PSG, maquina,
+│                   audio, disco e fita (CTest -- z80test/z80dbgtest/
+│                   memmaptest/vdptest/vdp2test/ppitest/psgtest/
+│                   machinetest/msx2test/audiotest/fdctest/tapetest/
+│                   castooltest), mais tests/romdb/ (romdbtest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk
@@ -116,6 +136,8 @@ fwMSX/
 │   ├── psg-spec.md      especificacao + fases do PSG
 │   ├── scc-spec.md      especificacao + fases do SCC
 │   ├── fm-spec.md       chip FM (MSX-MUSIC e FM-PAC) e comandos de BASIC
+│   ├── tape-spec.md     fita: .CAS/.TSX/.TZX, gravacao, `--cas` (pack/rip/list), navegacao do TZX
+│   ├── romdb-spec.md    banco de ROMs (SQLite, downloads, CLI)
 │   ├── slots-spec.md    layout de slots e configuracao da maquina
 │   ├── sram-spec.md     SRAM de cartucho e FM-PAC (arquivos .sav)
 │   ├── machine-spec.md  maquina completa + janela com teclado do host

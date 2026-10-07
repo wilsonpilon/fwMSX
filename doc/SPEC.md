@@ -182,17 +182,19 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-06, v1.17.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
-  (VDP, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout de slots). Ver a secao 5.0 para
-  o que funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
+  **Estado atual (2026-10-08, v1.23.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  (VDP, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout de slots), com o banco de ROMs
+  (`--romdb`) e o subsistema de fita completo (leitura, gravacao, empacotador `.BIN`/`.BAS`,
+  ripper de `.WAV` e navegacao de blocos do TZX) tambem publicados. Ver a secao 5.0 para o que
+  funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
   (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.19.1)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.23.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.19.1, publicada em `main`):**
+**Funcionando (v1.23.0, publicada em `main`):**
 
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`.
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
@@ -204,7 +206,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] **Fita** (.CAS e .TSX/.TZX): leitura completa, carregamento rapido (sem som) e normal (pulsos de verdade, com som), menu "Fita" e janela visual "Fita K7". **Confirmado pelo usuario em 2026-10-07**: carregou um jogo completo (modo normal) e jogou um pouco, som nitido. Ver `doc/tape-spec.md`.
 - [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 16 suites.
 
-**Feito depois da v1.19.1 (nao lancado ainda -- gravacao em fita, 2026-10-07/08):**
+**Fita -- gravacao, empacotador, ripper de WAV e navegacao de TZX (v1.20.0 a v1.23.0, 2026-10-07/08, todas publicadas em `main`):**
 
 - [x] **Gravacao** (`CSAVE`/`BSAVE "CAS:"`, sempre pelo gancho de BIOS TAPOON/TAPOUT/TAPOOF, independente do modo de carregamento escolhido). **Confirmado pelo usuario em 2026-10-08**, testando pela janela: criou uma fita nova, gravou um programa, rebobinou e recarregou com sucesso.
 - [x] **Corrigido** (1.20.1, achado pelo usuario testando pela janela): pulsos de ZERO e UM do #4B estavam trocados (zero tem que ser 2x o pulso de um, nao o contrario) e o piloto era curto demais para a BIOS de verdade calibrar -- sem isso, uma fita GRAVADA pelo emulador nunca carregava no modo normal (so' no rapido, que nao usa pulso). Ver `doc/tape-spec.md`, secao 4, e `doc/CHANGELOG.md`, `[1.20.1]`.

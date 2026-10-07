@@ -15,27 +15,25 @@ chamado **MSX-PoorManOS**. Ainda sem data.
 Este repositorio e' **pessoal**. Midias de terceiros (ROMs, discos, fitas) podem ser versionadas por
 enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver `LICENSE-THIRD-PARTY.md`).
 
-## 2. Onde estamos (2026-10-08)
+## 2. Onde estamos (encerrado em 2026-10-08, pronto para continuar amanha)
 
-- **Versao em preparo:** 1.23.0 "King's Valley: Navegacao de Blocos do TZX" -- codigo e docs
-  prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda
-  estiver aqui.
-- **Ultima versao publicada em `main`:** 1.22.0 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
-  usuario achou dois bugs reais ao testar com um .TSX de verdade antes do commit, corrigidos direto na
-  1.19.1, e depois confirmou pelo ouvido/jogando: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou
-  um pouco, som nitido. Pediu a melhoria seguinte (gravacao, fita nova, protecao, 3 modos, marcar o
-  ponto, contagiros) -- isso virou a 1.20.0 (minor, nao "1.19.2" como ele sugeriu, pela politica do
-  projeto). **A 1.20.0 TAMBEM nunca foi comitada**: o usuario testou pela janela de verdade (criou uma
-  fita nova, gravou `CSAVE"TESTE"`, rebobinou, deu `CLOAD` no modo normal) e achou outro bug real --
-  ouvia o chiado do piloto, mas o programa nunca carregava. Corrigido direto na 1.20.1 (ver secao 9 e
-  `doc/CHANGELOG.md`): os pulsos de ZERO e UM do bloco #4B estavam TROCADOS (a convencao certa do MSX
-  e' zero = 2x o pulso de um, confirmada no proprio gerador do makeTSX), e o piloto era curto demais
-  (2000 pulsos, ~0,48s) para a BIOS de verdade calibrar -- subido para 8000 (~1,9s).
+- **Ultima versao publicada em `main`:** **1.23.0** "King's Valley: Navegacao de Blocos do TZX"
+  -- commit `527f763`, tag `1.23.0`, branch `v1.23.0`, tudo com push feito. `git status` limpo,
+  `main` local == `origin/main`. Nao ha' nada pendente de commit/push desta sessao.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
-- **Testes:** `ctest` com **16 suites**, todas passando (`tape_load` com **71 checagens**: 22 de
-  gravacao/protecao/modos/marcacao/contagiros + 3 sobre a relacao zero/um/piloto).
-- **Documentos vivos:** `doc/SPEC.md` (secao 5.0 = estado atual; 5.2 = fitas), `doc/CHANGELOG.md`,
-  `doc/RELEASE.md`, `doc/MANUAL.md`, e os `*-spec.md` (inclui `doc/tape-spec.md`, novo).
+- **Testes:** `ctest` com **17 suites**, todas passando em Windows E Linux (WSL) -- inclui
+  `tape_load` (leitura/gravacao de fita + navegacao de TZX) e `cas_pack` (empacotador + ripper de
+  WAV, novo nesta sessao).
+- **Documentos vivos, todos sincronizados com a 1.23.0 nesta sessao:** `README.md`,
+  `doc/MANUAL.md`, `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
+  `doc/tape-spec.md` (secoes 1-10) e este arquivo.
+- **Resumo da sessao de hoje (ver secao 9 para o detalhamento completo, rodada por rodada):**
+  corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1 a 1.20.3:
+  piloto/ZERO/UM trocados, `Device I/O error` ao reinserir fita destravada, preenchimento de
+  alinhamento gravado como dado, corte repetido em "sobrescrever o ponto"); depois, os 3 itens do
+  "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` -> `.TSX` (`fwmsx --cas pack`, 1.21.0);
+  port do makeTSX, WAV -> TSX (`fwmsx --cas rip`, 1.22.0); navegacao de verdade dos blocos de
+  controle do TZX (grupos/lacos/saltos/chamadas/selecao, 1.23.0). O "passo 1" esta' COMPLETO.
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -579,3 +577,69 @@ repositorio ainda).
   simplicidade) passava, mas escondia o bug real -- so' apareceu com um teste que simula a sequencia
   de chamadas de verdade. Pensar "o que a BIOS real faz, passo a passo, com UM comando do BASIC"
   antes de assumir que um gancho so' e' chamado uma vez por acao do usuario.
+
+---
+
+## 11. ENCERRAMENTO DA SESSAO DE 2026-10-08 -- leia isto primeiro ao retomar amanha
+
+**Estado do repositorio:** tudo comitado e com push feito. `git log --oneline -1` em `main` deve
+mostrar `527f763` (ou mais novo, se outra sessao continuar depois desta nota ser escrita). Nenhum
+arquivo pendente (`git status` limpo). Versao publicada: **1.23.0**.
+
+### O que foi feito hoje (nesta sessao), em ordem
+
+1. **1.20.2** -- corrigidos 2 bugs reais de gravacao que o usuario achou testando pela janela
+   (reinserir a MESMA fita destravada voltava a trava-la sem aviso; preenchimento de alinhamento
+   gravado como dado de verdade ao reler uma fita gravada por este emulador). Contagiros "parado"
+   no CLOAD investigado e confirmado como NAO sendo bug.
+2. **1.20.3** -- corrigido mais um bug: "sobrescrever o ponto marcado" apagava o cabecalho que o
+   proprio CSAVE tinha acabado de escrever (a logica de corte reaplicava em cada uma das 2
+   chamadas de TAPOON que um CSAVE de verdade faz). **Revalidado pelo usuario na janela**: gravou
+   num ponto no meio da fita, sobrescrevendo um programa existente, com sucesso.
+3. **1.21.0** -- "passo 1", item 1: `fwmsx --cas pack` empacota um `.BIN`/`.BAS` solto num
+   `.TSX`/`.CAS` sem abrir o emulador.
+4. **1.22.0** -- "passo 1", item 2: `fwmsx --cas rip` demodula uma gravacao `.wav` real de fita
+   para `.TSX` (port do CONCEITO do makeTSX, nao do codigo). Testado contra uma fita MSX real dos
+   anos 80 (86 blocos reconhecidos sem erro).
+5. **1.23.0** -- "passo 1", item 3 (ultimo): navegacao de verdade dos blocos de controle do TZX
+   (grupos/lacos/saltos/chamadas/selecao) -- leitor reescrito em 2 passadas.
+6. **Documentacao sincronizada** (este pedido, sem mudar a versao): `README.md`, `doc/MANUAL.md`
+   (secoes "Emulador MSX", "Banco de ROMs", nova secao "Fita por linha de comando", "O que
+   funciona e o que nao funciona"), `doc/SPEC.md` (secao 5.0, banners de versao), e este
+   `OUTLINE.md` (secao 2 e esta secao 11) -- todos atualizados para refletir a 1.23.0 com tudo que
+   funciona, o que tem limitacao, e o que falta. `doc/CHANGELOG.md`/`doc/RELEASE.md`/
+   `doc/tape-spec.md` ja' estavam em dia (atualizados a cada release ao longo do dia).
+
+O "passo 1" completo pedido pelo usuario (empacotador, ripper de WAV, navegacao de TZX) esta'
+**FECHADO**.
+
+### O que falta -- pendencias para continuar amanha (ordem sugerida, ver `doc/SPEC.md` secao 5.0 para a lista completa e atualizada)
+
+- [ ] **Revalidar na janela de verdade**: o modo "nova fita" de gravacao (so' "sobrescrever o
+  ponto" e "incluir no final" foram confirmados pelo usuario testando pela janela). O `--cas` e'
+  so' CLI, sem equivalente na GUI -- nao se aplica revalidar na janela.
+- [ ] **Fitas, o que resta da lista original** (`doc/SPEC.md`, secao 5.2): banco de fitas/
+  metadados (item e -- sem download automatico ate ter autorizacao do usuario); preenchimento de
+  alinhamento ainda adivinhado para `.cas` cru carregado direto do disco (sem ter passado por uma
+  gravacao deste emulador); `ScanCasFiles()` so' junta 2 blocos por arquivo -- um ASCII
+  multi-bloco de verdade (256 bytes por bloco) aparece fragmentado na lista.
+- [ ] **Banco de ROMs**: verificar as ROMs baixadas contra o SHA-1 conhecido; usar o banco para
+  escolher o mapper ao carregar um cartucho; importar o JSON do Vampier se for util.
+- [ ] **Ouvir o FM, o SCC, o disco e a fita (modo normal) contra referencia** (hardware real, nao
+  so' "parece certo"); ajustar as constantes do OPLL e os ganhos da mistura.
+- [ ] **Jogos com problema conhecido**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) tela
+  fragmentada (causa nao diagnosticada); Mega Chase validado so' ate o titulo; F-1 Spirit 3D (troca
+  de disco pela janela nao testada).
+- [ ] **FM**: `CALL VOICECOPY` (a ROM do fMSX nao aceita); status e timers do OPLL.
+- [ ] **Disco**: formatar disquetes (hoje so' le e grava); FM/MFM modelados; drives A e B com
+  formatos diferentes.
+- [ ] **Itens maiores, sem data definida**: save-state (PSG/SCC/OPLL/disco/fita/VDP); rastreio no
+  meio do quadro; controle externo estilo openMSX (canal localhost); layout de slots salvar/
+  carregar em arquivo; cartuchos MSX-DOS 2/GameMaster2/MSX-MUSIC com BIOS propria; BIOS Expert
+  (texto com espacos na tela); frontend/integracao com o msxide (MSX-PoorManOS) -- ver secao 7
+  para a lista completa, em ordem sugerida.
+
+**Para retomar amanha**: nao ha' nenhuma instrucao especifica do usuario sobre qual pendencia
+atacar primeiro -- a ultima mensagem dele foi so' pedir esta sincronizacao de documentacao antes
+de encerrar o dia. Comecar perguntando qual item da lista acima ele quer priorizar, igual foi
+feito a cada "proximo passo" ao longo desta sessao.
