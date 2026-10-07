@@ -7,6 +7,35 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.20.2] - 2026-10-08 - "King's Valley: Gravacao em K7: Protecao e Preenchimento"
+
+### Corrigido
+- **Contagiros parado no CLOAD**: nao era bug -- o contador so' avanca enquanto o motor gira
+  (`motor_on()`), e numa fita curta (poucos segundos) o avanco e' sutil. Confirmado via
+  diagnostico direto (`Machine::RunFrame()` + `tape().odometer()`): sobe normalmente durante
+  todo o CLOAD e congela quando o motor para (fim do carregamento).
+- **"Device I/O error" ao trocar para "sobrescrever" ou "nova fita" apos marcar um ponto**:
+  `TapeEngine::Insert()` sempre travava a fita de novo (`read_only_ = true`), MESMO ao reinserir
+  a fita que o usuario ja' tinha destravado -- bastava reabrir o menu Fita para a protecao voltar
+  silenciosamente. Corrigido: reinserir a MESMA fita preserva o estado de protecao atual. O menu
+  tambem trocou o unico item ambiguo ("Fita protegida contra gravacao") por dois itens explicitos
+  ("Destravar para gravar" / "Travar contra gravacao"), cada um habilitado so' quando faz sentido,
+  deixando o estado atual sempre visivel.
+- **Preenchimento de alinhamento (padding) gravado como dado**: `TAPOON` insere bytes zero antes
+  de cada cabecalho novo so' para alinhar em 8 bytes (como a BIOS de verdade) -- esses bytes NUNCA
+  foram conteudo real, mas os sintetizadores de pulso (`SynthesizeCasPulses`, o antigo
+  `RebuildFromFastBytes` e `WriteTsxFromCas`) descobriam o tamanho de cada bloco "procurando o
+  proximo cabecalho", o que misturava esse preenchimento com o bloco ANTERIOR de verdade. Corrigido
+  com uma nova marca exata (`TapeMark{fast_byte_offset, pulse_index, content_length}`) que o motor
+  de gravacao preenche com o tamanho REAL de cada bloco, sem adivinhar -- usada tanto na sintese de
+  pulsos em memoria quanto na escrita do `.tsx` persistido. Bug relatado pelo usuario ao reinserir
+  uma fita gravada e dar CLOAD no modo normal; confirmado tanto em memoria quanto reabrindo o
+  arquivo do disco (teste novo em `tapetest`: grava dois blocos, recarrega do zero, confere que o
+  segundo bloco tem EXATAMENTE os bytes gravados, sem contaminacao do preenchimento do primeiro).
+  Limitacao que CONTINUA valendo para `.cas` carregado direto do disco (sem passar pela gravacao
+  deste emulador): ali ainda nao ha' tamanho exato por bloco, so' seguro para fitas geradas por este
+  fluxo -- ver doc/tape-spec.md.
+
 ## [1.20.1] - 2026-10-08 - "King's Valley: Gravacao em K7: Corrigindo o Piloto"
 
 ### Corrigido

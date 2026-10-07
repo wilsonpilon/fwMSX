@@ -740,9 +740,20 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 ImGui::Separator();
                 ImGui::TextDisabled("Gravacao (CSAVE/BSAVE \"CAS:\")");
                 {
+                    // Dois itens claros em vez de um so' que alterna (ver
+                    // doc/tape-spec.md, secao 6): um toggle so' mostra o
+                    // estado ATUAL -- clicar sem checar o estado antes
+                    // (ex.: depois de reinserir a mesma fita) travava de
+                    // novo sem avisar, e o proximo CSAVE dava "Device I/O
+                    // error" sem pista nenhuma do motivo. Cada item aqui
+                    // so' fica clicavel quando faz sentido.
                     const bool ro = machine->tape().read_only();
-                    if (ImGui::MenuItem("Fita protegida contra gravacao", nullptr, ro, machine->tape().inserted()))
-                        machine->tape().SetReadOnly(!ro);
+                    const bool has_tape = machine->tape().inserted();
+                    if (ImGui::MenuItem("Destravar para gravar", nullptr, false, has_tape && ro))
+                        machine->tape().SetReadOnly(false);
+                    if (ImGui::MenuItem("Travar contra gravacao", nullptr, false, has_tape && !ro))
+                        machine->tape().SetReadOnly(true);
+                    ImGui::TextDisabled("%s", !has_tape ? "(sem fita)" : ro ? "Travada (so' leitura)" : "Destravada (pode gravar)");
                 }
                 ImGui::TextDisabled("Ao gravar:");
                 const tape::TapeWriteMode wmode = machine->tape().write_mode();

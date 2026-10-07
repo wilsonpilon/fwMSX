@@ -3,7 +3,6 @@
 #include <fstream>
 
 #include "cas_format.h"
-#include "cas_reader.h"
 
 namespace tape {
 
@@ -39,14 +38,21 @@ void AppendBlock4B(std::vector<uint8_t> &v, const uint8_t *data, std::size_t siz
 
 } // namespace
 
-bool WriteTsxFromCas(const std::vector<uint8_t> &fast_bytes, const std::string &path, std::string &error) {
+bool WriteTsxFromCas(const std::vector<uint8_t> &fast_bytes, const std::vector<TapeMark> &marks, const std::string &path,
+                      std::string &error) {
     std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
-    std::size_t pos = FindCasHeader(fast_bytes, 0);
-    while (pos < fast_bytes.size()) {
-        const std::size_t content_start = pos + kCasHeader.size();
-        const std::size_t content_end = FindCasHeader(fast_bytes, content_start);
-        AppendBlock4B(tsx, fast_bytes.data() + content_start, content_end - content_start);
-        pos = content_end;
+    // Usa o tamanho EXATO de cada bloco (`marks`), nao "ate' o proximo
+    // cabecalho" -- essa busca generica mistura o preenchimento de
+    // alinhamento (que o proprio TAPOON insere antes do PROXIMO cabecalho,
+    // ver TapeEngine::OnTapoon()) com o conteudo de verdade do bloco
+    // ANTERIOR. Bug real encontrado em 2026-10-08: uma fita gravada e
+    // depois RECARREGADA (ejetada e reinserida) tinha esse preenchimento
+    // codificado como dado, so' no modo normal. Ver doc/tape-spec.md,
+    // secao 5/6.
+    for (const TapeMark &mark : marks) {
+        const std::size_t content_start = mark.fast_byte_offset + kCasHeader.size();
+        if (content_start + mark.content_length > fast_bytes.size()) continue; // marca invalida -- nunca deveria acontecer
+        AppendBlock4B(tsx, fast_bytes.data() + content_start, mark.content_length);
     }
 
     std::ofstream f(path, std::ios::binary | std::ios::trunc);

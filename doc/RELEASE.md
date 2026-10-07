@@ -13,6 +13,50 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.20.2 -- "King's Valley: Gravacao em K7: Protecao e Preenchimento" (2026-10-08)
+
+**Fase:** tres bugs reais relatados pelo usuario ao testar a 1.20.1 na GUI de verdade: "dando CLOAD
+o contagiros nao gira, porem se eu clicar em um ponto da fita, em um programa, ele atualiza o
+contagiros para aquela marca. Colocando no ponto e mudando o modo para sobrescrever, ele da Device
+IO error, a opcao de salvar como uma nova fita tambem da Device IO error."
+
+### Causa e correcao
+
+1. **Contagiros "parado" no CLOAD**: nao e' bug. `odometer()` so' avanca com o motor girando
+   (`motor_on()`); numa fita curta o avanco e' pequeno demais para notar a olho nu em poucos
+   segundos. Confirmado por um diagnostico direto chamando `Machine::RunFrame()` em loop e
+   imprimindo `tape().odometer()`/`motor_on()` a cada frame durante um `CLOAD` real -- o contador
+   sobe normalmente (0 -> 16 -> 31 -> ... -> 89) e so' congela quando o motor desliga (fim do
+   carregamento). O clique num ponto da lista "pula" o contador de uma vez, por isso parece mais
+   responsivo que o avanco gradual do CLOAD.
+2. **"Device I/O error" ao trocar o modo de gravacao apos marcar um ponto**: a causa real nao era
+   o motor de gravacao (testado em isolado via `Machine`/`TapeEngine` direto, com sucesso nos dois
+   modos), e sim `TapeEngine::Insert()`: reinserir a MESMA fita que o usuario ja' tinha destravado
+   voltava a trava-la (`read_only_ = true`) sempre, silenciosamente. Bastava reabrir o menu Fita
+   (o que reinsere a imagem atual) para a protecao "voltar" sem aviso. Corrigido para preservar a
+   protecao ao reinserir a mesma fita; o menu tambem ganhou dois itens explicitos ("Destravar para
+   gravar" / "Travar contra gravacao", cada um habilitado so' quando faz sentido) no lugar do
+   toggle unico e ambiguo, com o estado atual sempre visivel.
+3. **Preenchimento de alinhamento (padding) gravado como dado de verdade**: ao abrir um novo
+   cabecalho, `TAPOON` insere bytes zero so' para alinhar em 8 bytes -- igual a BIOS de verdade --,
+   mas os sintetizadores de pulso descobriam o tamanho de cada bloco "procurando o proximo
+   cabecalho" (nao havia outra forma de saber onde um bloco acabava), o que colava esse
+   preenchimento no FINAL do bloco anterior quando a fita era gravada, ejetada e recarregada.
+   Corrigido com uma marca exata por bloco (`TapeMark`, com o tamanho REAL do conteudo) preenchida
+   pelo proprio motor de gravacao no momento em que o bloco e' fechado -- sem precisar adivinhar.
+   Afeta so' fitas GRAVADAS por este emulador e depois recarregadas; leitura de `.tsx`/`.cas` de
+   terceiros nunca foi afetada (ja' trazem o tamanho exato de cada bloco). Fitas `.cas` cruas
+   carregadas direto do disco (sem passar por uma gravacao deste emulador) ainda dependem da busca
+   pelo proximo cabecalho -- limitacao conhecida, documentada em `doc/tape-spec.md`.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.20.2.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.20.2-linux.tar.gz`.
+- `ctest`: 16 suites (`tapetest` com 1 checagem nova: grava dois blocos, recarrega do ZERO a
+  partir do arquivo persistido, confere que o segundo bloco tem exatamente os bytes gravados, sem
+  o preenchimento do primeiro bloco misturado). Windows: 16/16. Linux: 16/16.
+
 ## v1.20.1 -- "King's Valley: Gravacao em K7: Corrigindo o Piloto" (2026-10-08)
 
 **Fase:** correcao de um bug real na gravacao, relatado pelo usuario ao testar a 1.20.0: gravou um

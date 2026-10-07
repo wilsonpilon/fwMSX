@@ -138,7 +138,7 @@ private:
     bool OnTapin(uint16_t &af);
     bool OnTapoon(uint16_t &af);
     bool OnTapout(uint16_t &af);
-    void RebuildFromFastBytes();
+    void FinalizeWrite();
     void Persist();
 
     memmap::MemorySystem &memory_;
@@ -156,6 +156,13 @@ private:
     TapeWriteMode write_mode_ = TapeWriteMode::AppendAtEnd;
     std::size_t marked_file_ = kNoMark;
     bool writing_ = false; // entre um TAPOON com sucesso e o TAPOOF correspondente
+    // Posicao (em fast_bytes) do cabecalho de 8 bytes e do inicio dos dados
+    // da gravacao EM ANDAMENTO -- usados por FinalizeWrite() para gerar os
+    // pulsos SO' do que foi escrito de verdade (a contagem exata de
+    // TAPOUT), sem adivinhar onde o preenchimento de alinhamento termina
+    // (ver doc/tape-spec.md, secao 5/6).
+    std::size_t write_header_pos_ = 0;
+    std::size_t write_data_start_ = 0;
 
     // Modo normal: cursor de pulsos + reamostragem para audio.
     TapePulseCursor pulse_cursor_{};

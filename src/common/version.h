@@ -19,7 +19,7 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 20
-#define FWMSX_VERSION_PATCH 1
+#define FWMSX_VERSION_PATCH 2
 
 #define FWMSX_CODENAME  "King's Valley"
-#define FWMSX_SUBTITLE  "Gravacao em K7: Corrigindo o Piloto"
+#define FWMSX_SUBTITLE  "Gravacao em K7: Protecao e Preenchimento"

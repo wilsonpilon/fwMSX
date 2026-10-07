@@ -12,9 +12,9 @@ namespace {
 
 void SinkAppend(void *ctx, uint32_t t) { static_cast<std::vector<uint32_t> *>(ctx)->push_back(t); }
 
-std::size_t PulseIndexFor(const std::vector<std::pair<std::size_t, std::size_t>> &marks, std::size_t h) {
+std::size_t PulseIndexFor(const std::vector<TapeMark> &marks, std::size_t h) {
     for (const auto &m : marks) {
-        if (m.first == h) return m.second;
+        if (m.fast_byte_offset == h) return m.pulse_index;
     }
     return 0;
 }
@@ -27,8 +27,7 @@ std::size_t FindCasHeader(const std::vector<uint8_t> &bytes, std::size_t from) {
     return it == bytes.end() ? bytes.size() : static_cast<std::size_t>(it - bytes.begin());
 }
 
-std::vector<TapeFileEntry> ScanCasFiles(const std::vector<uint8_t> &bytes,
-                                        const std::vector<std::pair<std::size_t, std::size_t>> &marks) {
+std::vector<TapeFileEntry> ScanCasFiles(const std::vector<uint8_t> &bytes, const std::vector<TapeMark> &marks) {
     std::vector<TapeFileEntry> out;
     std::size_t h = FindCasHeader(bytes, 0);
     while (h < bytes.size()) {
@@ -66,13 +65,13 @@ std::vector<TapeFileEntry> ScanCasFiles(const std::vector<uint8_t> &bytes,
 }
 
 void SynthesizeCasPulses(const std::vector<uint8_t> &bytes, std::vector<uint32_t> &pulses,
-                         std::vector<std::pair<std::size_t, std::size_t>> *marks_out) {
+                         std::vector<TapeMark> *marks_out) {
     const KcsByteFraming cfg{1, 0, 2, 1, 0, kMsxZeroPulsesPerBit, kMsxOnePulsesPerBit, kMsxZeroTStates, kMsxOneTStates};
     std::size_t pos = FindCasHeader(bytes, 0);
     while (pos < bytes.size()) {
-        if (marks_out) marks_out->push_back({pos, pulses.size()});
         const std::size_t content_start = pos + kCasHeader.size();
         const std::size_t content_end = FindCasHeader(bytes, content_start);
+        if (marks_out) marks_out->push_back({pos, pulses.size(), content_end - content_start});
         for (uint32_t i = 0; i < kMsxPilotPulses; ++i) pulses.push_back(kMsxPilotTStates);
         for (std::size_t i = content_start; i < content_end; ++i) kcs_emit_byte(&cfg, bytes[i], &SinkAppend, &pulses);
         pos = content_end;
@@ -95,9 +94,8 @@ bool LoadCasImage(const std::string &path, TapeImage &out, std::string &error) {
 
     out = TapeImage{};
     out.fast_bytes = bytes;
-    std::vector<std::pair<std::size_t, std::size_t>> marks;
-    SynthesizeCasPulses(bytes, out.pulses, &marks);
-    out.files = ScanCasFiles(bytes, marks);
+    SynthesizeCasPulses(bytes, out.pulses, &out.marks);
+    out.files = ScanCasFiles(bytes, out.marks);
     out.from_tsx = false;
     return true;
 }

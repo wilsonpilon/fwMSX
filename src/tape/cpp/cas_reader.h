@@ -4,7 +4,6 @@
 
 #include <cstdint>
 #include <string>
-#include <utility>
 #include <vector>
 
 #include "tape_image.h"
@@ -25,21 +24,23 @@ std::size_t FindCasHeader(const std::vector<uint8_t> &bytes, std::size_t from);
 
 // Varre um buffer no formato .CAS e lista os arquivos logicos (entre
 // cabecalhos de 8 bytes) para exibicao e para marcar o ponto de carga
-// (TapeEngine::SeekToFile()). `marks` (opcional): pares (posicao do
-// cabecalho em `bytes`, indice do pulso correspondente em `pulses`) --
-// ver SynthesizeCasPulses(). Sem `marks`, os arquivos saem com
-// `pulse_index` sempre 0 (so' faz sentido pedir pulsos reais de um
-// buffer com pulsos de verdade, como o modo normal precisa).
-std::vector<TapeFileEntry> ScanCasFiles(const std::vector<uint8_t> &bytes,
-                                        const std::vector<std::pair<std::size_t, std::size_t>> &marks = {});
+// (TapeEngine::SeekToFile()). `marks` (opcional, ver SynthesizeCasPulses())
+// preenche `pulse_index` dos arquivos; sem `marks`, fica sempre 0 (so' faz
+// sentido pedir pulsos reais de um buffer com pulsos de verdade, como o
+// modo normal precisa).
+std::vector<TapeFileEntry> ScanCasFiles(const std::vector<uint8_t> &bytes, const std::vector<TapeMark> &marks = {});
 
 // Acrescenta a `pulses` os pulsos sintetizados (piloto + bytes KCS, ver
 // cas_format.h) de cada bloco delimitado por cabecalhos de 8 bytes em
-// `bytes`. Se `marks_out` nao for nulo, acrescenta um par (posicao do
-// cabecalho, `pulses.size()` ANTES de acrescentar os pulsos daquele
-// bloco) por bloco encontrado -- para ScanCasFiles() preencher
-// `pulse_index` dos arquivos.
+// `bytes`. Se `marks_out` nao for nulo, acrescenta um TapeMark por bloco
+// encontrado -- para ScanCasFiles() preencher `pulse_index` dos arquivos,
+// e para o escritor (tsx_writer.cpp) saber o tamanho de cada bloco. Para
+// um .CAS lido do disco, `content_length` e' so' uma estimativa (ate' o
+// proximo cabecalho -- PODE incluir preenchimento de alinhamento se o
+// arquivo tiver sido gravado por este emulador, ver doc/tape-spec.md,
+// secao 5); so' as marcas que TapeEngine gera ao GRAVAR tem o tamanho
+// exato de verdade.
 void SynthesizeCasPulses(const std::vector<uint8_t> &bytes, std::vector<uint32_t> &pulses,
-                         std::vector<std::pair<std::size_t, std::size_t>> *marks_out = nullptr);
+                         std::vector<TapeMark> *marks_out = nullptr);
 
 } // namespace tape

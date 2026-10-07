@@ -8,6 +8,7 @@
 #include "../../z80/common/z80_state.h"
 #include "../../z80/cpp/z80_cpu.h"
 #include "../asm/pulse_sum.h"
+#include "../core/kcs_codec.h"
 #include "cas_format.h"
 #include "cas_reader.h"
 #include "tsx_writer.h"
@@ -43,6 +44,8 @@ bool WriteRawFile(const std::string &path, const std::vector<uint8_t> &bytes, st
     }
     return true;
 }
+
+void SinkAppendPulses(void *ctx, uint32_t t) { static_cast<std::vector<uint32_t> *>(ctx)->push_back(t); }
 
 } // namespace
 
@@ -87,10 +90,17 @@ bool TapeEngine::Insert(const std::string &path, std::string &error) {
     TapeImage img;
     const bool is_tsx = EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx");
     if (!(is_tsx ? LoadTzxImage(path, img, error) : LoadCasImage(path, img, error))) return false;
+    // Reinserir a MESMA fita (ex.: so' para atualizar depois de editar por
+    // fora, ou "rebobinar" ejetando e inserindo de novo) nao trava de novo
+    // uma fita que o usuario ja' tinha destravado -- so' uma fita DIFERENTE
+    // e' protegida por padrao (ver doc/tape-spec.md, secao 6). Sem isso, um
+    // "destravar" anterior se perdia silenciosamente e o proximo CSAVE dava
+    // "Device I/O error" sem nenhuma pista do motivo.
+    const bool same_tape = inserted_ && path_ == path;
     image_ = std::move(img);
     path_ = path;
     inserted_ = true;
-    read_only_ = true; // fita de arquivo: protegida por padrao (ver doc/tape-spec.md, secao 6)
+    if (!same_tape) read_only_ = true;
     write_mode_ = TapeWriteMode::AppendAtEnd;
     marked_file_ = kNoMark;
     writing_ = false;
@@ -109,7 +119,7 @@ bool TapeEngine::NewBlank(const std::string &path, std::string &error) {
     Rewind();
     // Grava o arquivo ja' (so' o cabecalho, sem blocos) para o caminho
     // existir no disco desde ja' -- mesma logica de Persist().
-    if (EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx")) return WriteTsxFromCas(image_.fast_bytes, path, error);
+    if (EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx")) return WriteTsxFromCas(image_.fast_bytes, image_.marks, path, error);
     return WriteRawFile(path, image_.fast_bytes, error);
 }
 
@@ -141,11 +151,25 @@ bool TapeEngine::SeekToFile(std::size_t index) {
     return true;
 }
 
-void TapeEngine::RebuildFromFastBytes() {
-    image_.pulses.clear();
-    std::vector<std::pair<std::size_t, std::size_t>> marks;
-    SynthesizeCasPulses(image_.fast_bytes, image_.pulses, &marks);
-    image_.files = ScanCasFiles(image_.fast_bytes, marks);
+void TapeEngine::FinalizeWrite() {
+    // Gera os pulsos SO' do que foi escrito nesta sessao (a contagem exata
+    // de TAPOUT, de write_data_start_ at'e o fim de fast_bytes) -- ao
+    // contrario de reconstruir tudo com SynthesizeCasPulses() (que varre o
+    // buffer inteiro "de cabecalho a cabecalho" e nao sabe separar dado de
+    // verdade do preenchimento de alinhamento que o proprio TAPOON acima
+    // acabou de inserir -- ver doc/tape-spec.md, secao 5). Os pulsos de
+    // blocos ANTERIORES (preservados ou truncados pelo OnTapoon) ja' estao
+    // certos e nao sao tocados aqui.
+    const std::size_t content_length = image_.fast_bytes.size() - write_data_start_;
+    image_.marks.push_back({write_header_pos_, image_.pulses.size(), content_length});
+
+    const KcsByteFraming cfg{1, 0, 2, 1, 0, kMsxZeroPulsesPerBit, kMsxOnePulsesPerBit, kMsxZeroTStates, kMsxOneTStates};
+    for (uint32_t i = 0; i < kMsxPilotPulses; ++i) image_.pulses.push_back(kMsxPilotTStates);
+    for (std::size_t i = write_data_start_; i < image_.fast_bytes.size(); ++i) {
+        kcs_emit_byte(&cfg, image_.fast_bytes[i], &SinkAppendPulses, &image_.pulses);
+    }
+
+    image_.files = ScanCasFiles(image_.fast_bytes, image_.marks);
     image_.from_tsx = false;
     tape_cursor_set(&pulse_cursor_, image_.pulses.empty() ? nullptr : image_.pulses.data(),
                      static_cast<uint32_t>(image_.pulses.size()));
@@ -155,7 +179,7 @@ void TapeEngine::Persist() {
     if (path_.empty()) return;
     std::string err; // melhor esforco: uma falha ao gravar no disco nao desfaz a gravacao em memoria
     if (EndsWithCi(path_, ".tsx") || EndsWithCi(path_, ".tzx")) {
-        WriteTsxFromCas(image_.fast_bytes, path_, err);
+        WriteTsxFromCas(image_.fast_bytes, image_.marks, path_, err);
     } else {
         WriteRawFile(path_, image_.fast_bytes, err);
     }
@@ -235,12 +259,21 @@ bool TapeEngine::OnTapoon(uint16_t &af) {
     switch (write_mode_) {
     case TapeWriteMode::NewTape:
         image_.fast_bytes.clear();
+        image_.pulses.clear();
+        image_.marks.clear();
         marked_file_ = kNoMark;
         break;
     case TapeWriteMode::OverwriteAtPoint:
         if (marked_file_ != kNoMark && marked_file_ < image_.files.size()) {
-            const std::size_t cut = image_.files[marked_file_].fast_byte_offset;
-            if (cut < image_.fast_bytes.size()) image_.fast_bytes.resize(cut);
+            const std::size_t byte_cut = image_.files[marked_file_].fast_byte_offset;
+            const std::size_t pulse_cut = image_.files[marked_file_].pulse_index;
+            if (byte_cut < image_.fast_bytes.size()) image_.fast_bytes.resize(byte_cut);
+            if (pulse_cut < image_.pulses.size()) image_.pulses.resize(pulse_cut);
+            std::vector<TapeMark> kept;
+            for (const auto &mark : image_.marks) {
+                if (mark.fast_byte_offset < byte_cut) kept.push_back(mark);
+            }
+            image_.marks = kept;
         }
         break;
     case TapeWriteMode::AppendAtEnd:
@@ -252,7 +285,9 @@ bool TapeEngine::OnTapoon(uint16_t &af) {
     if (image_.fast_bytes.size() % kCasHeader.size()) {
         image_.fast_bytes.resize(image_.fast_bytes.size() + (kCasHeader.size() - image_.fast_bytes.size() % kCasHeader.size()), 0);
     }
+    write_header_pos_ = image_.fast_bytes.size();
     image_.fast_bytes.insert(image_.fast_bytes.end(), kCasHeader.begin(), kCasHeader.end());
+    write_data_start_ = image_.fast_bytes.size();
     writing_ = true;
     af &= static_cast<uint16_t>(~Z80_C_FLAG);
     return true;
@@ -291,7 +326,7 @@ bool TapeEngine::OnTapeBiosCall(uint16_t trap_pc, z80::Z80Cpu &cpu) {
     case kTapoofAddr: // TAPOOF: sempre sucesso; finaliza a gravacao, se houver.
         if (writing_) {
             writing_ = false;
-            RebuildFromFastBytes();
+            FinalizeWrite();
             Persist();
         }
         af &= static_cast<uint16_t>(~Z80_C_FLAG);

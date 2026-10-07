@@ -170,17 +170,28 @@ fita, so' latcheia o bit -- a sincronia fica na Machine, como o
   esta' ligado) -- nao mostra a posicao real da fita nos rolos, so' a
   barra de progresso em segundos; o contagiros (secao 6) tambem e' uma
   simulacao, nao fisicamente exata.
-- **Sintese de pulsos de uma fita gravada**: `SynthesizeCasPulses()`
-  trata TUDO entre dois cabecalhos de 8 bytes como conteudo de verdade,
-  inclusive os bytes de preenchimento (zeros) que o proprio gancho de
-  gravacao insere para alinhar o PROXIMO cabecalho (ver secao 6). Isso
-  significa que o modo NORMAL (pulsos reais) de uma fita que foi
-  GRAVADA por este emulador pode incluir alguns pulsos extras (os
-  zeros de preenchimento) no fim de cada bloco -- o modo RAPIDO nao e'
-  afetado (le' so' os bytes que o programa pediu, exatamente como a
-  BIOS real faria). Corrigir isso exigiria saber o tamanho real de cada
-  bloco (um "ripper" te'm que decidir onde o conteudo de verdade
-  termina), o que ainda nao existe.
+- **Sintese de pulsos de uma fita gravada -- RESOLVIDO na 1.20.2 para
+  fitas gravadas por este emulador**: ate' a 1.20.1, tanto a sintese de
+  pulsos em memoria quanto a escrita do `.tsx` persistido descobriam o
+  tamanho de cada bloco "procurando o proximo cabecalho de 8 bytes",
+  o que misturava os bytes de preenchimento (zeros que o proprio gancho
+  de gravacao insere para alinhar o PROXIMO cabecalho, ver secao 6) com
+  o conteudo de verdade do bloco ANTERIOR -- uma fita gravada, ejetada e
+  recarregada podia nao dar `CLOAD` no modo normal. Corrigido com
+  `TapeMark{fast_byte_offset, pulse_index, content_length}`
+  (`tape_image.h`): o proprio motor de gravacao (`TapeEngine::FinalizeWrite()`)
+  preenche o tamanho REAL de cada bloco no momento em que ele e' fechado
+  (TAPOOF), sem precisar adivinhar depois -- usado tanto por
+  `SynthesizeCasPulses()`/`PulseIndexFor()` quanto por `WriteTsxFromCas()`.
+  Verificado com um teste que grava dois blocos, recarrega do ZERO a
+  partir do arquivo persistido e confere que o segundo bloco tem
+  exatamente os bytes gravados (`tests/z80/tape_test.cpp`).
+  **Continua valendo** para um `.cas` CRU carregado direto do disco, sem
+  ter passado por uma gravacao deste emulador: nesse caso nao ha' marca
+  exata nenhuma (o `.cas` nao guarda comprimento por bloco), so' a busca
+  pelo proximo cabecalho -- o modo RAPIDO nunca foi afetado em nenhum dos
+  dois casos (le' so' os bytes que o programa pediu, exatamente como a
+  BIOS real faria).
 
 ## 6. Gravacao (CSAVE/BSAVE "CAS:", fita nova, protecao, marcar o ponto)
 
@@ -223,7 +234,15 @@ do disco ("as gravacoes do MSX-DOS vao direto para o arquivo").
 **Protecao contra gravacao** (`TapeEngine::read_only()`): uma fita
 inserida de um ARQUIVO (`Insert()`) comeca SEMPRE travada -- o usuario
 destrava pelo menu Fita antes de gravar. Uma fita NOVA (`NewBlank()`)
-comeca DESTRAVADA (e' o motivo de criar uma).
+comeca DESTRAVADA (e' o motivo de criar uma). **Reinserir a MESMA fita**
+(mesmo caminho de arquivo que ja' estava inserido) preserva o estado de
+protecao atual em vez de travar de novo -- corrigido na 1.20.2: como o
+menu Fita reinsere a imagem atual para atualizar a lista, sem essa
+excecao o usuario destravava a fita, marcava um ponto, e a protecao
+"voltava" sozinha ao reabrir o menu, dando "Device I/O error" ao tentar
+gravar. O menu tambem tem dois itens explicitos ("Destravar para
+gravar" / "Travar contra gravacao", cada um habilitado so' quando faz
+sentido) no lugar de um unico toggle ambiguo.
 
 **Fita nova** (`TapeEngine::NewBlank()`, menu "Nova fita (.tsx)..."):
 cria uma imagem vazia em memoria e grava, na hora, um `.tsx` valido (so'

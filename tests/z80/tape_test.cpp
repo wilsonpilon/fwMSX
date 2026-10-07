@@ -370,6 +370,44 @@ int main() {
                   std::equal(written, written + 5, reread.fast_bytes.end() - 5),
               "o .tsx no disco tem os 5 bytes gravados (persistencia)");
 
+        // Regressao (2026-10-08, bug identificado apos o relato do usuario):
+        // o preenchimento de alinhamento (zeros que o proprio TAPOON insere
+        // antes do PROXIMO cabecalho, ver OnTapoon()) nao pode ser
+        // codificado em pulso como se fosse dado de verdade. O 1o TAPOON/
+        // TAPOUT/TAPOOF acima escreveu 5 bytes (nao multiplo de 8) --
+        // qualquer gravacao SEGUINTE (modo "incluir no final") precisa de
+        // preenchimento antes do seu proprio cabecalho. Grava mais 3 bytes
+        // e confere que os pulsos desse 2o bloco tem EXATAMENTE a mesma
+        // contagem que esses 3 bytes dariam isolados -- nada de pulsos
+        // extras vindos do preenchimento do bloco anterior.
+        engine.SetWriteMode(tape::TapeWriteMode::AppendAtEnd);
+        call_vector(0x00EA);
+        const uint8_t second_write[3] = {0xAA, 0xBB, 0xCC};
+        for (uint8_t b : second_write) call_vector(0x00ED, b);
+        call_vector(0x00F0);
+
+        tape::TapeImage reread2;
+        std::string reread2_error;
+        check(tape::LoadTzxImage(blank_path, reread2, reread2_error), "2a gravacao: o .tsx persistido abre");
+        std::vector<uint32_t> expected_pulses;
+        const KcsByteFraming expect_cfg{1, 0, 2, 1, 0, tape::kMsxZeroPulsesPerBit, tape::kMsxOnePulsesPerBit,
+                                        tape::kMsxZeroTStates, tape::kMsxOneTStates};
+        for (uint8_t b : second_write) {
+            kcs_emit_byte(&expect_cfg, b, +[](void *ctx, uint32_t t) { static_cast<std::vector<uint32_t> *>(ctx)->push_back(t); },
+                          &expected_pulses);
+        }
+        check(reread2.marks.size() >= 2, "2a gravacao: os dois blocos tem marca (byte/pulso) registrada");
+        if (reread2.marks.size() >= 2) {
+            const std::size_t second_block_pulse_start = reread2.marks.back().pulse_index + tape::kMsxPilotPulses;
+            // So' os pulsos de DADOS dos 3 bytes -- o bloco ainda tem a
+            // pausa (EmitPauseMs) depois, que nao faz parte desta conta.
+            const std::vector<uint32_t> actual_pulses(
+                reread2.pulses.begin() + static_cast<std::ptrdiff_t>(second_block_pulse_start),
+                reread2.pulses.begin() + static_cast<std::ptrdiff_t>(second_block_pulse_start + expected_pulses.size()));
+            check(actual_pulses == expected_pulses,
+                  "pulsos do 2o bloco sao EXATAMENTE os dos 3 bytes gravados, sem o preenchimento do 1o bloco misturado");
+        }
+
         // Regressao (2026-10-08, bug real relatado pelo usuario): uma fita
         // GRAVADA por este emulador carregava certo no modo rapido (nao usa
         // pulso nenhum) mas nunca no modo normal -- so' o "chiado", nunca

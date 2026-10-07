@@ -1,7 +1,7 @@
 # OUTLINE -- fwMSX: onde paramos e o que fazer depois
 
 > Leia este arquivo primeiro. Ele foi escrito para retomar o trabalho em outro computador,
-> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-07**.
+> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-08**.
 
 ## 1. O que e' o projeto
 
@@ -15,12 +15,13 @@ chamado **MSX-PoorManOS**. Ainda sem data.
 Este repositorio e' **pessoal**. Midias de terceiros (ROMs, discos, fitas) podem ser versionadas por
 enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver `LICENSE-THIRD-PARTY.md`).
 
-## 2. Onde estamos (2026-10-07)
+## 2. Onde estamos (2026-10-08)
 
-- **Versao em preparo:** 1.20.1 "King's Valley: Gravacao em K7: Corrigindo o Piloto" -- codigo e docs
-  prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda estiver
-  aqui.
-- **Ultima versao publicada em `main`:** 1.19.1. A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
+- **Versao em preparo:** 1.20.2 "King's Valley: Gravacao em K7: Protecao e Preenchimento" -- codigo e
+  docs prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda
+  estiver aqui.
+- **Ultima versao publicada em `main`:** 1.19.1 (ou 1.20.1, se o commit/push dela ja' tiver sido feito
+  -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
   usuario achou dois bugs reais ao testar com um .TSX de verdade antes do commit, corrigidos direto na
   1.19.1, e depois confirmou pelo ouvido/jogando: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou
   um pouco, som nitido. Pediu a melhoria seguinte (gravacao, fita nova, protecao, 3 modos, marcar o
@@ -64,7 +65,14 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   **Validado pelo usuario na janela de verdade em 2026-10-08**: criou uma fita nova, gravou
   `CSAVE"TESTE"`, rebobinou e confirmou `CLOAD` nos dois modos (depois da correcao do piloto -- ver
   acima). Primeira gravacao de fita deste projeto confirmada de ponta a ponta por um humano.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.1.*` (ver secao 9).
+- **Fita, 3 bugs da 1.20.2 (2026-10-08)**: o usuario testou os outros dois modos de gravacao
+  (sobrescrever/nova fita) e a marcacao de ponto pela janela de verdade e achou dois bugs reais
+  ("Device I/O error" ao trocar o modo depois de marcar um ponto) mais o contagiros parecendo
+  "parado" no CLOAD. Investigados e corrigidos no mesmo dia -- ver secao 9 e `doc/CHANGELOG.md`,
+  `[1.20.2]`: o contagiros nao era bug; o resto era `TapeEngine::Insert()` travando a fita de novo
+  ao reinserir a MESMA fita ja' destravada, e o preenchimento de alinhamento sendo gravado como
+  dado de verdade ao reler uma fita gravada por este emulador.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.2.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -76,9 +84,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 - BIOS Expert: a tela sai com espacos entre as letras ("G r a d i e n t e"). Nao investigado.
 - Fita: sem banco de fitas nem download, sem navegar blocos de controle do TZX (grupos/lacos/saltos),
   sem a ferramenta de linha de comando para empacotar .BIN/.BAS em .TSX sem o emulador -- ver
-  `doc/tape-spec.md`, secao 5. A sintese de pulsos do modo normal trata o preenchimento de alinhamento
-  (zeros antes de um cabecalho) como dado de verdade -- so' afeta a REPRODUCAO por pulsos de uma fita
-  GRAVADA por este emulador, o modo rapido nao sofre com isso.
+  `doc/tape-spec.md`, secao 5. O preenchimento de alinhamento gravado como dado de verdade **foi
+  corrigido na 1.20.2** para fitas GRAVADAS por este emulador (via marca exata `TapeMark` por bloco);
+  continua valendo so' para um `.cas` CRU carregado direto do disco, sem ter passado por uma gravacao
+  deste emulador (nao ha' marca exata nesse caso, so' a busca pelo proximo cabecalho).
 - Sem save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro.
 - Cores YJK do V9958 nao conferidas com hardware real.
 
@@ -173,19 +182,20 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 1. **[FEITO em 2026-10-07] Ver a janela "Fita K7" e ouvir o modo normal** -- o usuario confirmou:
    carregou o jogo completo (`A.M.C.`, Dinamic) pelo modo normal, ouviu o barulho do carregamento
    ("bem nitido") e jogou um pouco. Ver secao 2.
-2. **[FEITO em 2026-10-07/08, 1.20.0/1.20.1] Gravacao em fita** -- a melhoria que o usuario pediu:
-   CSAVE/BSAVE, fita nova, protecao, 3 modos de gravacao, marcar o ponto, contagiros; e o bug do
-   piloto (zero/um trocados + piloto curto) que o usuario achou testando pela janela, corrigido no
-   mesmo dia. Ver secao 2 e `doc/tape-spec.md`, secoes 6-7. **Ainda nao testados na janela:** os 3
-   modos de gravacao (so' "incluir no final" foi usado pelo usuario), marcar/desmarcar na lista, o
-   contagiros girando visualmente.
+2. **[FEITO em 2026-10-07/08, 1.20.0/1.20.1/1.20.2] Gravacao em fita** -- a melhoria que o usuario
+   pediu: CSAVE/BSAVE, fita nova, protecao, 3 modos de gravacao, marcar o ponto, contagiros; o bug
+   do piloto (zero/um trocados + piloto curto); e os 3 bugs achados testando os outros 2 modos pela
+   janela (Device I/O error ao reinserir a mesma fita destravada, preenchimento gravado como dado,
+   contagiros "parado" que nao era bug). Ver secao 2, secao 9 e `doc/tape-spec.md`, secoes 5-7.
+   **Ainda nao revalidado na janela apos a 1.20.2:** os modos "sobrescrever"/"nova fita" e a
+   marcacao, agora que o bug que impedia o teste foi corrigido.
 3. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): ferramenta de linha de comando para
    empacotar `.BIN`/`.BAS` em `.TSX` sem passar pelo emulador (resto do item c); (e) banco de fitas
    (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT);
-   navegar os blocos de controle do TZX (grupos/lacos/saltos); corrigir a sintese de pulsos do modo
-   normal para nao tratar o preenchimento de alinhamento como dado de verdade (ver
-   `doc/tape-spec.md`, secao 5). Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT),
-   `resource/openMSX_TSXadv/` (GPL, so' estudo).
+   navegar os blocos de controle do TZX (grupos/lacos/saltos); preenchimento de alinhamento ainda
+   adivinhado so' para `.cas` cru carregado direto do disco (ver `doc/tape-spec.md`, secao 5).
+   Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT), `resource/openMSX_TSXadv/` (GPL,
+   so' estudo).
 4. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
    mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
 5. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
@@ -249,8 +259,49 @@ proprio usuario e testando `CLOAD` nos dois modos -- escrito como `1.20.1`.
 `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag 1.20.1`,
 `git branch v1.20.1`, `git push origin main 1.20.1 v1.20.1`.
 
-**Ainda nao testados na janela:** os 3 modos de gravacao (so' "incluir no final", o padrao, foi
-usado); marcar/desmarcar um arquivo na lista; o contagiros girando visualmente.
+### Rodada seguinte (2026-10-08): 1.20.2 -- os outros 2 modos de gravacao, achados pela janela
+
+Depois da 1.20.1, o usuario testou os modos que ainda faltavam ("sobrescrever o ponto"/"nova fita")
+e a marcacao de arquivo pela janela de verdade, e relatou tres coisas na mesma mensagem: "dando
+CLOAD o contagiros nao gira, porem se eu clicar em um ponto da fita, em um programa, ele atualiza o
+contagiros para aquela marca. Colocando no ponto e mudando o modo para sobrescrever, ele da Device
+IO error, a opcao de salvar como uma nova fita tambem da device io error" -- e pediu para arrumar
+tambem o bug do preenchimento de alinhamento ja' identificado (secao 5 do `tape-spec.md`) antes de
+seguir para o proximo item da fila.
+
+Investigacao (via diagnostico direto chamando `Machine`/`TapeEngine`, sem depender da GUI, que nao
+e' automatizavel neste ambiente):
+- **Contagiros**: NAO e' bug -- `odometer()` so' avanca com o motor girando; numa fita curta o
+  avanco e' pequeno demais para notar a olho. Confirmado imprimindo `tape().odometer()`/`motor_on()`
+  a cada frame durante um `CLOAD` real: sobe normalmente, congela so' quando o motor para.
+- **"Device I/O error"**: reproduzido chamando o motor direto (sem GUI) -- os DOIS modos funcionavam
+  certo quando a fita estava destravada. A causa real era `TapeEngine::Insert()` travando a fita de
+  novo (`read_only_ = true`) toda vez, mesmo ao reinserir a MESMA fita que o usuario ja' tinha
+  destravado -- e o menu Fita reinsere a imagem atual so' para atualizar a lista, "destravando e
+  travando de novo" sem o usuario perceber. Corrigido preservando a protecao ao reinserir a mesma
+  fita; o menu tambem ganhou dois itens explicitos no lugar do toggle unico.
+- **Preenchimento de alinhamento**: confirmado que o bug da secao 5 era real -- `SynthesizeCasPulses`/
+  o antigo `RebuildFromFastBytes`/`WriteTsxFromCas` descobriam o tamanho de cada bloco "procurando o
+  proximo cabecalho", colando o preenchimento de alinhamento (zeros que o TAPOON insere antes do
+  PROXIMO cabecalho) no final do bloco ANTERIOR. Corrigido com uma marca exata por bloco
+  (`TapeMark{fast_byte_offset, pulse_index, content_length}`, `tape_image.h`) que o proprio motor de
+  gravacao preenche ao fechar cada bloco (`TapeEngine::FinalizeWrite()`), usada tanto na sintese em
+  memoria quanto na escrita do `.tsx`. Verificado com um teste novo que grava DOIS blocos, fecha o
+  arquivo, recarrega do ZERO (nao so' em memoria) e confere que o segundo bloco bate exatamente com
+  os bytes gravados. So' resolvido para fitas GRAVADAS por este emulador -- um `.cas` cru carregado
+  direto do disco ainda nao tem marca exata (limitacao que permanece, documentada).
+
+Build Windows e Linux (WSL) rodados de novo, `ctest` 16/16 nos dois (`tapetest` com mais uma
+checagem). Escrito como versao `1.20.2` (mesmo codename, subtitulo novo: "Protecao e Preenchimento").
+Ver `doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.20.2]`, para o detalhamento completo.
+
+**Se o `git log` de `main` nao mostrar um commit de release da 1.20.2 ainda**, essa e' a proxima
+acao: `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag
+1.20.2`, `git branch v1.20.2`, `git push origin main 1.20.2 v1.20.2`.
+
+**Ainda nao revalidado na janela apos a 1.20.2:** os modos "sobrescrever"/"nova fita" e a marcacao
+de arquivo, agora que o bug que impedia o teste foi corrigido -- a correcao em si foi validada so'
+por diagnostico direto (sem GUI), nao pelo usuario na janela ainda.
 
 **Licoes para a proxima vez:**
 - Ao implementar um leitor/escritor de formato binario a partir so' da especificacao escrita (sem um
