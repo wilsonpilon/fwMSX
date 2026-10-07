@@ -7,6 +7,21 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.20.1] - 2026-10-08 - "King's Valley: Gravacao em K7: Corrigindo o Piloto"
+
+### Corrigido
+- **Pulsos de ZERO e UM do bloco #4B estavam TROCADOS** (`src/tape/cpp/cas_format.h`): a convencao
+  real do MSX e' zero = 2x o pulso de um, com o piloto na MESMA duracao do um -- confirmado contra o
+  proprio gerador do makeTSX (`resource/makeTSX/rippers/MSX4B_Ripper.h/.cpp`, `bit0len = bit1len*2`).
+  A nota antiga (ZERO=855, UM=1710) vinha dos defaults GENERICOS de ZX Spectrum (blocos #10/#11), nao
+  do #4B do MSX, e nunca tinha sido conferida contra o codigo (como a propria nota avisava).
+- **Piloto curto demais** para a BIOS de verdade calibrar (2000 pulsos, ~0.48s) -- aumentado para 8000
+  pulsos (~1,9s), confirmado empiricamente contra o arquivo real do usuario e contra um .TSX comercial.
+- Resultado pratico: uma fita GRAVADA por este emulador (1.20.0) carregava certo no modo rapido (nao
+  usa pulso nenhum), mas o modo normal nunca achava o programa -- so' o barulho do piloto, sem
+  calibrar. Relatado pelo usuario ao testar `CSAVE"TESTE"` + `CLOAD`. Testes de regressao em
+  `tapetest` (3 novas checagens sobre a relacao zero/um/piloto).
+
 ## [1.20.0] - 2026-10-07 - "King's Valley: Gravacao em K7"
 
 ### Adicionado

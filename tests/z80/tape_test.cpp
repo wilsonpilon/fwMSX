@@ -370,6 +370,25 @@ int main() {
                   std::equal(written, written + 5, reread.fast_bytes.end() - 5),
               "o .tsx no disco tem os 5 bytes gravados (persistencia)");
 
+        // Regressao (2026-10-08, bug real relatado pelo usuario): uma fita
+        // GRAVADA por este emulador carregava certo no modo rapido (nao usa
+        // pulso nenhum) mas nunca no modo normal -- so' o "chiado", nunca
+        // achava o programa. Causa dupla: (1) os pulsos de ZERO e UM
+        // estavam TROCADOS (a convencao do #4B do MSX e' zero = 2x o pulso
+        // de um, e o piloto tem a MESMA duracao do um -- ver
+        // resource/makeTSX/rippers/MSX4B_Ripper.h/.cpp, "bit0len =
+        // bit1len*2"; a nota antiga do SPEC.md vinha dos defaults
+        // GENERICOS de ZX Spectrum, nao do #4B do MSX); (2) o piloto era
+        // curto demais (2000 pulsos, ~0.48s) para a calibracao da BIOS de
+        // verdade -- confirmado empiricamente contra o arquivo real do
+        // usuario e contra um .TSX comercial (Dinamic), cujo primeiro
+        // cabecalho da fita tem piloto de varios segundos.
+        check(tape::kMsxZeroTStates == tape::kMsxOneTStates * 2,
+              "pulso de ZERO e' o DOBRO do pulso de UM (convencao do #4B do MSX, nao a generica de ZX)");
+        check(tape::kMsxPilotTStates == tape::kMsxOneTStates, "piloto tem a MESMA duracao do pulso de UM");
+        check(tape::kMsxPilotPulses * tape::kMsxPilotTStates >= 3579545ULL,
+              "piloto dura pelo menos ~1s (pulsos curtos demais nao calibram a BIOS de verdade)");
+
         // --- protecao contra gravacao (fita de arquivo comeca travada) -----
         const std::string ro_path = TempPath("fwmsx_tape_test_ro.cas");
         {

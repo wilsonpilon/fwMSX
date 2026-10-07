@@ -187,7 +187,7 @@ acompanhamento manual do autor a cada build):
   o que funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
   (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-07, depois da v1.19.1)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.19.1)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -204,9 +204,10 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] **Fita** (.CAS e .TSX/.TZX): leitura completa, carregamento rapido (sem som) e normal (pulsos de verdade, com som), menu "Fita" e janela visual "Fita K7". **Confirmado pelo usuario em 2026-10-07**: carregou um jogo completo (modo normal) e jogou um pouco, som nitido. Ver `doc/tape-spec.md`.
 - [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 16 suites.
 
-**Feito depois da v1.19.1 (nao lancado ainda -- gravacao em fita, 2026-10-07):**
+**Feito depois da v1.19.1 (nao lancado ainda -- gravacao em fita, 2026-10-07/08):**
 
-- [x] **Gravacao** (`CSAVE`/`BSAVE "CAS:"`, sempre pelo gancho de BIOS TAPOON/TAPOUT/TAPOOF, independente do modo de carregamento escolhido).
+- [x] **Gravacao** (`CSAVE`/`BSAVE "CAS:"`, sempre pelo gancho de BIOS TAPOON/TAPOUT/TAPOOF, independente do modo de carregamento escolhido). **Confirmado pelo usuario em 2026-10-08**, testando pela janela: criou uma fita nova, gravou um programa, rebobinou e recarregou com sucesso.
+- [x] **Corrigido** (1.20.1, achado pelo usuario testando pela janela): pulsos de ZERO e UM do #4B estavam trocados (zero tem que ser 2x o pulso de um, nao o contrario) e o piloto era curto demais para a BIOS de verdade calibrar -- sem isso, uma fita GRAVADA pelo emulador nunca carregava no modo normal (so' no rapido, que nao usa pulso). Ver `doc/tape-spec.md`, secao 4, e `doc/CHANGELOG.md`, `[1.20.1]`.
 - [x] **Fita nova em branco** (`.tsx`, menu "Nova fita...") para o usuario salvar programas do zero.
 - [x] **Protecao contra gravacao**: fita de arquivo entra sempre travada (so' leitura); fita nova entra destravada. Travar/destravar pelo menu.
 - [x] **Tres modos de gravacao** (fitas sao lineares, como as de verdade): incluir no final (padrao, "ir enchendo a fita"), sobrescrever o ponto marcado, ou nova fita (apaga tudo).
@@ -222,7 +223,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 
 **Pendencias (ordem sugerida):**
 
-- [ ] Fitas: ferramenta de linha de comando para empacotar um .BIN/.BAS solto em .TSX sem passar pelo emulador (resto do item c); banco de fitas e download (item e, depois de confirmar com o site); port do makeTSX (item f, WAV -> TSX); navegar blocos de controle do TZX (grupos/lacos/saltos); corrigir a sintese de pulsos do modo normal para nao incluir o preenchimento de alinhamento como se fosse dado de verdade (ver `doc/tape-spec.md`, secao 5); validar na tela a gravacao (Nova fita, travar/destravar, 3 modos, marcar/desmarcar na janela "Fita K7") -- so' testada por unidade ainda, ninguem clicou nos novos itens de menu.
+- [ ] Fitas: ferramenta de linha de comando para empacotar um .BIN/.BAS solto em .TSX sem passar pelo emulador (resto do item c); banco de fitas e download (item e, depois de confirmar com o site); port do makeTSX (item f, WAV -> TSX); navegar blocos de controle do TZX (grupos/lacos/saltos); corrigir a sintese de pulsos do modo normal para nao incluir o preenchimento de alinhamento como se fosse dado de verdade (ver `doc/tape-spec.md`, secao 5); validar na tela os 3 modos de gravacao (so' "incluir no final" foi usado), marcar/desmarcar um arquivo na lista e o contagiros girando (a gravacao em si -- CSAVE/CLOAD nos dois modos -- ja' foi validada pelo usuario em 2026-10-08).
 - [ ] Banco de ROMs: verificar as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o mapper ao carregar cartucho; importar o JSON do Vampier se for util.
 - [ ] Ouvir o FM, o SCC, o disco e a fita (modo normal) contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
 - [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao diagnosticada; Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.

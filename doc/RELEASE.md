@@ -13,6 +13,36 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.20.1 -- "King's Valley: Gravacao em K7: Corrigindo o Piloto" (2026-10-08)
+
+**Fase:** correcao de um bug real na gravacao, relatado pelo usuario ao testar a 1.20.0: gravou um
+programa pequeno (`CSAVE"TESTE"`), rebobinou, deu `CLOAD` no modo normal -- ouviu o chiado do piloto,
+mas o programa nunca carregava ("Found:" nunca aparecia).
+
+### Causa e correcao
+
+1. **Pulsos de ZERO e UM trocados**: a convencao real do bloco #4B do MSX e' `zero = 2x o pulso de
+   um`, com o piloto na MESMA duracao do um -- confirmado no proprio gerador do makeTSX
+   (`resource/makeTSX/rippers/MSX4B_Ripper.h/.cpp`). Os valores que eu usava (ZERO=855, UM=1710) eram
+   os defaults GENERICOS de ZX Spectrum (blocos #10/#11), nao os do #4B -- a nota original do
+   `doc/SPEC.md` ja' avisava "conferir no codigo antes de usar", o que nao tinha sido feito.
+2. **Piloto curto demais**: 2000 pulsos (~0,48s) nao davam tempo da BIOS de verdade calibrar. Subido
+   para 8000 pulsos (~1,9s), confirmado contra o arquivo real do usuario e contra um .TSX comercial
+   (cujo primeiro cabecalho de fita tem varios segundos de piloto).
+
+O modo RAPIDO nunca foi afetado (nao usa pulso nenhum); so' o modo normal de uma fita GRAVADA por
+este emulador. Leitura de fitas de terceiros (ja' com os proprios pulsos corretos) tambem nunca foi
+afetada.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.20.1.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.20.1-linux.tar.gz`.
+- `ctest`: 16 suites (`tapetest` com 3 checagens novas sobre a relacao zero/um/piloto). Windows:
+  16/16. Linux: 16/16.
+- Smoke test: regravei o `teste.tsx` do proprio usuario com o escritor corrigido e confirmei
+  `CLOAD`/`RUN"CAS:"` com sucesso ("Found:teste") nos dois modos.
+
 ## v1.20.0 -- "King's Valley: Gravacao em K7" (2026-10-07)
 
 **Fase:** gravacao de fita (CSAVE/BSAVE "CAS:"), fita nova em branco, protecao contra gravacao por

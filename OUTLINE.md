@@ -17,19 +17,23 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-07)
 
-- **Versao em preparo:** 1.20.0 "King's Valley: Gravacao em K7" -- codigo e docs prontos, build e
-  testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda estiver aqui.
-- **Ultima versao publicada em `main`:** 1.19.1 "Yie Ar Kung-Fu: Fita K7: Corrigindo o Carregamento".
-  A 1.19.0 (fita, primeira versao) **nunca foi comitada** -- o usuario achou dois bugs reais ao testar
-  com um .TSX de verdade antes do commit, corrigidos direto na 1.19.1, e depois **confirmou pelo
-  ouvido/jogando**: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou um pouco, som da fita nitido.
-  Depois disso pediu uma **melhoria no sistema de fitas: gravacao (CSAVE/BSAVE), fita nova em branco,
-  protecao contra gravacao, janela com o conteudo navegavel/marcavel e um contagiros** -- isso e' a
-  1.20.0 (o usuario sugeriu "1.19.2 ou algo assim", mas pela politica do proprio projeto -- Y sobe a
-  cada feature nova -- isto e' uma MINOR, nao um patch; expliquei isso a ele).
+- **Versao em preparo:** 1.20.1 "King's Valley: Gravacao em K7: Corrigindo o Piloto" -- codigo e docs
+  prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda estiver
+  aqui.
+- **Ultima versao publicada em `main`:** 1.19.1. A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
+  usuario achou dois bugs reais ao testar com um .TSX de verdade antes do commit, corrigidos direto na
+  1.19.1, e depois confirmou pelo ouvido/jogando: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou
+  um pouco, som nitido. Pediu a melhoria seguinte (gravacao, fita nova, protecao, 3 modos, marcar o
+  ponto, contagiros) -- isso virou a 1.20.0 (minor, nao "1.19.2" como ele sugeriu, pela politica do
+  projeto). **A 1.20.0 TAMBEM nunca foi comitada**: o usuario testou pela janela de verdade (criou uma
+  fita nova, gravou `CSAVE"TESTE"`, rebobinou, deu `CLOAD` no modo normal) e achou outro bug real --
+  ouvia o chiado do piloto, mas o programa nunca carregava. Corrigido direto na 1.20.1 (ver secao 9 e
+  `doc/CHANGELOG.md`): os pulsos de ZERO e UM do bloco #4B estavam TROCADOS (a convencao certa do MSX
+  e' zero = 2x o pulso de um, confirmada no proprio gerador do makeTSX), e o piloto era curto demais
+  (2000 pulsos, ~0,48s) para a BIOS de verdade calibrar -- subido para 8000 (~1,9s).
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
-- **Testes:** `ctest` com **16 suites**, todas passando (`tape_load` com **68 checagens**, 22 novas de
-  gravacao/protecao/modos/marcacao/contagiros).
+- **Testes:** `ctest` com **16 suites**, todas passando (`tape_load` com **71 checagens**: 22 de
+  gravacao/protecao/modos/marcacao/contagiros + 3 sobre a relacao zero/um/piloto).
 - **Documentos vivos:** `doc/SPEC.md` (secao 5.0 = estado atual; 5.2 = fitas), `doc/CHANGELOG.md`,
   `doc/RELEASE.md`, `doc/MANUAL.md`, e os `*-spec.md` (inclui `doc/tape-spec.md`, novo).
 
@@ -53,12 +57,14 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   .TSX real (`resource/fmsxgo/media/*.tsx`, "A.M.C.", Dinamic 1990): inseriu pela janela, viu a "Fita
   K7", carregou o jogo completo (modo normal) e OUVIU o barulho do carregamento ("bem nitido"), e jogou
   um pouco depois de carregar. Primeira feature deste projeto validada por jogo completo.
-- **Fita, gravacao (1.20.0, 2026-10-07)**: `CSAVE`/`BSAVE "CAS:"` sempre pelo gancho de BIOS; fita nova
-  em branco (.tsx); protecao contra gravacao por padrao (fita de arquivo trava, fita nova nao); 3
-  modos de gravacao (incluir no final, sobrescrever o ponto marcado, nova fita); marcar um arquivo da
-  lista (janela "Fita K7", clicavel) como ponto de carga/gravacao; contagiros simulado. **So' validado
-  por `tapetest` (68 checagens) -- ninguem clicou nos novos itens de menu ainda.**
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.0.*` (ver secao 9).
+- **Fita, gravacao (1.20.0/1.20.1, 2026-10-07/08)**: `CSAVE`/`BSAVE "CAS:"` sempre pelo gancho de BIOS;
+  fita nova em branco (.tsx); protecao contra gravacao por padrao (fita de arquivo trava, fita nova
+  nao); 3 modos de gravacao (incluir no final, sobrescrever o ponto marcado, nova fita); marcar um
+  arquivo da lista (janela "Fita K7", clicavel) como ponto de carga/gravacao; contagiros simulado.
+  **Validado pelo usuario na janela de verdade em 2026-10-08**: criou uma fita nova, gravou
+  `CSAVE"TESTE"`, rebobinou e confirmou `CLOAD` nos dois modos (depois da correcao do piloto -- ver
+  acima). Primeira gravacao de fita deste projeto confirmada de ponta a ponta por um humano.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.20.1.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -167,10 +173,12 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 1. **[FEITO em 2026-10-07] Ver a janela "Fita K7" e ouvir o modo normal** -- o usuario confirmou:
    carregou o jogo completo (`A.M.C.`, Dinamic) pelo modo normal, ouviu o barulho do carregamento
    ("bem nitido") e jogou um pouco. Ver secao 2.
-2. **[FEITO em 2026-10-07, 1.20.0] Gravacao em fita** -- a melhoria que o usuario pediu: CSAVE/BSAVE,
-   fita nova, protecao, 3 modos de gravacao, marcar o ponto, contagiros. Ver secao 2 e
-   `doc/tape-spec.md`, secoes 6-7. **Validar na janela** (ninguem clicou nos itens novos do menu Fita
-   ainda -- nova fita, travar/destravar, os 3 modos, marcar/desmarcar na lista, o contagiros girando).
+2. **[FEITO em 2026-10-07/08, 1.20.0/1.20.1] Gravacao em fita** -- a melhoria que o usuario pediu:
+   CSAVE/BSAVE, fita nova, protecao, 3 modos de gravacao, marcar o ponto, contagiros; e o bug do
+   piloto (zero/um trocados + piloto curto) que o usuario achou testando pela janela, corrigido no
+   mesmo dia. Ver secao 2 e `doc/tape-spec.md`, secoes 6-7. **Ainda nao testados na janela:** os 3
+   modos de gravacao (so' "incluir no final" foi usado pelo usuario), marcar/desmarcar na lista, o
+   contagiros girando visualmente.
 3. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): ferramenta de linha de comando para
    empacotar `.BIN`/`.BAS` em `.TSX` sem passar pelo emulador (resto do item c); (e) banco de fitas
    (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT);
@@ -224,19 +232,39 @@ tres modos de gravacao (incluir no final/sobrescrever o ponto marcado/nova fita)
 lista na janela "Fita K7" como ponto de carga/gravacao, e um contagiros simulado. Tudo implementado e
 testado (`tapetest`, 68 checagens, 16/16 no `ctest`) nesta mesma sessao, escrito como versao `1.20.0`
 (o usuario sugeriu "1.19.2 ou algo assim"; expliquei que a politica do projeto -- Y sobe a cada
-feature nova -- pede uma MINOR aqui, nao um patch). **Se o `git log` de `main` nao mostrar um commit
-de release da 1.20.0 ainda**, essa e' a proxima acao: `git add` dos arquivos certos (nao `git add -A`),
-commit com `Co-Authored-By`, `git tag 1.20.0`, `git branch v1.20.0`, `git push origin main 1.20.0 v1.20.0`.
+feature nova -- pede uma MINOR aqui, nao um patch).
 
-**A gravacao em si nunca foi clicada na janela por ninguem** -- so' validada por `tapetest` (um Z80 de
-verdade exercitando TAPOON/TAPOUT/TAPOOF via um script, nao a GUI). Primeira coisa a fazer quando a
-sessao for retomada: abrir o menu Fita, criar uma fita nova, travar/destravar, gravar um programinha de
-verdade (`CSAVE"TESTE"` ou similar) e recarregar, marcar/desmarcar um arquivo na lista, e ver o
-contagiros girando.
+**O usuario testou pela janela de verdade ANTES do commit** (como fez com a fita de leitura): criou
+uma fita nova, escreveu um programinha pequeno, deu `CSAVE"TESTE"`, rebobinou e tentou `CLOAD` no modo
+normal. Ouviu o chiado do piloto, mas o programa nunca carregava -- achou um bug real de novo. Causa
+(ver `doc/CHANGELOG.md`, `[1.20.1]`, e o comentario em `src/tape/cpp/cas_format.h`): os pulsos de ZERO
+e UM do bloco #4B estavam TROCADOS (a convencao certa do MSX e' zero = 2x o pulso de um, confirmada
+no proprio gerador do makeTSX, `resource/makeTSX/rippers/MSX4B_Ripper.h/.cpp` -- a nota antiga do
+SPEC.md vinha dos defaults GENERICOS de ZX Spectrum, nunca verificada contra o codigo certo), e o
+piloto era curto demais (2000 pulsos, ~0,48s) para a BIOS real calibrar -- subido para 8000 (~1,9s).
+Corrigido no mesmo dia (3 checagens novas em `tapetest`), confirmado regravando o `teste.tsx` do
+proprio usuario e testando `CLOAD` nos dois modos -- escrito como `1.20.1`.
 
-**Licao para a proxima vez:** ao implementar um leitor de formato binario a partir so' da
-especificacao escrita (sem um arquivo real para testar), desconfiar de deslocamentos em hexadecimal
-que "parecem" decimais (ex.: "0x10" = 16, nao 10) e de qualquer suposicao de alinhamento entre partes
-concatenadas de tamanho variavel. Testar contra pelo menos um arquivo real do formato, nao so' contra
-casos sinteticos que o proprio autor do teste construiu (eles tendem a repetir os mesmos enganos do
-codigo que testam).
+**Se o `git log` de `main` nao mostrar um commit de release da 1.20.1 ainda**, essa e' a proxima acao:
+`git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag 1.20.1`,
+`git branch v1.20.1`, `git push origin main 1.20.1 v1.20.1`.
+
+**Ainda nao testados na janela:** os 3 modos de gravacao (so' "incluir no final", o padrao, foi
+usado); marcar/desmarcar um arquivo na lista; o contagiros girando visualmente.
+
+**Licoes para a proxima vez:**
+- Ao implementar um leitor/escritor de formato binario a partir so' da especificacao escrita (sem um
+  arquivo real para testar), desconfiar de deslocamentos em hexadecimal que "parecem" decimais (ex.:
+  "0x10" = 16, nao 10) e de qualquer suposicao de alinhamento entre partes concatenadas de tamanho
+  variavel. Testar contra pelo menos um arquivo real do formato, nao so' contra casos sinteticos que o
+  proprio autor do teste construiu (eles tendem a repetir os mesmos enganos do codigo que testam).
+- **Uma nota do SPEC.md dizendo "conferir no codigo antes de usar" e' um aviso serio, nao decoracao.**
+  Os valores de pulso ZERO/UM ficaram errados por TRES versoes (1.19.0 a 1.20.0) porque essa
+  verificacao nunca foi feita antes de escrever `cas_format.h` -- os defaults que eu copiei eram de
+  OUTRO bloco (#10/#11, ZX Spectrum generico), nao do #4B (MSX) que o codigo realmente usa. Quando uma
+  nota antiga desse tipo aparecer, ir direto na fonte (aqui, `resource/makeTSX/rippers/
+  MSX4B_Ripper.h/.cpp`) antes de copiar o numero para um lugar novo.
+- Testar SO' a leitura (com arquivos de terceiros) nao prova que a ESCRITA esta' certa -- os dois usam
+  os mesmos campos do formato, mas um bug na GERACAO so' aparece ao reler o que o proprio codigo
+  escreveu. O modo RAPIDO tambem escondeu esse bug (nao usa pulso nenhum): so' apareceu testando o
+  MODO NORMAL de uma fita GRAVADA, nao de uma fita so' lida.

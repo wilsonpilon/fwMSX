@@ -24,14 +24,29 @@ constexpr uint8_t kCasIdBasic = 0xD3;
 constexpr uint8_t kCasIdAscii = 0xEA;
 
 // Parametros padrao do MSX para sintetizar pulsos (modo normal) quando a
-// origem nao tem pulsos gravados (.CAS) ou para os blocos genericos do
-// TZX -- conferidos contra os defaults do bloco #4B do makeTSX
-// (resource/makeTSX/TZX_Blocks.h: bitcfg 0x24, bytecfg 0x54) e contra
-// doc/SPEC.md, secao 5.2.
-constexpr uint32_t kMsxPilotTStates = 1710;
-constexpr uint32_t kMsxPilotPulses = 2000;
-constexpr uint32_t kMsxZeroTStates = 855;
-constexpr uint32_t kMsxOneTStates = 1710;
+// origem nao tem pulsos gravados (.CAS) ou para gerar um #4B novo
+// (gravacao, ver tsx_writer.cpp). bitcfg 0x24/bytecfg 0x54 conferidos
+// contra os defaults do bloco #4B do makeTSX (resource/makeTSX/TZX_Blocks.h).
+//
+// BUG corrigido em 2026-10-08: ZERO e UM estavam TROCADOS (e o piloto
+// usava o valor do ZERO). A nota original do SPEC.md ("ZERO=855,
+// UM=1710") veio dos defaults GENERICOS de ZX Spectrum do makeTSX
+// (B10_Standard_Ripper.h/B11_Custom_Ripper.h) -- a propria nota avisava
+// "conferir no codigo antes de usar", o que nao tinha sido feito. O #4B
+// ESPECIFICO do MSX usa outra regra (resource/makeTSX/rippers/
+// MSX4B_Ripper.h/.cpp): `bit0len (ZERO) = bit1len (UM) * 2`, e o piloto
+// tem a MESMA duracao do UM (ver o comentario do Block4B em
+// TZX_Blocks.h: "Duration of a PILOT pulse {same as ONE pulse}").
+// Confirmado batendo meia duracao do ZERO/UM de um .TSX real (Dinamic,
+// zero=1404/um=702 -- a mesma proporcao 2:1) contra um bug relatado pelo
+// usuario: uma fita GRAVADA por este emulador carregava certo no modo
+// rapido (nao usa pulso nenhum) mas nunca no modo normal (CLOAD nunca
+// achava o piloto, so' o chiado -- os valores trocados geravam um sinal
+// que a BIOS de verdade nao reconhecia como KCS valido).
+constexpr uint32_t kMsxOneTStates = 855;
+constexpr uint32_t kMsxZeroTStates = kMsxOneTStates * 2;
+constexpr uint32_t kMsxPilotTStates = kMsxOneTStates;
+constexpr uint32_t kMsxPilotPulses = 8000;
 constexpr int kMsxZeroPulsesPerBit = 2;
 constexpr int kMsxOnePulsesPerBit = 4;
 

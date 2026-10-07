@@ -116,9 +116,19 @@ Pulsos (meio-periodos, T-states de Z80) sao gerados para:
 - **#20 (pausa)**: um pulso curto para terminar a borda, depois silencio
   pelo resto do tempo (regra do proprio TZX, secao 2 do format.md).
 - **.CAS**: sem pulsos gravados -- sintetizados com os parametros padrao
-  do MSX (piloto 1710 T-states x 2000 pulsos, zero 855, um 1710, 2/4
-  pulsos por bit, 1 bit de inicio=0, 2 de fim=1, LSb primeiro --
-  `src/tape/cpp/cas_format.h`).
+  do MSX (piloto 855 T-states x 8000 pulsos [~1,9s], zero 1710, um 855,
+  2/4 pulsos por bit, 1 bit de inicio=0, 2 de fim=1, LSb primeiro --
+  `src/tape/cpp/cas_format.h`). **O pulso de ZERO e' o DOBRO do de UM, e
+  o piloto tem a MESMA duracao do UM** -- essa e' a convencao real do
+  bloco #4B do MSX (confirmada em `resource/makeTSX/rippers/
+  MSX4B_Ripper.h/.cpp`, `bit0len = bit1len*2`), NAO a convencao generica
+  de ZX Spectrum dos blocos #10/#11 (que tambem usa 855/1710, mas com
+  ZERO e UM do jeito contrario). Um bug corrigido em 2026-10-08 tinha os
+  dois valores trocados e o piloto curto demais (2000 pulsos, ~0.48s) --
+  uma fita GRAVADA por este emulador carregava certo no modo rapido
+  (nao usa pulso) mas nunca no modo normal (so' o "chiado", nunca achava
+  o programa -- a BIOS de verdade nunca calibrava a tempo). Ver
+  `doc/CHANGELOG.md`, `[1.20.1]`.
 
 O cursor (`src/tape/core/tape_pulse.c`) avanca junto com a CPU
 (`TapeEngine::Advance()`, chamado a cada ciclo por `Machine::RunFrame()`,
