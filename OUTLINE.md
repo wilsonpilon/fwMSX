@@ -17,10 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08)
 
-- **Versao em preparo:** 1.21.0 "King's Valley: Empacotador de Fita (BIN/BAS -> TSX)" -- codigo e
-  docs prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota
-  ainda estiver aqui.
-- **Ultima versao publicada em `main`:** 1.20.3 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
+- **Versao em preparo:** 1.22.0 "King's Valley: Ripper de Fita (WAV -> TSX)" -- codigo e docs
+  prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda
+  estiver aqui.
+- **Ultima versao publicada em `main`:** 1.21.0 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
   usuario achou dois bugs reais ao testar com um .TSX de verdade antes do commit, corrigidos direto na
   1.19.1, e depois confirmou pelo ouvido/jogando: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou
   um pouco, som nitido. Pediu a melhoria seguinte (gravacao, fita nova, protecao, 3 modos, marcar o
@@ -89,7 +89,15 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   Reusa o escritor `WriteTsxFromCas()` existente. Testado via CLI direta (smoke test com `--cas
   pack`/`list` no `fwMSX.exe` de verdade) e `castooltest` (17 checagens). Ver secao 9 e
   `doc/tape-spec.md`, secao 8.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.21.0.*` (ver secao 9).
+- **`fwmsx --cas rip` (1.22.0, 2026-10-08)**: port do CONCEITO do makeTSX (WAV -> TSX) --
+  demodula uma gravacao real de fita (`.wav` PCM mono) detectando o piloto e decodificando os
+  bytes do bloco #4B, simplificado para o caso fixo do MSX (sem os modos interativo/preditivo do
+  original, ver `doc/tape-spec.md`, secao 9). `kcs_decode_byte()` novo (`src/tape/core/
+  kcs_codec.{h,c}`), o inverso de `kcs_emit_byte()`. **Testado contra uma fita real de MSX dos
+  anos 80** (`resource/openMSX/.../ktst31 [RUN'CAS-'].wav`, GPL, so' validacao manual local): 86
+  blocos reconhecidos sem erro -- alem do round-trip automatizado (`castooltest`, bytes -> audio
+  sintetico -> `rip` -> bytes).
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.22.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -212,27 +220,31 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    pack --tipo bin|bas` empacota um `.BIN`/`.BAS` solto num `.TSX`/`.CAS` sem abrir o emulador
    (resto do item c); `fwmsx --cas list` confirma o resultado. Ver secao 9 e `doc/tape-spec.md`,
    secao 8.
-4. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): (e) banco de fitas (metadados, sem
-   download automatico ate ter autorizacao); (f) port do makeTSX (WAV -> TSX, MIT); navegar os
-   blocos de controle do TZX (grupos/lacos/saltos); preenchimento de alinhamento ainda adivinhado
-   so' para `.cas` cru carregado direto do disco (ver `doc/tape-spec.md`, secao 5).
+4. **[FEITO em 2026-10-08, 1.22.0] Port do makeTSX (WAV -> TSX)** -- `fwmsx --cas rip` demodula
+   uma gravacao real de fita para `.TSX`, testado contra uma fita MSX de verdade dos anos 80 (86
+   blocos reconhecidos). Ver secao 9 e `doc/tape-spec.md`, secao 9.
+5. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): (e) banco de fitas (metadados, sem
+   download automatico ate ter autorizacao); navegar os blocos de controle do TZX (grupos/lacos/
+   saltos); preenchimento de alinhamento ainda adivinhado so' para `.cas` cru carregado direto do
+   disco; `ScanCasFiles()` so' junta 2 blocos por arquivo (um ASCII multi-bloco de verdade aparece
+   fragmentado, ver `doc/tape-spec.md`, secoes 5 e 9).
    Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT), `resource/openMSX_TSXadv/` (GPL,
    so' estudo).
-5. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
+6. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
    mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
-6. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
+7. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
-7. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
+8. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
    de Sony/Philips/Spectravideo do openMSX (so' como referencia).
-8. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
+9. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
    `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
    Ainda nao comecou.
-9. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
-10. **BIOS Expert:** texto com espacos na tela; investigar.
-11. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
-12. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
-13. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
-14. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+10. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
+11. **BIOS Expert:** texto com espacos na tela; investigar.
+12. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
+13. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
+14. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
+15. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
     com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
@@ -402,6 +414,78 @@ pacotes certos. Sempre bumpar `version.h` ANTES do primeiro build de uma rodada 
 
 **Ainda nao testado na janela:** o `--cas` e' so' CLI, sem equivalente na GUI -- nao se aplica. O
 modo "nova fita" da gravacao continua pendente de teste na janela (ver rodada anterior).
+
+### Rodada seguinte (2026-10-08): 1.22.0 -- port do makeTSX (WAV -> TSX)
+
+Com o empacotador fechado, o usuario pediu o segundo item da fila de fitas: "port do makeTSX
+(WAV -> TSX)". Implementado como `fwmsx --cas rip`.
+
+**Desenho da solucao** (estudo do `resource/makeTSX/` antes de escrever qualquer codigo):
+- Lido `WAV.h/.cpp` (leitor de `.wav`), `BlockRipper.h/.cpp` (deteccao de pulsos por limiar +
+  piloto + silencio, generico) e `rippers/MSX4B_Ripper.h/.cpp` (a parte especifica do MSX: bits de
+  inicio/fim, decodificacao byte a byte, com modos interativo/preditivo para gravacoes ruidosas).
+- Decisao: portar so' o CONCEITO (deteccao de piloto por limiar adaptativo + decodificacao com
+  tolerancia), fixando os parametros no caso MSX (como o `isMSX` do original) e OMITINDO os modos
+  interativo (pede ajuda ao usuario pela linha de comando) e preditivo (adivinha bits ambiguos
+  "olhando para frente") -- fora de escopo para uma ferramenta batch, documentado como limitacao
+  conhecida. Decisao tambem de NAO guardar a velocidade medida da fita no `.tsx` de saida -- reusa
+  os mesmos `AppendCasBlock()`/`WriteTsxFromCas()` do empacotador (1.21.0), que sempre escrevem nos
+  parametros CANONICOS do MSX -- "ripar" tambem normaliza a velocidade.
+- Nova funcao `kcs_decode_byte()` em `src/tape/core/kcs_codec.{h,c}` (o MESMO modulo do
+  `kcs_emit_byte()` existente, so' o caminho inverso) -- decide bit a bit comparando a soma de um
+  grupo de pulsos contra a duracao esperada, com tolerancia.
+
+**Dois bugs reais encontrados pelo PROPRIO teste automatizado** (antes de qualquer teste manual --
+um round-trip bytes -> audio sintetico -> `rip` -> bytes, comparando byte a byte):
+1. O bit de INICIO, se tratado com a mesma tolerancia "assumida" dos bits de fim, fazia o piloto
+   do PROXIMO bloco (uma sequencia pura de pulsos do tamanho do bit 1, sem nenhum zero) ser lido
+   como um fluxo infinito de bytes `0xFF` -- o bloco nunca terminava sozinho. Corrigido exigindo
+   que o(s) bit(s) de INICIO batam de verdade (sem tolerancia extra); os de FIM continuam leniente
+   (um byte ja decidido pelos 8 bits de dados nao deve ser descartado so' por um bit de fim ruidoso).
+2. O ULTIMO byte de uma gravacao perdia os bits de fim por falta de pulso depois dele (a gravacao
+   so' termina ali) -- e a logica de entao tratava "faltam pulsos para o fallback assumido" como
+   falha do byte INTEIRO, descartando os 8 bits de dados ja' corretamente decididos. Corrigido para
+   aceitar o byte mesmo que o fim do arquivo chegue no meio do bit de fim.
+
+**Testado contra uma fita real de MSX dos anos 80** (`resource/openMSX/Contrib/
+reverse_engineering_tools/kanji/ktst31 [RUN'CAS-'].wav`, GPL -- so' validacao manual local, NUNCA
+versionada como parte deste projeto, so' usada como referencia de estudo, igual o resto de
+`resource/`): `fwmsx --cas rip` reconheceu 86 blocos (4 arquivos ASCII: `KTST31`/`KT31A`/`KT31B`/
+`KT31C`) sem nenhum erro de decodificacao -- confirmacao forte de que o algoritmo funciona em
+audio de gravacao real, nao so' em dados sinteticos. Nota: cada "arquivo" ASCII apareceu
+fragmentado (so' 8 bytes cada) porque `ScanCasFiles()` so' junta DOIS blocos por arquivo (nome +
+um bloco de dados) -- um ASCII de verdade tem VARIOS blocos de 256 bytes; a decodificacao de
+pulsos em si funcionou certo, so' a juncao em "arquivos" que e' limitada (documentado, nao e' bug
+do `rip`).
+
+Build Windows e Linux (WSL) rodados, `ctest` 17/17 nos dois (`castooltest`/`cas_pack` com o
+round-trip completo + testes de erro: `.wav` estereo, silencio, argumentos invalidos). Escrito
+como versao `1.22.0` (minor -- feature nova) com o mesmo codename e um subtitulo novo: "Ripper de
+Fita (WAV -> TSX)". Ver `doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.22.0]`, e `doc/tape-spec.md`,
+secao 9 (nova).
+
+**Desta vez a versao foi bumpada ANTES do primeiro build** (lecao da rodada anterior) -- o build
+Linux em segundo plano ja' pegou `1.22.0` certo, sem precisar restaurar nenhum pacote antigo.
+
+**Se o `git log` de `main` nao mostrar um commit de release da 1.22.0 ainda**, essa e' a proxima
+acao: `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag
+1.22.0`, `git branch v1.22.0`, `git push origin main 1.22.0 v1.22.0`.
+
+**Ainda nao testado na janela:** o `--cas` e' so' CLI, sem equivalente na GUI -- nao se aplica. O
+modo "nova fita" da gravacao continua pendente de teste na janela (ver rodadas anteriores).
+
+**Licoes para a proxima vez:**
+- **Testar o round-trip completo (encode -> decode) antes de testar contra dados reais** --
+  os dois bugs do decodificador KCS (piloto confundido com dados, ultimo byte perdido) so'
+  apareceram no teste automatizado SINTETICO, construido ANTES de baixar/testar qualquer gravacao
+  real. Se o primeiro teste tivesse sido direto contra a fita real, os mesmos bugs apareceriam so'
+  como "deu errado", sem a clareza de UM teste isolado e determinista mostrando exatamente qual
+  byte sumiu e por que.
+- **Portar o CONCEITO, nao o codigo, de uma ferramenta de referencia com licenca permissiva** --
+  o makeTSX (MIT) tem modos interativo/preditivo que resolvem casos de borda genuinamente dificeis
+  (fita muito ruidosa), mas replica-los piora o retorno sobre o esforco para uma ferramenta batch
+  como esta. Simplificar PARA O CASO QUE IMPORTA (o MSX fixo, aqui) e documentar o que foi deixado
+  de fora e' melhor que portar tudo "por completude".
 
 **Licoes para a proxima vez:**
 - **Bumpar `version.h` ANTES do primeiro build de uma rodada de release, nunca depois** -- rodar o

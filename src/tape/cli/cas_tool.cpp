@@ -5,12 +5,15 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 
 #include "../cpp/cas_format.h"
 #include "../cpp/cas_pack.h"
 #include "../cpp/cas_reader.h"
 #include "../cpp/tsx_writer.h"
 #include "../cpp/tzx_reader.h"
+#include "../cpp/wav_reader.h"
+#include "../cpp/wav_ripper.h"
 
 namespace tape {
 namespace {
@@ -70,7 +73,7 @@ std::string Option(const std::vector<std::string> &args, const std::string &flag
 // a partir de `from` (1 para pular o nome do subcomando).
 std::vector<std::string> Positionals(const std::vector<std::string> &args, std::size_t from) {
     static const std::vector<std::string> kFlagsWithValue = {"--tipo", "--nome", "--inicio", "--fim", "--exec",
-                                                               "--anexar"};
+                                                               "--anexar", "--tolerancia"};
     std::vector<std::string> out;
     for (std::size_t i = from; i < args.size(); ++i) {
         if (!args[i].empty() && args[i].rfind("--", 0) == 0) {
@@ -130,9 +133,19 @@ void PrintHelp() {
                  "                             arquivo no final, em vez de criar uma fita so'\n"
                  "                             com ele (a saida pode ser o MESMO arquivo)\n"
                  "\n"
+                 "rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas>\n"
+                 "  \"Ripa\" uma gravacao real de fita (.wav PCM mono, 8 ou 16 bits) para um\n"
+                 "  .TSX valido -- detecta o piloto e decodifica os bytes do bloco #4B (Kansas\n"
+                 "  City Standard), igual o makeTSX (resource/makeTSX/, MIT). So' funciona com\n"
+                 "  o formato KCS fixo do MSX (ver doc/tape-spec.md, secao 9 para os limites).\n"
+                 "\n"
+                 "  --tolerancia N (1-90, padrao 25)   tolerancia (%) no casamento dos pulsos --\n"
+                 "                                     suba para gravacoes mais ruidosas\n"
+                 "  --anexar <arquivo>                 acrescenta no final de uma fita existente\n"
+                 "\n"
                  "list <arquivo.tsx|.tzx|.cas>\n"
                  "  Lista os arquivos de uma fita (indice, tipo, nome, tamanho dos dados) --\n"
-                 "  util pra confirmar o resultado do pack sem abrir o emulador.\n"
+                 "  util pra confirmar o resultado do pack/rip sem abrir o emulador.\n"
               << std::endl;
 }
 
@@ -189,6 +202,53 @@ int RunPack(const std::vector<std::string> &args) {
     return 0;
 }
 
+int RunRip(const std::vector<std::string> &args) {
+    const std::string tolerancia_raw = Option(args, "--tolerancia");
+    const std::string anexar = Option(args, "--anexar");
+    const std::vector<std::string> pos = Positionals(args, 1);
+    if (pos.size() != 2) return Fail("uso: rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas>");
+
+    int tolerance_percent = 25;
+    if (!tolerancia_raw.empty()) {
+        try {
+            std::size_t consumed = 0;
+            tolerance_percent = std::stoi(tolerancia_raw, &consumed);
+            if (consumed != tolerancia_raw.size()) throw std::invalid_argument(tolerancia_raw);
+        } catch (...) {
+            return Fail("--tolerancia precisa ser um numero inteiro (percentual, ex.: 25)");
+        }
+        if (tolerance_percent < 1 || tolerance_percent > 90) return Fail("--tolerancia precisa estar entre 1 e 90");
+    }
+
+    const std::string &input_path = pos[0];
+    const std::string &output_path = pos[1];
+
+    WavSamples wav;
+    std::string error;
+    if (!LoadWav(input_path, wav, error)) return Fail(error);
+
+    std::vector<uint8_t> fast_bytes;
+    std::vector<TapeMark> marks;
+    if (!anexar.empty()) {
+        TapeImage existing;
+        if (!LoadAny(anexar, existing, error)) return Fail("--anexar: " + error);
+        fast_bytes = std::move(existing.fast_bytes);
+        marks = std::move(existing.marks);
+    }
+
+    RipStats stats;
+    if (!RipWavToCas(wav, fast_bytes, marks, tolerance_percent, stats, error)) return Fail(error);
+    for (const std::string &warning : stats.warnings) {
+        std::cerr << "fwmsx --cas: aviso: " << warning << std::endl;
+    }
+
+    if (!SaveAny(output_path, fast_bytes, marks, error)) return Fail(error);
+
+    std::cout << "gravado '" << output_path << "': " << stats.blocks_found << " bloco(s), " << stats.bytes_decoded
+              << " bytes decodificados" << std::endl;
+    return 0;
+}
+
 int RunList(const std::vector<std::string> &args) {
     const std::vector<std::string> pos = Positionals(args, 1);
     if (pos.size() != 1) return Fail("uso: list <arquivo.tsx|.tzx|.cas>");
@@ -217,6 +277,7 @@ int RunCasToolCommand(const std::vector<std::string> &args, const std::string & 
         return 0;
     }
     if (args[0] == "pack") return RunPack(args);
+    if (args[0] == "rip") return RunRip(args);
     if (args[0] == "list") return RunList(args);
     return Fail("comando desconhecido '" + args[0] + "' (ver 'fwmsx --cas help')");
 }

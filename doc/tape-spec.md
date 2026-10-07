@@ -299,6 +299,7 @@ quer uma fita pronta para `BLOAD`/`CLOAD "CAS:"`.
 
 ```
 fwmsx --cas pack --tipo bin|bas --nome NOME [opcoes] <entrada> <saida.tsx|.cas>
+fwmsx --cas rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas>
 fwmsx --cas list <arquivo.tsx|.tzx|.cas>
 ```
 
@@ -325,9 +326,11 @@ fwmsx --cas list <arquivo.tsx|.tzx|.cas>
 - A saida e' sempre um `.tsx` valido (reusa `WriteTsxFromCas()`, o
   MESMO escritor que `TapeEngine` usa para gravar -- ver secao 6) ou um
   `.cas` cru, pela extensao do caminho.
+- `rip`: "ripa" uma gravacao real de fita (`.wav`) para um `.TSX` valido
+  -- ver secao 9 para o algoritmo e os limites.
 - `list`: mostra indice, tipo, nome e tamanho dos dados de cada arquivo
-  de uma fita -- util para confirmar o resultado do `pack` sem abrir a
-  janela "Fita K7".
+  de uma fita -- util para confirmar o resultado do `pack`/`rip` sem
+  abrir a janela "Fita K7".
 
 Os dois blocos escritos por `pack` (cabecalho com nome + dados) sao
 exatamente os mesmos dois blocos que um `CSAVE`/`BSAVE` de verdade
@@ -336,9 +339,105 @@ blocos fora do gancho de BIOS, sem motor, sem Z80
 (`src/tape/cpp/cas_pack.{h,cpp}`). Testes: `castooltest` (CTest
 `cas_pack`).
 
-**Fora de escopo (por enquanto):** `--tipo ascii` (o formato ASCII em
-blocos de 256 bytes com preenchimento `1Ah` e' mais complexo, e nao foi
-pedido); tokenizar um `.BAS` em TEXTO puro (precisaria de um tokenizador
-completo do MSX BASIC, incluindo os ponteiros de linha dependentes do
-endereco de carga -- um projeto bem maior que "empacotar um arquivo
-solto").
+**Fora de escopo (por enquanto, so' para `pack`):** `--tipo ascii` (o
+formato ASCII em blocos de 256 bytes com preenchimento `1Ah` e' mais
+complexo, e nao foi pedido); tokenizar um `.BAS` em TEXTO puro
+(precisaria de um tokenizador completo do MSX BASIC, incluindo os
+ponteiros de linha dependentes do endereco de carga -- um projeto bem
+maior que "empacotar um arquivo solto").
+
+## 9. Ripper de .WAV (`fwmsx --cas rip`)
+
+Demodula uma gravacao real de fita (um `.wav` PCM mono, 8 ou 16 bits --
+`src/tape/cpp/wav_reader.{h,cpp}`) para o formato `.CAS` interno
+(`fast_bytes`/`marks`), detectando o piloto e decodificando os bytes do
+bloco #4B (Kansas City Standard) -- o MESMO caminho de escrita do
+`pack` (secao 8) depois disso. Algoritmo **portado do conceito do
+makeTSX** (`resource/makeTSX/BlockRipper.cpp` e
+`rippers/MSX4B_Ripper.cpp`, MIT -- nenhum codigo copiado, so' a ideia
+geral, simplificada para o caso fixo do MSX). Codigo em
+`src/tape/cpp/wav_ripper.{h,cpp}` e a decodificacao KCS em si (o
+inverso de `kcs_emit_byte()`) em `src/tape/core/kcs_codec.{h,c}`
+(`kcs_decode_byte()`).
+
+**Algoritmo:**
+
+1. **Deteccao de pulsos**: percorre as amostras do `.wav` com um limiar
+   adaptativo (20% do pico absoluto do arquivo, com zona morta no meio
+   para nao contar ruido perto de zero como transicao) -- cada
+   transicao de nivel (baixo <-> alto) gera a duracao (em AMOSTRAS) do
+   pulso anterior. Equivalente ao `BlockRipper::initializeStatesVector()`
+   do makeTSX, sem a "fase" dele (nao e' necessaria para decodificar
+   KCS -- um pulso e' so' uma duracao, o lado nao importa).
+2. **Deteccao do piloto**: a partir de um pulso ainda nao consumido,
+   conta quantos pulsos seguidos tem duracao parecida (dentro da
+   tolerancia) com a MEDIA acumulada dos anteriores do mesmo trecho
+   (comeca so' com o 1o como referencia, refinando a cada pulso aceito
+   -- mais robusto contra jitter/arredondamento da gravacao que fixar
+   so' no 1o pulso). Precisa de pelo menos 400 pulsos assim em sequencia
+   para contar como piloto de verdade (o makeTSX usa 500). A duracao
+   MEDIA medida vira o `one_len` do bloco; `zero_len = one_len*2`
+   (convencao fixa do MSX, independente da velocidade real da fita --
+   ver `cas_format.h`).
+3. **Decodificacao byte a byte**: `kcs_decode_byte()` confere 1 bit de
+   inicio (tem que bater DE VERDADE, sem tolerancia extra -- e' isso
+   que impede o piloto do PROXIMO bloco, uma sequencia pura de pulsos
+   do tamanho do bit 1, de ser lido como um fluxo infinito de bytes
+   `0xFF`), 8 bits de dados (LSb primeiro, cada um decidido por
+   qual das duas opcoes -- 2 pulsos de `zero_len` ou 4 de `one_len` --
+   bate dentro da tolerancia; ambiguo ou nenhum bate = fim do bloco) e 2
+   bits de fim (aceitos mesmo fora da tolerancia, incluindo faltar
+   pulso nenhum no fim do arquivo -- a essa altura o byte ja foi
+   decidido pelos bits de dados, um bit de fim ruidoso ou ausente nao
+   deve descartar um byte bom).
+4. Decodifica bytes assim enquanto conseguir; quando um byte falha
+   (fim do bloco, piloto do proximo, silencio, ou dado corrompido
+   demais), fecha o bloco atual (`AppendCasBlock()`, mesma funcao do
+   empacotador -- secao 8) e volta ao passo 2 procurando o PROXIMO
+   piloto a partir de onde parou.
+5. No fim, `ScanCasFiles()`/`WriteTsxFromCas()` (as MESMAS funcoes de
+   sempre) reconhecem os arquivos e escrevem o `.tsx` -- a saida usa os
+   parametros de pulso CANONICOS do MSX (`cas_format.h`), nao os
+   medidos na gravacao: "ripar" uma fita tambem normaliza a velocidade
+   (remove o "embalo" natural de um motor de fita analogico).
+
+**Testado contra uma fita de verdade** (gravacao real de MSX dos anos
+80, `resource/openMSX/Contrib/reverse_engineering_tools/kanji/
+ktst31 [RUN'CAS-'].wav`, GPL, so' usada aqui como teste manual -- nunca
+versionada como parte deste projeto): reconheceu 86 blocos (4 arquivos
+ASCII, `KTST31`/`KT31A`/`KT31B`/`KT31C`) sem nenhum erro. O teste
+automatizado (`castooltest`/CTest `cas_pack`) usa um `.wav` SINTETICO
+(gerado no proprio teste a partir de bytes conhecidos, via
+`kcs_emit_byte()` -- sem precisar de uma gravacao real) para o
+round-trip completo: bytes -> audio -> `rip` -> bytes, byte a byte.
+
+**Limites desta primeira versao** (comparados ao makeTSX original):
+
+- **So' o bloco #4B/KCS do MSX** (bitcfg/bytecfg fixos -- o unico que o
+  MSX usa de verdade). O makeTSX suporta blocos #10/#11/#12/#13/#15
+  tambem (generico de ZX Spectrum) -- fora de escopo aqui.
+- **Sem os modos interativo/preditivo** do makeTSX original (que pede
+  ajuda ao usuario pela linha de comando, ou tenta adivinhar um bit
+  ambiguo "olhando para frente" nos proximos bits/bytes antes de
+  decidir). Aqui, um bit ambiguo simplesmente termina o bloco corrente
+  -- gravacoes muito ruidosas podem perder o resto de um bloco por
+  causa disso, em vez de recuperar o que vier depois do trecho
+  corrompido.
+- **Sem filtros de volume** (`normalize()`/`envelopeCorrection()` do
+  original) -- so' deteccao de limiar adaptativo (fracao do pico do
+  arquivo todo). Gravacoes com volume muito baixo, ou com um volume que
+  varia MUITO ao longo da fita, podem nao ser detectadas bem numa
+  passada so'.
+- `--tolerancia` (1-90%, padrao 25) e' um unico numero para toda a
+  gravacao -- o makeTSX usa duas janelas diferentes (pulso individual
+  vs. soma do grupo) com valores fixos (16%/22%). Mais simples, um
+  pouco menos preciso em casos extremos.
+- Arquivos ASCII de verdade sao gravados em VARIOS blocos de 256 bytes
+  (um cabecalho #4B por bloco) -- `ScanCasFiles()` so' sabe juntar DOIS
+  blocos por arquivo (nome + UM bloco de dados, ver secao 2.1), entao
+  cada sub-bloco de 256 bytes de um arquivo ASCII aparece como um
+  "arquivo" separado (e incompleto) na lista, mesmo com a decodificacao
+  de pulsos em si (o `rip`) funcionando certo. O teste manual contra a
+  fita real (abaixo) mostrou exatamente isso. Juntar os sub-blocos de
+  um ASCII multi-bloco e' trabalho futuro do leitor .CAS, nao do
+  `rip`.

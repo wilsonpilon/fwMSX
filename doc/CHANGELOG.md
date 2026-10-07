@@ -7,6 +7,28 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.22.0] - 2026-10-08 - "King's Valley: Ripper de Fita (WAV -> TSX)"
+
+### Adicionado
+- **`fwmsx --cas rip`**: "ripa" uma gravacao real de fita (`.wav` PCM mono, 8 ou 16 bits) para um
+  `.TSX` valido -- detecta o piloto e decodifica os bytes do bloco #4B (Kansas City Standard),
+  portando o CONCEITO do makeTSX (`resource/makeTSX/BlockRipper.cpp`/`rippers/MSX4B_Ripper.cpp`,
+  MIT) de forma simplificada para o caso fixo do MSX (sem os modos interativo/preditivo do
+  original). `--tolerancia N` (1-90%, padrao 25) ajusta a tolerancia de casamento dos pulsos;
+  `--anexar <arquivo>` acrescenta numa fita existente, igual o `pack`.
+- **`kcs_decode_byte()`** (`src/tape/core/kcs_codec.{h,c}`): o inverso de `kcs_emit_byte()` --
+  decodifica um byte a partir de duracoes de pulso MEDIDAS (com tolerancia), usado pelo ripper.
+  O bit de inicio precisa bater de verdade (sem tolerancia extra -- evita confundir o piloto do
+  PROXIMO bloco com um fluxo infinito de bytes `0xFF`); os bits de fim sao aceitos mesmo fora da
+  tolerancia, inclusive faltando pulso no fim do arquivo (um byte ja decidido pelos dados nao deve
+  ser descartado so' por faltar o fim).
+- **`src/tape/cpp/wav_reader.{h,cpp}`**: leitor de `.wav` PCM mono (8/16 bits), bounds-checked.
+- Testes: `castooltest` (CTest `cas_pack`) ganhou um round-trip completo (bytes -> audio -> `rip`
+  -> bytes, via um `.wav` sintetico gerado no proprio teste) e testes de erro (`.wav` estereo,
+  silencio, argumentos invalidos). Testado manualmente tambem contra uma gravacao real de MSX dos
+  anos 80 (so' como validacao local, nunca versionada): 86 blocos reconhecidos sem erro. Ver
+  `doc/tape-spec.md`, secao 9.
+
 ## [1.21.0] - 2026-10-08 - "King's Valley: Empacotador de Fita (BIN/BAS -> TSX)"
 
 ### Adicionado

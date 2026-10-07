@@ -40,6 +40,28 @@ typedef struct KcsByteFraming {
 // fim), entregando cada um a `sink(ctx, t_states)`.
 void kcs_emit_byte(const KcsByteFraming *cfg, uint8_t byte, TapePulseSink sink, void *ctx);
 
+// Decodifica UM byte (o inverso de kcs_emit_byte) a partir das duracoes
+// MEDIDAS em `pulses[*pos..count)` -- usado pelo "ripper" de .WAV (ver
+// src/tape/cpp/wav_ripper.h, doc/tape-spec.md, secao 9). As duracoes
+// vem de uma gravacao de verdade (com jitter), por isso toda comparacao
+// usa tolerancia (`tolerance_percent`, sobre a soma do grupo de pulsos
+// de cada bit) em vez de igualdade exata. O(s) bit(s) de INICIO
+// precisam bater de verdade (sem tolerancia extra) -- e' esse
+// casamento estrito que impede o piloto do PROXIMO bloco (puro bit 1)
+// de ser lido como um fluxo infinito de bytes 0xFF, fazendo a funcao
+// falhar exatamente onde os dados de verdade acabam. Os bits de FIM,
+// ao contrario, sao aceitos mesmo fora da tolerancia (assumidos no
+// valor esperado) -- a essa altura o byte ja foi decidido pelos 8 bits
+// de dados, e um bit de fim ruidoso nao deve descartar um byte bom. Os
+// 8 bits de DADOS precisam ser decididos sem ambiguidade (bater com um
+// valor e nao com o outro); caso contrario (nenhum bate, ou os dois
+// batem) a funcao falha sem avancar `*pos` -- indica fim de bloco
+// (piloto do proximo bloco, silencio, ou dado corrompido demais para
+// decidir). Devolve 1 e preenche `*out_byte`/avanca `*pos` em caso de
+// sucesso; 0 senao.
+int kcs_decode_byte(const KcsByteFraming *cfg, const uint32_t *pulses, size_t count, size_t *pos,
+                     int tolerance_percent, uint8_t *out_byte);
+
 #ifdef __cplusplus
 }
 #endif

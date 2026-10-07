@@ -359,20 +359,26 @@ set(TAPE_LIB_SOURCES
         src/tape/cpp/tzx_reader.cpp
         src/tape/cpp/tsx_writer.cpp
         src/tape/cpp/cas_pack.cpp
+        src/tape/cpp/wav_reader.cpp
+        src/tape/cpp/wav_ripper.cpp
         src/tape/cpp/tape_device.cpp
 )
 
-# Leitor/escritor de .CAS/.TSX e o empacotador (cas_pack.cpp), SEM o
-# motor de gravacao (tape_device.cpp) -- este nao depende do Z80/mapa de
+# Leitor/escritor de .CAS/.TSX, o empacotador (cas_pack.cpp) e o
+# "ripper" de .WAV (wav_reader.cpp/wav_ripper.cpp), SEM o motor de
+# gravacao (tape_device.cpp) -- este nao depende do Z80/mapa de
 # memoria, so' usado pela ferramenta de linha de comando "fwmsx --cas"
 # (src/tape/cli/cas_tool.cpp) e pelo teste dela (castooltest), pra nao
-# arrastar Z80_LIB_SOURCES/MEMMAP_LIB_SOURCES so' pra empacotar bytes.
+# arrastar Z80_LIB_SOURCES/MEMMAP_LIB_SOURCES so' pra empacotar/ripar
+# bytes.
 set(CAS_PACK_SOURCES
         src/tape/core/kcs_codec.c
         src/tape/cpp/cas_reader.cpp
         src/tape/cpp/tzx_reader.cpp
         src/tape/cpp/tsx_writer.cpp
         src/tape/cpp/cas_pack.cpp
+        src/tape/cpp/wav_reader.cpp
+        src/tape/cpp/wav_ripper.cpp
 )
 
 # --- Maquina MSX1 completa + janela (fwmsx --msx) -- ver doc/machine-spec.md

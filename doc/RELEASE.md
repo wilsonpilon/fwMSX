@@ -13,6 +13,43 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.22.0 -- "King's Valley: Ripper de Fita (WAV -> TSX)" (2026-10-08)
+
+**Fase:** segundo item do "passo 1" pedido pelo usuario -- port do makeTSX, a conversao WAV -> TSX
+(`doc/SPEC.md`, secao 5.2, item f), depois do empacotador .BIN/.BAS (1.21.0).
+
+### O que foi feito
+
+- `fwmsx --cas rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas>`: demodula
+  uma gravacao real de fita (PCM mono) para o formato `.CAS` interno, reusando o MESMO escritor do
+  `pack` depois disso. Algoritmo portado do CONCEITO do makeTSX
+  (`resource/makeTSX/BlockRipper.cpp`/`rippers/MSX4B_Ripper.cpp`, MIT) -- nenhum codigo copiado, so'
+  a ideia geral (deteccao de piloto por limiar adaptativo + decodificacao byte a byte com
+  tolerancia), simplificada para o caso fixo do MSX (sem os modos interativo/preditivo do original,
+  que pede ajuda ao usuario ou tenta adivinhar bits ambiguos "olhando para frente" -- ver
+  `doc/tape-spec.md`, secao 9, para os limites completos).
+- `kcs_decode_byte()` (`src/tape/core/kcs_codec.{h,c}`), o inverso de `kcs_emit_byte()` -- decidiu
+  tratar o bit de INICIO de forma ESTRITA (sem tolerancia extra) e os bits de FIM de forma leniente
+  (aceitos mesmo fora da tolerancia, ou ausentes no fim do arquivo). A primeira decisao evita que o
+  piloto do PROXIMO bloco (puro bit 1) seja lido como um fluxo infinito de bytes `0xFF`; a segunda
+  evita perder o ULTIMO byte de uma gravacao so' porque nao sobrou pulso depois do bit de fim dele
+  -- os dois foram bugs reais encontrados pelo proprio teste automatizado (round-trip) desta
+  rodada, antes de qualquer teste manual.
+- `src/tape/cpp/wav_reader.{h,cpp}`: leitor de `.wav` PCM mono (8/16 bits) bounds-checked, usado
+  pelo `rip`.
+- Testado contra uma fita MSX real dos anos 80
+  (`resource/openMSX/Contrib/reverse_engineering_tools/kanji/ktst31 [RUN'CAS-'].wav`, GPL, so'
+  validacao manual local -- nunca versionada como parte deste projeto): 86 blocos reconhecidos
+  (4 arquivos ASCII) sem nenhum erro de decodificacao.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.22.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.22.0-linux.tar.gz`.
+- `ctest`: 17 suites (`castooltest`/`cas_pack` com um round-trip completo -- bytes -> audio ->
+  `rip` -> bytes, via um `.wav` sintetico gerado no proprio teste -- e testes de erro: `.wav`
+  estereo, silencio, argumentos invalidos). Windows: 17/17. Linux: 17/17.
+
 ## v1.21.0 -- "King's Valley: Empacotador de Fita (BIN/BAS -> TSX)" (2026-10-08)
 
 **Fase:** primeiro item da lista de pendencias de fita (`doc/SPEC.md`, secao 5.2) depois da
