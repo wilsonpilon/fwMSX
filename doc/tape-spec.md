@@ -153,10 +153,10 @@ fita, so' latcheia o bit -- a sincronia fica na Machine, como o
 ## 5. Limites (nesta fase)
 
 - **Blocos de controle do TZX** (grupos 21/22, saltos 23, lacos 24/25,
-  chamadas 26/27, selecao 28) sao pulados com seguranca (o comprimento e'
-  sempre conhecido), mas SEM NAVEGAR -- o arquivo e' lido em sequencia,
-  do primeiro ao ultimo bloco, sempre. Bleepload e protecoes parecidas
-  (uso pesado desses blocos) nao vao funcionar direito.
+  chamadas 26/27, selecao 28) agora sao NAVEGADOS de verdade, nao so'
+  pulados -- ver secao 10. **Selecao (#28)** continua com uma limitacao
+  por natureza: sem como mostrar um menu de verdade numa ferramenta
+  batch, escolhe sempre a 1a opcao da lista.
 - **Gravacao direta (#15), CSW (#18) e bloco generalizado (#19)** sao
   reconhecidos (comprimento correto) mas NAO reproduzidos -- blocos raros
   em fitas de MSX.
@@ -441,3 +441,66 @@ round-trip completo: bytes -> audio -> `rip` -> bytes, byte a byte.
   fita real (abaixo) mostrou exatamente isso. Juntar os sub-blocos de
   um ASCII multi-bloco e' trabalho futuro do leitor .CAS, nao do
   `rip`.
+
+## 10. Navegacao de blocos de controle do TZX
+
+Os blocos de controle do TZX (IDs 21-28, `TZX_format.md`) mudam a ORDEM
+de execucao do arquivo -- antes da 1.23.0, eram so' pulados com
+seguranca (o comprimento sempre conhecido, por isso a leitura nunca
+travava), mas a ordem real era ignorada: o arquivo sempre era lido do
+primeiro ao ultimo bloco, em sequencia. Corrigido com um leitor em DUAS
+passadas em `src/tape/cpp/tzx_reader.cpp`:
+
+1. **1a passada** (`SkipOneBlock()`): percorre TODO o arquivo so' para
+   descobrir onde cada bloco comeca (sem gerar pulso nem conteudo
+   nenhum) -- necessario porque saltos/lacos/chamadas/selecao se
+   referem a OUTROS blocos pelo NUMERO DE ORDEM (ex.: "salto 2" = "pule
+   1 bloco"), nao pelo deslocamento em bytes no arquivo. Sem indexar
+   tudo ANTES, um salto para a FRENTE nao teria como saber quantos
+   bytes os blocos no meio do caminho ocupam.
+2. **2a passada** (o loop de navegacao em `LoadTzxImage()`, mais
+   `ExecuteDataBlock()` para os blocos "passivos" -- #10 a #20, #2A,
+   #2B, #30-35, #4B, #5A, que nao mudam a ordem): executa de verdade,
+   com um "PC" (indice do bloco atual na lista da 1a passada, NAO um
+   deslocamento em bytes).
+
+**Semantica de cada bloco** (ver TZX_format.md para os detalhes completos):
+
+- **Grupo (#21/#22)**: so' um marcador (nome do grupo) -- sem efeito na
+  ordem, sempre foi assim.
+- **Salto (#23)**: deslocamento relativo ao PROPRIO bloco do salto
+  (`novo_pc = pc + valor`; "salto 1" = bloco seguinte = NOP; "salto 0"
+  seria um laco infinito -- a propria especificacao do TZX avisa que
+  "isso nunca deveria acontecer"). Um salto para fora dos limites do
+  arquivo e' um ERRO (nao ha' como continuar, o arquivo esta' malformado).
+- **Laco (#24/#25)**: `#24` guarda quantas vezes repetir; o corpo (os
+  blocos entre `#24` e o `#25` correspondente) toca essa quantidade de
+  vezes antes de continuar depois do `#25`. Zero repeticoes pula o
+  corpo inteiro, sem tocar nem uma vez (procura o PROXIMO `#25` -- a
+  especificacao nao permite lacos aninhados, entao e' sempre o
+  correspondente). Usamos uma pilha de lacos por seguranca contra um
+  arquivo malformado, apesar da especificacao proibir o aninhamento.
+- **Chamada (#26/#27)**: `#26` guarda uma LISTA de deslocamentos (como
+  varias sub-rotinas chamadas em sequencia); cada `#27` encontrado
+  avanca para a PROXIMA chamada da MESMA lista, e quando a lista se
+  esgota, volta para o bloco logo depois do `#26` original. Uma pilha
+  de chamadas permite aninhamento com lacos (permitido pela
+  especificacao: "you can use CALL blocks in LOOP sequences and vice
+  versa").
+- **Selecao (#28)**: a especificacao pede um MENU interativo (varias
+  opcoes com descricao, o usuario escolhe uma) -- sem como fazer isso
+  numa ferramenta batch sem interface, **escolhe sempre a 1a opcao da
+  lista**, por padrao. Documentado como limitacao (ver secao 5).
+
+**Protecao contra laco infinito**: um TZX malformado (ou deliberadamente
+malicioso) poderia ter um salto/laco/chamada que nunca termina -- um
+contador de passos com um limite bem generoso (bem mais que o numero de
+blocos do arquivo) interrompe a leitura com um erro claro nesse caso,
+em vez de travar o processo para sempre.
+
+Testes: `tapetest` (CTest `tape_load`) com 6 checagens novas -- monta um
+`.tsx` sintetico pequeno para cada caso (salto pula 1 bloco; laco repete
+o corpo 3 vezes; laco com 0 repeticoes pula o corpo inteiro; chamada com
+lista de 2 execucoes + retorno; selecao escolhe a 1a opcao; salto fora
+dos limites e' recusado com erro) e confere a ORDEM REAL de execucao
+pela ordem dos arquivos reconhecidos no resultado (`img.files`).

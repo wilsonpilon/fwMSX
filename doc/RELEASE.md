@@ -13,6 +13,38 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.23.0 -- "King's Valley: Navegacao de Blocos do TZX" (2026-10-08)
+
+**Fase:** terceiro e ultimo item do "passo 1" pedido pelo usuario -- navegar os blocos de controle
+do TZX (grupos/lacos/saltos), que antes eram so' pulados com seguranca (o comprimento sempre
+conhecido), mas sem afetar a ordem de execucao real.
+
+### O que foi feito
+
+- Reescrito `src/tape/cpp/tzx_reader.cpp` para ler o TZX em DUAS passadas: a 1a (`SkipOneBlock()`)
+  so' indexa onde cada bloco comeca, sem gerar pulso nenhum; a 2a (`ExecuteDataBlock()` para os
+  blocos "passivos", mais um loop de navegacao dedicado para os de controle) executa de verdade,
+  com um "PC" (indice do bloco atual, nao deslocamento em bytes -- saltos/lacos/chamadas se
+  referem a blocos pelo NUMERO DE ORDEM, por especificacao).
+- **Salto (#23)**: deslocamento relativo ao proprio bloco do salto. **Laco (#24/#25)**: o corpo
+  repete N vezes (uma pilha, apesar da especificacao proibir lacos ANINHADOS -- so' por seguranca
+  contra um arquivo malformado); 0 repeticoes pula o corpo inteiro. **Chamada (#26/#27)**: uma
+  lista de chamadas executadas em sequencia (podem se aninhar com lacos, por especificacao), com
+  retorno ao bloco depois da chamada original no final da lista. **Selecao (#28)**: sem como
+  mostrar um menu de verdade numa ferramenta batch -- escolhe sempre a 1a opcao, por padrao
+  (documentado). Protegido contra laco infinito com um limite de passos generoso.
+- Testes: `tapetest` com 6 checagens novas que montam um `.tsx` sintetico pequeno para cada caso
+  (salto, laco com N repeticoes, laco com 0, chamada com lista de 2, selecao, salto fora dos
+  limites) e confirmam a ORDEM REAL de execucao (via a ordem dos arquivos reconhecidos no
+  resultado).
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.23.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.23.0-linux.tar.gz`.
+- `ctest`: 17 suites (`tapetest` com as 6 checagens novas de navegacao, mais as existentes de
+  leitura/gravacao). Windows: 17/17. Linux: 17/17.
+
 ## v1.22.0 -- "King's Valley: Ripper de Fita (WAV -> TSX)" (2026-10-08)
 
 **Fase:** segundo item do "passo 1" pedido pelo usuario -- port do makeTSX, a conversao WAV -> TSX

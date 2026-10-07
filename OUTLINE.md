@@ -17,10 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08)
 
-- **Versao em preparo:** 1.22.0 "King's Valley: Ripper de Fita (WAV -> TSX)" -- codigo e docs
+- **Versao em preparo:** 1.23.0 "King's Valley: Navegacao de Blocos do TZX" -- codigo e docs
   prontos, build e testes passando (ver secao 9); ainda NAO comitada/taggeada se esta nota ainda
   estiver aqui.
-- **Ultima versao publicada em `main`:** 1.21.0 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
+- **Ultima versao publicada em `main`:** 1.22.0 (ou mais nova -- conferir `git log`). A 1.19.0 (fita, leitura) **nunca foi comitada** -- o
   usuario achou dois bugs reais ao testar com um .TSX de verdade antes do commit, corrigidos direto na
   1.19.1, e depois confirmou pelo ouvido/jogando: carregou o jogo completo (`A.M.C.`, Dinamic) e jogou
   um pouco, som nitido. Pediu a melhoria seguinte (gravacao, fita nova, protecao, 3 modos, marcar o
@@ -97,7 +97,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   anos 80** (`resource/openMSX/.../ktst31 [RUN'CAS-'].wav`, GPL, so' validacao manual local): 86
   blocos reconhecidos sem erro -- alem do round-trip automatizado (`castooltest`, bytes -> audio
   sintetico -> `rip` -> bytes).
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.22.0.*` (ver secao 9).
+- **Navegacao de blocos de controle do TZX (1.23.0, 2026-10-08)**: Grupo/Salto/Laco/Chamada/
+  Selecao (IDs 21-28) agora sao EXECUTADOS, com um leitor em 2 passadas (indexa os blocos, depois
+  navega por indice), nao so' pulados em sequencia linear como antes. Testado com 6 cenarios
+  sinteticos (`tapetest`) que confirmam a ORDEM REAL de execucao. Fecha o "passo 1" pedido pelo
+  usuario por completo (empacotador, ripper WAV, navegacao TZX).
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.23.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -223,28 +228,30 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 4. **[FEITO em 2026-10-08, 1.22.0] Port do makeTSX (WAV -> TSX)** -- `fwmsx --cas rip` demodula
    uma gravacao real de fita para `.TSX`, testado contra uma fita MSX de verdade dos anos 80 (86
    blocos reconhecidos). Ver secao 9 e `doc/tape-spec.md`, secao 9.
-5. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): (e) banco de fitas (metadados, sem
-   download automatico ate ter autorizacao); navegar os blocos de controle do TZX (grupos/lacos/
-   saltos); preenchimento de alinhamento ainda adivinhado so' para `.cas` cru carregado direto do
-   disco; `ScanCasFiles()` so' junta 2 blocos por arquivo (um ASCII multi-bloco de verdade aparece
-   fragmentado, ver `doc/tape-spec.md`, secoes 5 e 9).
+5. **[FEITO em 2026-10-08, 1.23.0] Navegacao de blocos de controle do TZX** -- Grupo/Salto/Laco/
+   Chamada/Selecao (IDs 21-28) agora sao executados de verdade, nao so' pulados. Fecha o "passo 1"
+   pedido pelo usuario por completo. Ver secao 9 e `doc/tape-spec.md`, secao 10.
+6. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): (e) banco de fitas (metadados, sem
+   download automatico ate ter autorizacao); preenchimento de alinhamento ainda adivinhado so' para
+   `.cas` cru carregado direto do disco; `ScanCasFiles()` so' junta 2 blocos por arquivo (um ASCII
+   multi-bloco de verdade aparece fragmentado, ver `doc/tape-spec.md`, secoes 5 e 9).
    Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT), `resource/openMSX_TSXadv/` (GPL,
    so' estudo).
-6. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
+7. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
    mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
-7. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
+8. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
-8. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
+9. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
    de Sony/Philips/Spectravideo do openMSX (so' como referencia).
-9. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
+10. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
    `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
    Ainda nao comecou.
-10. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
-11. **BIOS Expert:** texto com espacos na tela; investigar.
-12. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
-13. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
-14. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
-15. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+11. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
+12. **BIOS Expert:** texto com espacos na tela; investigar.
+13. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
+14. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
+15. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
+16. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
     com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
@@ -486,6 +493,64 @@ modo "nova fita" da gravacao continua pendente de teste na janela (ver rodadas a
   (fita muito ruidosa), mas replica-los piora o retorno sobre o esforco para uma ferramenta batch
   como esta. Simplificar PARA O CASO QUE IMPORTA (o MSX fixo, aqui) e documentar o que foi deixado
   de fora e' melhor que portar tudo "por completude".
+
+### Rodada seguinte (2026-10-08): 1.23.0 -- navegacao de blocos de controle do TZX
+
+Terceiro e ultimo item do "passo 1": navegar os blocos de controle do TZX (grupos/lacos/saltos),
+que antes eram so' pulados com seguranca (comprimento sempre conhecido) sem afetar a ordem real de
+execucao.
+
+**Desenho**: o parser original era UMA passada so' (le o ID, processa, avanca, repete do inicio ao
+fim). Saltos/lacos/chamadas se referem a blocos pelo NUMERO DE ORDEM (nao pelo deslocamento em
+bytes), entao navegar de verdade exige saber os limites de TODOS os blocos ANTES de poder saltar
+para a frente. Reescrito como leitor em DUAS passadas: a 1a (`SkipOneBlock()`) so' indexa onde
+cada bloco comeca; a 2a executa de verdade, com um "PC" (indice, nao deslocamento em bytes), uma
+pilha de lacos e uma pilha de chamadas (a especificacao do TZX permite aninhar chamadas com lacos,
+so' NAO permite lacos aninhados com lacos -- usamos pilha pra ambos, por seguranca, mesmo assim).
+`ExecuteDataBlock()` ganhou o conteudo EXATO do switch original para os blocos "passivos" (#10 a
+#20, #2A/#2B, #30-35, #4B, #5A) -- nenhuma logica de formato foi alterada, so' movida.
+
+**Selecao (#28)** nao tem como mostrar um menu de verdade numa ferramenta sem interface -- decisao:
+escolhe sempre a 1a opcao da lista, documentado como comportamento padrao (nao uma limitacao
+temporaria, e' inerente a uma ferramenta batch).
+
+**Bug pego na hora de escrever o teste, nao no codigo de navegacao**: o primeiro teste usava um
+bloco #4B isolado (so' o cabecalho de 16 bytes) por "arquivo" sintetico -- mas dois cabecalhos #4B
+colados direto um no outro (sem bloco de dados no meio) fazem `ScanCasFiles()` confundir o
+cabecalho do PROXIMO arquivo com o inicio dos dados do ATUAL (a heuristica dela assume que um
+cabecalho seguido de outro cabecalho imediatamente quer dizer "aqui comeca o bloco de dados", a
+convencao real do CSAVE). Corrigido fazendo cada "arquivo" de teste ser um PAR de blocos #4B (nome
++ 1 byte de dados), igual uma gravacao de verdade.
+
+Build Windows e Linux (WSL) rodados, `ctest` 17/17 nos dois (`tapetest` com 6 checagens novas:
+salto pula 1 bloco; laco repete o corpo 3 vezes; laco com 0 repeticoes pula o corpo inteiro;
+chamada com lista de 2 execucoes + retorno; selecao escolhe a 1a opcao; salto fora dos limites e'
+recusado com erro). Escrito como versao `1.23.0` (minor -- feature nova) com o mesmo codename e um
+subtitulo novo: "Navegacao de Blocos do TZX". Ver `doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.23.0]`,
+e `doc/tape-spec.md`, secao 10 (nova).
+
+**Desta vez tambem**: versao bumpada ANTES do primeiro build (confirmado -- o build Linux ja'
+gerou `fwMSX-1.23.0-linux.tar.gz` direto, sem precisar restaurar nenhum pacote antigo).
+
+**Se o `git log` de `main` nao mostrar um commit de release da 1.23.0 ainda**, essa e' a proxima
+acao: `git add` dos arquivos certos (nao `git add -A`), commit com `Co-Authored-By`, `git tag
+1.23.0`, `git branch v1.23.0`, `git push origin main 1.23.0 v1.23.0`. Essa era a ultima peca do
+"passo 1" pedido pelo usuario -- depois disso, so' restam os itens (e)/(f)... espera, (f) (port do
+makeTSX) ja' foi feito na 1.22.0; so' resta (e) banco de fitas/metadados na lista de pendencias de
+fita, alem das limitacoes conhecidas documentadas (preenchimento de alinhamento para `.cas` cru,
+ASCII multi-bloco fragmentado).
+
+**Ainda nao testado na janela:** navegacao de TZX nao tem equivalente na GUI (e' so' parte do
+leitor, usado tanto pela janela quanto pelo `--cas`) -- testado so' via `tapetest`, nao contra um
+`.tzx` real do mundo ZX Spectrum que use esses blocos pesadamente (nenhum fixture assim no
+repositorio ainda).
+
+**Licoes para a proxima vez:**
+- **Ao escrever um teste sintetico para um formato com convencoes implicitas** (como "dois
+  cabecalhos #4B colados = cabecalho+dados", nao "dois arquivos separados"), seguir a MESMA
+  convencao que o leitor de verdade espera, nao so' "o minimo que compila". O bug nao estava no
+  codigo de navegacao (que passou pelo teste corrigido sem precisar de nenhuma mudanca) -- estava
+  no teste assumindo uma estrutura de bytes que nenhuma fita de verdade produziria.
 
 **Licoes para a proxima vez:**
 - **Bumpar `version.h` ANTES do primeiro build de uma rodada de release, nunca depois** -- rodar o

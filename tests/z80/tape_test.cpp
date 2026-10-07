@@ -187,6 +187,134 @@ int main() {
         std::string error35;
         check(tape::LoadTzxImage(tsx35_path, img35, error35), "LoadTzxImage com bloco #35 antes do #4B (" + error35 + ")");
         check(!img35.pulses.empty() && !img35.fast_bytes.empty(), "bloco #35 nao corrompe a leitura do #4B seguinte");
+
+        // --- Navegacao de blocos de controle (21-28) -------------------------
+        // Cada "arquivo" aqui e' um PAR de blocos #4B (cabecalho de 16 bytes
+        // -- 10x ID + 6 de nome -- seguido de 1 byte de dados), o MESMO par
+        // que um CSAVE/BSAVE de verdade grava (ver secao 6 do tape-spec.md) --
+        // nao um cabecalho isolado: dois cabecalhos #4B colados direto um no
+        // outro (sem bloco de dados no meio) fariam ScanCasFiles() confundir
+        // o cabecalho do PROXIMO arquivo com o inicio dos dados do ATUAL. A
+        // ORDEM de img.files reflete diretamente a ordem de execucao real
+        // apos a navegacao.
+        auto append_file = [](std::vector<uint8_t> &tsx, char c) {
+            std::vector<uint8_t> header(tape::kCasFileIdBytes, tape::kCasIdAscii);
+            header.insert(header.end(), 6, static_cast<uint8_t>(c));
+            AppendBlock4B(tsx, header);
+            AppendBlock4B(tsx, {static_cast<uint8_t>(c)});
+        };
+        auto file_names = [](const tape::TapeImage &im) {
+            std::string s;
+            for (const auto &f : im.files) s += f.name.empty() ? '?' : f.name[0];
+            return s;
+        };
+
+        // Salto (#23): pula o arquivo B (deslocamento relativo a' propria
+        // posicao do #23 -- "Jump 2" = pula 1 bloco, ver TZX_format.md). Cada
+        // "arquivo" (append_file) ocupa DOIS blocos (indices): A=[0,1],
+        // #23=[2], B=[3,4] (pulado), C=[5,6].
+        {
+            std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+            append_file(tsx, 'A');                  // 0,1
+            tsx.push_back(0x23); AppendU16(tsx, 3); // 2: salta de 2 para 2+3=5 (pula o B em [3,4])
+            append_file(tsx, 'B');                  // 3,4 -- nunca deveria executar
+            append_file(tsx, 'C');                  // 5,6
+            const std::string p = TempPath("fwmsx_tape_test_nav_jump.tsx");
+            WriteFile(p, tsx);
+            tape::TapeImage img; std::string err;
+            check(tape::LoadTzxImage(p, img, err), "navegacao/salto: le o arquivo (" + err + ")");
+            check(file_names(img) == "AC", "navegacao/salto (#23): pula o arquivo B, so' A e C executam");
+        }
+
+        // Laco (#24/#25): o corpo (arquivo X, 2 blocos) toca 3 vezes antes
+        // de continuar. Indices: #24=[0], X=[1,2], #25=[3], Y=[4,5].
+        {
+            std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+            tsx.push_back(0x24); AppendU16(tsx, 3); // 0: repete 3 vezes
+            append_file(tsx, 'X');                  // 1,2: corpo do laco
+            tsx.push_back(0x25);                    // 3: fim do laco
+            append_file(tsx, 'Y');                  // 4,5
+            const std::string p = TempPath("fwmsx_tape_test_nav_loop.tsx");
+            WriteFile(p, tsx);
+            tape::TapeImage img; std::string err;
+            check(tape::LoadTzxImage(p, img, err), "navegacao/laco: le o arquivo (" + err + ")");
+            check(file_names(img) == "XXXY", "navegacao/laco (#24/#25): o corpo repete exatamente 3 vezes");
+        }
+
+        // Laco com 0 repeticoes: pula o corpo todo, nem uma vez.
+        {
+            std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+            tsx.push_back(0x24); AppendU16(tsx, 0); // 0: repete 0 vezes
+            append_file(tsx, 'N');                  // 1,2: nunca deveria executar
+            tsx.push_back(0x25);                    // 3
+            append_file(tsx, 'D');                  // 4,5
+            const std::string p = TempPath("fwmsx_tape_test_nav_loop0.tsx");
+            WriteFile(p, tsx);
+            tape::TapeImage img; std::string err;
+            check(tape::LoadTzxImage(p, img, err), "navegacao/laco 0x: le o arquivo (" + err + ")");
+            check(file_names(img) == "D", "navegacao/laco (#24 com 0 repeticoes): pula o corpo inteiro");
+        }
+
+        // Chamada (#26/#27): uma lista de 2 chamadas, executadas em
+        // sequencia, com retorno ao bloco depois do #26 no final. Indices:
+        // MAIN=[0,1], #26=[2], #23=[3] (so' alcancado apos as chamadas),
+        // SUB1=[4,5], #27=[6], SUB2=[7,8], #27=[9], FINAL=[10,11].
+        {
+            std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+            append_file(tsx, 'M');                                      // 0,1: MAIN
+            tsx.push_back(0x26); AppendU16(tsx, 2); AppendU16(tsx, 2); AppendU16(tsx, 5); // 2: chama pc+2=4 e pc+5=7
+            tsx.push_back(0x23); AppendU16(tsx, 7);                     // 3: salta de 3 para 3+7=10 (pula as subrotinas)
+            append_file(tsx, '1');                                      // 4,5: SUB1 (chamada 1)
+            tsx.push_back(0x27);                                        // 6: retorno -- vai para a chamada 2 (pc(2)+5=7)
+            append_file(tsx, '2');                                      // 7,8: SUB2 (chamada 2)
+            tsx.push_back(0x27);                                        // 9: retorno -- lista esgotada, volta para pc(#26)+1=3
+            append_file(tsx, 'F');                                      // 10,11: FINAL
+            const std::string p = TempPath("fwmsx_tape_test_nav_call.tsx");
+            WriteFile(p, tsx);
+            tape::TapeImage img; std::string err;
+            check(tape::LoadTzxImage(p, img, err), "navegacao/chamada: le o arquivo (" + err + ")");
+            check(file_names(img) == "M12F", "navegacao/chamada (#26/#27): MAIN, as 2 chamadas em ordem, depois FINAL");
+        }
+
+        // Selecao (#28): sem como mostrar um menu de verdade (ferramenta
+        // batch) -- escolhe sempre a 1a opcao da lista, por padrao. Indices:
+        // MAIN=[0,1], #28=[2], W=[3,4] (nunca), S=[5,6], #23=[7], O=[8,9]
+        // (nunca), F=[10,11].
+        {
+            std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+            append_file(tsx, 'M'); // 0,1: MAIN
+            {
+                // 2: selecao com 2 opcoes -- "S" (pc+3=5) e "O" (pc+6=8).
+                std::vector<uint8_t> body;
+                body.push_back(2); // 2 opcoes
+                AppendU16(body, 3); body.push_back(0); // opcao 0: deslocamento +3, sem descricao
+                AppendU16(body, 6); body.push_back(0); // opcao 1: deslocamento +6, sem descricao
+                tsx.push_back(0x28);
+                AppendU16(tsx, static_cast<uint16_t>(body.size()));
+                tsx.insert(tsx.end(), body.begin(), body.end());
+            }
+            append_file(tsx, 'W'); // 3,4: nunca deveria executar (so' a 1a opcao e' escolhida)
+            append_file(tsx, 'S'); // 5,6: SELECIONADO (1a opcao)
+            tsx.push_back(0x23); AppendU16(tsx, 3); // 7: salta de 7 para 7+3=10 (pula o 'O')
+            append_file(tsx, 'O'); // 8,9: OUTRO (2a opcao, nunca escolhida)
+            append_file(tsx, 'F'); // 10,11: FINAL
+            const std::string p = TempPath("fwmsx_tape_test_nav_select.tsx");
+            WriteFile(p, tsx);
+            tape::TapeImage img; std::string err;
+            check(tape::LoadTzxImage(p, img, err), "navegacao/selecao: le o arquivo (" + err + ")");
+            check(file_names(img) == "MSF", "navegacao/selecao (#28): so' a 1a opcao executa, nada mais");
+        }
+
+        // Salto para fora dos limites do arquivo: erro claro, nao trava.
+        {
+            std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+            append_file(tsx, 'A');
+            tsx.push_back(0x23); AppendU16(tsx, 100); // salta para bem depois do fim
+            const std::string p = TempPath("fwmsx_tape_test_nav_badjump.tsx");
+            WriteFile(p, tsx);
+            tape::TapeImage img; std::string err;
+            check(!tape::LoadTzxImage(p, img, err) && !err.empty(), "navegacao/salto fora dos limites: recusado com erro");
+        }
     }
 
     // --- 5. Gancho de BIOS (modo rapido) -------------------------------------

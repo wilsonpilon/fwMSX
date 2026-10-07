@@ -7,6 +7,26 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.23.0] - 2026-10-08 - "King's Valley: Navegacao de Blocos do TZX"
+
+### Adicionado
+- **Navegacao de verdade dos blocos de controle do TZX** (IDs 21-28, `src/tape/cpp/tzx_reader.cpp`):
+  Grupo (#21/#22), Salto (#23), Laco (#24/#25), Chamada (#26/#27) e Selecao (#28) agora sao
+  EXECUTADOS, nao so' pulados -- um arquivo que usa esses blocos pesadamente (ex.: protecoes/
+  loaders customizados do mundo ZX Spectrum que o TZX tambem cobre) agora navega pela ordem real
+  em vez de tocar os blocos em sequencia linear, do primeiro ao ultimo, ignorando saltos/lacos.
+  Implementado como leitor em DUAS passadas: a 1a indexa onde cada bloco comeca (saltos/lacos se
+  referem a blocos pelo NUMERO DE ORDEM, nao pelo deslocamento em bytes -- precisa saber os
+  limites de TODOS os blocos antes de navegar); a 2a executa de verdade, com uma pilha de lacos e
+  uma de chamadas (podem se aninhar entre si, so' lacos aninhados com lacos nao sao permitidos pela
+  especificacao). "Selecao" (#28), sem como mostrar um menu de verdade numa ferramenta batch,
+  escolhe sempre a 1a opcao por padrao. Protegido contra laco infinito (um "Salto 0", que a propria
+  especificacao do TZX diz que "nunca deveria acontecer") com um limite generoso de passos.
+- Testes: `tapetest` com 6 checagens novas (salto pula um bloco; laco repete o corpo 3 vezes; laco
+  com 0 repeticoes pula o corpo inteiro; chamada com lista de 2 execucoes + retorno; selecao
+  escolhe a 1a opcao; salto fora dos limites e' recusado com erro claro). Ver `doc/tape-spec.md`,
+  secao 5 (limitacao removida).
+
 ## [1.22.0] - 2026-10-08 - "King's Valley: Ripper de Fita (WAV -> TSX)"
 
 ### Adicionado
