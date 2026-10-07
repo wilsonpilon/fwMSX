@@ -13,6 +13,47 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.19.0 -- "Yie Ar Kung-Fu: Fita K7" (2026-10-07)
+
+**Fase:** leitura de fita (.CAS e .TSX/.TZX) com dois modos de carregamento -- rapido (gancho de BIOS,
+sem som) e normal (pulsos de verdade, com o barulho do gravador) -- e a janela visual "Fita K7". Sem
+mudanca no nucleo Z80 (so' usou, por fora, um mecanismo de patch de BIOS que ja' existia la' sem uso).
+
+### Destaques
+
+- **Leitor de .CAS e .TSX/.TZX**: todo bloco do TZX 1.20 e' reconhecido (comprimento sempre calculado
+  certo, nunca trava um arquivo valido); o bloco #4B (Kansas City Standard, o que o MSX usa de verdade)
+  e' reproduzido por completo, com piloto, bits e pausa.
+- **Carregamento rapido**: as rotinas TAPION/TAPIN/TAPIOF da BIOS (00E1h/00E4h/00E7h) sao interceptadas
+  (o mesmo truque "ED FE" do fMSX) e devolvem os bytes direto de um buffer, sem temporizacao.
+- **Carregamento normal**: os MESMOS pulsos que um gravador real produziria sao entregues na porta de
+  verdade (PSG, R14 bit 7), na cadencia de T-states da CPU -- a BIOS roda a rotina ORIGINAL dela, e o
+  sinal tambem e' ouvido (onda quadrada somada ao audio ao vivo).
+- **Motor da fita**: a porta C do PPI (bit 4, `AAh`) liga/desliga o avanco da fita, como no hardware real.
+- **Janela "Fita K7"**: dois rolos desenhados com `ImDrawList`, girando enquanto o motor esta' ligado;
+  barra de progresso (posicao/duracao) e lista dos arquivos encontrados (nome, tipo, tamanho).
+- `--fita <arquivo>` e `--fita-modo rapido|normal`; menu **Fita** da janela.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.19.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.19.0-linux.tar.gz`.
+- `ctest`: 16 suites (nova: `tapetest`/`tape_load`). Windows: 16/16. Linux: 16/16.
+- Smoke test: `fwMSX.exe --msx --fita <arquivo.cas> --frames 30` (modo rapido e normal) roda sem erro,
+  com o audio ao vivo ligado.
+
+### Limitacoes conhecidas
+
+- **Sem escrita**: nenhum `CSAVE`/`BSAVE "CAS:"` grava fita.
+- **Sem banco de fitas nem download** (itens (e)/(f) de `doc/SPEC.md`, secao 5.2).
+- **Blocos de controle do TZX** (grupos, lacos, saltos, chamadas, selecao) sao pulados com seguranca mas
+  NAO navegados -- o arquivo e' lido sempre em sequencia. Protecoes que dependem desses blocos (ex.:
+  Bleepload) nao vao funcionar direito.
+- **Fast_bytes so' a partir do #4B**: um .TSX cujo conteudo de verdade esteja em blocos #10/#11/#14 (em
+  vez de so' o piloto) carrega certo no modo normal, mas nao no rapido -- nao e' o caso comum do MSX.
+- **Som da fita nao validado por ouvido** contra um gravador real (so' contra a logica dos pulsos).
+- Ver `doc/tape-spec.md`, secao 5, para a lista completa.
+
 ## v1.18.0 -- "Ys: Banco de ROMs e Disco por Portas" (2026-10-06)
 
 **Fase:** banco de ROMs em SQLite com download e identificacao, controladora de disco por portas

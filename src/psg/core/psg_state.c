@@ -31,6 +31,8 @@ void psg_set_joystick(PsgState *p, int port, uint8_t bits) {
     if (port == 0 || port == 1) p->joy[port] = bits & 0x3F;
 }
 
+void psg_set_cassette_in(PsgState *p, int level) { p->cassette_in = level ? 1 : 0; }
+
 void psg_write_reg(PsgState *p, int reg, uint8_t v) {
     switch (reg) {
     case 1: case 3: case 5: p->r[reg] = v & 0x0F; break;
@@ -65,8 +67,9 @@ uint8_t psg_read_data(const PsgState *p) {
      * demais registradores sao lidos como estao. */
     if (p->latch == 14) {
         const int port = (p->r[15] >> 6) & 1;
-        if (p->r[15] & (0x10 << port)) return 0x7F;
-        return (uint8_t)((~p->joy[port] & 0x3F) | 0x40);
+        const uint8_t cas = (uint8_t)(p->cassette_in ? 0x80 : 0x00);
+        if (p->r[15] & (0x10 << port)) return (uint8_t)(0x7F | cas);
+        return (uint8_t)(((~p->joy[port] & 0x3F) | 0x40) | cas);
     }
     if (p->latch == 15) return p->r[15] & 0xF0;
     return p->r[p->latch];

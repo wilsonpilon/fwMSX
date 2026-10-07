@@ -22,6 +22,7 @@
 #include "../rtc/rtc_device.h"
 #include "../scc/cpp/scc_device.h"
 #include "../fm/cpp/fm_device.h"
+#include "../tape/cpp/tape_device.h"
 #include "../z80/cpp/z80_cpu.h"
 #include "../z80/debug/z80_debug_shell_startup.h"
 
@@ -119,6 +120,14 @@ struct MachineConfig {
     // de editado pelo menu, vale o `layout` e os campos acima sao ignorados.
     SlotLayout layout;
     bool layout_set = false;
+
+    // Fita (.cas, .tsx ou .tzx, pela extensao -- ver doc/tape-spec.md).
+    // Vazio = sem fita na unidade ao iniciar (pode inserir depois pelo
+    // menu). `tape_mode` escolhe entre carregamento rapido (gancho de
+    // BIOS, sem som) e normal (pulsos de verdade, com som, como um
+    // gravador de fita de verdade).
+    std::string tape_path;
+    tape::TapeMode tape_mode = tape::TapeMode::Fast;
 };
 
 // Layout padrao (o mesmo de sempre) a partir dos campos de MachineConfig.
@@ -195,6 +204,16 @@ public:
     fdc::DiskFormat disk_format() const { return disk_format_; }
     bool disk_access_is_port() const { return port_fdc_ != nullptr; }
 
+    // Fita (ver doc/tape-spec.md): inserir/ejetar/rebobinar a qualquer
+    // momento, e trocar entre carregamento rapido e normal sem reiniciar a
+    // maquina (so' troca o patch da BIOS). O motor (rele do PPI) e' o que
+    // decide se o modo normal esta' de fato avancando a fita.
+    tape::TapeEngine &tape() { return *tape_; }
+    bool InsertTape(const std::string &path, std::string &error);
+    void EjectTape();
+    void RewindTape();
+    void SetTapeMode(tape::TapeMode mode);
+
     // Resumo do cartucho carregado ("" se nao ha'): tamanho e mapper.
     const std::string &cart_info() const { return cart_info_; }
 
@@ -247,6 +266,8 @@ private:
     fdc::DiskFormat disk_format_ = fdc::DiskFormat::Auto;
     std::unique_ptr<scc::SccDevice> scc_;
     std::unique_ptr<fm::FmDevice> fm_;
+    std::unique_ptr<tape::TapeEngine> tape_;
+    bool tape_motor_prev_ = false; // ultimo estado visto do rele (porta C, bit 4)
     fdc::DiskImage disks_[2];
     bool disk_read_only_ = false;
 };

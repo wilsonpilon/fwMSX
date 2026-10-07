@@ -334,6 +334,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
 
     std::string pad_names[2];
     std::string disk_message; // ultimo erro ao inserir disco (menu Disco)
+    // Fita (ver doc/tape-spec.md): ultimo erro ao inserir, e se a janela
+    // visual (K7) esta' aberta.
+    std::string tape_message;
+    bool show_tape_window = false;
     std::vector<std::string> deferred_releases;
     const double frame_dt = 1.0 / Machine::kFrameRate;
     double last_time = glfwGetTime();
@@ -350,6 +354,8 @@ int RunEmulatorWindow(const WindowOptions &options) {
         MachineConfig next = current;
         next.disk_a = machine->disk(0).loaded() ? machine->disk(0).path() : std::string();
         next.disk_b = machine->disk(1).loaded() ? machine->disk(1).path() : std::string();
+        next.tape_path = machine->tape().inserted() ? machine->tape().path() : std::string();
+        next.tape_mode = machine->tape().mode();
         return next;
     };
     auto reboot = [&](const MachineConfig &next) {
@@ -694,6 +700,36 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Fita")) {
+                // Ver doc/tape-spec.md: carregamento rapido (gancho de BIOS, sem
+                // som) ou normal (pulsos de verdade, com o barulho do gravador).
+                ImGui::Text("K7: %s", machine->tape().inserted() ? machine->tape().path().c_str() : "(vazia)");
+                if (ImGui::MenuItem("Inserir fita...")) {
+                    if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Inserir fita", "Fitas MSX",
+                                                                              "*.cas;*.tsx;*.tzx")) {
+                        std::string tape_error;
+                        if (!machine->InsertTape(*chosen, tape_error)) tape_message = tape_error;
+                        else tape_message.clear();
+                    }
+                }
+                if (ImGui::MenuItem("Ejetar", nullptr, false, machine->tape().inserted())) {
+                    machine->EjectTape();
+                    tape_message.clear();
+                }
+                if (ImGui::MenuItem("Rebobinar", nullptr, false, machine->tape().inserted())) machine->RewindTape();
+                if (!tape_message.empty()) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", tape_message.c_str());
+                }
+                ImGui::Separator();
+                ImGui::TextDisabled("Carregamento");
+                const bool tape_fast = machine->tape().mode() == tape::TapeMode::Fast;
+                if (ImGui::RadioButton("Rapido (sem som)", tape_fast)) machine->SetTapeMode(tape::TapeMode::Fast);
+                if (ImGui::RadioButton("Normal (com o som do gravador)", !tape_fast)) machine->SetTapeMode(tape::TapeMode::Normal);
+                ImGui::Separator();
+                ImGui::MenuItem("Mostrar fita K7", nullptr, &show_tape_window);
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Cartucho")) {
                 const std::string cart = CartridgePath(current);
                 ImGui::Text("Slot 1: %s", cart.empty() ? "(vazio)" : cart.c_str());
@@ -749,7 +785,6 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 ImGui::MenuItem("Bateria MIDI (em breve)", nullptr, false, false);
                 ImGui::Separator();
                 ImGui::MenuItem("POKE &HFFFF,&HAA (em breve)", nullptr, false, false);
-                ImGui::MenuItem("Rebobinar fita (em breve)", nullptr, false, false);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Configuracoes")) {
@@ -886,6 +921,75 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     }
                 }
                 if (!disk_message.empty()) ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+            }
+            ImGui::End();
+        }
+
+        if (show_tape_window) {
+            tape::TapeEngine &tp = machine->tape();
+            ImGui::SetNextWindowSize(ImVec2(360, 300), ImGuiCond_FirstUseEver);
+            if (ImGui::Begin("Fita K7", &show_tape_window)) {
+                if (!tp.inserted()) {
+                    ImGui::TextDisabled("Sem fita. Menu Fita > Inserir fita...");
+                } else {
+                    const std::string &tpath = tp.path();
+                    const size_t tslash = tpath.find_last_of("/\\");
+                    const std::string tlabel = tslash == std::string::npos ? tpath : tpath.substr(tslash + 1);
+                    ImGui::TextUnformatted(tlabel.c_str());
+                    ImGui::TextDisabled("%s - motor %s", tp.mode() == tape::TapeMode::Fast ? "rapido" : "normal",
+                                        tp.motor_on() ? "ligado" : "parado");
+
+                    // Desenho da fita K7: corpo + 2 rolos, com raios que giram
+                    // enquanto o motor esta' ligado (so' um efeito visual --
+                    // nao representa a posicao real da fita nos rolos).
+                    const ImVec2 avail = ImGui::GetContentRegionAvail();
+                    const float tw = std::min(avail.x, 320.0f);
+                    const float th = tw * 0.62f;
+                    ImGui::Dummy(ImVec2(tw, th));
+                    ImDrawList *tdl = ImGui::GetWindowDrawList();
+                    const ImVec2 tp0 = ImGui::GetItemRectMin();
+                    const ImVec2 tp1 = ImGui::GetItemRectMax();
+                    tdl->AddRectFilled(tp0, tp1, IM_COL32(40, 40, 46, 255), 10.0f);
+                    tdl->AddRect(tp0, tp1, IM_COL32(15, 15, 18, 255), 10.0f, 0, 2.0f);
+                    const float rcx0 = tp0.x + tw * 0.30f, rcx1 = tp0.x + tw * 0.70f, rcy = tp0.y + th * 0.46f;
+                    const float r_outer = th * 0.30f;
+                    tdl->AddRectFilled(ImVec2(rcx0 - r_outer * 0.6f, rcy - r_outer * 0.75f),
+                                       ImVec2(rcx1 + r_outer * 0.6f, rcy + r_outer * 0.55f), IM_COL32(20, 90, 140, 200), 6.0f);
+
+                    static float tape_angle = 0.0f;
+                    if (tp.motor_on()) tape_angle += static_cast<float>(frame_dt) * (tp.mode() == tape::TapeMode::Fast ? 14.0f : 6.0f);
+                    for (const float rcx : {rcx0, rcx1}) {
+                        tdl->AddCircleFilled(ImVec2(rcx, rcy), r_outer, IM_COL32(230, 230, 230, 255), 24);
+                        tdl->AddCircle(ImVec2(rcx, rcy), r_outer, IM_COL32(120, 120, 120, 255), 24, 2.0f);
+                        for (int s = 0; s < 3; ++s) {
+                            const float a = tape_angle + s * (3.14159265f * 2.0f / 3.0f);
+                            const ImVec2 d(std::cos(a) * r_outer * 0.85f, std::sin(a) * r_outer * 0.85f);
+                            tdl->AddLine(ImVec2(rcx, rcy), ImVec2(rcx + d.x, rcy + d.y), IM_COL32(60, 60, 66, 255), 3.0f);
+                        }
+                        tdl->AddCircleFilled(ImVec2(rcx, rcy), th * 0.11f, IM_COL32(25, 25, 28, 255), 16);
+                    }
+
+                    const double dur = tp.duration_seconds();
+                    if (dur > 0.0) {
+                        const double pos = tp.position_seconds();
+                        char overlay[32];
+                        std::snprintf(overlay, sizeof overlay, "%d:%02d / %d:%02d", static_cast<int>(pos) / 60,
+                                      static_cast<int>(pos) % 60, static_cast<int>(dur) / 60, static_cast<int>(dur) % 60);
+                        ImGui::ProgressBar(static_cast<float>(std::clamp(pos / dur, 0.0, 1.0)), ImVec2(-1, 0), overlay);
+                    }
+                    if (!tp.files().empty()) {
+                        ImGui::Separator();
+                        ImGui::TextDisabled("Arquivos encontrados:");
+                        for (const tape::TapeFileEntry &f : tp.files()) {
+                            const char *kind = f.type == tape::TapeFileType::Binary ? "BIN"
+                                               : f.type == tape::TapeFileType::Basic ? "BAS"
+                                               : f.type == tape::TapeFileType::Ascii ? "ASC"
+                                                                                     : "?";
+                            ImGui::BulletText("%s [%s] (%zu bytes)", f.name.empty() ? "(sem nome)" : f.name.c_str(), kind,
+                                               f.data_bytes);
+                        }
+                    }
+                }
             }
             ImGui::End();
         }

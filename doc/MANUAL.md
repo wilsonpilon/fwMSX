@@ -358,6 +358,8 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 | `--disk-acesso mem\|porta` | controladora de disco pela memoria (DISK.ROM, padrao) ou pelas portas (sem ROM) |
 | `--disk-porta D0h` | base das 5 portas da controladora por portas (padrao D0h) |
 | `--disk-formato auto\|ss525\|ds525\|ss35\|ds35` | formato dos drives: auto (180/360/720 KB), 5 1/4 face simples (180), 5 1/4 face dupla (360), 3 1/2 face simples (360), 3 1/2 face dupla (720) |
+| `--fita <arquivo>` | insere uma fita (`.cas`, `.tsx` ou `.tzx`, pela extensao) na unidade |
+| `--fita-modo rapido\|normal` | carregamento rapido (gancho de BIOS, sem som, padrao) ou normal (pulsos de verdade, com o barulho do gravador) -- ver `doc/tape-spec.md` |
 | `--frames N` | quadros de boot antes dos comandos seguintes (sem janela) |
 | `--vdplog` | mostra os registradores do VDP que mudam, quadro a quadro |
 | `--mute` | sem audio |
@@ -379,6 +381,10 @@ janela abre.
 - **Video**: interpolacao, scanlines e filtros de cor (Monochrome, Sepia, Green CRT, Amber CRT, CMY e RGB Raster).
 - **Som**: mudo e volume.
 - **Disco**: inserir e ejetar A: e B:.
+- **Fita**: inserir, ejetar e rebobinar a fita (`.cas`, `.tsx` ou `.tzx`); trocar entre carregamento
+  **rapido** (sem som) e **normal** (pulsos de verdade, com o barulho do gravador); mostrar a janela
+  visual "Fita K7" (rolos girando enquanto o motor esta' ligado, barra de progresso, arquivos
+  encontrados). Trocar de fita ou de modo NAO reinicia a maquina. Ver `doc/tape-spec.md`.
 - **Cartucho**: inserir ou retirar o cartucho do slot 1:0; ligar ou desligar o **FM-PAC** (slot 2:0).
 - **Configuracoes > Interface**: tema escuro ou claro, tamanho da letra e moldura da tela.
 

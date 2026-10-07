@@ -5,6 +5,7 @@
 #include <cstdint>
 
 #include "../../z80/cpp/z80_bus.h"
+#include "../../z80/cpp/z80_cpu.h"
 #include "memory_system.h"
 
 namespace memmap {
@@ -34,6 +35,21 @@ public:
     // true = a escrita foi consumida (nao chega ao mapper nem a ROM); false =
     // segue normal, o mapper ainda ve a escrita (ex.: troca de banco).
     virtual bool CartWrite(uint16_t addr, uint8_t value, MemMapMapperType mapper) = 0;
+};
+
+// Gancho de BIOS para o carregamento rapido de fita (opcode especial "ED
+// FE" em TAPION/TAPIN/TAPIOF, 00E1h/00E4h/00E7h -- equivalente ao
+// PatchZ80() do fMSX, ver src/tape/cpp/tape_device.h e doc/tape-spec.md).
+// Um so' por barramento, como SlotMmio/SlotCartIo.
+class TapeBiosHook {
+public:
+    virtual ~TapeBiosHook() = default;
+    // `trap_pc` e' o endereco ORIGINAL do vetor da BIOS (PC-2 no momento da
+    // chamada, mesma convencao de R->PC.W-2 no PatchZ80 do fMSX). Devolve
+    // true se tratou -- quem chama faz o RET, porque o opcode "ED FE" (ver
+    // src/z80/core/opcodes_ed.h) so' invoca o patch e para, sem tocar em
+    // PC/SP.
+    virtual bool OnTapeBiosCall(uint16_t trap_pc, z80::Z80Cpu &cpu) = 0;
 };
 
 // Liga um MemorySystem ao nucleo Z80: leitura/escrita normais vao para a
@@ -93,6 +109,26 @@ public:
         cart_io_ = device;
         cart_primary_ = primary;
         cart_secondary_ = secondary;
+    }
+
+    // Liga o gancho de BIOS da fita (nullptr desliga -- ver TapeBiosHook acima).
+    void AttachTapeHook(TapeBiosHook *hook) { tape_hook_ = hook; }
+
+    // Chamado pelo core do Z80 ao executar "ED FE" (ver
+    // src/z80/core/opcodes_ed.h). So' um dispositivo possivel por
+    // enquanto: a fita (unico uso deste gancho ate' agora).
+    void on_bios_patch(z80::Z80Cpu &cpu) override {
+        if (!tape_hook_) return;
+        const uint16_t trap_pc = static_cast<uint16_t>(cpu.pc() - 2);
+        if (!tape_hook_->OnTapeBiosCall(trap_pc, cpu)) return;
+        // O patch so' manipula registradores -- o RET (que o "ED FE" nao
+        // faz por si) fica aqui, lendo o endereco de retorno que o CALL
+        // original empilhou.
+        const uint16_t sp = cpu.sp();
+        const uint16_t lo = read(sp);
+        const uint16_t hi = read(static_cast<uint16_t>(sp + 1));
+        cpu.set_sp(static_cast<uint16_t>(sp + 2));
+        cpu.set_pc(static_cast<uint16_t>(lo | (hi << 8)));
     }
 
     uint8_t in(uint16_t port) override {
@@ -168,6 +204,7 @@ private:
     SlotCartIo *cart_io_ = nullptr;
     int cart_primary_ = 0;
     int cart_secondary_ = 0;
+    TapeBiosHook *tape_hook_ = nullptr;
 };
 
 } // namespace memmap

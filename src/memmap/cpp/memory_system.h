@@ -133,6 +133,18 @@ public:
     uint8_t PeekSlot(int primary, int secondary, uint16_t addr) const;
     void PokeSlot(int primary, int secondary, uint16_t addr, uint8_t value);
 
+    // Escreve bytes DIRETO no buffer carregado, ignorando a regra de "ROM
+    // nao e' gravavel" que PokeSlot segue -- aquela e' uma escrita
+    // SIMULADA do Z80 (table active_writable/chunk_writable); esta e'
+    // host-side, como se a ROM tivesse vindo assim do arquivo. Usado so'
+    // pelo gancho de BIOS da fita (modo rapido, ver
+    // src/tape/cpp/tape_device.h) para trocar TAPION/TAPIN/TAPIOF por "ED
+    // FE" e devolver os bytes originais ao trocar de modo. `addr`..
+    // `addr+len-1` tem que caber num so' pedaco de 8KB da combinacao de
+    // slot; sem efeito (silencioso) se a combinacao for invalida ou o
+    // intervalo atravessar um pedaco.
+    void PatchRomBytes(int primary, int secondary, uint16_t addr, const uint8_t *data, std::size_t len);
+
     SlotDescriptor Describe(int primary, int secondary) const;
     std::array<PageView, MEMMAP_PAGES> CurrentView() const;
 

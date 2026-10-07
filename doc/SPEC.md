@@ -187,30 +187,29 @@ acompanhamento manual do autor a cada build):
   o que funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
   (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-06, depois da v1.17.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-07, depois da v1.18.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.17.0, publicada):**
+**Funcionando (v1.18.0, publicada em `main`):**
 
-- [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco ate `A>`.
+- [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`.
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
 - [x] VDP completo: TMS9918 (SCREEN 0-3), V9938 (SCREEN 4-8, comandos, sprites) e V9958 (SCREEN 10-12, YJK/YAE, scroll).
 - [x] PSG, SCC e FM (OPLL): 9 canais melodicos, 15 timbres, modo ritmo; comandos de BASIC do MSX-MUSIC pelo FM-PAC.
-- [x] Janela com os menus do fMSX, zoom, proporcao, tela cheia e filtros de video.
-- [x] Configuracao de slots pelo menu: 16 celulas, BIOS em 0:0, RAM 16/32/64 KB, mapper ate 1024 KB, disco, sub-ROM, cartucho e FM-PAC.
-- [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 14 suites.
+- [x] Janela com os menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- **confirmados na tela pelo usuario em 2026-10-07**, junto com o menu ROMs, Banco de ROMs, Navegar file-hunter, Configuracao de disco e de slots.
+- [x] Configuracao de slots pelo menu ou `--slot`: 16 celulas, BIOS em 0:0, RAM 16/32/64 KB (16KB no fim da celula), mapper ate 4096 KB (varios mappers), disco, sub-ROM, cartucho e FM-PAC.
+- [x] Banco de ROMs (SQLite, `fwmsx --romdb`): downloads do fMSX 6.0, do System ROMs do file-hunter e do Vampier; CRUD, busca, identificacao, CARTS.SHA. Ver `doc/romdb-spec.md`.
+- [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 16 suites.
 
-**Feito depois da v1.17.0 (nao lancado, sem commit):**
+**Feito depois da v1.18.0 (nao lancado ainda -- fitas, 2026-10-07):**
 
-- [x] Banco de ROMs (SQLite, `fwmsx --romdb`): downloads do fMSX 6.0, do System ROMs do file-hunter (com navegacao) e do Vampier; CRUD, busca, identificacao, CARTS.SHA. Menu ROMs na janela. Ver `doc/romdb-spec.md`.
-- [x] Codigo do openMSX em `resource/openMSX/` (GPL), provisorio, para estudo. Branch `estudo/openmsx`.
-- [x] RAM de 16KB ocupa C000h-FFFFh (a BIOS Expert travava com a RAM em 0000h da celula).
-- [x] RAM de 32KB ocupa duas celulas (pagina 2 + pagina 3 da seguinte); mapper de 64KB a 4096KB, varios mappers, segmento k na pagina k.
-- [x] Controladora de disco por portas no estilo Microsol: DDX 3.0 e CDX-2 com o MSX-DOS 1.8 subindo pelas portas D0h. Formatos 180/360/720 KB pela configuracao do drive. Ver `doc/fdc-spec.md`, secao 6.
-- [x] Opcao `--slot P:S=tipo[:arg]` para montar o layout pela linha de comando; `--disk-acesso`, `--disk-porta`, `--disk-formato`, `--text`, `--fmstat`, `--wav`.
-- [x] Correcoes de teclado: `(`, `)`, `*`, `"` e `&` no layout do MSX.
+- [x] Leitura de .CAS e .TSX/.TZX (todos os blocos do TZX 1.20, os que importam para o MSX -- #4B -- com pulsos e dados completos; os demais pulados com seguranca).
+- [x] Carregamento rapido (gancho de BIOS "ED FE" em TAPION/TAPIN/TAPIOF, sem som) e normal (pulsos de verdade, com o barulho do gravador), trocaveis sem reiniciar a maquina.
+- [x] Entrada de cassete no PSG (R14, bit 7) e motor no PPI (porta C, bit 4); audio sintetizado somado a mistura.
+- [x] `--fita`/`--fita-modo` e menu "Fita" (inserir, ejetar, rebobinar, trocar de modo, janela visual "Fita K7" com os rolos girando). Testes: `tapetest` (CTest `tape_load`, 39 checagens).
+- [x] Ver `doc/tape-spec.md` para o detalhamento (enderecos da BIOS, layout do bloco #4B, limites: sem escrita, sem banco de fitas, sem navegar blocos de controle do TZX).
 
 **Politica de midias (2026-10-06):** o repositorio e' pessoal; ROMs, discos e fitas de terceiros podem ser versionadas. Antes da liberacao publica, revisar cada midia e remover as que o detentor contestar (`LICENSE-THIRD-PARTY.md`).
 
@@ -218,24 +217,22 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 
 **Pendencias (ordem sugerida):**
 
-- [ ] Validar na tela o que so' foi compilado: menu ROMs, janelas Banco de ROMs e Navegar file-hunter, Configuracao de disco e de slots, tela cheia, 4:3, 16:9 e filtros.
+- [ ] Fitas: escritor de TSX a partir de .BIN/.BAS (item c), banco de fitas e download (item e, depois de confirmar com o site), port do makeTSX (item f, WAV -> TSX); navegar blocos de controle do TZX (grupos/lacos/saltos); saida de cassete (CSAVE).
 - [ ] Banco de ROMs: verificar as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o mapper ao carregar cartucho; importar o JSON do Vampier se for util.
-- [ ] Ouvir o FM, o SCC e o disco contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
+- [ ] Ouvir o FM, o SCC, o disco e a fita (modo normal) contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
 - [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao diagnosticada; Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
 - [ ] FM: `CALL VOICECOPY` (a ROM do fMSX nao aceita); status e timers do OPLL.
 - [ ] Disco: formatar disquetes (hoje so' le e grava); FM/MFM modelados; drives A e B com formatos diferentes; mais de um driver de porta (Sony, Philips, Spectravideo do openMSX) se quiser estudar.
 - [ ] Layout de slots: salvar e carregar o layout em arquivo; perfis de maquina salvos no banco.
-- [ ] Controle externo do emulador, no estilo openMSX (ideia de hoje): canal de controle opt-in em localhost (TCP ou pipe), comandos `status`, `reset`, `pause`/`resume`, `type`, `cart`, `disk`, `screenshot`, `peek`/`poke`, `quit`; eventos de troca de modelo e de midia. A thread de controle so' enfileira comandos; quem toca na maquina e' o laco de quadros. Ainda nao comecou.
+- [ ] Controle externo do emulador, no estilo openMSX: canal de controle opt-in em localhost (TCP ou pipe), comandos `status`, `reset`, `pause`/`resume`, `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`; eventos de troca de modelo e de midia. A thread de controle so' enfileira comandos; quem toca na maquina e' o laco de quadros. Ainda nao comecou.
 - [ ] Cartuchos: MSX-DOS 2, GameMaster2 e o MSX-MUSIC com BIOS propria.
 - [ ] BIOS de outras maquinas (ex.: Gradiente Expert 1.1): a BIOS sobe, mas a tela sai com espacos entre as letras; investigar.
-- [ ] Save-state completo, incluindo o estado de PSG, SCC, OPLL, disco e VDP.
+- [ ] Save-state completo, incluindo o estado de PSG, SCC, OPLL, disco, fita e VDP.
 - [ ] Efeitos de rastreio no meio do quadro (troca de palheta e de scroll por linha).
 - [ ] Cores YJK do V9958 conferidas com hardware real.
-- [ ] Desempenho: medir o custo de CPU no pior caso (FM ativo, SCC, mapa de slots, disco) em tempo real.
+- [ ] Desempenho: medir o custo de CPU no pior caso (FM ativo, SCC, fita, mapa de slots, disco) em tempo real.
 - [ ] Licenca: confirmar por escrito a autorizacao de uso do fMSX antes de mudar o texto de README e LICENSE-THIRD-PARTY. O openMSX (GPL) segue so' como referencia; decidir se sai do repositorio quando o fwMSX estiver pronto.
 - [ ] Frontend para jogar (biblioteca de jogos e imagens) sobre o banco de ROMs: depois.
-- [x] Commit e push do trabalho de 2026-10-06 (branch `estudo/openmsx`, que contem o openMSX em `resource/`).
-- [ ] Decidir: merge de `estudo/openmsx` no `main` (fast-forward), e tag/release da proxima versao (1.18.0) quando o banco de ROMs e o disco por portas estiverem validados na tela.
 
 ### 5.1 Visao registrada: `fwMSX.exe` como ponto de entrada unico do projeto
 
@@ -293,9 +290,13 @@ Fase 5c):
 projeto avancar.)*
 ### 5.2 Feature a desenvolver em breve: fitas (TSX, TZX e CAS) e banco de fitas
 
-Estado: **planejado, nao iniciado** (2026-10-06). Pedido do usuario: ler e criar TSX, ler e criar CAS,
-um banco de fitas com download pelo site oficial, e uma ferramenta de linha de comando e pelo menu para
-manipular esses arquivos. Ver tambem `doc/SPEC.md`, secao 5.0, e a viabilidade abaixo.
+Estado: **leitura e carregamento prontos (2026-10-07)**; escrita, banco de fitas e download ainda nao
+comecaram. Pedido do usuario: ler e criar TSX, ler e criar CAS, um banco de fitas com download pelo
+site oficial, e uma ferramenta de linha de comando e pelo menu para manipular esses arquivos, com duas
+opcoes de carregamento (rapido, sem som; normal, com o barulho do gravador) e algo visual para a fita K7.
+Os itens (a), (b), (g) e a parte de pulsos/som do (d) estao feitos -- ver `doc/tape-spec.md` para o
+detalhamento completo (enderecos da BIOS, layout do bloco #4B, limites). Ver tambem `doc/SPEC.md`,
+secao 5.0, e a viabilidade abaixo (mantida como registro da analise original).
 
 **Formatos.**
 
@@ -320,12 +321,14 @@ manipular esses arquivos. Ver tambem `doc/SPEC.md`, secao 5.0, e a viabilidade a
    cabecalhos de arquivo do MSX (`BLOAD`, `CLOAD`, `RUN"CAS:"`). Primeiro passo util, sem analisar WAV.
 3. **Criar TSX a partir de WAV (o que o makeTSX faz): viavel, alto.** E' um port do makeTSX (MIT), com os
    "rippers" (blocos 10 a 20, 4B). Fase posterior.
-4. **Emulacao de sinal de fita (pulsos no PPI): viavel, alto; e' o que torna TSX com protecao e loaders
-   proprios funcionais.** O PPI do fwMSX ainda nao modela a porta de cassete (porta C, `AAh`: bit 4 = motor,
-   bit 5 = saida; a entrada do cassete ainda sem definicao neste projeto -- validar no fMSX e no openMSX antes).
-   A reproducao gera a sequencia de pulsos a partir dos blocos e entrega o nivel de entrada na cadencia
-   de T-states da CPU, como o PSG faz com as amostras. Risco: temporizacao exata; os loaders de protecao
-   dependem de ciclos.
+4. **[FEITO, 2026-10-07] Emulacao de sinal de fita (modo normal): pulsos de verdade, cadencia de T-states.**
+   A entrada de cassete (CASRD) NAO fica no PPI -- fica no bit 7 do R14 do PSG (confirmado no openMSX,
+   `MSXPSG.cc::readA()`); o motor continua na porta C do PPI (bit 4, `AAh`, ativo em zero, confirmado em
+   `MSXPPI.cc::writeC1()`). A reproducao gera a sequencia de pulsos a partir dos blocos (#4B, #10-#14, #20)
+   e entrega o nivel de entrada na cadencia de T-states da CPU, como o PSG faz com as amostras -- inclusive
+   o som, sintetizado e somado ao audio ao vivo. Loaders de protecao com blocos de controle (grupos, lacos,
+   saltos) nao navegam ainda (lidos em sequencia, ver `doc/tape-spec.md`, secao 5) -- risco que se confirmou
+   limitado, nao bloqueou o caso comum.
 5. **CAS por hooks da BIOS (como o fMSX faz): viavel, baixo.** O carregamento de `BLOAD "CAS:"` e `CLOAD`
    pode ser interceptado no nivel da BIOS, sem sinal. Nao serve para fitas com protecao, mas resolve o caso
    comum de programas em CAS. Dar prioridade a esta parte antes do sinal.
@@ -349,11 +352,14 @@ referencia, sem copia de codigo. Os arquivos TSX/CAS de jogos sao de terceiros: 
 
 **Ordem sugerida de implementacao.**
 
-- [ ] (a) Leitor de TZX/TSX e de CAS, sem janela; testes com arquivos de exemplo.
-- [ ] (b) CAS por hooks da BIOS (BLOAD e CLOAD), para programas que nao dependem de protecao.
+- [x] (a) Leitor de TZX/TSX e de CAS, sem janela; testes com arquivos sinteticos (`tapetest`, CTest `tape_load`).
+- [x] (b) CAS/TSX por gancho de BIOS (TAPION/TAPIN/TAPIOF -- carregamento "rapido", sem som).
 - [ ] (c) Escritor de TSX a partir de .BIN e .BAS.
-- [ ] (d) Porta de cassete no PPI e reproducao de pulsos (TSX e TZX completos).
+- [x] (d, parte de pulsos/som) Entrada de cassete no PSG (R14) e motor no PPI; reproducao de pulsos (TSX
+      #4B/#10-#14/#20 e CAS sintetizado) com som real -- carregamento "normal". Falta: saida de cassete
+      (gravacao) e navegacao pelos blocos de controle do TZX (grupos/lacos/saltos).
 - [ ] (e) Banco de fitas (SQLite) e download pelo site, depois de conferir os termos.
 - [ ] (f) Port do makeTSX (WAV para TSX).
-- [ ] (g) CLI `fwmsx --fita` e menu "Fita" na janela.
+- [x] (g) CLI `fwmsx --fita`/`--fita-modo` e menu "Fita" na janela (inserir, ejetar, rebobinar, trocar de
+      modo, janela visual "Fita K7" com os rolos girando).
 

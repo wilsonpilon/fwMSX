@@ -510,9 +510,21 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
     m->fm_ = std::make_unique<fm::FmDevice>();
     m->startup_.composite_bus->RegisterPortRange(0x7C, 0x7D, m->fm_.get());
 
+    // Fita (ver doc/tape-spec.md): o gancho de BIOS (modo rapido) sempre
+    // existe no barramento; so' faz algo quando ha' fita inserida.
+    m->tape_ = std::make_unique<tape::TapeEngine>(mem);
+    m->startup_.slot_bus->AttachTapeHook(m->tape_.get());
+    m->tape_->SetMode(config.tape_mode);
+    if (!config.tape_path.empty() && !m->InsertTape(config.tape_path, error)) return nullptr;
+
     m->cpu_ = std::make_unique<z80::Z80Cpu>(m->startup_.Bus());
     return m;
 }
+
+bool Machine::InsertTape(const std::string &path, std::string &error) { return tape_->Insert(path, error); }
+void Machine::EjectTape() { tape_->Eject(); }
+void Machine::RewindTape() { tape_->Rewind(); }
+void Machine::SetTapeMode(tape::TapeMode mode) { tape_->SetMode(mode); }
 
 bool Machine::SaveSram(std::string &error) {
     memmap::MemorySystem &mem = *startup_.memory_system;
@@ -556,6 +568,18 @@ void Machine::RunFrame() {
         startup_.psg_device->Advance(used);
         scc_->Advance(used);
         fm_->Advance(used);
+
+        // Fita (ver doc/tape-spec.md): o rele do motor e' o bit 4 da porta C
+        // do PPI (AAh), ativo em ZERO (openMSX, MSXPPI::writeC1); so' o PPI
+        // sabe disso, nao a Tape, por isso a sincronia e' feita aqui, como o
+        // SyncSlot() do proprio PpiDevice faz para o slot primario.
+        const bool motor_on = (startup_.ppi_device->state().rout[2] & 0x10) == 0;
+        if (motor_on != tape_motor_prev_) {
+            tape_motor_prev_ = motor_on;
+            tape_->SetMotor(motor_on);
+        }
+        tape_->Advance(used);
+        psg_set_cassette_in(&startup_.psg_device->state(), tape_->CassetteInLevel());
     }
     ++frame_count_;
 }
@@ -564,22 +588,27 @@ void Machine::EnableLiveAudio(bool on) {
     startup_.psg_device->EnableLive(on);
     scc_->EnableLive(on);
     fm_->EnableLive(on);
+    tape_->EnableLive(on);
 }
 
 void Machine::TakeLiveAudio(std::vector<int16_t> &out) {
-    std::vector<int16_t> psg_samples, scc_samples, fm_samples;
+    std::vector<int16_t> psg_samples, scc_samples, fm_samples, tape_samples;
     startup_.psg_device->TakeLive(psg_samples);
     scc_->TakeLive(scc_samples);
     fm_->TakeLive(fm_samples);
+    tape_->TakeLive(tape_samples);
 
     // O FM soma ate' 9 canais: entra na metade para deixar folga ao PSG e ao SCC.
-    const size_t n = std::max({psg_samples.size(), scc_samples.size(), fm_samples.size()});
+    // A fita (modo normal) e' so' uma onda quadrada: entra baixa, igual ao
+    // click do teclado real, para nao dominar a mistura.
+    const size_t n = std::max({psg_samples.size(), scc_samples.size(), fm_samples.size(), tape_samples.size()});
     out.reserve(out.size() + n);
     for (size_t i = 0; i < n; ++i) {
         const int psg = i < psg_samples.size() ? psg_samples[i] : 0;
         const int scc = i < scc_samples.size() ? scc_samples[i] : 0;
         const int fm = i < fm_samples.size() ? fm_samples[i] / 2 : 0;
-        out.push_back(static_cast<int16_t>(std::clamp(psg + scc + fm, -32768, 32767)));
+        const int tape_s = i < tape_samples.size() ? tape_samples[i] : 0;
+        out.push_back(static_cast<int16_t>(std::clamp(psg + scc + fm + tape_s, -32768, 32767)));
     }
 }
 

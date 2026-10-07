@@ -248,6 +248,21 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             config.disk_read_only = true;
         } else if (a == "--disk-interface") {
             config.disk_interface = true;
+        } else if (a == "--fita") {
+            const std::string *v = need("um arquivo .cas, .tsx ou .tzx");
+            if (!v) return 2;
+            config.tape_path = *v;
+        } else if (a == "--fita-modo") {
+            // Rapido (gancho de BIOS, sem som, padrao) ou normal (pulsos de
+            // verdade pela porta, com o barulho do carregamento) -- ver doc/tape-spec.md.
+            const std::string *v = need("rapido ou normal");
+            if (!v) return 2;
+            if (*v == "rapido") config.tape_mode = tape::TapeMode::Fast;
+            else if (*v == "normal") config.tape_mode = tape::TapeMode::Normal;
+            else {
+                std::cerr << "fwmsx --msx: --fita-modo aceita rapido ou normal" << std::endl;
+                return 2;
+            }
         } else if (a == "--diskrom") {
             const std::string *v = need("um arquivo");
             if (!v) return 2;
@@ -329,6 +344,10 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             for (int d = 0; d < 2; ++d)
                 if (m->disk(d).loaded()) std::cout << ", " << static_cast<char>('A' + d) << ": " << m->disk(d).path();
             std::cout << std::endl;
+        }
+        if (m->tape().inserted()) {
+            std::cout << "fita: " << m->tape().path() << " (modo "
+                      << (m->tape().mode() == tape::TapeMode::Fast ? "rapido" : "normal") << ")" << std::endl;
         }
         // --vdplog: mostra, a cada quadro, os registradores do VDP que mudaram
         uint8_t last_regs[64] = {};

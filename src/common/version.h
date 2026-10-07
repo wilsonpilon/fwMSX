@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 18
+#define FWMSX_VERSION_MINOR 19
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "Ys"
-#define FWMSX_SUBTITLE  "Banco de ROMs e Disco por Portas"
+#define FWMSX_CODENAME  "Yie Ar Kung-Fu"
+#define FWMSX_SUBTITLE  "Fita K7"

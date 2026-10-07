@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstring>
 
 // Implementado em src/memmap/fortran/rom_checksum.f90. Nome exposto via
 // bind(c, name=...), entao nao ha' name mangling a considerar aqui (mesmo
@@ -213,6 +214,16 @@ uint8_t MemorySystem::PeekSlot(int primary, int secondary, uint16_t addr) const 
 
 void MemorySystem::PokeSlot(int primary, int secondary, uint16_t addr, uint8_t value) {
     memmap_poke_slot(&state_, primary, secondary, addr, value);
+}
+
+void MemorySystem::PatchRomBytes(int primary, int secondary, uint16_t addr, const uint8_t *data, std::size_t len) {
+    if (!ValidSlotIndex(primary, secondary) || len == 0) return;
+    const int chunk_idx = addr >> 13;
+    const uint32_t last = static_cast<uint32_t>(addr) + static_cast<uint32_t>(len) - 1;
+    if ((last >> 13) != static_cast<uint32_t>(chunk_idx)) return; // nao atravessa pedaco de 8KB
+    uint8_t *chunk = state_.chunk[primary][secondary][chunk_idx];
+    if (!chunk) return;
+    std::memcpy(chunk + (addr & (MEMMAP_CHUNK_SIZE - 1)), data, len);
 }
 
 SlotDescriptor MemorySystem::Describe(int primary, int secondary) const {

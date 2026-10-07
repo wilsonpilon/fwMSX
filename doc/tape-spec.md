@@ -1,0 +1,171 @@
+# Fita (.CAS e .TSX/.TZX) -- fwMSX
+
+Modulo `src/tape/`. Implementa os passos (a), (b) e parte do (d)/(g) da
+ordem sugerida em `doc/SPEC.md`, secao 5.2 ("Feature a desenvolver em
+breve: fitas"): leitura de .CAS e .TSX/.TZX, carregamento pela BIOS (modo
+rapido) e carregamento por pulsos de verdade (modo normal, com som). Nao
+inclui escrita (nenhum `CSAVE`/`BSAVE` para fita), banco de fitas nem
+download -- isso continua para depois (itens (c), (e) e (f)).
+
+## 1. Dois modos de carregamento
+
+- **Rapido** (padrao): intercepta as rotinas da BIOS que leem a fita
+  (TAPION/TAPIN/TAPIOF) e devolve os bytes direto de um buffer em
+  memoria, sem nenhuma temporizacao. Nao ha' som.
+- **Normal**: gera os pulsos de verdade (piloto + bits codificados em
+  Kansas City Standard) e os entrega pela porta de verdade, na cadencia
+  de T-states da CPU -- a BIOS roda a rotina ORIGINAL dela (sem patch
+  nenhum), fazendo a mesma temporizacao que faria num MSX real. O sinal
+  tambem e' sintetizado em audio, entao o barulho do carregamento e'
+  ouvido (como num gravador de fita antigo).
+
+Trocar de modo nao reinicia a maquina: so' troca o patch da BIOS (ver
+secao 3) e liga/desliga o cursor de pulsos. Menu **Fita** da janela, ou
+`--fita-modo rapido|normal` na linha de comando.
+
+## 2. Formatos lidos
+
+### 2.1 .CAS
+
+Imagem crua de fita do MSX. Convencao (a mesma do fMSX e do openMSX,
+conferida em `resource/fMSX/fMSX/Patch.c` e
+`resource/openMSX/src/cassette/CasImage.cc`):
+
+- Marcador de sincronismo de 8 bytes entre blocos logicos:
+  `1F A6 DE BA CC 13 7D 74`.
+- Cabecalho de arquivo: 10 bytes do mesmo valor (tipo) + 6 bytes de nome
+  (preenchido com espaco). Tipos: `D0h` binario (BLOAD), `D3h` BASIC
+  (CLOAD), `EAh` ASCII.
+- Depois de outro marcador de 8 bytes, os dados do arquivo (para
+  binario, comecam com 6 bytes de endereco inicio/fim/execucao).
+
+### 2.2 .TSX/.TZX
+
+TZX 1.20 (`resource/makeTSX/docs/TZX_format.md`); TSX e' o mesmo formato
+usado para MSX. O leitor (`src/tape/cpp/tzx_reader.cpp`) reconhece TODOS
+os blocos da lista do TZX 1.20 (10, 11, 12, 13, 14, 15, 18, 19, 20, 21-28,
+2A, 2B, 30-33, 35, 4B, 5A) -- o suficiente para nunca travar num arquivo
+valido, mesmo quando um bloco nao e' reproduzido (ver secao 4).
+
+O bloco que importa de verdade para o MSX e' o **#4B (Kansas City
+Standard)** -- layout conferido contra `resource/makeTSX/TZX_Blocks.h`
+(o proprio gerador de TSX para MSX) e o algoritmo de pulsos contra
+`resource/openMSX_TSXadv/Contrib/tsx/TsxParser.cc` (so' leitura, GPL,
+nenhum codigo copiado):
+
+| Campo | Tamanho | Descricao |
+|---|---|---|
+| Tamanho do bloco | DWORD | `12+N`, sem contar estes 4 bytes |
+| Pausa | WORD | milissegundos depois do bloco |
+| Piloto | WORD | duracao do pulso do piloto (T-states) |
+| Pulsos do piloto | WORD | quantos pulsos de piloto |
+| Pulso de ZERO | WORD | T-states |
+| Pulso de UM | WORD | T-states |
+| bitCfg | BYTE | nibble alto = pulsos por bit 0 (2, MSX); nibble baixo = pulsos por bit 1 (4, MSX) |
+| byteCfg | BYTE | bits 7-6 = numero de bits de inicio (1, MSX); bit 5 = valor deles (0); bits 4-3 = numero de bits de fim (2, MSX); bit 2 = valor deles (1); bit 0 = ordem (0 = LSb primeiro, MSX) |
+| Dados | N bytes | os bytes PUROS do arquivo (ainda nao codificados em pulso) |
+
+Os padroes entre parenteses (bitcfg `24h`, bytecfg `54h`) sao os mesmos
+que o makeTSX usa por padrao para MSX -- conferido batendo a conta contra
+o comentario do `Block4B` no proprio `TZX_Blocks.h`.
+
+## 3. Modo rapido: o gancho de BIOS
+
+Enderecos fixos (tabela de saltos da BIOS, pagina 0 -- conferidos em
+`resource/fMSX/fMSX/Patch.c`, que faz a mesma coisa):
+
+| Endereco | Rotina | O que o fwMSX faz |
+|---|---|---|
+| `00E1h` | TAPION | Acha o proximo marcador de 8 bytes no fluxo "rapido" (alinhando a 8, como o fMSX). Falha (`CARRY=1`) se nao achar ou se nao houver fita. |
+| `00E4h` | TAPIN | Le o proximo byte do fluxo em `A`. Falha no fim do fluxo. |
+| `00E7h` | TAPIOF | Sempre sucesso. |
+
+So' o lado de LEITURA -- TAPOON/TAPOUT/TAPOOF (gravacao) nao sao
+tocados; fora de escopo (sem `CSAVE` nesta fase).
+
+O mecanismo e' o mesmo "ED FE" do fMSX (`PatchZ80()`), ja' preparado de
+fabrica no nucleo Z80 do fwMSX (`bus->patch`, ver
+`src/z80/core/opcodes_ed.h` e `src/z80/cpp/z80_bus.h`), so' que nunca
+tinha sido usado ate' agora. `TapeEngine::SetMode(Fast)` escreve `ED FE`
+nos 3 enderecos (`MemorySystem::PatchRomBytes()`, que ignora a regra de
+"ROM nao e' gravavel" -- e' host-side, nao uma escrita do Z80);
+`SetMode(Normal)` devolve os bytes originais (capturados na primeira
+vez que a maquina liga). O proprio `SlotMemoryBus::on_bios_patch()` faz o
+`RET` que o opcode "ED FE" nao faz (le o endereco de retorno da pilha).
+
+**Para o fluxo "rapido" funcionar igual nos dois formatos**, o leitor de
+.TSX reconstroi, so' a partir dos blocos #4B, um buffer EQUIVALENTE a um
+.CAS (marcador de 8 bytes + os mesmos dados). Os outros tipos de bloco
+(10, 11, 12, 13, 14...) nao contribuem para esse buffer -- so' para os
+pulsos (modo normal, secao 4).
+
+## 4. Modo normal: pulsos de verdade
+
+Pulsos (meio-periodos, T-states de Z80) sao gerados para:
+
+- **#4B**: piloto + cada byte (bits de inicio/dados/fim, conforme
+  bitcfg/byteCfg) + pausa.
+- **#10/#11/#14**: convencao do ZX Spectrum (piloto opcional + 2 pulsos
+  de sincronismo opcionais + cada bit = 1 periodo completo -- 2 pulsos --
+  da mesma duracao, MSb primeiro, sem bits de inicio/fim). Rara em fitas
+  MSX de verdade (o MSX usa o #4B), mas suportada.
+- **#12 (tom puro)** e **#13 (sequencia de pulsos)**: direto.
+- **#20 (pausa)**: um pulso curto para terminar a borda, depois silencio
+  pelo resto do tempo (regra do proprio TZX, secao 2 do format.md).
+- **.CAS**: sem pulsos gravados -- sintetizados com os parametros padrao
+  do MSX (piloto 1710 T-states x 2000 pulsos, zero 855, um 1710, 2/4
+  pulsos por bit, 1 bit de inicio=0, 2 de fim=1, LSb primeiro --
+  `src/tape/cpp/cas_format.h`).
+
+O cursor (`src/tape/core/tape_pulse.c`) avanca junto com a CPU
+(`TapeEngine::Advance()`, chamado a cada ciclo por `Machine::RunFrame()`,
+como o PSG/SCC/FM). O nivel atual alimenta:
+
+- **A porta de entrada de cassete**: bit 7 do R14 do PSG (CASRD) --
+  conferido contra o openMSX (`src/sound/MSXPSG.cc`, `readA()`): a
+  entrada de cassete NAO fica no PPI, fica no PSG (porta A do AY-3-8910,
+  compartilhada com o joystick). `psg_set_cassette_in()`
+  (`src/psg/core/psg_state.c`).
+- **O audio ao vivo**: uma onda quadrada simples (sem envelope), somada
+  ao PSG/SCC/FM em `Machine::TakeLiveAudio()`, baixa o suficiente para
+  nao dominar a mistura.
+
+O **motor** (rele' do PPI, porta C bit 4, `AAh`, ativo em ZERO --
+conferido contra o openMSX, `src/MSXPPI.cc`, `writeC1()`) decide se o
+cursor avanca: `Machine::RunFrame()` olha `rout[2]&0x10` a cada ciclo e
+chama `TapeEngine::SetMotor()` quando muda (o PPI em si nao sabe nada de
+fita, so' latcheia o bit -- a sincronia fica na Machine, como o
+`SyncSlot()` do proprio `PpiDevice` faz para o slot primario).
+
+## 5. Limites (nesta fase)
+
+- **Sem escrita**: nenhum `CSAVE`/`BSAVE "CAS:"` grava fita (TAPOON/
+  TAPOUT/TAPOOF nao sao tocados; o modo normal roda a rotina real da
+  BIOS, que teria que escrever pela porta de saida de cassete -- ainda
+  nao modelada).
+- **Blocos de controle do TZX** (grupos 21/22, saltos 23, lacos 24/25,
+  chamadas 26/27, selecao 28) sao pulados com seguranca (o comprimento e'
+  sempre conhecido), mas SEM NAVEGAR -- o arquivo e' lido em sequencia,
+  do primeiro ao ultimo bloco, sempre. Bleepload e protecoes parecidas
+  (uso pesado desses blocos) nao vao funcionar direito.
+- **Gravacao direta (#15), CSW (#18) e bloco generalizado (#19)** sao
+  reconhecidos (comprimento correto) mas NAO reproduzidos -- blocos raros
+  em fitas de MSX.
+- **Fast_bytes so' a partir do #4B**: um .TSX que use #10/#11/#14 para o
+  conteudo de verdade (em vez de so' o piloto) carrega certo no modo
+  NORMAL, mas nao no modo RAPIDO (o `TAPION`/`TAPIN` nao acham nada no
+  fluxo reconstruido). Nao e' o caso normal (o MSX usa #4B).
+- **Banco de fitas e download**: nao existem ainda (itens (e)/(f) da
+  ordem do SPEC).
+- **A janela "Fita K7"** e' so' visual (reels girando quando o motor
+  esta' ligado) -- nao mostra a posicao real da fita nos rolos, so' a
+  barra de progresso em segundos.
+
+## 6. CLI e menu
+
+- `--fita <arquivo>`: insere a fita (`.cas`, `.tsx` ou `.tzx`, pela
+  extensao) ao iniciar.
+- `--fita-modo rapido|normal`: escolhe o modo (padrao: rapido).
+- Menu **Fita** da janela: inserir, ejetar, rebobinar, trocar de modo (a
+  qualquer momento, sem reiniciar a maquina) e mostrar a janela visual
+  "Fita K7".

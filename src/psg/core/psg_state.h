@@ -64,6 +64,11 @@ typedef struct PsgState {
      * o zera, mas PsgDevice::Reset() (reset de maquina) o preserva. */
     uint8_t joy[2];
 
+    /* Entrada de cassete (CASRD), bit 7 do R14 -- ver doc/tape-spec.md.
+     * Tambem e' "mundo externo": o motor de fita (src/tape/) escreve aqui
+     * a cada ciclo de Z80, como o joystick. */
+    uint8_t cassette_in;
+
     /* Reamostragem: ciclos de Z80 ainda nao convertidos em ticks, fase do
      * reamostrador e soma do filtro de caixa. */
     uint32_t cycle_acc;
@@ -80,6 +85,11 @@ void psg_reset(PsgState *p);
 // PSG_JOY_*, 1 = pressionado. Lido pelo software em R14 (ver
 // psg_read_data()).
 void psg_set_joystick(PsgState *p, int port, uint8_t bits);
+
+// Informa o nivel atual do sinal de entrada de cassete (CASRD, bit 7 do
+// R14 -- ver doc/tape-spec.md). 0 ou 1 (qualquer valor diferente de zero
+// conta como 1).
+void psg_set_cassette_in(PsgState *p, int level);
 
 // Latch/escrita/leitura de registrador pelas portas A0h/A1h/A2h.
 void psg_write_latch(PsgState *p, uint8_t value);

@@ -1,7 +1,7 @@
 # OUTLINE -- fwMSX: onde paramos e o que fazer depois
 
 > Leia este arquivo primeiro. Ele foi escrito para retomar o trabalho em outro computador,
-> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-06**.
+> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-07**.
 
 ## 1. O que e' o projeto
 
@@ -15,16 +15,15 @@ chamado **MSX-PoorManOS**. Ainda sem data.
 Este repositorio e' **pessoal**. Midias de terceiros (ROMs, discos, fitas) podem ser versionadas por
 enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver `LICENSE-THIRD-PARTY.md`).
 
-## 2. Onde estamos (2026-10-06)
+## 2. Onde estamos (2026-10-07)
 
-- **Versao publicada:** 1.17.0 "Xak: Musica FM e Slots" (tag/branch `main`, commit `dc7af78`).
-- **Estado do git (2026-10-06, tarde):** tudo esta' no `main` (`56497f2`), ja' mesclado da
-  `estudo/openmsx` por fast-forward. Esse e' o repositorio completo: codigo, docs, testes,
-  `resource/` (inclui o openMSX, GPL, so' para estudo) e as midias de `dist/roms/` (inclusive o Full Set
-  do file-hunter). Nao ha nada pendente de commit.
-- **Testes:** `ctest` com **15 suites, todas passando** no estado commitado.
-- **Documentos vivos:** `doc/SPEC.md` (secao 5.0 = estado atual; 5.2 = fitas, a fazer),
-  `doc/CHANGELOG.md` (secao "Nao lancado"), `doc/RELEASE.md`, `doc/MANUAL.md`, e os `*-spec.md`.
+- **Versao em preparo:** 1.19.0 "Yie Ar Kung-Fu: Fita K7" -- codigo e docs prontos, build e testes
+  passando; ainda NAO comitada/taggeada nesta sessao (ver secao 9, "proxima acao" se for o caso).
+- **Ultima versao publicada em `main`:** 1.18.0 "Ys: Banco de ROMs e Disco por Portas".
+- **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
+- **Testes:** `ctest` com **16 suites**, todas passando (inclui `tape_load`, novo).
+- **Documentos vivos:** `doc/SPEC.md` (secao 5.0 = estado atual; 5.2 = fitas), `doc/CHANGELOG.md`,
+  `doc/RELEASE.md`, `doc/MANUAL.md`, e os `*-spec.md` (inclui `doc/tape-spec.md`, novo).
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -36,22 +35,32 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 - SRAM de cartucho ASCII8/ASCII16 e FM-PAC (`.sav`).
 - Layout de 16 celulas (slot:subslot) pela janela e pela CLI (`--slot`); RAM 16 KB no fim da celula,
   32 KB em duas celulas, mapper de 64 KB a 4 MB (varios mappers).
-- Janela com menus do fMSX, zoom, proporcao, tela cheia, filtros de video.
+- Janela com menus do fMSX, zoom, proporcao, tela cheia, filtros de video -- **confirmados na tela pelo
+  usuario em 2026-10-07**, assim como o menu ROMs, Banco de ROMs, Navegar file-hunter, Configuracao de
+  disco e de slots.
 - Banco de ROMs (SQLite) com downloads do fMSX 6.0, do file-hunter e do Vampier, CRUD e busca.
-- Pacotes da 1.17.0 gerados em `dist/`: `fwMSX-1.17.0.zip` e `fwMSX-1.17.0-linux.tar.gz`.
+- **Fita** (.CAS e .TSX/.TZX): leitura completa (bloco #4B do TZX com pulsos e dados; os outros blocos
+  pulados com seguranca); carregamento rapido (gancho de BIOS, sem som) e normal (pulsos de verdade,
+  com som); menu "Fita" e janela visual "Fita K7". Ver `doc/tape-spec.md`. **So' testado por unidade
+  (`tapetest`) e por um smoke test de CLI -- a janela visual e o som nunca foram vistos/ouvidos de
+  verdade por ninguem.**
+- Pacotes gerados em `dist/`: `fwMSX-1.18.0.zip`/`.tar.gz` (publicados) e `fwMSX-1.19.0.*` (gerados
+  nesta sessao, ver secao 9).
 
 ### Compilado mas NAO validado na tela
-- Menu **ROMs** e janelas **Banco de ROMs** / **Navegar file-hunter**.
-- Janelas **Configuracao de disco** e **Configuracao de slots**.
-- Tela cheia, 4:3, 16:9, filtros de video (validados so' por codigo).
+- **Janela "Fita K7"** (rolos girando, barra de progresso, lista de arquivos) e o **som do modo
+  normal** (carregamento com barulho de gravador) -- so' testados por unidade/CLI, nunca vistos/ouvidos.
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
   Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
-- Som do FM e do SCC nao comparado com hardware real (constantes do OPLL sao estimativas).
+- Som do FM e do SCC nao comparado com hardware real (constantes do OPLL sao estimativas); o som da fita
+  (modo normal) tambem nao.
 - `CALL VOICECOPY` nao e' aceito pela ROM do fMSX; status/timers do OPLL nao emulados.
 - BIOS Expert: a tela sai com espacos entre as letras ("G r a d i e n t e"). Nao investigado.
-- Sem save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, cassete (fita).
+- Fita: sem escrita (CSAVE/BSAVE), sem banco de fitas nem download, sem navegar blocos de controle do
+  TZX (grupos/lacos/saltos) -- ver `doc/tape-spec.md`, secao 5.
+- Sem save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro.
 - Cores YJK do V9958 nao conferidas com hardware real.
 
 ## 3. Como compilar e testar
@@ -59,7 +68,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 ```powershell
 # Windows (MSYS2 UCRT64 em C:\msys64). Gera dist\fwMSX.exe, dist\msxdisk.exe e dist\fwMSX-X.Y.Z.zip
 .\build.ps1
-cd build; ctest            # 15 suites
+cd build; ctest            # 16 suites
 ```
 
 ```bash
@@ -68,7 +77,8 @@ wsl -d Ubuntu-26.04 -- bash -lc 'cd /mnt/c/dos/fwMSX && ./build.sh'
 ```
 
 Build incremental de um alvo: `cmake --build build --target fwMSX` (ou `romdbtest`, `machinetest`,
-`fdctest`, `memmaptest`, `msx2test`, `fmtest`, `scctest`, `psgtest`, `ppitest`, `vdptest`, `vdp2test`).
+`fdctest`, `memmaptest`, `msx2test`, `fmtest`, `scctest`, `psgtest`, `ppitest`, `vdptest`, `vdp2test`,
+`tapetest`).
 
 **Midias (nao versionadas por completo):** `dist/roms/` tem o banco de ROMs baixado. Esta pasta
 e' so' local (tem 116 MB no PC de hoje); so' parte dela vai ao git (ver secao 6). Os testes que precisam
@@ -88,13 +98,14 @@ Para baixar as midias de novo (no PC novo):
 | Area | Caminho | Doc |
 |---|---|---|
 | Maquina, layout de slots, disco, mistura de audio | `src/machine/` (`machine.h/.cpp`, `cli.cpp`, `gui/emu_window.cpp`, `gui/rom_manager.cpp`) | `machine-spec.md`, `slots-spec.md` |
-| Mapa de memoria (slots, mappers, SRAM, RAM em paginas) | `src/memmap/` | `memory-map-spec.md`, `sram-spec.md` |
-| Z80 | `src/z80/` | `z80-core-spec.md` |
+| Mapa de memoria (slots, mappers, SRAM, RAM em paginas, patch de ROM da fita) | `src/memmap/` | `memory-map-spec.md`, `sram-spec.md` |
+| Z80 (inclui o gancho "ED FE" usado pela fita) | `src/z80/` | `z80-core-spec.md` |
 | VDP (V9938/V9958) | `src/vdp/` | `vdp-spec.md`, `msx2-spec.md`, `msx2p-spec.md` |
-| PSG / SCC / FM (OPLL) | `src/psg/`, `src/scc/`, `src/fm/` | `psg-spec.md`, `scc-spec.md`, `fm-spec.md` |
+| PSG (inclui a entrada de cassete, R14) / SCC / FM (OPLL) | `src/psg/`, `src/scc/`, `src/fm/` | `psg-spec.md`, `scc-spec.md`, `fm-spec.md` |
 | Disco (WD2793, formatos, porta Microsol) | `src/fdc/` | `fdc-spec.md` (secao 6) |
+| **Fita** (.CAS, .TSX/.TZX, gancho de BIOS, pulsos) | `src/tape/` | `tape-spec.md` |
 | Banco de ROMs (SQLite, downloads, CLI) | `src/romdb/` | `romdb-spec.md` |
-| PPI / teclado | `src/ppi/` | `ppi-spec.md` |
+| PPI / teclado (inclui o motor da fita) | `src/ppi/` | `ppi-spec.md` |
 | Audio ao vivo | `src/audio/` | `audio-spec.md` |
 | msxdisk (utilitario de imagens) | `src/msxdisk/`, `tools/msxdisk/` | `msxdisk-spec.md` |
 | Testes | `tests/z80/*.cpp`, `tests/romdb/romdb_test.cpp` | (CTest em `CMakeLists.txt`) |
@@ -114,9 +125,15 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
   SHIFT+2 = `@`, SHIFT+' = `"`. Ja' corrigido; nao "corrigir" de volta.
 - **Teste de disco:** `msxdos1.dsk` (na raiz, rastreado) e' o disco de teste. Os testes copiam para
   temp. Se o `copy` de um teste manual gravar nele, restaure com `git checkout -- msxdos1.dsk`.
-- **Branch:** trabalhe direto em `main` (decisao do usuario, 2026-10-06). `estudo/openmsx` ja' foi mesclada e pode ser apagada.
-- **`dist/`:** os `.exe` de teste sao ignorados pelo `.gitignore` (regras explicitas). `dist/fwMSX.exe`
-  esta rastreado e foi regenerado no build de hoje.
+- **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada e pode ser apagada.
+- **`dist/`:** os `.exe` de teste sao ignorados pelo `.gitignore` (regras explicitas, inclusive
+  `tapetest`). `dist/fwMSX.exe` esta rastreado e precisa ser regenerado a cada release.
+- **Gancho "ED FE" do Z80**: existia no nucleo desde antes (`bus->patch`, ver
+  `src/z80/core/opcodes_ed.h`), mas nunca tinha sido usado -- a fita foi o primeiro uso. Se outra feature
+  precisar interceptar outra rotina da BIOS, o mecanismo e' esse (so' um gancho por barramento por
+  enquanto -- `SlotMemoryBus::AttachTapeHook()` -- um segundo uso precisaria de uma lista/despachante).
+- **Entrada de cassete NAO fica no PPI** -- fica no bit 7 do R14 do PSG (confirmado no openMSX,
+  `MSXPSG.cc`). Facil de errar se for por memoria sem checar a fonte de novo.
 - **Nao usar `find /`** nem buscas amplas: demoram minutos (ja' aconteceu).
 - **Saidas com `2>&1 | tail`:** comandos longos (build, ctest) passam de 2 min; use `run_in_background`
   e espere com um `until grep -q ...` quando precisar do resultado.
@@ -134,27 +151,32 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 
 ## 7. Proximos passos (em ordem sugerida)
 
-1. **Validar na tela** o que so' foi compilado: menu ROMs, Banco de ROMs, Navegar file-hunter,
-   Configuracao de disco (incluindo o seletor de ROM do driver), Configuracao de slots, tela cheia, filtros.
-2. **Tag e release 1.18.0** quando a validacao (item 1) passar. O merge ja' foi feito.
-3. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
+1. **Validar na tela/ouvido a fita**: abrir o menu Fita, inserir um `.cas`/`.tsx` de verdade, ver a
+   janela "Fita K7" (rolos girando) e OUVIR o modo normal (o barulho do carregamento). Nunca foi feito
+   por ninguem ainda -- so' testes automatizados.
+2. **Tag e release 1.19.0** quando o item 1 passar (ver secao 9 -- pode ja' estar pronto, so' faltando
+   comitar/taggear/dar push, dependendo de onde esta sessao parou).
+3. **Fitas, o que falta** (`doc/SPEC.md`, secao 5.2): (c) escritor de TSX a partir de `.BIN`/`.BAS`;
+   (e) banco de fitas (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX
+   (WAV -> TSX, MIT); navegar os blocos de controle do TZX (grupos/lacos/saltos); saida de cassete
+   (CSAVE). Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT),
+   `resource/openMSX_TSXadv/` (GPL, so' estudo).
+4. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
    mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
-4. **Fitas (SPEC 5.2, ordem):** (a) leitor TZX/TSX e CAS sem janela; (b) CAS por hooks da BIOS
-   (`BLOAD`/`CLOAD`); (c) escritor de TSX a partir de `.BIN`/`.BAS`; (d) porta de cassete no PPI e
-   pulsos; (e) banco de fitas com metadados (sem download automatico ate ter autorizacao, ou com o
-   proprio usuario iniciando); (f) port do makeTSX (WAV -> TSX, MIT); (g) CLI `--fita` e menu "Fita".
-   Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT), `resource/openMSX_TSXadv/` (GPL, so' estudo).
-5. **FM:** ouvir o WAV (`--wav`) contra referencia; `CALL VOICECOPY`; status/timers do OPLL.
+5. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia; `CALL VOICECOPY`;
+   status/timers do OPLL.
 6. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
    de Sony/Philips/Spectravideo do openMSX (so' como referencia).
 7. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
-   `type`, `cart`, `disk`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
+   `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
+   Ainda nao comecou.
 8. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
 9. **BIOS Expert:** texto com espacos na tela; investigar.
-10. **Save-state** (PSG, SCC, OPLL, disco, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
+10. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
 11. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
 12. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
-13. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco); integracao com o msxide (MSX-PoorManOS).
+13. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+    com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
 
@@ -162,5 +184,15 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 - Disco por portas (convencao Microsol, mapa de bits, drivers DDX/CDX): `doc/fdc-spec.md`, secao 6.
 - Banco de ROMs (esquema, downloads, CLI): `doc/romdb-spec.md`.
 - FM (OPLL, FM-PAC, comandos de BASIC): `doc/fm-spec.md`.
-- Fitas (viabilidade, termos do site TSX, ordem de implementacao): `doc/SPEC.md`, secao 5.2.
+- **Fita** (.CAS, .TSX/.TZX, enderecos da BIOS, layout do bloco #4B, pulsos, limites): `doc/tape-spec.md`.
 - Politica de midias e licencas: `LICENSE-THIRD-PARTY.md`.
+
+## 9. Nota de fechamento desta sessao (2026-10-07)
+
+Os itens 2 (release 1.18.0) e 3 (fita) do pedido do usuario foram feitos nesta sessao, nesta ordem:
+1.18.0 foi comitada/taggeada/com push (ver `git log --oneline -5` em `main`); a fita (item 3) foi
+implementada, testada (`tapetest`, `ctest` 16/16) e documentada, com a versao `1.19.0` ja' escrita em
+`version.h`/`CHANGELOG.md`/`RELEASE.md`. **Se o `git log` de `main` nao mostrar um commit de release da
+1.19.0 ainda**, essa e' a proxima acao: `git add` dos arquivos certos (nao `git add -A`; ver o padrao dos
+commits anteriores de release), commit com `Co-Authored-By`, `git tag 1.19.0`, `git branch v1.19.0`,
+`git push origin main 1.19.0 v1.19.0`.

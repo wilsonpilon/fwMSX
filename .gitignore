@@ -185,6 +185,8 @@ dkms.conf
 /dist/vdp2test
 /dist/msx2test
 /dist/romdbtest
+/dist/tapetest.exe
+/dist/tapetest
 
 # Diretorios de build gerados automaticamente pelo CLion
 /cmake-build-*/

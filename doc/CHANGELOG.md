@@ -7,6 +7,27 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.19.0] - 2026-10-07 - "Yie Ar Kung-Fu: Fita K7"
+
+### Adicionado
+- **Fita** (`.cas`, `.tsx` e `.tzx`): leitura completa do TZX 1.20 (bloco #4B, o unico que o MSX usa de
+  verdade, com pulsos e dados completos; os demais blocos pulados com seguranca, sem travar o arquivo).
+  Ver [doc/tape-spec.md](tape-spec.md).
+- **Dois modos de carregamento**, trocaveis sem reiniciar a maquina: **rapido** (gancho de BIOS "ED FE"
+  em TAPION/TAPIN/TAPIOF, sem som) e **normal** (pulsos de verdade na cadencia de T-states da CPU, com o
+  barulho do gravador -- a BIOS roda a rotina ORIGINAL dela, sem patch nenhum).
+- **Entrada de cassete no PSG** (R14, bit 7, conferido contra o openMSX) e **motor no PPI** (porta C,
+  bit 4); audio sintetizado (onda quadrada) somado ao PSG/SCC/FM.
+- `--fita <arquivo>` e `--fita-modo rapido|normal`; menu **Fita** da janela (inserir, ejetar, rebobinar,
+  trocar de modo) e a janela visual **"Fita K7"** (dois rolos que giram enquanto o motor esta' ligado,
+  barra de progresso e os arquivos encontrados na fita).
+- Testes: `tapetest` (CTest `tape_load`, 39 checagens: cursor de pulsos, framing KCS, leitores de .CAS e
+  .TSX, o gancho de BIOS de ponta a ponta com um Z80 de verdade, e a entrada de cassete no PSG).
+
+### Limites conhecidos
+- Sem escrita (`CSAVE`/`BSAVE "CAS:"`); sem banco de fitas nem download; blocos de controle do TZX
+  (grupos, lacos, saltos) sao pulados mas nao navegados. Ver [doc/tape-spec.md](tape-spec.md), secao 5.
+
 ## [1.18.0] - 2026-10-06 - "Ys: Banco de ROMs e Disco por Portas"
 
 ### Adicionado

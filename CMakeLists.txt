@@ -344,6 +344,22 @@ set(FDC_LIB_SOURCES
         src/fdc/cpp/disk_image.cpp
 )
 
+# --- Fita (.CAS e .TSX/.TZX, carregamento rapido e normal) -- ver doc/tape-spec.md
+#
+# Cursor de pulsos e framing KCS em C (tape_pulse.c, kcs_codec.c, design
+# proprio); frequencia do pulso em Fortran (kcs_timing.f90); soma de
+# pulsos (duracao total) em Assembly dual-ABI (pulse_sum.asm); leitores de
+# .CAS e .TSX/.TZX e o motor (TapeEngine) em C++, tudo design proprio.
+set(TAPE_LIB_SOURCES
+        src/tape/core/tape_pulse.c
+        src/tape/core/kcs_codec.c
+        src/tape/fortran/kcs_timing.f90
+        src/tape/asm/pulse_sum.asm
+        src/tape/cpp/cas_reader.cpp
+        src/tape/cpp/tzx_reader.cpp
+        src/tape/cpp/tape_device.cpp
+)
+
 # --- Maquina MSX1 completa + janela (fwmsx --msx) -- ver doc/machine-spec.md
 #
 # machine.cpp junta BIOS + slots + VDP + PPI + PSG + Z80 e avanca por
@@ -425,7 +441,7 @@ add_test(NAME psg_sound COMMAND psgtest)
 
 # machinetest: a maquina MSX1 completa em quadros, sem janela -- ver
 # doc/machine-spec.md.
-add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(machinetest tests/z80/machine_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
 target_include_directories(machinetest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
 target_compile_definitions(machinetest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(machinetest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/machinetest)
@@ -445,6 +461,18 @@ endif ()
 
 add_test(NAME fdc_wd2793 COMMAND fdctest)
 
+# tapetest: leitor de .CAS e .TSX/.TZX, cursor de pulsos (modo normal),
+# gancho de BIOS "ED FE" (modo rapido) e a entrada de cassete no PSG (R14,
+# bit 7) -- ver doc/tape-spec.md.
+add_executable(tapetest tests/z80/tape_test.cpp ${Z80_LIB_SOURCES} ${MEMMAP_LIB_SOURCES} ${PSG_LIB_SOURCES} ${TAPE_LIB_SOURCES})
+target_include_directories(tapetest PRIVATE src/z80 src/memmap src/psg src/tape)
+set_target_properties(tapetest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/tapetest)
+if (MINGW)
+    target_link_options(tapetest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+add_test(NAME tape_load COMMAND tapetest)
+
 # vdp2test: VDP MSX2 (V9938) -- modos SCREEN 3-8, sprites de modo 2 e motor de
 # comandos -- ver doc/vdp-spec.md (Fases 4 e 5).
 add_executable(vdp2test tests/z80/vdp2_test.cpp ${VDP_LIB_SOURCES})
@@ -458,7 +486,7 @@ add_test(NAME vdp_msx2 COMMAND vdp2test)
 
 # msx2test: maquina MSX2 (mapper de RAM, RTC, V9938 pelo BASIC e disco) -- ver
 # doc/msx2-spec.md.
-add_executable(msx2test tests/z80/msx2_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(msx2test tests/z80/msx2_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
 target_include_directories(msx2test PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/rtc)
 target_compile_definitions(msx2test PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(msx2test PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/msx2test)
@@ -470,7 +498,7 @@ add_test(NAME msx2_machine COMMAND msx2test)
 
 # audiotest: buffer circular, PSG ao vivo e dispositivo de audio -- ver
 # doc/audio-spec.md.
-add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${FDC_LIB_SOURCES})
+add_executable(audiotest tests/z80/audio_test.cpp ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
 target_include_directories(audiotest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/audio)
 target_compile_definitions(audiotest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(audiotest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/audiotest)
@@ -573,7 +601,7 @@ add_executable(fwMSX
         ${Z80_DEBUG_SESSION_SOURCES}
         ${MEMMAP_LIB_SOURCES}
         ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES}
-        ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
+        ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${TAPE_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
 )
 
