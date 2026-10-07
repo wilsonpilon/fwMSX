@@ -86,7 +86,11 @@ mudanca no nucleo Z80 (so' usou, por fora, um mecanismo de patch de BIOS que ja'
   Bleepload) nao vao funcionar direito.
 - **Fast_bytes so' a partir do #4B**: um .TSX cujo conteudo de verdade esteja em blocos #10/#11/#14 (em
   vez de so' o piloto) carrega certo no modo normal, mas nao no rapido -- nao e' o caso comum do MSX.
-- **Som da fita nao validado por ouvido** contra um gravador real (so' contra a logica dos pulsos).
+- **Som da fita nao comparado lado a lado com um gravador/MSX real** -- validado so' pela logica dos
+  pulsos ao escrever esta secao. **Atualizacao (2026-10-07, apos o lancamento):** o usuario carregou um
+  jogo completo pelo modo normal (`A.M.C.`, Dinamic 1990) e confirmou o som "bem nitido", jogando um
+  pouco depois de carregar -- a comparacao formal com hardware real continua pendente, mas a leitura e
+  o som em uso real estao confirmados.
 - Ver `doc/tape-spec.md`, secao 5, para a lista completa.
 
 ## v1.18.0 -- "Ys: Banco de ROMs e Disco por Portas" (2026-10-06)
