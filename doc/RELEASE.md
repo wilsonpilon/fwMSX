@@ -13,6 +13,62 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.18.0 -- "Ys: Banco de ROMs e Disco por Portas" (2026-10-06)
+
+**Fase:** banco de ROMs em SQLite com download e identificacao, controladora de disco por portas
+no estilo Microsol (DDX 3.0 e CDX-2), layout de slots com RAM e mapper ampliados, e o estudo de
+viabilidade de fitas TSX/TZX/CAS. Sem mudanca no nucleo Z80.
+
+### Destaques
+
+- **Banco de ROMs** (SQLite, `fwmsx --romdb` e menu **ROMs** da janela): identificacao por SHA-1,
+  CRUD, busca, escanear pastas. Downloads do fMSX 6.0 (Windows), do System ROMs do file-hunter
+  (Full Set mais recente ou navegacao por pastas) e do banco do Vampier (nomes de jogos). Ver
+  [doc/romdb-spec.md](romdb-spec.md).
+- **Controladora de disco por portas** no estilo Microsol (DDX 3.0 e CDX-2, base `D0h`): o
+  MSX-DOS 1.8 sobe pelos dois drivers, com os formatos 180/360/720 KB escolhidos pela configuracao
+  do drive (5 1/4 ou 3 1/2, faces, densidade, ou automatico). Menu **Maquina > Configuracao de
+  disco...** ou `--disk-acesso porta --disk-porta D0h --diskrom <driver> --disk-formato ...`. Ver
+  [doc/fdc-spec.md](fdc-spec.md), secao 6.
+- **Layout de slots ampliado**: RAM de 16 KB no fim da celula (corrige a BIOS Gradiente Expert 1.1,
+  que travava com a RAM em 0000h), RAM de 32 KB em duas celulas, mapper de 64 KB a 4096 KB e mais
+  de um mapper por maquina. Opcao `--slot P:S=tipo[:arg]` na linha de comando.
+- **Teclado**: correcao de `&` (era SHIFT+6, no MSX e' SHIFT+7).
+- **Estudo (provisorio, so' leitura)**: codigo do openMSX (GPL-2.0+), CLK e makeTSX (MIT) incluidos
+  em `resource/` para consulta. Viabilidade de fitas TSX/TZX e CAS registrada como feature futura em
+  `doc/SPEC.md`, secao 5.2 -- nao iniciada nesta versao.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.18.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.18.0-linux.tar.gz`.
+- `ctest`: 15 suites. Windows: 15/15. Linux: 15/15 (WSL, GCC 15.2).
+- Smoke tests: MSX1 chega a `MSX BASIC version 1.0`; MSX2 a `2.1`; MSX2+ a `3.0`; MSX-DOS 1.8 sobe
+  do `msxdos1.dsk` ate `A>`, pelo disco e pelas portas (DDX 3.0 e CDX-2).
+- Janela confirmada visualmente nesta fase: menu **ROMs**, janelas **Banco de ROMs** e **Navegar
+  file-hunter**, **Configuracao de disco** e **Configuracao de slots**, tela cheia, 4:3, 16:9 e
+  filtros de video.
+
+### Limitacoes conhecidas
+
+- **Banco de ROMs**: as ROMs baixadas ainda nao foram conferidas em lote contra o SHA-1 conhecido;
+  o banco ainda nao escolhe o mapper automaticamente ao carregar um cartucho.
+- **FM sem validacao por ouvido**: o WAV gerado (`--wav`) tem sinal, mas o timbre e o nivel nao
+  foram comparados com um MSX-MUSIC real. `CALL VOICECOPY` nao e' aceito pela ROM do fMSX; status e
+  timers do OPLL nao sao emulados.
+- **Disco**: ainda nao formata disquetes (so' le e grava); FM/MFM nao modelados; um so' formato por
+  maquina (nao um por drive A/B).
+- **Fitas (TSX/TZX/CAS)**: so' estudo de viabilidade (`doc/SPEC.md`, secao 5.2); nenhuma linha de
+  codigo de leitura/escrita ainda.
+- **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao
+  diagnosticada; Mega Chase so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao
+  testada.
+- **Cores YJK** do V9958 nao conferidas com hardware real.
+- **Ausentes**: save-state, efeitos de rastreio no meio do quadro, controle externo do emulador, e
+  o contador de CPU no pior caso.
+- **Licenca**: uso do fMSX e' so' para estudo, por acordo informal com o autor; confirmacao por
+  escrito ainda pendente.
+
 ## v1.17.0 -- "Xak: Musica FM e Slots" (2026-10-06)
 
 **Fase:** chip FM (MSX-MUSIC e FM-PAC) com os comandos de BASIC, layout de slots configuravel
