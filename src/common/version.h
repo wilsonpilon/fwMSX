@@ -19,7 +19,7 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 19
-#define FWMSX_VERSION_PATCH 0
+#define FWMSX_VERSION_PATCH 1
 
 #define FWMSX_CODENAME  "Yie Ar Kung-Fu"
-#define FWMSX_SUBTITLE  "Fita K7"
+#define FWMSX_SUBTITLE  "Fita K7: Corrigindo o Carregamento"

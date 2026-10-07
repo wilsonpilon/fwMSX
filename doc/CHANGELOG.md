@@ -7,6 +7,19 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.19.1] - 2026-10-07 - "Yie Ar Kung-Fu: Fita K7: Corrigindo o Carregamento"
+
+### Corrigido
+- **Leitor de .TSX**: o bloco #35 (Custom info) usava 10 bytes para a string de identificacao em vez
+  de 16 -- o `TZX_format.md` escreve o deslocamento do campo seguinte em HEXADECIMAL (`0x10` = 16, nao
+  10). Qualquer .TSX real com esse bloco (makeTSX grava "TSX.RIPPER" nele) tinha a leitura inteira
+  corrompida a partir dali. Confirmado com um arquivo `.tsx` real do usuario.
+- **Reconstrucao do fluxo "rapido" a partir do .TSX**: faltava o preenchimento até o proximo multiplo
+  de 8 bytes ANTES de cada cabecalho (igual ao TAPOON de verdade, que alinha ao gravar um .CAS) --
+  sem isso, o SEGUNDO `BLOAD"CAS:"`/`CLOAD` de uma fita com mais de um arquivo desalinhava o TAPION e
+  nunca mais achava cabecalho nenhum ("Device I/O error"; em modo normal, a BIOS ficava esperando um
+  sinal que nunca chegava, travando a maquina). Testes de regressao em `tapetest` para os dois casos.
+
 ## [1.19.0] - 2026-10-07 - "Yie Ar Kung-Fu: Fita K7"
 
 ### Adicionado

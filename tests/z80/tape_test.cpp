@@ -165,6 +165,28 @@ int main() {
         tape::TapeImage bad_img;
         std::string bad_error;
         check(!tape::LoadTzxImage(bad_path, bad_img, bad_error) && !bad_error.empty(), "bloco TZX desconhecido: recusado com erro");
+
+        // Regressao (2026-10-07): bloco #35 (Custom info) com a string de
+        // identificacao de 16 bytes (nao 10 -- o TZX_format.md escreve o
+        // deslocamento do campo seguinte em HEXADECIMAL, "0x10"), igual ao
+        // que .TSX reais tem (ex.: makeTSX grava "TSX.RIPPER" ali). Um .TSX
+        // com esse bloco ANTES do #4B tinha a leitura inteira corrompida.
+        std::vector<uint8_t> tsx35 = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+        tsx35.push_back(0x35);
+        const char ident[16] = {'T', 'S', 'X', '.', 'R', 'I', 'P', 'P', 'E', 'R', ' ', ' ', ' ', ' ', ' ', ' '};
+        tsx35.insert(tsx35.end(), ident, ident + 16);
+        const std::vector<uint8_t> custom_info = {'m', 'a', 'k', 'e', 'T', 'S', 'X'};
+        AppendU32(tsx35, static_cast<uint32_t>(custom_info.size()));
+        tsx35.insert(tsx35.end(), custom_info.begin(), custom_info.end());
+        const std::vector<uint8_t> data_chunk2 = {0x01, 0x02};
+        AppendBlock4B(tsx35, data_chunk2);
+        const std::string tsx35_path = TempPath("fwmsx_tape_test_35.tsx");
+        WriteFile(tsx35_path, tsx35);
+
+        tape::TapeImage img35;
+        std::string error35;
+        check(tape::LoadTzxImage(tsx35_path, img35, error35), "LoadTzxImage com bloco #35 antes do #4B (" + error35 + ")");
+        check(!img35.pulses.empty() && !img35.fast_bytes.empty(), "bloco #35 nao corrompe a leitura do #4B seguinte");
     }
 
     // --- 5. Gancho de BIOS (modo rapido) -------------------------------------
@@ -220,6 +242,35 @@ int main() {
         engine.Eject();
         call_vector(0x00E1);
         check((cpu.af() & Z80_C_FLAG) != 0, "TAPION sem fita: carry ligado (erro)");
+
+        // Regressao (2026-10-07, bug real com um .TSX real baixado pelo
+        // usuario): dois blocos #4B consecutivos cujo tamanho combinado NAO
+        // e' multiplo de 8 (o caso comum -- so' por acaso cai num
+        // multiplo). Sem o preenchimento ate' o proximo multiplo de 8 antes
+        // do SEGUNDO cabecalho (ver tzx_reader.cpp), o segundo TAPION
+        // (equivalente a um 2o BLOAD"CAS:" na mesma fita) desalinhava e
+        // nunca mais achava cabecalho nenhum -- "Device I/O error".
+        std::vector<uint8_t> tsx_align = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
+        const std::vector<uint8_t> odd_data(167, 0xAB); // tamanho NAO multiplo de 8
+        AppendBlock4B(tsx_align, odd_data);
+        const std::vector<uint8_t> second_data = {0xCD, 0xEF, 0x12};
+        AppendBlock4B(tsx_align, second_data);
+        const std::string tsx_align_path = TempPath("fwmsx_tape_test_align.tsx");
+        WriteFile(tsx_align_path, tsx_align);
+
+        check(engine.Insert(tsx_align_path, tape_error), "fita de alinhamento inserida (" + tape_error + ")");
+
+        call_vector(0x00E1); // TAPION: acha o 1o cabecalho
+        check((cpu.af() & Z80_C_FLAG) == 0, "alinhamento: TAPION acha o 1o cabecalho");
+        for (int i = 0; i < 167; ++i) call_vector(0x00E4); // consome os 167 bytes do 1o bloco
+        check((cpu.af() & Z80_C_FLAG) == 0, "alinhamento: le os 167 bytes do 1o bloco sem erro");
+
+        call_vector(0x00E1); // TAPION: acha o 2o cabecalho (bloco anterior com tamanho impar)
+        check((cpu.af() & Z80_C_FLAG) == 0, "alinhamento: TAPION acha o 2o cabecalho mesmo sem multiplo de 8");
+
+        call_vector(0x00E4); // TAPIN: 1o byte do 2o bloco
+        check(((cpu.af() >> 8) & 0xFF) == 0xCD, "alinhamento: 1o byte do 2o bloco e' o esperado");
+        check((cpu.af() & Z80_C_FLAG) == 0, "alinhamento: sucesso");
     }
 
     // --- 6. Modo normal (pulsos de verdade) e entrada de cassete do PSG -----

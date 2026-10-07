@@ -17,11 +17,14 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-07)
 
-- **Versao em preparo:** 1.19.0 "Yie Ar Kung-Fu: Fita K7" -- codigo e docs prontos, build e testes
-  passando; ainda NAO comitada/taggeada nesta sessao (ver secao 9, "proxima acao" se for o caso).
-- **Ultima versao publicada em `main`:** 1.18.0 "Ys: Banco de ROMs e Disco por Portas".
+- **Versao em preparo:** 1.19.1 "Yie Ar Kung-Fu: Fita K7: Corrigindo o Carregamento" -- codigo e docs
+  prontos, build e testes passando, validado contra um .TSX real do usuario; ainda NAO
+  comitada/taggeada nesta sessao (ver secao 9).
+- **Ultima versao publicada em `main`:** 1.18.0 "Ys: Banco de ROMs e Disco por Portas". A 1.19.0 (fita,
+  primeira versao) **nunca foi comitada** -- o usuario achou dois bugs reais ao testar com um .TSX de
+  verdade antes do commit, corrigidos direto na 1.19.1 (ver `doc/CHANGELOG.md`).
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
-- **Testes:** `ctest` com **16 suites**, todas passando (inclui `tape_load`, novo).
+- **Testes:** `ctest` com **16 suites**, todas passando (inclui `tape_load`, novo, com 46 checagens).
 - **Documentos vivos:** `doc/SPEC.md` (secao 5.0 = estado atual; 5.2 = fitas), `doc/CHANGELOG.md`,
   `doc/RELEASE.md`, `doc/MANUAL.md`, e os `*-spec.md` (inclui `doc/tape-spec.md`, novo).
 
@@ -41,15 +44,18 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 - Banco de ROMs (SQLite) com downloads do fMSX 6.0, do file-hunter e do Vampier, CRUD e busca.
 - **Fita** (.CAS e .TSX/.TZX): leitura completa (bloco #4B do TZX com pulsos e dados; os outros blocos
   pulados com seguranca); carregamento rapido (gancho de BIOS, sem som) e normal (pulsos de verdade,
-  com som); menu "Fita" e janela visual "Fita K7". Ver `doc/tape-spec.md`. **So' testado por unidade
-  (`tapetest`) e por um smoke test de CLI -- a janela visual e o som nunca foram vistos/ouvidos de
-  verdade por ninguem.**
-- Pacotes gerados em `dist/`: `fwMSX-1.18.0.zip`/`.tar.gz` (publicados) e `fwMSX-1.19.0.*` (gerados
+  com som); menu "Fita" e janela visual "Fita K7". Ver `doc/tape-spec.md`. **Validado em 2026-10-07
+  pelo usuario com um .TSX real** (`resource/fmsxgo/media/*.tsx`, Dinamic 1990): a insercao, o
+  `RUN"CAS:"` por um loader com 5 `BLOAD"CAS:",R` em sequencia (modo rapido, ate' a tela do loader) e
+  que o modo normal nao trava (~10s emulados sem travar, audio desligado no teste). **A janela visual
+  "Fita K7" (rolos girando) e o SOM do modo normal ainda nao foram vistos/ouvidos de verdade por
+  ninguem** (so' confirmado por codigo/CLI que nao trava e que gera amostras).
+- Pacotes gerados em `dist/`: `fwMSX-1.18.0.zip`/`.tar.gz` (publicados) e `fwMSX-1.19.1.*` (gerados
   nesta sessao, ver secao 9).
 
-### Compilado mas NAO validado na tela
-- **Janela "Fita K7"** (rolos girando, barra de progresso, lista de arquivos) e o **som do modo
-  normal** (carregamento com barulho de gravador) -- so' testados por unidade/CLI, nunca vistos/ouvidos.
+### Compilado mas NAO validado na tela/ouvido
+- **Janela "Fita K7"** (rolos girando, barra de progresso, lista de arquivos) -- nunca vista.
+- **Som do modo normal** da fita (o barulho do carregamento) -- nunca ouvido.
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -151,10 +157,11 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 
 ## 7. Proximos passos (em ordem sugerida)
 
-1. **Validar na tela/ouvido a fita**: abrir o menu Fita, inserir um `.cas`/`.tsx` de verdade, ver a
-   janela "Fita K7" (rolos girando) e OUVIR o modo normal (o barulho do carregamento). Nunca foi feito
-   por ninguem ainda -- so' testes automatizados.
-2. **Tag e release 1.19.0** quando o item 1 passar (ver secao 9 -- pode ja' estar pronto, so' faltando
+1. **Ver a janela "Fita K7" e OUVIR o modo normal**: abrir o menu Fita, inserir um `.cas`/`.tsx` de
+   verdade (ha' um exemplo real em `resource/fmsxgo/media/*.tsx`), ver os rolos girando e ouvir o
+   barulho do carregamento. A LEITURA/carregamento ja' foi validada por CLI (secao 2), mas a parte
+   visual e o som em si nunca foram vistos/ouvidos por ninguem.
+2. **Tag e release 1.19.1** quando o item 1 passar (ver secao 9 -- pode ja' estar pronto, so' faltando
    comitar/taggear/dar push, dependendo de onde esta sessao parou).
 3. **Fitas, o que falta** (`doc/SPEC.md`, secao 5.2): (c) escritor de TSX a partir de `.BIN`/`.BAS`;
    (e) banco de fitas (metadados, sem download automatico ate ter autorizacao); (f) port do makeTSX
@@ -189,10 +196,23 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 
 ## 9. Nota de fechamento desta sessao (2026-10-07)
 
-Os itens 2 (release 1.18.0) e 3 (fita) do pedido do usuario foram feitos nesta sessao, nesta ordem:
-1.18.0 foi comitada/taggeada/com push (ver `git log --oneline -5` em `main`); a fita (item 3) foi
-implementada, testada (`tapetest`, `ctest` 16/16) e documentada, com a versao `1.19.0` ja' escrita em
-`version.h`/`CHANGELOG.md`/`RELEASE.md`. **Se o `git log` de `main` nao mostrar um commit de release da
-1.19.0 ainda**, essa e' a proxima acao: `git add` dos arquivos certos (nao `git add -A`; ver o padrao dos
-commits anteriores de release), commit com `Co-Authored-By`, `git tag 1.19.0`, `git branch v1.19.0`,
-`git push origin main 1.19.0 v1.19.0`.
+Os itens 2 (release 1.18.0) e 3 (fita) do pedido do usuario foram feitos nesta sessao. 1.18.0 foi
+comitada/taggeada/com push (ver `git log --oneline` em `main`). A fita (item 3) foi implementada,
+testada e documentada como `1.19.0` -- mas o usuario testou com um `.tsx` real
+(`resource/fmsxgo/media/*.tsx`) **antes de qualquer commit** e achou dois bugs reais (janela "Fita K7"
+mostrando vazia; `RUN"CAS:"` com "Device I/O error" ou travando a maquina no modo normal). Os dois
+foram corrigidos no mesmo dia (ver `doc/CHANGELOG.md`, `[1.19.1]`, e os comentarios em
+`src/tape/cpp/tzx_reader.cpp` nos casos `0x35` e `0x4B`) e tem teste de regressao em `tapetest`. A
+versao 1.19.0 **nunca foi comitada** -- so' a 1.19.1 (ja' corrigida) e' que deveria ir ao `main`.
+
+**Se o `git log` de `main` nao mostrar um commit de release da 1.19.1 ainda**, essa e' a proxima acao:
+`git add` dos arquivos certos (nao `git add -A`; ver o padrao dos commits anteriores de release),
+commit com `Co-Authored-By`, `git tag 1.19.1`, `git branch v1.19.1`,
+`git push origin main 1.19.1 v1.19.1`.
+
+**Licao para a proxima vez:** ao implementar um leitor de formato binario a partir so' da
+especificacao escrita (sem um arquivo real para testar), desconfiar de deslocamentos em hexadecimal
+que "parecem" decimais (ex.: "0x10" = 16, nao 10) e de qualquer suposicao de alinhamento entre partes
+concatenadas de tamanho variavel. Testar contra pelo menos um arquivo real do formato, nao so' contra
+casos sinteticos que o proprio autor do teste construiu (eles tendem a repetir os mesmos enganos do
+codigo que testam).

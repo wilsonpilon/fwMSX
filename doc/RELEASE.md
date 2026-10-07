@@ -13,6 +13,41 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.19.1 -- "Yie Ar Kung-Fu: Fita K7: Corrigindo o Carregamento" (2026-10-07)
+
+**Fase:** correcao de dois bugs no leitor de .TSX, encontrados pelo usuario ao testar a 1.19.0 com um
+arquivo .tsx real (`resource/fmsxgo/media/*.tsx`, Dinamic, 1990). Sem mudanca de recursos.
+
+### O que estava errado
+
+- A janela "Fita K7" mostrava a fita como vazia (a insercao falhava silenciosamente).
+- `RUN"CAS:"` dava "Device I/O error", ou a maquina travava no modo normal (a BIOS de verdade fica
+  esperando um sinal que nunca chega).
+- Sem som no carregamento normal (consequencia do mesmo problema: a fita nunca chegava a carregar).
+
+### Causa e correcao
+
+1. **Bloco #35 (Custom info) do TZX**: a string de identificacao tem **16 bytes**, nao 10 -- o
+   `TZX_format.md` usa notacao HEXADECIMAL no deslocamento do campo seguinte (`0x10` = 16). Esse bloco
+   e' o primeiro de praticamente todo .TSX gerado pelo makeTSX (grava "TSX.RIPPER" nele), por isso o
+   arquivo do usuario nunca passava do primeiro bloco.
+2. **Alinhamento entre blocos #4B**: um .CAS de verdade (gerado por `TAPOON`) preenche com zeros até o
+   proximo multiplo de 8 bytes antes de CADA cabecalho. O leitor de .TSX nao fazia esse preenchimento
+   ao reconstruir o fluxo "rapido" a partir dos blocos #4B (de tamanho arbitrario) -- o SEGUNDO
+   `BLOAD"CAS:"` de uma fita com varios arquivos (o caso comum: um loader BASIC curto + os binarios)
+   desalinhava e nunca mais achava cabecalho nenhum.
+
+Os dois foram confirmados byte a byte contra o arquivo real do usuario (um programa MSX com 12 blocos
+#4B: um loader ASCII com 5 `BLOAD"CAS:",R` em sequencia) e tem teste de regressao em `tapetest`.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.19.1.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.19.1-linux.tar.gz`.
+- `ctest`: 16 suites (2 checagens novas em `tapetest`, uma para cada bug). Windows: 16/16. Linux: 16/16.
+- Smoke test com o arquivo real do usuario: `--fita <arquivo> --keys 'RUN"CAS:"|'` carrega e executa o
+  loader (SCREEN2 + a cadeia de `BLOAD"CAS:",R`) sem erro, nos dois modos (rapido e normal), sem travar.
+
 ## v1.19.0 -- "Yie Ar Kung-Fu: Fita K7" (2026-10-07)
 
 **Fase:** leitura de fita (.CAS e .TSX/.TZX) com dois modos de carregamento -- rapido (gancho de BIOS,

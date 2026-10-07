@@ -253,7 +253,13 @@ bool LoadTzxImage(const std::string &path, TapeImage &out, std::string &error) {
             cur.skip(static_cast<std::size_t>(cur.u8()) * 3);
             break;
         case 0x35: // Custom info block
-            cur.skip(10);
+            // BUG corrigido em 2026-10-07: o texto do TZX_format.md escreve o
+            // deslocamento do campo seguinte em HEXADECIMAL ("[10,11,12,13]+14"),
+            // e o proprio "CHAR[10]" da string de identificacao usa a MESMA
+            // notacao -- 0x10 = 16 bytes, nao 10. Confirmado contra um .TSX
+            // real (resource/fmsxgo/media/*.tsx), cujo 1o bloco e' #35 com
+            // "TSX.RIPPER" + 6 espacos de preenchimento = 16 bytes exatos.
+            cur.skip(16);
             cur.skip(cur.u32());
             break;
         case 0x4B: { // Kansas City Standard (MSX) -- ver doc/tape-spec.md
@@ -293,6 +299,20 @@ bool LoadTzxImage(const std::string &path, TapeImage &out, std::string &error) {
             // bytes + os MESMOS dados, ver cas_format.h) -- o bloco #4B ja'
             // guarda `data[N]` como bytes puros, nao pulsos (bitCfg/byteCfg
             // so' dizem como GERAR os pulsos de reproducao).
+            //
+            // IMPORTANTE (bug encontrado em 2026-10-07 com um .TSX real, ver
+            // doc/tape-spec.md): antes de CADA cabecalho de 8 bytes, o
+            // TAPION/TAPOON de verdade (fMSX, Patch.c) alinha a posicao a um
+            // multiplo de 8 -- e' assim que um .CAS de verdade sai do CSAVE
+            // (TAPOON pula para o proximo multiplo de 8 antes de escrever o
+            // cabecalho). Um .TSX tem blocos de tamanho QUALQUER (a maioria
+            // das vezes nao multiplo de 8): sem este preenchimento, o
+            // TAPION do bloco SEGUINTE desalinha e nunca mais acha cabecalho
+            // nenhum (ate' rebobinar) -- e' exatamente o "Device I/O error"
+            // de um BLOAD"CAS:" depois do primeiro.
+            if (out.fast_bytes.size() % kCasHeader.size()) {
+                out.fast_bytes.resize(out.fast_bytes.size() + (kCasHeader.size() - out.fast_bytes.size() % kCasHeader.size()), 0);
+            }
             out.fast_bytes.insert(out.fast_bytes.end(), kCasHeader.begin(), kCasHeader.end());
             out.fast_bytes.insert(out.fast_bytes.end(), data, data + n);
             break;
