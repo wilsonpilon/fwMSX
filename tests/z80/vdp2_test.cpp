@@ -712,6 +712,42 @@ int main() {
         delete q;
     }
 
+    // --- 10. Efeitos de rastreio (snapshot por linha, ver vdp_state.h) ------------
+    {
+        VdpState *v = NewVdp(VDP_MODEL_MSX2);
+        Screen(*v, 5);
+        Reg(*v, 2, 0x1F);
+        for (int y = 0; y < 192; ++y) v->vram[y << 7] = 0x11; // pixels 0 e 1: cor 1
+
+        // Paleta "antes": indice 1 = (10,20,30)
+        v->palette_r[1] = 10; v->palette_g[1] = 20; v->palette_b[1] = 30;
+
+        auto StepLine = [&]() { vdp_step_scanline(v); vdp_step_scanline(v); };
+        for (int i = 0; i < 50; ++i) StepLine(); // linhas 1..50 com a paleta "antes"
+
+        // Troca a paleta "no meio do quadro" (como uma ISR de IE1 faria)
+        v->palette_r[1] = 200; v->palette_g[1] = 210; v->palette_b[1] = 220;
+        for (int i = 0; i < 50; ++i) StepLine(); // linhas 51..100 com a paleta "depois"
+
+        VdpState snap_before = *v, snap_after = *v;
+        vdp_apply_snapshot(&snap_before, &v->scanline_snapshot[10]);
+        vdp_apply_snapshot(&snap_after, &v->scanline_snapshot[80]);
+
+        VdpRgb888 row[VDP_RENDER_MAX_WIDTH];
+        vdp_render_line(&snap_before, 10, row);
+        check(IsRgb(row[0], 10, 20, 30), "snapshot da linha 10 (antes da troca): paleta antiga (10,20,30)");
+        vdp_render_line(&snap_after, 80, row);
+        check(IsRgb(row[0], 200, 210, 220), "snapshot da linha 80 (depois da troca): paleta nova (200,210,220)");
+
+        // Sem snapshot (comportamento antigo): o estado FINAL de `v` ja' tem a paleta
+        // nova, entao renderizar a linha 10 direto do estado final mostraria a cor
+        // errada (retroativa ao quadro inteiro) -- e' exatamente essa diferenca que
+        // o snapshot por linha corrige em Machine::RenderFrame().
+        vdp_render_line(v, 10, row);
+        check(IsRgb(row[0], 200, 210, 220), "sem snapshot: a linha 10 herdaria a paleta final (retroativo), confirmando a diferenca");
+        delete v;
+    }
+
     if (g_failures == 0) {
         std::printf("\nTodos os testes passaram.\n");
         return 0;

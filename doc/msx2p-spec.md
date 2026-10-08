@@ -100,8 +100,10 @@ BASIC nao aceita o modo.
 
 ## 6. O que nao esta coberto
 
-- **Efeitos de rastreio no meio do quadro** (paleta e scroll por linha): fora de
-  escopo, como nos outros modos. A imagem e' montada por quadro.
+- **Efeitos de rastreio no meio do quadro** (paleta e scroll por linha): ja'
+  cobertos, como nos outros modos (ver `doc/vdp-spec.md`, secao 6, e
+  `doc/msx2-spec.md`, secao 6) -- inclusive os modos YJK/YAE/scroll do V9958,
+  ja' que o snapshot por linha guarda `regs[]`/paleta/cache de tabela inteiros.
 - **Cores YJK nao foram conferidas com um V9958 real**: a regra do azul vem de
   um turbo R segundo o openMSX, mas nao houve medicao propria.
 - **Jogos MSX2+ reais (validacao em 2026-10-05)**, em `resource/fmsxgo/media`:

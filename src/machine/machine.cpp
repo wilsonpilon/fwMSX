@@ -710,7 +710,15 @@ void Machine::SetJoystick(int port, uint8_t bits) { psg_set_joystick(&startup_.p
 void Machine::ReleaseAllKeys() { ppi_key_release_all(&startup_.ppi_device->state()); }
 
 FrameSize Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
-    const VdpState &v = startup_.vdp_device->state();
+    // Copia por valor (nao referencia) -- cada linha e' desenhada depois de
+    // "voltar no tempo" com vdp_apply_snapshot() (ver vdp_state.h), que
+    // sobrescreve regs/paleta/cache de tabela da COPIA local a cada
+    // iteracao; mexer na copia, nunca no estado de verdade da maquina,
+    // evita qualquer risco de deixar o VDP "no passado" se o chamador
+    // reler o estado depois (ex.: o depurador). vdp_render_border_color()/
+    // width()/height() abaixo usam o estado FINAL do quadro (antes de
+    // qualquer snapshot ser aplicado), igual antes.
+    VdpState v = startup_.vdp_device->state();
     const VdpRgb888 border = vdp_render_border_color(&v);
     const uint32_t border_px = PackRgba(border.r, border.g, border.b);
     const int width = vdp_render_width(&v);
@@ -729,6 +737,10 @@ FrameSize Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
         size.width = kFrameWidth;
         rgba.assign(static_cast<size_t>(size.width) * size.height, border_px);
         for (int y = 0; y < lines; ++y) {
+            // Efeito de rastreio (ver doc/vdp-spec.md, secao 2): aplica o estado que
+            // esta linha tinha DE VERDADE durante a execucao do quadro (capturado
+            // por vdp_capture_snapshot() em vdp_step_scanline()), nao o estado final.
+            if (y >= 0 && y < VDP_MAX_SCANLINES) vdp_apply_snapshot(&v, &v.scanline_snapshot[y]);
             vdp_render_line(&v, y, row.data());
             uint32_t *dst = rgba.data() + static_cast<size_t>(top + y) * size.width + pad;
             for (int x = 0; x < width; ++x) dst[x] = PackRgba(row[x].r, row[x].g, row[x].b);
@@ -747,6 +759,10 @@ FrameSize Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
     const int out_width = width * factor;
     const int pad = side + (512 - out_width) / 2;
     for (int y = 0; y < lines; ++y) {
+        // Efeito de rastreio (ver doc/vdp-spec.md, secao 2): aplica o estado que
+        // esta linha tinha DE VERDADE durante a execucao do quadro (capturado
+        // por vdp_capture_snapshot() em vdp_step_scanline()), nao o estado final.
+        if (y >= 0 && y < VDP_MAX_SCANLINES) vdp_apply_snapshot(&v, &v.scanline_snapshot[y]);
         vdp_render_line(&v, y, row.data());
         uint32_t *dst = rgba.data() + static_cast<size_t>(top + y) * size.width + pad;
         for (int x = 0; x < width; ++x) {

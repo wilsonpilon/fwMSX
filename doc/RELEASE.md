@@ -13,6 +13,59 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.27.0 -- "King's Valley: Efeitos de rastreio (paleta/scroll por linha)" (2026-10-08)
+
+**Fase:** primeiro item de "vamos fazer o 1, o 4 e o 5 na sequencia", pedido pelo usuario depois
+de uma pergunta exploratoria sobre o que falta no basico do emulador -- efeitos de rastreio no
+meio do quadro (paleta/scroll trocados por uma interrupcao de linha, R#19/IE1), ate agora "fora de
+escopo" em `doc/vdp-spec.md`/`doc/msx2-spec.md`/`doc/msx2p-spec.md`.
+
+### Investigacao primeiro, antes de codar
+
+Antes de supor que fosse um problema de timing de interrupcao, uma investigacao dedicada
+confirmou: `vdp_step_scanline()` ja' gera a interrupcao IE1 no scanline certo (comparando `R#19`
+ajustado por `R#23`/VScroll), e `Machine::RunFrame()` ja' intercala o Z80 com o VDP T-state a
+T-state, entregando a interrupcao (`cpu_->interrupt()`) no instante exato -- qualquer escrita de
+registrador feita por uma ISR ja' acontece na hora certa DURANTE a execucao do quadro. A lacuna
+real estava inteiramente do lado da renderizacao: `Machine::RenderFrame()` roda DEPOIS do quadro
+inteiro ter terminado, e le o `VdpState` FINAL (unico) para desenhar TODAS as linhas -- uma troca
+de paleta no meio do quadro aparecia retroativa a tela inteira, nunca so' a partir da linha onde
+realmente aconteceu.
+
+### O que foi feito
+
+- **`VdpScanlineSnapshot`** (`src/vdp/core/vdp_state.h`): struct com os campos que
+  `vdp_render.c`/`vdp_sprites.c` de fato leem para decidir a cor de um pixel -- `regs[64]`,
+  paleta RGB (`palette_r/g/b[16]`), `scr_mode`, `model`, `x_fg`/`x_bg` (cores do "blink"),
+  `chr_tab`/`col_tab`/`chr_gen`/`spr_tab`/`spr_gen` e as 3 mascaras de tabela. Confirmado por
+  `grep` exaustivo (com cuidado extra para nao misatribuir linha de arquivo errado) que `vram[]`
+  e `status[]` NAO entram: `vram` nao muda por linha, e todo `v->status` e' escrito so' por
+  `vdp_sprites_update_status()`/`check_collision()` (visiveis pela porta 99h ao depurador/CPU),
+  nunca lido por renderizacao.
+- `vdp_capture_snapshot()`/`vdp_apply_snapshot()` (`vdp_state.c`): copia os campos acima de/para
+  um `VdpScanlineSnapshot`. `vdp_step_scanline()` chama `vdp_capture_snapshot()` ao fim do
+  processamento de CADA linha (guardado em `VdpState::scanline_snapshot[VDP_MAX_SCANLINES]`,
+  `VDP_MAX_SCANLINES = 313` cobre 0-311 PAL + margem).
+- `Machine::RenderFrame()` (`src/machine/machine.cpp`) passou a copiar `VdpState` POR VALOR (nao
+  mais `const VdpState&` para o estado vivo da maquina -- seguro porque o struct e' POD, sem
+  ponteiro nenhum) e, nos dois lacos de linha (MSX1 e MSX2), chama
+  `vdp_apply_snapshot(&v, &v.scanline_snapshot[y])` imediatamente antes de `vdp_render_line(&v, y,
+  ...)`. Zero mudanca de assinatura publica ou de chamador (`cli.cpp`, `emu_window.cpp`).
+- Testes: `vdp2test`/`vdp_msx2`, secao 10 nova -- simula 100 scanlines (`vdp_step_scanline()` duas
+  vezes por linha, replicando o alternar HRefresh/HBlank real), troca a paleta do indice 1 na
+  linha 50, e confirma: snapshot da linha 10 (antes) mostra a cor ANTIGA; snapshot da linha 80
+  (depois) mostra a cor NOVA; e, de controle, renderizar a linha 10 do estado FINAL sem snapshot
+  (o comportamento antigo) mostra a cor nova -- prova direta de que o snapshot corrige o problema.
+- Docs: `doc/msx2-spec.md`/`doc/msx2p-spec.md` (secao 6) deixaram de listar isso como "fora de
+  escopo"; `doc/SPEC.md` (secao 5) marcou o item como feito.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.27.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.27.0-linux.tar.gz`.
+- `ctest`: 18 suites, incluindo a secao 10 nova do `vdp2test`/`vdp_msx2`. Windows: 18/18. Linux:
+  18/18.
+
 ## v1.26.0 -- "King's Valley: Vampier: Platform, CRC32 e Tamanho" (2026-10-08)
 
 **Fase:** ultimo item da lista original de pendencias de ROMs -- "importar o JSON do Vampier, se

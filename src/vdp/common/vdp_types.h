@@ -48,6 +48,14 @@ extern "C" {
 #define VDP_INT_IE0 0x01 /* VBlank */
 #define VDP_INT_IE1 0x02 /* HBlank / coincidencia de linha */
 
+// Linhas de varredura por quadro: 0..261 (NTSC) ou 0..311 (PAL) -- ver
+// ScanLine em vdp_step_scanline(). Usado para dimensionar o snapshot por
+// linha (VdpScanlineSnapshot, ver vdp_state.h) que guarda o estado dos
+// registradores/paleta/cache de tabela EM CADA linha, para o renderizador
+// poder reproduzir efeitos de rastreio (paleta/scroll trocados no meio do
+// quadro por uma interrupcao IE1) -- ver doc/vdp-spec.md, secao 2.
+#define VDP_MAX_SCANLINES 313
+
 #ifdef __cplusplus
 }
 #endif

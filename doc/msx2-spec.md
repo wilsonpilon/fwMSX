@@ -127,10 +127,11 @@ os 4 modos de pixel. Adaptado do `V9938.c` do fMSX (reescrito por Alex Wulms).
 
 - **V9958 (MSX2+)**: nao faz parte desta fase; ver `doc/msx2p-spec.md` (SCREEN
   10-12, scroll e mascara da esquerda ja' prontos).
-- **Imagem por quadro, nao por scanline:** efeitos de rastreio no meio do quadro
-  (trocar paleta/scroll por linha, tipico de alguns jogos) nao aparecem; so' o
-  estado no fim do quadro e' desenhado. O motor de comandos, as interrupcoes de
-  linha (R#19) e o status de sprites sao por scanline.
+- **Efeitos de rastreio (trocar paleta/scroll por linha, tipico de alguns jogos)
+  ja' aparecem:** cada linha e' desenhada com o estado que ela tinha DE VERDADE
+  durante a execucao do quadro (snapshot por scanline, ver `VdpScanlineSnapshot`
+  em `src/vdp/core/vdp_state.h` e `Machine::RenderFrame()`), nao retroativo ao
+  quadro inteiro.
 - **Interlace, PAL e ajuste de posicao (R#18)** ignorados. Sem borda desenhada
   (so' a cor de fundo nas laterais).
 - **Colisao de sprites** de modo 2 usa so' os padroes (como o fMSX), nao as cores;

@@ -367,6 +367,44 @@ void vdp_out(VdpState *v, uint16_t port, uint8_t value) {
     }
 }
 
+void vdp_capture_snapshot(const VdpState *v, VdpScanlineSnapshot *out) {
+    memcpy(out->regs, v->regs, sizeof(out->regs));
+    memcpy(out->palette_r, v->palette_r, sizeof(out->palette_r));
+    memcpy(out->palette_g, v->palette_g, sizeof(out->palette_g));
+    memcpy(out->palette_b, v->palette_b, sizeof(out->palette_b));
+    out->scr_mode = v->scr_mode;
+    out->model = v->model;
+    out->x_fg = v->x_fg;
+    out->x_bg = v->x_bg;
+    out->chr_tab = v->chr_tab;
+    out->col_tab = v->col_tab;
+    out->chr_gen = v->chr_gen;
+    out->spr_tab = v->spr_tab;
+    out->spr_gen = v->spr_gen;
+    out->chr_tab_mask = v->chr_tab_mask;
+    out->col_tab_mask = v->col_tab_mask;
+    out->chr_gen_mask = v->chr_gen_mask;
+}
+
+void vdp_apply_snapshot(VdpState *v, const VdpScanlineSnapshot *snap) {
+    memcpy(v->regs, snap->regs, sizeof(v->regs));
+    memcpy(v->palette_r, snap->palette_r, sizeof(v->palette_r));
+    memcpy(v->palette_g, snap->palette_g, sizeof(v->palette_g));
+    memcpy(v->palette_b, snap->palette_b, sizeof(v->palette_b));
+    v->scr_mode = snap->scr_mode;
+    v->model = snap->model;
+    v->x_fg = snap->x_fg;
+    v->x_bg = snap->x_bg;
+    v->chr_tab = snap->chr_tab;
+    v->col_tab = snap->col_tab;
+    v->chr_gen = snap->chr_gen;
+    v->spr_tab = snap->spr_tab;
+    v->spr_gen = snap->spr_gen;
+    v->chr_tab_mask = snap->chr_tab_mask;
+    v->col_tab_mask = snap->col_tab_mask;
+    v->chr_gen_mask = snap->chr_gen_mask;
+}
+
 // LoopZ80() do fMSX -- SO a fatia de VBlank(IE0)/HBlank e coincidencia
 // de linha (IE1). Ver vdp_state.h para a lista completa do que fica de
 // fora (LoopVDP/RefreshLine/som/sprites/teclado/joystick/mouse/cheats).
@@ -473,6 +511,19 @@ VdpStepResult vdp_step_scanline(VdpState *v) {
 
     /* LoopVDP(): avanca o comando do V9938 em execucao (so' MSX2) */
     if (VDP_MODEL_IS_V9938(v->model)) vdp_cmd_loop(v);
+
+    /* Snapshot por linha para renderizacao (ver VdpScanlineSnapshot em
+       vdp_state.h, e Machine::RenderFrame() no lado C++): guarda o estado
+       de registradores/paleta/cache de tabela EXATAMENTE como esta' ao
+       fim do processamento desta linha -- e' esse o estado que uma
+       interrupcao IE1 disparada durante esta linha ja' teve chance de
+       alterar (o Z80 roda intercalado T-state a T-state com o VDP, ver
+       Machine::RunFrame()), entao um efeito de rastreio (paleta/scroll
+       trocados na ISR) fica visivel a partir da linha certa, nao
+       retroativo ao quadro inteiro. */
+    if (v->scanline >= 0 && v->scanline < VDP_MAX_SCANLINES) {
+        vdp_capture_snapshot(v, &v->scanline_snapshot[v->scanline]);
+    }
 
     result.irq_pending = v->irq_pending != 0;
     return result;

@@ -17,15 +17,18 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.26.0** "King's Valley: Vampier: Platform, CRC32 e
-  Tamanho" (ou mais nova -- conferir `git log`). `git status` limpo, `main` local == `origin/main`.
+- **Ultima versao publicada em `main`:** **1.27.0** "King's Valley: Efeitos de rastreio
+  (paleta/scroll por linha)" (ou mais nova -- conferir `git log`). `git status` limpo apos o
+  commit/tag/branch/push desta rodada, `main` local == `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
 - **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui
   `tape_load` (leitura/gravacao de fita + navegacao de TZX), `cas_pack` (empacotador + ripper de
-  WAV), `tapedb_store` (banco de fitas) e `romdb_store` (`verify` + campos novos do Vampier).
-- **Documentos vivos, todos sincronizados com a 1.26.0:** `README.md`, `doc/MANUAL.md`,
+  WAV), `tapedb_store` (banco de fitas), `romdb_store` (`verify` + campos novos do Vampier) e
+  `vdp_msx2` (secao 10 nova: snapshot por linha de rastreio).
+- **Documentos vivos, todos sincronizados com a 1.27.0:** `README.md`, `doc/MANUAL.md`,
   `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
-  `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md` e este arquivo.
+  `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md`, `doc/vdp-spec.md`, `doc/msx2-spec.md`,
+  `doc/msx2p-spec.md` e este arquivo.
 - **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
   rodada):** corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1
   a 1.20.3); depois, os 3 itens do "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` ->
@@ -40,13 +43,21 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   e' subconjunto do SQL ja' importado; o valor real era expor colunas que o SQL ja' trazia e a
   consulta ignorava, 1.26.0). TODA a lista original de pendencias de ROMs/fitas deste "passo 2/3"
   esta' FECHADA.
+- **Continuacao do dia 2 (ver secao 9):** o usuario perguntou, de forma exploratoria, o que ainda
+  falta no basico do emulador. Resposta: efeitos de rastreio no meio do quadro, MSX-DOS 2,
+  save-state, som nunca validado contra hardware real. O usuario respondeu **"vamos entao fazer o
+  1 o 4 e o 5 na sequencia"** -- ou seja, nesta ordem: (1) efeitos de rastreio, (4) MSX-DOS 2, (5)
+  save-state. **Item 1 (efeitos de rastreio) foi implementado, testado e publicado como 1.27.0.**
+  Itens 4 e 5 ainda nao comecaram -- ver a secao 7 (itens 16 e 14) para o que ja' foi pesquisado
+  sobre o MSX-DOS 2.
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
 - MSX-DOS 1.8 pelo disco (DISK.ROM no slot 3:1) **e pelas portas** com os drivers DDX 3.0 e CDX-2
   (`doc/fdc-spec.md`, secao 6).
 - BIOS Gradiente Expert 1.1 sobe com a RAM de 16 KB no fim da celula (C000h-FFFFh).
-- VDP completo (SCREEN 0-8 no V9938, 10-12 no V9958 com YJK/YAE e scroll).
+- VDP completo (SCREEN 0-8 no V9938, 10-12 no V9958 com YJK/YAE e scroll); efeitos de rastreio no
+  meio do quadro (paleta/scroll trocados por interrupcao de linha, 1.27.0).
 - PSG, SCC (F1 Spirit), FM (MSX-MUSIC e FM-PAC) com comandos de BASIC, modo ritmo.
 - SRAM de cartucho ASCII8/ASCII16 e FM-PAC (`.sav`).
 - Layout de 16 celulas (slot:subslot) pela janela e pela CLI (`--slot`); RAM 16 KB no fim da celula,
@@ -122,7 +133,17 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   contra o SQL (ja' importado) de verdade -- e' um subconjunto, sem dado novo. `VampierSearch()`
   passou a expor `Platform`/`CRC32`/`FileSize`, que o SQL ja' trazia mas a consulta ignorava.
   Testado (`romdbtest`) e contra o dump REAL do Vampier (11.313 ROMs) com `vsearch`.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.26.0.*` (ver secao 9).
+- **Efeitos de rastreio no meio do quadro (1.27.0, 2026-10-08)**: investigacao dedicada confirmou
+  que a interrupcao IE1 (coincidencia de linha, R#19/R#23) e a intercalacao Z80/VDP T-state a
+  T-state ja' eram corretas -- a lacuna real era `Machine::RenderFrame()` ler so' o `VdpState`
+  FINAL para desenhar o quadro inteiro. `VdpScanlineSnapshot` (`src/vdp/core/vdp_state.h`) guarda
+  os campos que a renderizacao de fato le (regs/paleta/cache de tabela/modo/blink), capturado por
+  `vdp_capture_snapshot()` ao fim de CADA linha dentro de `vdp_step_scanline()`; `RenderFrame()`
+  passou a copiar o `VdpState` por valor e aplicar `vdp_apply_snapshot()` linha a linha antes de
+  `vdp_render_line()`. Testado (`vdp2test`/`vdp_msx2`, secao 10 nova): simula uma troca de paleta
+  no meio de um quadro e confirma que a linha anterior mostra a cor antiga e a posterior mostra a
+  nova (e que, sem o snapshot, a linha anterior mostraria errado a cor nova -- prova direta).
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.27.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -138,7 +159,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   corrigido na 1.20.2** para fitas GRAVADAS por este emulador (via marca exata `TapeMark` por bloco);
   continua valendo so' para um `.cas` CRU carregado direto do disco, sem ter passado por uma gravacao
   deste emulador (nao ha' marca exata nesse caso, so' a busca pelo proximo cabecalho).
-- Sem save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro.
+- Sem save-state, GameMaster2, MSX-DOS 2.
 - Cores YJK do V9958 nao conferidas com hardware real.
 
 ## 3. Como compilar e testar
@@ -265,19 +286,29 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    JSON do Vampier avaliado e descartado (subconjunto do SQL ja' importado), `VampierSearch()`
    exposta com `Platform`/`CRC32`/`FileSize` em troca. Lista original de ROMs FECHADA por ora. Ver
    secao 9 e `doc/romdb-spec.md`, secoes 2, 5 e 8.
-8. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
+8. **[FEITO em 2026-10-08, 1.27.0] Efeitos de rastreio no meio do quadro** -- item 1 de "fazer o
+   1, o 4 e o 5 na sequencia" (pedido do usuario). Investigacao confirmou que a interrupcao IE1 e a
+   intercalacao Z80/VDP ja' eram corretas; a lacuna real era `Machine::RenderFrame()` ler so' o
+   estado FINAL do quadro. Corrigido com snapshot por scanline (`VdpScanlineSnapshot`, capturado em
+   `vdp_step_scanline()`, aplicado linha a linha em `RenderFrame()`). Ver secao 9 e
+   `doc/vdp-spec.md`/`doc/msx2-spec.md`/`doc/msx2p-spec.md`.
+9. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
-9. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
+10. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
    de Sony/Philips/Spectravideo do openMSX (so' como referencia).
-10. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
+11. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
    `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
    Ainda nao comecou.
-11. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada); Mega Chase; F-1 Spirit 3D (troca de disco).
-12. **BIOS Expert:** texto com espacos na tela; investigar.
-13. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **rastreio** no meio do quadro; **CPU no pior caso**.
-14. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
-15. **Cartuchos:** MSX-DOS 2, GameMaster2, MSX-MUSIC com BIOS propria.
-16. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+12. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada -- agora que o rastreio por linha existe,
+    vale re-testar, mas ainda nao foi re-testado); Mega Chase; F-1 Spirit 3D (troca de disco).
+13. **BIOS Expert:** texto com espacos na tela; investigar.
+14. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **CPU no pior caso** -- item 5 de "1, 4, 5" vem
+    depois do MSX-DOS 2 (item 4).
+15. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
+16. **Cartuchos:** MSX-DOS 2 (item 4 de "1, 4, 5" -- pesquisa ja' feita: `MSXDOS2.ROM` real em
+    `resource/kizuna/...`, mapper de referencia em `resource/openMSX/src/memory/RomMSXDOS2.cc`),
+    GameMaster2, MSX-MUSIC com BIOS propria.
+17. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
     com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
@@ -727,6 +758,53 @@ verdade, comparar byte a byte a estrutura) revelou que a lacuna real era OUTRA (
 importados mas nunca lidos pela consulta). Apresentar a descoberta ao usuario ANTES de codar (em
 vez de silenciosamente implementar o que foi pedido literalmente, ou silenciosamente decidir fazer
 outra coisa) foi o caminho certo -- ele escolheu a opcao de maior valor real.
+
+### Dia 2, continuacao: efeitos de rastreio no meio do quadro (1.27.0)
+
+Com a lista original de ROMs/fitas fechada, o usuario perguntou de forma exploratoria: "pensando
+no emulador de forma geral o que ainda esta faltando para o basico?". Resposta dada: o nucleo de
+hardware esta' completo; as lacunas reais sao (1) efeitos de rastreio no meio do quadro -- possivel
+explicacao para o bug nao diagnosticado do Parodius (Smooth Scroll); (4) MSX-DOS 2; (5) save-state;
+alem de som nunca validado contra hardware real. O usuario respondeu **"vamos entao fazer o 1 o 4
+e o 5 na sequencia"**.
+
+**Investigacao antes de codar** (um fork dedicado): a hipotese inicial era que a interrupcao de
+linha (IE1) ou a intercalacao Z80/VDP pudessem estar erradas. Confirmado que NAO -- ambas ja'
+funcionavam direito: `vdp_step_scanline()` ja' gera IE1 no scanline certo (R#19 ajustado por
+R#23/VScroll), e `Machine::RunFrame()` ja' roda o Z80 um T-state por vez intercalado com o VDP,
+entregando a interrupcao (`cpu_->interrupt()`) exatamente quando `irq_pending` fica true -- ou
+seja, uma ISR que muda paleta/scroll ja' executa no instante certo DURANTE o quadro. A lacuna real
+estava isolada em `Machine::RenderFrame()`, que roda DEPOIS do quadro inteiro pronto e usa o
+`VdpState` FINAL (unico) para desenhar TODAS as linhas -- uma troca no meio do quadro aparecia
+retroativa a tela inteira.
+
+**O que foi feito**: `VdpScanlineSnapshot` (`src/vdp/core/vdp_state.h`) guarda so' os campos que a
+renderizacao de fato le (confirmado por `grep` exaustivo em `vdp_render.c`/`vdp_sprites.c`, com
+cuidado extra de nao misatribuir `v->status` -- ele e' escrito so' em `vdp_sprites.c`, nunca lido
+por renderizacao, entao fica FORA do snapshot junto com `vram[]`/protocolo de porta/motor de
+comando). `vdp_capture_snapshot()` grava um desses ao fim de CADA linha dentro de
+`vdp_step_scanline()` (`VdpState::scanline_snapshot[VDP_MAX_SCANLINES]`, `VDP_MAX_SCANLINES=313`).
+`Machine::RenderFrame()` passou a copiar `VdpState` POR VALOR (struct POD, sem ponteiro, copia
+segura) e aplica `vdp_apply_snapshot()` linha a linha, nos dois lacos (MSX1/MSX2), imediatamente
+antes de `vdp_render_line()` -- zero mudanca de assinatura publica ou de chamador.
+
+**Teste novo** (`vdp2test`/`vdp_msx2`, secao 10): simula 100 scanlines reais (`vdp_step_scanline()`
+duas vezes por linha, replicando o alternar HRefresh/HBlank de verdade), troca a cor da paleta no
+meio (linha 50), e confirma que o snapshot da linha 10 (antes) mostra a cor antiga, o da linha 80
+(depois) mostra a nova, e que renderizar SEM snapshot (o comportamento antigo) mostraria errado a
+cor nova na linha 10 -- prova direta da correcao.
+
+Build Windows e Linux (WSL), versao bumpada ANTES do primeiro build (1.27.0, mesmo codename,
+subtitulo novo). `ctest` 18/18 nos dois. Documentacao sincronizada: `doc/msx2-spec.md`/
+`doc/msx2p-spec.md` (secao 6, deixou de ser "fora de escopo"), `doc/SPEC.md` (secao 5, item
+marcado feito), `doc/CHANGELOG.md`/`doc/RELEASE.md` (`[1.27.0]`), `README.md`, `doc/MANUAL.md`, e
+este `OUTLINE.md`.
+
+**Nao verificado ainda**: se isso de fato corrige o bug do Parodius (Smooth Scroll) -- essa era so'
+uma hipotese levantada na pergunta exploratoria, nunca confirmada com o jogo de verdade. Vale
+re-testar na janela antes de marcar esse item da lista de jogos como resolvido.
+
+Itens 4 (MSX-DOS 2) e 5 (save-state) de "1, 4, 5" ainda nao comecaram -- ver secao 7, itens 16 e 14.
 
 ---
 

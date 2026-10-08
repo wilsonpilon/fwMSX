@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 26
+#define FWMSX_VERSION_MINOR 27
 #define FWMSX_VERSION_PATCH 0
 
 #define FWMSX_CODENAME  "King's Valley"
-#define FWMSX_SUBTITLE  "Vampier: Platform, CRC32 e Tamanho"
+#define FWMSX_SUBTITLE  "Efeitos de rastreio (paleta/scroll por linha)"

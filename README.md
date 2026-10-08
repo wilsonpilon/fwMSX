@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.26.0 "King's Valley: Vampier: Platform, CRC32 e Tamanho")
+## Estado atual (v1.27.0 "King's Valley: Efeitos de rastreio (paleta/scroll por linha)")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -36,7 +36,8 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   selecao). Banco de fitas com metadados (`fwmsx --fitadb`, titulo/empresa/ano/SHA-1, SEM download). Ver
   [tape-spec.md](doc/tape-spec.md).
 - **Cartuchos**: ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SRAM com `.sav` e o SCC (F1 Spirit toca a trilha).
-- **Video**: VDP completo: SCREEN 0 a 8 no V9938 e 10 a 12 no V9958 (YJK, YAE e scroll).
+- **Video**: VDP completo: SCREEN 0 a 8 no V9938 e 10 a 12 no V9958 (YJK, YAE e scroll); efeitos
+  de rastreio no meio do quadro (paleta/scroll trocados por interrupcao de linha).
 - **Som**: PSG, SCC e **FM (MSX-MUSIC e FM-PAC)** com os comandos de BASIC (`CALL MUSIC`, `PLAY #n`, `CALL VOICE`), modo ritmo e saida ao vivo.
 - **Layout de slots mais amplo**: RAM de 16 KB no fim da celula, RAM de 32 KB em duas celulas, mapper de 64 KB a 4 MB (varios mappers), BIOS Expert 1.1 subindo.
 - **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): baixa o fMSX 6.0, o System ROMs do file-hunter e o banco
@@ -56,7 +57,7 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   ferramenta batch -- escolhe sempre a 1a opcao. Ver [tape-spec.md](doc/tape-spec.md), secoes 5, 9, 10 e 11.
 - **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada; Mega Chase
   so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
-- **Ausentes**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, `CALL VOICECOPY`
+- **Ausentes**: save-state, GameMaster2, MSX-DOS 2, `CALL VOICECOPY`
   e opcao de linha de comando para o layout de slots.
 - **BIOS**: so' em 0:0. Outras BIOS (ex.: Gradiente Expert 1.1) montam no layout, mas nao foram testadas.
 
@@ -82,8 +83,8 @@ BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas
 1.20.x fita (gravacao); 1.21.0 empacotador `.BIN`/`.BAS` -> `.TSX` (`--cas pack`); 1.22.0 ripper de
 `.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; 1.24.0 banco de fitas com
 metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-mapper pelo SHA-1;
-**1.26.0 Vampier com Platform/CRC32/tamanho**. Detalhes em
-[CHANGELOG.md](doc/CHANGELOG.md).
+1.26.0 Vampier com Platform/CRC32/tamanho; **1.27.0 efeitos de rastreio no meio do quadro**.
+Detalhes em [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
 

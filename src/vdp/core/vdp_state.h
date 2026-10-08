@@ -62,6 +62,28 @@
 extern "C" {
 #endif
 
+// Os campos de VdpState que a renderizacao (vdp_render.c/vdp_sprites.c) de
+// fato le para decidir a cor de cada pixel de uma linha -- NAO inclui vram[]
+// (nao muda por linha) nem os campos de protocolo de porta/maquina de
+// comando/status de sprite (irrelevantes para decodificar pixel). Um
+// snapshot por linha (VdpState::scanline_snapshot[]) permite renderizar
+// cada linha com o estado que ela tinha DE VERDADE durante a execucao --
+// efeitos de rastreio no meio do quadro (trocar paleta/scroll por uma
+// interrupcao IE1, ver doc/vdp-spec.md, secao 2) ficam visiveis em vez de
+// sempre aplicados retroativamente ao quadro inteiro. Ver
+// vdp_capture_snapshot()/vdp_apply_snapshot().
+typedef struct VdpScanlineSnapshot {
+    uint8_t regs[64];
+    uint8_t palette_r[16];
+    uint8_t palette_g[16];
+    uint8_t palette_b[16];
+    uint8_t scr_mode;
+    uint8_t model;
+    uint8_t x_fg, x_bg;
+    uint32_t chr_tab, col_tab, chr_gen, spr_tab, spr_gen;
+    uint32_t chr_tab_mask, col_tab_mask, chr_gen_mask;
+} VdpScanlineSnapshot;
+
 typedef struct VdpState {
     uint8_t regs[64];   /* VDP[] do fMSX -- R#0..R#46 usados, resto reservado */
     uint8_t status[16]; /* VDPStatus[] do fMSX -- S#0..S#9ish usados */
@@ -123,6 +145,11 @@ typedef struct VdpState {
     int scanline; /* ScanLine: 0..261 (NTSC) ou 0..311 (PAL) */
     int drawing;  /* Drawing: fase ativa de desenho (controla a janela de VBlank) */
     uint8_t irq_pending; /* IRQPending do fMSX, restrito as fontes do VDP */
+
+    /* Snapshot dos campos relevantes para renderizacao, capturado ao fim
+       do processamento de CADA linha (ver vdp_step_scanline(), "segunda
+       metade"/HBlank) -- ver o comentario de VdpScanlineSnapshot acima. */
+    VdpScanlineSnapshot scanline_snapshot[VDP_MAX_SCANLINES];
 } VdpState;
 
 typedef struct VdpStepResult {
@@ -180,6 +207,20 @@ int vdp_set_screen(VdpState *v);
    ver a nota de escopo no topo do arquivo para o que NAO esta incluido
    (renderizacao, som, sprites, teclado/joystick/mouse). */
 VdpStepResult vdp_step_scanline(VdpState *v);
+
+/* Copia os campos relevantes para renderizacao de `v` para `out` -- ver o
+   comentario de VdpScanlineSnapshot. Chamado internamente por
+   vdp_step_scanline() ao fim de cada linha; exposto tambem para quem for
+   montar/restaurar um snapshot "fora do tempo" (ver vdp_apply_snapshot()). */
+void vdp_capture_snapshot(const VdpState *v, VdpScanlineSnapshot *out);
+
+/* Aplica os campos de `snap` em `v` -- o inverso de vdp_capture_snapshot().
+   Usado pelo renderizador (Machine::RenderFrame()) para "voltar no tempo" e
+   desenhar uma linha com o estado que ela tinha de verdade durante a
+   execucao do quadro, em vez do estado final. So' mexe nos campos do
+   snapshot (regs/paleta/cache de tabela/scr_mode/model/x_fg/x_bg) -- vram,
+   status, protocolo de porta etc. ficam intocados. */
+void vdp_apply_snapshot(VdpState *v, const VdpScanlineSnapshot *snap);
 
 #ifdef __cplusplus
 }

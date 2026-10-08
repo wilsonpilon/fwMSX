@@ -7,6 +7,33 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.27.0] - 2026-10-08 - "King's Valley: Efeitos de rastreio (paleta/scroll por linha)"
+
+### Adicionado
+- **Efeitos de rastreio no meio do quadro** (paleta e scroll trocados por uma interrupcao de
+  linha, IE1, tipico de alguns jogos MSX2): uma investigacao dedicada confirmou que a maquina de
+  estados de scanline (`vdp_step_scanline()`) e a intercalacao de Z80/VDP T-state a T-state
+  (`Machine::RunFrame()`) ja' entregavam a interrupcao IE1 no instante certo -- a lacuna real era
+  so' de renderizacao: `Machine::RenderFrame()` lia UNICA o estado FINAL de `VdpState` para
+  desenhar TODAS as linhas do quadro, entao qualquer mudanca feita por uma ISR no meio do quadro
+  acabava retroativa a tela inteira, nao so' a partir da linha onde aconteceu.
+- **`VdpScanlineSnapshot`** (`src/vdp/core/vdp_state.h`): copia dos campos que a renderizacao de
+  fato le para decidir a cor de um pixel (registradores, paleta, cache de tabela de
+  caractere/cor/padrao/sprite e suas mascaras, modo de tela, modelo, cores de frente/fundo do
+  "blink"). `vdp_capture_snapshot()` grava um desses ao fim do processamento de CADA linha, dentro
+  de `vdp_step_scanline()`; `vdp_apply_snapshot()` faz o inverso. Campos deliberadamente FORA do
+  snapshot (nao mudam por linha ou nao afetam pixel): `vram[]`, `status[]` (so' lido por
+  depurador/CPU, nunca pela renderizacao), campos de protocolo de porta, paginacao de VRAM e
+  estado do motor de comandos V9938.
+- **`Machine::RenderFrame()`** passou a trabalhar sobre uma COPIA local de `VdpState` (nao mais
+  uma referencia ao estado vivo da maquina) e aplica o snapshot da linha `y` (`vdp_apply_snapshot`)
+  imediatamente antes de desenhar essa linha (`vdp_render_line`) -- sem mudar a assinatura publica
+  nem nenhum chamador (`cli.cpp`, `emu_window.cpp`).
+- Testes: `vdp2test`/`vdp_msx2`, nova secao 10 -- troca a paleta do indice 1 na metade de um
+  quadro simulado (50 scanlines antes, 50 depois) e confirma que o snapshot da linha 10 mostra a
+  cor ANTIGA, o da linha 80 mostra a cor NOVA, e que renderizar sem snapshot (comportamento
+  antigo) mostraria a cor nova na linha 10 tambem -- prova direta da diferenca.
+
 ## [1.26.0] - 2026-10-08 - "King's Valley: Vampier: Platform, CRC32 e Tamanho"
 
 ### Adicionado
