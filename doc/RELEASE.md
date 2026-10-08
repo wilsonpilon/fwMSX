@@ -5,11 +5,41 @@ um subtitulo curto indicando em que ponto do projeto estamos -- nao se
 usam tags puramente numericas. Versionamento no formato `X.Y.Z`:
 
 - **X** (major): sobe quando um grupo de mudancas fecha uma base estavel.
-- **Y** (minor): sobe a cada feature nova incorporada ao projeto.
-- **Z** (patch): sobe a cada compilacao/build gerado.
+- **Y** (minor): sobe a cada bloco maior de funcionalidade publicado como release.
+- **Z** (patch): features pequenas, ajustes e correcoes (politica de 2026-10-08).
 
 Resumo curto de cada versao tambem em [CHANGELOG.md](CHANGELOG.md);
 especificacao completa e historico de fases em [SPEC.md](SPEC.md).
+
+---
+
+## v1.30.1 -- "King's Valley: Atalhos de save-state, captura de tela e janela sem console" (2026-10-08)
+
+**Fase:** primeira versao pela NOVA politica de numeracao (patch para feature pequena -- ver
+`CLAUDE.md`, regra 1): pedido do usuario depois de notar que 1.19 -> 1.30 tinha gerado releases
+demais. Tambem junta pequenas melhorias pedidas na mesma sessao.
+
+### O que foi feito
+
+- **Save-state: 9 slots + atalhos.** F6 salva / F7 carrega o slot atual (`fwmsx-estado-N.sst`), F8/F9
+  trocam de slot; menu Arquivo > Slot de estado. F1-F5 sao teclas do MSX, por isso comecam em F6.
+- **Aviso na tela** (toast): salvou/carregou/troca de slot/captura; laranja e mais longo para
+  erro ou aviso.
+- **Validacao da midia no save-state**: secao `MEDA` (CRC32 da BIOS e do cartucho); midia
+  diferente -> o estado carrega mesmo assim, com `Machine::state_warning()` e aviso na tela. Disco
+  e fita ficam de fora. Teste novo em `machinetest` (secao 5b).
+- **F12 / Arquivo > Capturar tela (PNG)**: `fwmsx-AAAAMMDD-HHMMSS.png`, proporcao correta (miniz).
+- **Janela sem console no Windows**: `fwMSX.exe` e' do subsistema "windows" (`-mwindows`);
+  `main.cpp` religa o console do terminal quando ha' um (so' as saidas nao redirecionadas).
+  Efeito colateral: `cmd`/PowerShell nem sempre esperam o fim do programa.
+- **Ajuda > Teclado** lista os atalhos do emulador.
+- **BIOS Gradiente Expert 1.1**: investigado -- o texto "G r a d i e n t e" com espacos esta'
+  gravado na propria ROM (offset 32513), nao e' bug do emulador.
+
+### Validacao
+
+Build Windows e Linux (WSL), `ctest` 18/18 nos dois. Atalhos, toast, captura e janela sem
+console testados pelo usuario na janela em 2026-10-08.
 
 ---
 

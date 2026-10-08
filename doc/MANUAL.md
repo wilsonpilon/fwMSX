@@ -372,7 +372,7 @@ janela abre.
 ### A janela
 
 - **Teclado**: mapeamento posicional (layout US). Alt esquerdo = GRAPH, Alt direito = CODE, End =
-  SELECT, Pause = STOP, F11 = tela cheia. Teclado numerico = o do MSX.
+  SELECT, Pause = STOP, F6/F7 = salvar/carregar estado, F8/F9 = slot de estado, F11 = tela cheia, F12 = captura de tela (PNG). Teclado numerico = o do MSX.
 - **Joystick**: setas + Z ou Espaco (botao A) + X (botao B); ou gamepad (menu Joystick).
 Os menus foram reagrupados na 1.30.0 (antes eram 13 menus separados no topo da janela; agora sao 9):
 
@@ -481,7 +481,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 - **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao, identificacao,
   `verify` (SHA-1) e auto-mapper ao carregar `--cart` sem escolher um a dedo.
 - Configuracao de slots pela janela (secao acima).
-- **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`) -- grava/restaura
+- **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`; atalhos **F6** salva / **F7** carrega o slot atual (`fwmsx-estado-N.sst`), **F8/F9** trocam de slot (1 a 9); avisa na tela se a BIOS/cartucho mudou desde o save; **F12** captura a tela em PNG) -- grava/restaura
   Z80, VDP, PSG, SCC, OPLL, PPI, controladora de disco e RAM/RAM de mapper, aplicado sobre a
   maquina ja' rodando (nao recarrega BIOS/cartucho/disco/fita). Ver [savestate-spec.md](savestate-spec.md).
 

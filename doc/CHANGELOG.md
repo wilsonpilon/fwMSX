@@ -7,6 +7,32 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.30.1] - 2026-10-08 - "King's Valley: Atalhos de save-state, captura de tela e janela sem console"
+
+### Adicionado
+- **Atalhos de save-state com 9 slots**: **F6** salva e **F7** carrega o slot atual
+  (`fwmsx-estado-N.sst`, N = 1 a 9, na pasta de trabalho); **F8/F9** trocam de slot (tambem pelo
+  menu **Arquivo > Slot de estado**). F1-F5 sao teclas do MSX, por isso os atalhos comecam em F6.
+- **Aviso na tela** (canto inferior esquerdo, ~2 s; ~5 s e laranja para erro/aviso): "Estado salvo
+  (slot N)", "Estado carregado", troca de slot, captura de tela.
+- **Validacao da midia no save-state**: o `.sst` guarda o CRC32 da BIOS e do cartucho (secao
+  `MEDA`, ignorada por leitores antigos). Ao carregar sobre outra BIOS/cartucho, o estado e'
+  aplicado mesmo assim, mas `Machine::state_warning()` vem preenchido e a janela avisa. Disco e
+  fita ficam de fora (o disco muda a cada gravacao). Testado em `machinetest` (secao 5b).
+- **F12 / Arquivo > Capturar tela (PNG)**: grava `fwmsx-AAAAMMDD-HHMMSS.png` na pasta de
+  trabalho, com a proporcao certa (MSX2 de 512 colunas ganha linhas duplicadas), via
+  `tdefl_write_image_to_png_file_in_memory()` do miniz (ja' linkado).
+- **Sem janela de console no duplo clique (Windows)**: `fwMSX.exe` agora e' do subsistema
+  "windows" (`-mwindows`); `main.cpp` religa stdout/stderr/stdin ao console do terminal quando
+  aberto de dentro de um (so' as saidas NAO redirecionadas -- pipe/arquivo seguem intactos).
+  Efeito colateral conhecido: `cmd`/PowerShell nao ESPERAM o fim do programa nem sempre
+  (use `Start-Process -Wait` ou um pipe, ex.: `| Out-Host`).
+
+### Investigado (sem mudanca de codigo)
+- **BIOS Gradiente Expert 1.1, texto com espacos ("G r a d i e n t e")**: nao e' bug do
+  emulador -- a string esta' gravada assim na propria ROM (`expert_1.1_basic-bios1.rom`, offset
+  32513). Sobe normalmente com RAM de 64KB no slot 2:0.
+
 ## [1.30.0] - 2026-10-08 - "King's Valley: Menus reorganizados + mapper do cartucho na janela"
 
 ### Adicionado

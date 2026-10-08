@@ -17,8 +17,14 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.30.0** "King's Valley: Menus reorganizados + mapper
-  do cartucho na janela" (ou mais nova -- conferir `git log`). `git status` limpo apos o
+- **1.30.1 (publicada)**: nova politica de versao no `CLAUDE.md` (patch
+  para features pequenas); atalhos de save-state **F6** (salvar) / **F7** (carregar) / **F8-F9** (slot 1-9,
+  `fwmsx-estado-N.sst`) com aviso na tela, validacao de BIOS/cartucho por CRC32 no .sst (secao
+  MEDA), **F12** captura de tela em PNG, janela sem console no duplo clique (-mwindows); BIOS Expert investigada -- os espacos entre as
+  letras estao na PROPRIA ROM, nao e' bug. Build Windows e Linux + `ctest` 18/18 ok nos dois;
+  testado pelo usuario na janela.
+
+- **Ultima versao publicada em `main`:** **1.30.1** "King's Valley: Atalhos de save-state, captura de tela e janela sem console" (ou mais nova -- conferir `git log`). `git status` limpo apos o
   commit/tag/branch/push desta rodada, `main` local == `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
 - **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui

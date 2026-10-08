@@ -50,6 +50,9 @@
 //
 
 #include "romdb/cli.h"
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <cstdint>
 #include <cstdlib>
 #include <iomanip>
@@ -79,9 +82,34 @@ void print_signature(const char* label, std::uint16_t signature) {
                << std::nouppercase << std::dec << std::setfill(' ') << std::endl;
 }
 
+#ifdef _WIN32
+// O executavel e' do subsistema "windows" (sem console proprio), para o duplo
+// clique nao abrir uma janela preta de console antes da janela do emulador.
+// Quando ele e' aberto de dentro de um terminal, religa stdout/stderr/stdin
+// ao console do terminal -- mas so' as saidas que NAO foram redirecionadas
+// (pipe/arquivo continuam intactos, entao "fwMSX.exe ... | tail" funciona).
+void attach_parent_console() {
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) return;
+    auto redirected = [](DWORD which) {
+        const HANDLE h = GetStdHandle(which);
+        return h != nullptr && h != INVALID_HANDLE_VALUE;
+    };
+    if (!redirected(STD_OUTPUT_HANDLE)) freopen("CONOUT$", "w", stdout);
+    if (!redirected(STD_ERROR_HANDLE)) freopen("CONOUT$", "w", stderr);
+    if (!redirected(STD_INPUT_HANDLE)) freopen("CONIN$", "r", stdin);
+    std::ios::sync_with_stdio(true);
+    std::cout.clear();
+    std::cerr.clear();
+    std::cin.clear();
+}
+#endif
+
 } // namespace
 
 int main(int argc, char* argv[]) {
+#ifdef _WIN32
+    attach_parent_console();
+#endif
     // Sem argumento nenhum, com o core de emulacao (Z80+VDP+PSG+mapa de
     // memoria+maquina) ja existindo de verdade, abre a maquina completa em
     // janela com os padroes de "--msx" (BIOS MSX1 ao lado do executavel,

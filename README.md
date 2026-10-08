@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.30.0 "King's Valley: Menus reorganizados + mapper do cartucho na janela")
+## Estado atual (v1.30.1 "King's Valley: Atalhos de save-state, captura de tela e janela sem console")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -47,7 +47,7 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   faltando/alterado); `--cart` sem mapper explicito consulta o banco (SHA-1) antes da heuristica por tamanho.
   As ROMs nao vem com o emulador (ver [romdb-spec.md](doc/romdb-spec.md)).
 - **Configuracao**: menu **Maquina > Configuracao de slots...**: 16 celulas (BIOS, BASIC, RAM de 16 a 64 KB, mapper de 64 a 1024 KB, cartucho, disco, sub-ROM e FM-PAC).
-- **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`) -- grava/restaura
+- **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`; atalhos **F6** salva / **F7** carrega / **F8-F9** trocam de slot, 9 slots; avisa se a BIOS/cartucho mudou; **F12** captura a tela em PNG) -- grava/restaura
   Z80, VDP, PSG, SCC, OPLL, PPI, controladora de disco e RAM/RAM de mapper. Aplica sobre a maquina
   ja' rodando (nao recarrega BIOS/cartucho/disco/fita). Ver [savestate-spec.md](doc/savestate-spec.md).
 - **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- confirmados na tela.
@@ -91,7 +91,8 @@ BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas
 metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-mapper pelo SHA-1;
 1.26.0 Vampier com Platform/CRC32/tamanho; 1.27.0 efeitos de rastreio no meio do quadro;
 1.28.0 MSX-DOS 2 (cartucho generico); 1.29.0 save-state;
-**1.30.0 menus reorganizados + mapper do cartucho na janela**. Detalhes em
+1.30.0 menus reorganizados + mapper do cartucho na janela;
+**1.30.1 atalhos de save-state (9 slots), captura de tela (F12) e janela sem console**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

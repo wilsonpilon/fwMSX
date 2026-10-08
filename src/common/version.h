@@ -19,7 +19,7 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 30
-#define FWMSX_VERSION_PATCH 0
+#define FWMSX_VERSION_PATCH 1
 
 #define FWMSX_CODENAME  "King's Valley"
-#define FWMSX_SUBTITLE  "Menus reorganizados + mapper do cartucho na janela"
+#define FWMSX_SUBTITLE  "Atalhos de save-state, captura de tela e janela sem console"

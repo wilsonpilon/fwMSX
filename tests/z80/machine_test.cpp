@@ -397,6 +397,30 @@ int main() {
             check(std::equal(vram_before.begin(), vram_before.end(), m->vdp_state().vram),
                   "LoadState(): VRAM inteira (incl. o texto 'print 1234' na tela) restaurada byte a byte");
 
+            // Fingerprint da midia (CRC32 de BIOS/cartucho): mesma midia = sem aviso; midia
+            // diferente = estado carregado MESMO ASSIM, mas com state_warning() preenchido.
+            check(m->state_warning().empty(), "LoadState(): mesma BIOS/cartucho -> sem aviso de midia");
+            {
+                std::string bytes;
+                {
+                    std::ifstream in(state_path, std::ios::binary);
+                    bytes.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+                }
+                const size_t meda = bytes.find("MEDA");
+                check(meda != std::string::npos, "SaveState(): grava a secao MEDA (CRC32 da midia)");
+                if (meda != std::string::npos) {
+                    bytes[meda + 8] = static_cast<char>(bytes[meda + 8] ^ 0x5A); // CRC32 da BIOS
+                    const std::string other_path = TempPath("fwmsx_machine_test_other.sst");
+                    {
+                        std::ofstream out(other_path, std::ios::binary | std::ios::trunc);
+                        out.write(bytes.data(), static_cast<std::streamsize>(bytes.size()));
+                    }
+                    check(m->LoadState(other_path, serr) && Contains(m->state_warning(), "BIOS"),
+                          "LoadState(): BIOS diferente da do save -> carrega, mas com aviso");
+                    std::remove(other_path.c_str());
+                }
+            }
+
             // Arquivo inexistente / corrompido: erro claro, nunca crash.
             check(!m->LoadState("/nao/existe/estado.sst", serr) && !serr.empty(), "LoadState(): arquivo inexistente falha com mensagem");
             const std::string garbage_path = TempPath("fwmsx_machine_test_garbage.sst");

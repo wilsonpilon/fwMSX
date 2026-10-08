@@ -680,4 +680,9 @@ target_include_directories(fwMSX PRIVATE
 )
 msxdisk_link_target(fwMSX)
 audio_link_target(fwMSX)
+if (WIN32)
+    # Subsistema "windows": sem janela de console no duplo clique (main.cpp religa o
+    # console do terminal quando ha' um).
+    target_link_options(fwMSX PRIVATE -mwindows)
+endif ()
 set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)

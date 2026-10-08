@@ -144,7 +144,9 @@ MESMA tecnica ja' provada para Z80/VDP/PSG, risco baixo).
 - **RAM de mapper**: logica implementada (`MapperRamBase()`, secao "MAPR"),
   mas sem teste automatizado dedicado (precisaria de uma maquina MSX2 com
   layout de mapper no `machine_test.cpp`).
-- **Multiplos slots nomeados/atalho de teclado** (ex.: F5 salva, F7 carrega,
+- **Slots e atalhos (feitos na 1.30.1)**: 9 slots (`fwmsx-estado-N.sst`), F6 salva / F7 carrega / F8-F9 trocam de slot, com aviso na tela. **Validacao da midia**: secao `MEDA` (CRC32 da BIOS e do cartucho) -> `Machine::state_warning()`; disco e fita nao entram.
+- (historico) Slots NOMEADOS pelo usuario continuam fora.
+- **Multiplos slots nomeados** (a parte de atalho ja foi feita; antes: F5 salva, F7 carrega,
   como muitos emuladores): nao implementado -- o dialogo de arquivo ja cobre
   "varios saves" (cada um com seu nome), mas nao e' tao rapido quanto um
   atalho.

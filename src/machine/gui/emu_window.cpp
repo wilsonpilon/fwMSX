@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <ctime>
 #include <filesystem>
 #include <memory>
 #include <string>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include <GLFW/glfw3.h>
+#include <miniz.h>
 #include "../../audio/audio_output.h"
 #include "../../common/version.h"
 #include "../../msxdisk/gui/file_dialog.h"
@@ -117,6 +119,47 @@ uint8_t PadToJoy(const GLFWgamepadstate &s) {
     return bits;
 }
 
+// Slots de save-state (F6 salva, F7 carrega, F8/F9 trocam de slot): um arquivo por slot na
+// pasta de trabalho.
+constexpr int kStateSlots = 9;
+std::string StateSlotPath(int slot) { return "fwmsx-estado-" + std::to_string(slot) + ".sst"; }
+
+// Captura a tela da maquina (com a proporcao certa) num PNG "fwmsx-AAAAMMDD-HHMMSS.png" na
+// pasta de trabalho. Devolve o nome do arquivo, ou "" com a razao em `error`.
+std::string SaveScreenshotPng(const Machine &machine, std::string &error) {
+    std::vector<uint32_t> rgba;
+    const FrameSize fs = machine.RenderFrame(rgba);
+    const int out_h = fs.height * fs.y_scale;
+    std::vector<uint8_t> rgb(static_cast<size_t>(fs.width) * out_h * 3);
+    for (int y = 0; y < out_h; ++y) {
+        const uint32_t *src = rgba.data() + static_cast<size_t>(y / fs.y_scale) * fs.width;
+        uint8_t *dst = rgb.data() + static_cast<size_t>(y) * fs.width * 3;
+        for (int x = 0; x < fs.width; ++x) {
+            dst[x * 3 + 0] = static_cast<uint8_t>(src[x] & 0xFF);
+            dst[x * 3 + 1] = static_cast<uint8_t>((src[x] >> 8) & 0xFF);
+            dst[x * 3 + 2] = static_cast<uint8_t>((src[x] >> 16) & 0xFF);
+        }
+    }
+    size_t png_len = 0;
+    void *png = tdefl_write_image_to_png_file_in_memory(rgb.data(), fs.width, out_h, 3, &png_len);
+    if (!png) {
+        error = "falha ao codificar o PNG";
+        return "";
+    }
+    const std::time_t t = std::time(nullptr);
+    char name[64];
+    std::strftime(name, sizeof(name), "fwmsx-%Y%m%d-%H%M%S.png", std::localtime(&t));
+    std::FILE *f = std::fopen(name, "wb");
+    const bool ok = f && std::fwrite(png, 1, png_len, f) == png_len;
+    if (f) std::fclose(f);
+    mz_free(png);
+    if (!ok) {
+        error = std::string("nao foi possivel gravar '") + name + "'";
+        return "";
+    }
+    return name;
+}
+
 // Estado compartilhado com os callbacks do GLFW (que nao carregam ponteiro
 // de usuario por padrao aqui -- uma unica janela por processo).
 struct HostInput {
@@ -125,6 +168,10 @@ struct HostInput {
     uint8_t joy_latched = 0; // bits pressionados em algum momento desde o ultimo quadro
     bool lost_focus = false;
     bool toggle_fullscreen = false;
+    bool quick_save = false;  // F6: salva o estado no slot atual
+    bool quick_load = false;  // F7: carrega o estado do slot atual
+    int slot_delta = 0;       // F8 = -1, F9 = +1: troca o slot atual
+    bool screenshot = false;  // F12: grava a tela num PNG
 };
 HostInput g_input;
 
@@ -132,6 +179,19 @@ void KeyCallback(GLFWwindow *, int key, int, int action, int) {
     if (action == GLFW_REPEAT) return; // o MSX faz o proprio auto-repeat
     if (key == GLFW_KEY_F11) {
         if (action == GLFW_PRESS) g_input.toggle_fullscreen = true;
+        return;
+    }
+    // F1-F5 sao teclas do MSX; os atalhos do emulador usam F6 em diante, que o MSX nao tem.
+    if (key >= GLFW_KEY_F6 && key <= GLFW_KEY_F9) {
+        if (action == GLFW_PRESS) {
+            if (key == GLFW_KEY_F6) g_input.quick_save = true;
+            else if (key == GLFW_KEY_F7) g_input.quick_load = true;
+            else g_input.slot_delta += (key == GLFW_KEY_F9) ? 1 : -1;
+        }
+        return;
+    }
+    if (key == GLFW_KEY_F12) {
+        if (action == GLFW_PRESS) g_input.screenshot = true;
         return;
     }
     if (const uint8_t bit = HostKeyToJoy(key)) {
@@ -338,6 +398,16 @@ int RunEmulatorWindow(const WindowOptions &options) {
     // visual (K7) esta' aberta.
     std::string tape_message;
     bool show_tape_window = false;
+    int state_slot = 1; // slot de save-state atual (1 a kStateSlots)
+    // Aviso temporario no canto da tela (salvou/carregou/captura): texto, validade e se e' aviso/erro.
+    std::string toast_text;
+    double toast_until = 0.0;
+    bool toast_warn = false;
+    auto ShowToast = [&](const std::string &text, bool warn = false) {
+        toast_text = text;
+        toast_warn = warn;
+        toast_until = glfwGetTime() + (warn ? 5.0 : 2.0);
+    };
     std::string state_message; // ultimo erro ao salvar/carregar um estado (menu Arquivo)
     // Mapper escolhido pelo usuario (menu Midia > Cartucho > Mapper) para o PROXIMO
     // "Inserir cartucho..."/"Carregar cartucho..." -- NONE = deteccao automatica, como
@@ -424,6 +494,33 @@ int RunEmulatorWindow(const WindowOptions &options) {
     };
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+
+        if (g_input.slot_delta != 0) {
+            state_slot = ((state_slot - 1 + g_input.slot_delta) % kStateSlots + kStateSlots) % kStateSlots + 1;
+            g_input.slot_delta = 0;
+            ShowToast("Slot de estado " + std::to_string(state_slot));
+        }
+        if (g_input.quick_save || g_input.quick_load) {
+            const bool saving = g_input.quick_save;
+            g_input.quick_save = g_input.quick_load = false;
+            const std::string slot_path = StateSlotPath(state_slot);
+            std::string state_error;
+            const bool ok = saving ? machine->SaveState(slot_path, state_error)
+                                   : machine->LoadState(slot_path, state_error);
+            state_message = ok ? std::string() : state_error;
+            const std::string slot_name = "slot " + std::to_string(state_slot);
+            if (!ok) ShowToast(state_error, true);
+            else if (saving) ShowToast("Estado salvo (" + slot_name + ")");
+            else if (!machine->state_warning().empty()) ShowToast("Estado carregado (" + slot_name + ") -- aviso: " + machine->state_warning(), true);
+            else ShowToast("Estado carregado (" + slot_name + ")");
+        }
+        if (g_input.screenshot) {
+            g_input.screenshot = false;
+            std::string shot_error;
+            const std::string shot_path = SaveScreenshotPng(*machine, shot_error);
+            if (shot_path.empty()) ShowToast("Falha na captura: " + shot_error, true);
+            else ShowToast("Captura salva: " + shot_path);
+        }
 
         if (g_input.toggle_fullscreen) {
             g_input.toggle_fullscreen = false;
@@ -543,6 +640,16 @@ int RunEmulatorWindow(const WindowOptions &options) {
             if (ImGui::BeginMenu("Arquivo")) {
                 if (ImGui::MenuItem("Carregar cartucho...")) LoadCartridgeFromDialog();
                 ImGui::Separator();
+                if (ImGui::MenuItem("Salvar no slot atual", "F6")) g_input.quick_save = true;
+                if (ImGui::MenuItem("Carregar do slot atual", "F7")) g_input.quick_load = true;
+                if (ImGui::BeginMenu("Slot de estado (F8/F9)")) {
+                    for (int s = 1; s <= kStateSlots; ++s) {
+                        const std::string label = "Slot " + std::to_string(s);
+                        if (ImGui::MenuItem(label.c_str(), nullptr, state_slot == s)) state_slot = s;
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::MenuItem("Capturar tela (PNG)", "F12")) g_input.screenshot = true;
                 if (ImGui::MenuItem("Salvar estado...")) {
                     if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Salvar estado", "Estado fwMSX",
                                                                               "*.sst", "sst", "")) {
@@ -1249,9 +1356,22 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     "End = SELECT   Pause = STOP   F1-F5 = F1-F5\n"
                     "Teclado numerico = teclado numerico do MSX\n"
                     "Joystick (porta A): setas, Z ou Espaco = botao A, X = botao B; gamepads: ver menu Joystick\n"
-                    "F11 = tela cheia");
+                    "\nAtalhos do emulador (nao vao para o MSX):\n"
+                    "F6 = salvar estado no slot atual   F7 = carregar estado do slot atual\n"
+                    "F8 / F9 = slot de estado anterior / proximo (1 a 9, arquivos fwmsx-estado-N.sst)\n"
+                    "F11 = tela cheia   F12 = capturar a tela (PNG, pasta de trabalho)");
             }
             ImGui::End();
+        }
+
+        if (!toast_text.empty() && glfwGetTime() < toast_until) {
+            const ImGuiIO &tio = ImGui::GetIO();
+            const ImVec2 sz = ImGui::CalcTextSize(toast_text.c_str());
+            const ImVec2 pos(10.0f, tio.DisplaySize.y - sz.y - 20.0f);
+            ImDrawList *dl = ImGui::GetForegroundDrawList();
+            dl->AddRectFilled(ImVec2(pos.x - 6, pos.y - 4), ImVec2(pos.x + sz.x + 6, pos.y + sz.y + 4),
+                              IM_COL32(0, 0, 0, 190), 4.0f);
+            dl->AddText(pos, toast_warn ? IM_COL32(255, 190, 90, 255) : IM_COL32(255, 255, 255, 255), toast_text.c_str());
         }
 
         ImGui::Render();

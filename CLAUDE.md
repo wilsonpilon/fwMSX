@@ -24,8 +24,21 @@ utilitario chamado **MSX-PoorManOS**.
 
 ## Regras do workflow de release (ja' causaram retrabalho quando ignoradas)
 
-1. **Bumpar `src/common/version.h`** (minor version + um subtitulo novo,
-   mesmo codename "King's Valley") **ANTES do primeiro build de QUALQUER
+1. **Politica de numeracao (definida pelo usuario em 2026-10-08)**: tres
+   niveis, em vez de uma minor por feature (que levou 1.19 -> 1.30 em dias):
+   - **Terceiro numero (patch, X.Y.Z)**: features pequenas, ajustes e
+     correcoes. Muda quase sempre; o Y fica parado.
+   - **Segundo numero (minor, X.Y.0)**: bloco maior de funcionalidade que
+     vale publicar como release de verdade. Zera o patch.
+   - **Primeiro numero (major, X.0.0)**: quando um conjunto grande esta
+     praticamente todo feito. Zera minor e patch.
+   Na duvida entre patch e minor, usar patch. Codename "King's Valley"
+   continua; o subtitulo so' precisa mudar em minor/major (em patch pode
+   ficar o mesmo ou ganhar um complemento curto).
+   A proxima versao apos a 1.30.0 e' **1.30.1** se for feature pequena.
+
+   **Bumpar `src/common/version.h`** (conforme a politica acima)
+   **ANTES do primeiro build de QUALQUER
    rodada nova** -- sem excecao, mesmo rodada pequena. O build deriva o
    nome do pacote em `dist/` do numero de versao do header; um build feito
    sem bumpar primeiro SOBRESCREVE o pacote ja publicado da versao

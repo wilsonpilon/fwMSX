@@ -12,9 +12,23 @@
 #include "../vdp/core/vdp_state.h"
 #include "../z80/common/z80_state.h"
 
+extern "C" void rom_crc32(const uint8_t *data, int32_t length, uint32_t *crc_out);
+
 namespace machine {
 
 namespace {
+
+// CRC32 do conteudo de um arquivo (0 se vazio/ilegivel) -- usa o mesmo rom_crc32 (Assembly)
+// do mapa de memoria.
+uint32_t FileCrc32(const std::string &path) {
+    if (path.empty()) return 0;
+    std::ifstream f(path, std::ios::binary);
+    if (!f) return 0;
+    const std::vector<uint8_t> data((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    uint32_t crc = 0;
+    rom_crc32(data.data(), static_cast<int32_t>(data.size()), &crc);
+    return crc;
+}
 
 // Arquivo de SRAM do cartucho: a ROM com a extensao trocada por .sav.
 std::string SramPathFor(const std::string &cart_path) {
@@ -454,6 +468,8 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
         }
     }
     m->cart_info_ = cart_info;
+    m->bios_crc_ = FileCrc32(config.bios_path);
+    m->cart_crc_ = FileCrc32(CartridgePath(config));
 
     // Portas FCh-FFh: todos os mappers do layout.
     if (!m->mappers_.empty()) {
@@ -643,6 +659,12 @@ bool Machine::SaveState(const std::string &path, std::string &error) const {
         WriteSection(f, "PPI ", &ppi, static_cast<uint32_t>(offsetof(PpiState, key_state)));
     }
 
+    // Fingerprint da midia: CRC32 da BIOS e do cartucho, para avisar ao carregar sobre outra midia.
+    {
+        uint32_t crcs[2] = {bios_crc_, cart_crc_};
+        WriteSection(f, "MEDA", crcs, sizeof(crcs));
+    }
+
     // Controladora de disco (pela memoria OU pelas portas, nunca as duas ao
     // mesmo tempo -- ver doc/fdc-spec.md): so' os registradores do WD2793,
     // ate' (sem incluir) `ptr`/`disk[]` (ponteiros para dentro da imagem
@@ -763,6 +785,7 @@ bool Machine::LoadState(const std::string &path, std::string &error) {
         return false;
     }
 
+    state_warning_.clear();
     memmap::MemorySystem &mem = *startup_.memory_system;
     char tag[4];
     while (f.read(tag, sizeof(tag))) {
@@ -794,6 +817,15 @@ bool Machine::LoadState(const std::string &path, std::string &error) {
         } else if (TagIs(tag, "PPI ")) {
             if (payload.size() != offsetof(PpiState, key_state)) continue;
             std::memcpy(&startup_.ppi_device->state(), payload.data(), payload.size());
+        } else if (TagIs(tag, "MEDA")) {
+            if (payload.size() != 8) continue;
+            uint32_t crcs[2];
+            std::memcpy(crcs, payload.data(), 8);
+            if (crcs[1] != cart_crc_) {
+                state_warning_ = "o cartucho inserido agora e' diferente do que estava quando o estado foi salvo";
+            } else if (crcs[0] != bios_crc_) {
+                state_warning_ = "a BIOS atual e' diferente da que estava quando o estado foi salvo";
+            }
         } else if (TagIs(tag, "FDCM")) {
             if (!fdc_ || payload.size() != offsetof(Fdc, ptr)) continue;
             std::memcpy(&fdc_->fdc(), payload.data(), payload.size());

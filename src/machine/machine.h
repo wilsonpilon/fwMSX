@@ -251,6 +251,10 @@ public:
     // desconhecida.
     bool SaveState(const std::string &path, std::string &error) const;
     bool LoadState(const std::string &path, std::string &error);
+    // Aviso (nao erro) do ultimo LoadState(): o estado foi aplicado, mas a BIOS ou o
+    // cartucho inseridos agora NAO sao os mesmos de quando foi salvo (CRC32 diferente).
+    // Vazio = tudo conferiu (ou o estado e' de uma versao sem essa informacao).
+    const std::string &state_warning() const { return state_warning_; }
 
     uint64_t frame_count() const { return frame_count_; }
     const VdpState &vdp_state() const { return startup_.vdp_device->state(); }
@@ -274,6 +278,11 @@ private:
     std::unique_ptr<z80::Z80Cpu> cpu_;
     int vdp_pending_cycles_ = 0;
     uint64_t frame_count_ = 0;
+    // CRC32 dos arquivos de BIOS e de cartucho carregados (0 = sem arquivo): gravados no
+    // save-state para avisar quando se carrega o estado sobre uma midia diferente.
+    uint32_t bios_crc_ = 0;
+    uint32_t cart_crc_ = 0;
+    std::string state_warning_;
     std::string cart_info_;
     // SRAM de cada cartucho/FM-PAC com memoria de bateria: slot e arquivo .sav.
     struct SramTarget {
