@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 24
+#define FWMSX_VERSION_MINOR 25
 #define FWMSX_VERSION_PATCH 0
 
 #define FWMSX_CODENAME  "King's Valley"
-#define FWMSX_SUBTITLE  "Banco de Fitas (Metadados)"
+#define FWMSX_SUBTITLE  "Banco de ROMs: Mapper e Verificacao"

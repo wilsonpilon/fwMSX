@@ -312,7 +312,7 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX (`--msx`) -- v1.24.0
+## Emulador MSX (`--msx`) -- v1.25.0
 
 Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
 `--msx` escolhe a maquina e as opcoes abaixo.
@@ -341,7 +341,7 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 | `--msx2` / `--msx2p` | modelo MSX2 (BASIC 2.1) ou MSX2+ (BASIC 3.0) |
 | `--bios <arquivo>` | BIOS principal (padrao: `resource/fMSX/ROMs/MSX.ROM`, ou `MSX2.ROM` / `MSX2P.ROM`) |
 | `--ext <arquivo>` | sub-ROM do MSX2 (16KB; padrao: `MSX2EXT.ROM` / `MSX2PEXT.ROM` ao lado da BIOS) |
-| `--cart <arquivo> [mapper]` | cartucho no slot 1:0; sem mapper, ROM de ate 32KB e' plana e acima disso e' detectada |
+| `--cart <arquivo> [mapper]` | cartucho no slot 1:0; sem mapper, consulta o banco de ROMs pelo SHA-1 (ver `--romdb`, abaixo) e, se nao encontrar, ROM de ate 32KB e' plana e acima disso e' detectada |
 | `--disk` / `--diska <arquivo>` | disquete (`.dsk` cru) na unidade A: (liga a interface de disco) |
 | `--diskb <arquivo>` | disquete na unidade B: |
 | `--disk-ro` | discos entram protegidos contra gravacao (o arquivo nunca e' alterado) |
@@ -447,7 +447,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 ### O que funciona e o que nao funciona
 
-**Funciona (v1.24.0):**
+**Funciona (v1.25.0):**
 
 - MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
 - MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
@@ -460,7 +460,8 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
   de comando `fwmsx --cas` (empacotar, "ripar" `.wav`, listar). Navegacao completa dos blocos de
   controle do TZX. Banco de fitas com metadados (`fwmsx --fitadb`, sem download). Ver as secoes
   acima e [tape-spec.md](tape-spec.md).
-- **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao e identificacao.
+- **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao, identificacao,
+  `verify` (SHA-1) e auto-mapper ao carregar `--cart` sem escolher um a dedo.
 - Configuracao de slots pela janela (secao acima).
 
 **Nao funciona ou nao foi verificado:**
@@ -475,8 +476,8 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
   o preenchimento de alinhamento; um ASCII multi-bloco de verdade (256 bytes por bloco) aparece
   fragmentado na lista; "Selecao" (#28 do TZX) escolhe sempre a 1a opcao (sem como mostrar um menu de
   verdade numa ferramenta batch). Ver [tape-spec.md](tape-spec.md), secoes 5, 9, 10 e 11.
-- **Banco de ROMs**: ainda nao escolhe o mapper ao carregar um cartucho, nem verifica o SHA-1 das
-  ROMs baixadas.
+- **Banco de ROMs**: montar a maquina pelo banco (layout por nome) ainda nao existe; o JSON do
+  Vampier nao e' usado (so' o SQL, que ja' cobre jogo/empresa/ano/SHA-1).
 - **Sem**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, cartucho MSX-MUSIC
   com BIOS propria, e `CALL VOICECOPY`.
 - **Outras BIOS** (ex.: Gradiente Expert 1.1): o layout aceita, mas o hardware que a BIOS espera nao foi testado.
@@ -510,16 +511,21 @@ tipo (`bios`, `interfaces`, `cartuchos`, `discos`, `tabelas`, `outros`). O banco
 .\dist\fwMSX.exe --romdb show 655
 .\dist\fwMSX.exe --romdb edit 655 --hw "Konami SCC" --notas "minha copia"
 .\dist\fwMSX.exe --romdb del 655                       # tira do banco (o arquivo nao e' apagado)
+.\dist\fwMSX.exe --romdb verify                        # recalcula o SHA-1 de cada ROM e confere com o banco
 ```
 
 Na janela, o menu **ROMs** tem os downloads, a navegacao pelo file-hunter e a janela **Banco de ROMs**
 (busca, edicao, exclusao e busca no Vampier). Downloads rodam em segundo plano.
 
+Desde a 1.25.0, `--cart <arquivo>` (ver a secao do emulador, acima) SEM mapper explicito tambem
+consulta este banco pelo SHA-1 do cartucho (`CARTS.SHA` ja' importado) antes de cair na heuristica
+por tamanho/conteudo de sempre -- nenhuma opcao nova e' necessaria, e um mapper escolhido a dedo
+continua tendo prioridade.
+
 **Requisitos**: o programa `curl` (Windows 10 1803+ ja tem; Linux, instale o pacote `curl`).
 
 **Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
-do site. O emulador ainda nao usa o banco para escolher o mapper ao carregar um cartucho, nem verifica
-as ROMs baixadas contra o SHA-1 conhecido. Ver [romdb-spec.md](romdb-spec.md).
+do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [romdb-spec.md](romdb-spec.md).
 
 ## Fita por linha de comando (`fwmsx --cas`)
 

@@ -17,25 +17,27 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.24.0** "King's Valley: Banco de Fitas (Metadados)"
-  (ou mais nova -- conferir `git log`). `git status` limpo, `main` local == `origin/main`.
+- **Ultima versao publicada em `main`:** **1.25.0** "King's Valley: Banco de ROMs: Mapper e
+  Verificacao" (ou mais nova -- conferir `git log`). `git status` limpo, `main` local ==
+  `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
 - **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui
   `tape_load` (leitura/gravacao de fita + navegacao de TZX), `cas_pack` (empacotador + ripper de
-  WAV) e `tapedb_store` (banco de fitas, novo hoje).
-- **Documentos vivos, todos sincronizados com a 1.24.0:** `README.md`, `doc/MANUAL.md`,
+  WAV), `tapedb_store` (banco de fitas) e `romdb_store` (com `verify`, novo hoje).
+- **Documentos vivos, todos sincronizados com a 1.25.0:** `README.md`, `doc/MANUAL.md`,
   `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
-  `doc/tape-spec.md` (secoes 1-11) e este arquivo.
+  `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md` e este arquivo.
 - **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
   rodada):** corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1
   a 1.20.3); depois, os 3 itens do "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` ->
   `.TSX` (`fwmsx --cas pack`, 1.21.0); port do makeTSX, WAV -> TSX (`fwmsx --cas rip`, 1.22.0);
   navegacao de verdade dos blocos de controle do TZX (1.23.0). "Passo 1" COMPLETO; sessao encerrada
   com tudo documentado e sincronizado.
-- **Resumo do dia 2 (hoje, em andamento -- ver secao 9):** o usuario confirmou que "nova fita"
-  tambem ja' tinha sido validada na janela, e pediu para seguir com os itens 2 e 3 da lista de
-  pendencias (banco de fitas, depois banco de ROMs): **banco de fitas com metadados** (`fwmsx
-  --fitadb`, SEM download, 1.24.0) feito. Banco de ROMs (SHA-1 + mapper) e' o proximo.
+- **Resumo do dia 2 (hoje -- ver secao 9):** o usuario confirmou que "nova fita" tambem ja' tinha
+  sido validada na janela, e pediu para seguir com os itens 2 e 3 da lista de pendencias: **banco
+  de fitas com metadados** (`fwmsx --fitadb`, SEM download, 1.24.0); depois **banco de ROMs: mapper
+  e verificacao** (`--cart` auto-mapper pelo SHA-1 + `fwmsx --romdb verify`, 1.25.0). Os dois itens
+  pedidos para hoje estao FECHADOS.
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -107,7 +109,14 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   termos de uso publicados). Estrutura espelhada no `romdb` por analogia (banco SEPARADO,
   `src/tapedb/`); auto-preenche o titulo a partir do leitor de fita existente, preservando edicoes
   manuais num re-scan. Testado (`tapedbtest`) e com smoke test manual contra uma fita real.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.24.0.*` (ver secao 9).
+- **Banco de ROMs: mapper e verificacao (1.25.0, 2026-10-08)**: `--cart <arquivo>` sem mapper
+  explicito consulta `RomDb::CartMapper()` (SHA-1, `CARTS.SHA` ja' importado) ANTES da heuristica
+  por tamanho/conteudo de sempre (intacta como fallback); `fwmsx --romdb verify` recalcula o SHA-1
+  de cada ROM cadastrada e aponta arquivo faltando/alterado (codigo de saida 1 se achar problema).
+  Fecha os 2 itens pendentes de `doc/romdb-spec.md`, secao 8. Testado (`romdbtest`) e com smoke
+  test manual (executavel isolado, sem tocar no banco real do usuario): mapper do banco escolhido
+  sozinho, mapper explicito com prioridade sobre o banco, cartucho desconhecido no fallback normal.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.25.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -244,10 +253,11 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    so' junta 2 blocos por arquivo (um ASCII multi-bloco de verdade aparece fragmentado, ver
    `doc/tape-spec.md`, secoes 5 e 9). Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT),
    `resource/openMSX_TSXadv/` (GPL, so' estudo).
-7. **[EM ANDAMENTO, 2026-10-08] Banco de ROMs: SHA-1 + mapper** -- conferir as ROMs baixadas contra
-   o SHA-1 conhecido; usar o banco para escolher o mapper ao carregar cartucho (`CARTS.SHA` ja'
-   importado); importar o JSON do Vampier se for util. Pedido pelo usuario como "passo 3" desta
-   leva, logo depois do banco de fitas.
+7. **[FEITO em 2026-10-08, 1.25.0] Banco de ROMs: SHA-1 + mapper** -- `fwmsx --romdb verify`
+   confere o SHA-1 de cada ROM cadastrada contra o banco; `--cart` sem mapper explicito consulta o
+   banco (`CARTS.SHA` ja' importado) antes da heuristica de sempre. So' resta importar o JSON do
+   Vampier, se for util (o SQL ja' cobre jogo/empresa/ano/SHA-1) -- nao parece necessario por
+   agora. Ver secao 9 e `doc/romdb-spec.md`, secoes 2, 5 e 8.
 8. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
 9. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
@@ -621,6 +631,46 @@ feature nova) com o mesmo codename e um subtitulo novo: "Banco de Fitas (Metadad
 
 **Proximo passo, ja' confirmado pelo usuario (passo 3 desta leva):** Banco de ROMs -- SHA-1 +
 mapper (item 7 da secao 7).
+
+### Dia 2, continuacao: banco de ROMs -- mapper e verificacao (1.25.0)
+
+"Passo 3" desta leva: os dois itens pendentes do banco de ROMs (`doc/romdb-spec.md`, secao 8).
+Pesquisa primeiro (um fork `Explore`, nao um edit direto): onde `--cart` e' parseado
+(`src/machine/cli.cpp`), como o mapper e' detectado hoje sem argumento (so' heuristica por
+tamanho/conteudo -- `memmap::GuessMapper()`, NUNCA consulta hash nenhum), onde `RomDb::CartMapper()`
+ja' existia (so' usado ao CADASTRAR uma ROM, nunca ao CARREGAR um cartucho -- exatamente o gap
+documentado), e se `machine.cpp` ja' linkava SQLite (nao linkava -- `cli.cpp` sim, por isso a
+insercao tinha que ficar ali, nao em `machine.cpp`/`LoadRomCell`, senao `machinetest`/`msx2test`
+precisariam linkar SQLite tambem so' pra compilar).
+
+**Auto-mapper**: `TryMapperFromRomDb()` em `src/machine/cli.cpp`, chamada depois do parse de
+argumentos. Precisou de uma flag nova (`cart_mapper_explicit`) porque "auto" e "omitido" eram
+indistinguiveis depois do parse (os dois ja' caiam em `MEMMAP_MAPPER_NONE`) -- sem essa flag, a
+consulta ao banco rodaria tambem quando o usuario tivesse pedido "auto" explicitamente, o que nao
+faz diferenca pratica aqui, mas deixa a intencao clara no codigo. `FmsxMapperToMemMap()` converte
+o numero do mapper do fMSX (0-5) para o enum publico (soma 1, `MEMMAP_MAPPER_NONE` vem antes).
+Falha em qualquer etapa (sem banco, SHA-1 desconhecido) e' SILENCIOSA -- camada opcional sobre o
+fallback existente, nunca um requisito.
+
+**Verify**: `fwmsx --romdb verify` em `src/romdb/cli.cpp`, sem mudar a classe `RomDb` -- so'
+reusa `Search()`/`ReadWholeFile()`/`Sha1Hex()` que ja' existiam. Codigo de saida 1 se algo faltar/
+divergir (pensado pra uso em script), 0 se tudo bater.
+
+Smoke test manual com cuidado: um EXECUTAVEL ISOLADO (copia do `fwMSX.exe` numa pasta temporaria),
+pra nao arriscar poluir o banco de ROMs REAL do usuario (`dist/roms/roms.db`, que e' versionado e
+tem dados de verdade) com um cartucho/CARTS.SHA sinteticos so' de teste. Confirmados os 3 cenarios:
+mapper do banco escolhido quando a entrada existe; um mapper explicito do usuario continua tendo
+prioridade sobre o banco; um cartucho desconhecido no banco cai no fallback de sempre sem erro.
+
+Build Windows e Linux (WSL), versao bumpada ANTES do primeiro build (ja' habito). `ctest` 18/18 nos
+dois (`romdbtest`/`romdb_store` com 3 checagens novas de `verify`: tudo ok, depois um arquivo
+alterado + um faltando, depois restaurado). Escrito como versao `1.25.0` (minor -- feature nova)
+com o mesmo codename e um subtitulo novo: "Banco de ROMs: Mapper e Verificacao". Ver
+`doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.25.0]`, e `doc/romdb-spec.md`, secoes 2, 5 e 8.
+
+Com isso, os dois itens que o usuario pediu para hoje ("passo 2 e 3") estao FECHADOS. So' resta
+importar o JSON do Vampier no banco de ROMs, se for util (o SQL ja' cobre jogo/empresa/ano/SHA-1 --
+nao parece necessario agora), e montar a maquina pelo banco (layout por nome, item maior, sem data).
 
 ---
 

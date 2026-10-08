@@ -7,6 +7,27 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.25.0] - 2026-10-08 - "King's Valley: Banco de ROMs: Mapper e Verificacao"
+
+### Adicionado
+- **Auto-deteccao de mapper pelo banco de ROMs**: ao carregar um cartucho com `--cart <arquivo>`
+  SEM escolher o mapper a dedo, o emulador agora consulta o banco de ROMs (`fwmsx --romdb
+  cartsha`, se ja' importado) pelo SHA-1 do arquivo ANTES de cair na heuristica por tamanho/
+  conteudo de sempre (`memmap::GuessMapper()`, que continua intacta como fallback). Fecha o item
+  "Carregar pelo banco" de `doc/romdb-spec.md`, secao 8. Falha em qualquer etapa (sem banco, SHA-1
+  desconhecido) e' silenciosa -- e' uma camada OPCIONAL sobre o comportamento existente, nunca um
+  requisito.
+- **`fwmsx --romdb verify [--cat c]`**: recalcula o SHA-1 de cada ROM cadastrada e confere contra
+  o que esta' gravado no banco -- detecta arquivo faltando ou alterado/corrompido desde que foi
+  cadastrado. Fecha o item "Verificar as ROMs baixadas contra o SHA-1 conhecido" de
+  `doc/romdb-spec.md`, secao 8. Codigo de saida 1 se algo faltar/divergir (script-friendly), 0 se
+  tudo bater.
+- Testes: `romdbtest`/`romdb_store` com 3 checagens novas para o `verify` (tudo ok; arquivo
+  alterado + arquivo faltando; restaurado). Smoke test manual do auto-mapper com um cartucho
+  sintetico cadastrado no banco, confirmando que o mapper escolhido pelo banco e' usado, que uma
+  escolha explicita do usuario continua tendo prioridade, e que um cartucho desconhecido cai no
+  fallback de sempre sem erro.
+
 ## [1.24.0] - 2026-10-08 - "King's Valley: Banco de Fitas (Metadados)"
 
 ### Adicionado

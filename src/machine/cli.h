@@ -18,10 +18,12 @@ namespace machine {
 //   --ext <arq>             sub-ROM do MSX2 (padrao: MSX2EXT.ROM ao lado da BIOS)
 //   --bios <arq>            BIOS (padrao: resource/fMSX/ROMs/MSX.ROM, ou MSX2.ROM
 //                           com --msx2)
-//   --cart <arq> [mapper]   cartucho no slot 1: ate 32KB = ROM plana; acima,
-//                           MegaROM com mapper detectado sozinho ("auto", o
-//                           padrao) ou escolhido (gen8 gen16 konami5 konami4
-//                           ascii8 ascii16)
+//   --cart <arq> [mapper]   cartucho no slot 1: sem mapper ("auto", o padrao),
+//                           consulta o banco de ROMs pelo SHA-1 (fwmsx --romdb
+//                           cartsha, ver doc/romdb-spec.md) antes de cair na
+//                           heuristica de sempre (ate 32KB = ROM plana; acima,
+//                           MegaROM detectada pelo conteudo); ou escolhido a
+//                           dedo (gen8 gen16 konami5 konami4 ascii8 ascii16)
 //   --disk <arq.dsk>        disquete em A: (liga a interface de disco: DISK.ROM
 //                           ao lado da BIOS, no slot 3:1); --diskb para B:;
 //                           --disk-interface liga so' a interface; --diskrom

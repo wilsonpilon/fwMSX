@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "romdb/archive/unzip.h"
+#include "romdb/cli.h"
 #include "romdb/core/hash.h"
 #include "romdb/net/listing.h"
 #include "romdb/net/web.h"
@@ -199,6 +200,38 @@ int main() {
 
     db.Delete(rec.id, err);
     check(!db.Get(rec.id, again), "Delete: ROM removida");
+
+    // --- verify (fwmsx --romdb verify): SHA-1 atual do arquivo x SHA-1 no banco ---------
+    {
+        const fs::path vtmp = tmp / "verify";
+        fs::create_directories(vtmp / "cartuchos");
+        const std::string content_ok = "conteudo que nao muda";
+        const std::string content_original = "conteudo original";
+        WriteText(vtmp / "cartuchos" / "ok.rom", content_ok);
+        WriteText(vtmp / "cartuchos" / "alterado.rom", content_original);
+
+        romdb::RomDb vdb;
+        std::string verr;
+        check(vdb.Open((vtmp / "roms.db").string(), verr), "verify: banco aberto");
+        int64_t vadded = 0, vupdated = 0;
+        check(vdb.ScanDirectory(vtmp.string(), vtmp.string(), "scan", vadded, vupdated, verr) && vadded == 2,
+              "verify: 2 ROMs cadastradas (ok.rom, alterado.rom)");
+
+        check(romdb::RunRomDbCommand({"verify", "--roms", vtmp.string()}, "fwmsx") == 0,
+              "verify: codigo 0 quando tudo bate ainda");
+
+        // Adultera um arquivo DEPOIS de cadastrado, e apaga o outro -- os dois tem que ser pegos.
+        WriteText(vtmp / "cartuchos" / "alterado.rom", "conteudo DIFERENTE do cadastrado");
+        fs::remove(vtmp / "cartuchos" / "ok.rom", ec);
+        check(romdb::RunRomDbCommand({"verify", "--roms", vtmp.string()}, "fwmsx") == 1,
+              "verify: codigo 1 com um arquivo alterado e outro faltando");
+
+        // Restaura os dois certinho: verify volta a dar codigo 0.
+        WriteText(vtmp / "cartuchos" / "ok.rom", content_ok);
+        WriteText(vtmp / "cartuchos" / "alterado.rom", content_original);
+        check(romdb::RunRomDbCommand({"verify", "--roms", vtmp.string()}, "fwmsx") == 0,
+              "verify: codigo 0 de novo depois de restaurar os arquivos");
+    }
 
     fs::remove_all(tmp, ec);
     std::printf("\nromdbtest: %s (%d falha(s))\n", g_failures == 0 ? "OK" : "FALHOU", g_failures);

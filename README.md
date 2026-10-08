@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.24.0 "King's Valley: Banco de Fitas (Metadados)")
+## Estado atual (v1.25.0 "King's Valley: Banco de ROMs: Mapper e Verificacao")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -40,7 +40,9 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 - **Som**: PSG, SCC e **FM (MSX-MUSIC e FM-PAC)** com os comandos de BASIC (`CALL MUSIC`, `PLAY #n`, `CALL VOICE`), modo ritmo e saida ao vivo.
 - **Layout de slots mais amplo**: RAM de 16 KB no fim da celula, RAM de 32 KB em duas celulas, mapper de 64 KB a 4 MB (varios mappers), BIOS Expert 1.1 subindo.
 - **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): baixa o fMSX 6.0, o System ROMs do file-hunter e o banco
-  do Vampier; busca, edicao e identificacao. As ROMs nao vem com o emulador (ver [romdb-spec.md](doc/romdb-spec.md)).
+  do Vampier; busca, edicao e identificacao; `verify` confere o SHA-1 de cada ROM contra o banco (arquivo
+  faltando/alterado); `--cart` sem mapper explicito consulta o banco (SHA-1) antes da heuristica por tamanho.
+  As ROMs nao vem com o emulador (ver [romdb-spec.md](doc/romdb-spec.md)).
 - **Configuracao**: menu **Maquina > Configuracao de slots...**: 16 celulas (BIOS, BASIC, RAM de 16 a 64 KB, mapper de 64 a 1024 KB, cartucho, disco, sub-ROM e FM-PAC).
 - **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- confirmados na tela.
 
@@ -78,8 +80,9 @@ Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 
 1.14.0 CPIR/CPDR em Assembly; 1.15.0 MSX2+ (V9958); 1.16.0 janela com menus e filtros; 1.17.0 FM com
 BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas; 1.19.x fita (leitura);
 1.20.x fita (gravacao); 1.21.0 empacotador `.BIN`/`.BAS` -> `.TSX` (`--cas pack`); 1.22.0 ripper de
-`.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; **1.24.0 banco de fitas com
-metadados (`--fitadb`, sem download)**. Detalhes em
+`.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; 1.24.0 banco de fitas com
+metadados (`--fitadb`, sem download); **1.25.0 banco de ROMs com `verify` e auto-mapper pelo
+SHA-1**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

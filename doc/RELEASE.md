@@ -13,6 +13,43 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.25.0 -- "King's Valley: Banco de ROMs: Mapper e Verificacao" (2026-10-08)
+
+**Fase:** "passo 3" desta leva de sessoes, pedido pelo usuario em sequencia logo depois do banco
+de fitas: os dois itens pendentes do banco de ROMs listados em `doc/romdb-spec.md`, secao 8 --
+"Carregar pelo banco" (escolher o mapper) e "Verificar as ROMs baixadas contra o SHA-1 conhecido".
+
+### O que foi feito
+
+- **Auto-mapper**: `src/machine/cli.cpp::RunMachineCommand` ganhou `TryMapperFromRomDb()`, chamada
+  depois do parse de argumentos e antes de montar a maquina -- SO' quando `--cart` foi dado SEM
+  mapper explicito (nova flag local `cart_mapper_explicit` distingue "usuario escolheu" de "auto"/
+  omitido, que antes eram indistinguiveis). Calcula o SHA-1 do arquivo do cartucho e consulta
+  `RomDb::CartMapper()` (a tabela `cart_mappers`, ja' preenchida por `fwmsx --romdb cartsha`); se
+  encontrar, converte o numero do mapper do fMSX original (0-5) para o enum publico
+  `MemMapMapperType` (`FmsxMapperToMemMap()`, so' soma 1 -- `MEMMAP_MAPPER_NONE` fica antes de
+  `GEN8` no enum) e usa esse mapper. Decisao importante: o ponto de insercao fica em `cli.cpp`
+  (dentro do executavel `fwMSX`, que ja' linka SQLite/romdb), NAO em `machine.cpp`/`LoadRomCell` --
+  ali o fallback por tamanho/conteudo (`memmap::GuessMapper()`) fica intacto, e `machinetest`/
+  `msx2test` continuam sem precisar linkar SQLite.
+- **`fwmsx --romdb verify`**: novo comando em `src/romdb/cli.cpp` (sem mudar a classe `RomDb`) --
+  para cada ROM cadastrada, recalcula o SHA-1 do arquivo no caminho resolvido (`ResolveRomPath()`,
+  relativo a' pasta de ROMs quando o caminho guardado for relativo) e compara com o SHA-1 gravado
+  no banco. Reporta cada ROM faltando ou com SHA-1 divergente, e devolve codigo de saida 1 se
+  achar algum problema (0 se tudo bater) -- pensado para uso em script.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.25.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.25.0-linux.tar.gz`.
+- `ctest`: 18 suites (`romdbtest`/`romdb_store` com 3 checagens novas de `verify`). Windows:
+  18/18. Linux: 18/18.
+- Smoke test manual (executavel isolado, SEM tocar no banco de ROMs real do usuario): um cartucho
+  sintetico de 64KB cadastrado no banco com mapper Konami5 via `--romdb cartsha` foi carregado com
+  `--cart` SEM mapper e escolheu Konami5 sozinho (confirmado por `cart_info()`); um mapper
+  explicito (`ascii8`) continuou tendo prioridade sobre o banco; um cartucho desconhecido caiu no
+  fallback de sempre (heuristica por conteudo) sem erro.
+
 ## v1.24.0 -- "King's Valley: Banco de Fitas (Metadados)" (2026-10-08)
 
 **Fase:** segundo item que o usuario pediu na sequencia nesta rodada (depois de confirmar que o

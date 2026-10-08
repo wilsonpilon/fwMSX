@@ -2,19 +2,32 @@
 #include "cli.h"
 
 #include <cstdlib>
+#include <filesystem>
 #include <iostream>
 
+#include "core/hash.h"
 #include "service.h"
 #include "store/romdb.h"
 
 namespace romdb {
 namespace {
 
+namespace fs = std::filesystem;
+
 // Nome para mostrar: o nome do jogo, ou o nome do arquivo quando nao ha nome.
 std::string DisplayName(const RomRecord &r) {
     if (!r.name.empty()) return r.name;
     const size_t slash = r.path.find_last_of("/\\");
     return slash == std::string::npos ? r.path : r.path.substr(slash + 1);
+}
+
+// `rec.path` fica RELATIVO a' pasta de ROMs quando o arquivo esta' dentro
+// dela (ver RomDb::ScanFile()/RelativeTo() em store/romdb.cpp); senao e' o
+// caminho completo original. Reconstroi o caminho de verdade para abrir o
+// arquivo (usado por `verify`).
+std::string ResolveRomPath(const RomPaths &paths, const RomRecord &rec) {
+    const fs::path p(rec.path);
+    return p.is_absolute() ? rec.path : (fs::path(paths.root) / p).string();
 }
 
 void PrintRom(const RomRecord &r) {
@@ -82,6 +95,8 @@ void PrintHelp() {
                  "  del <id>                    remove a ROM do banco (o arquivo nao e' apagado)\n"
                  "  vsearch <texto>             busca no banco do Vampier (jogo, ROM, SHA-1)\n"
                  "  identify                    preenche os nomes que o Vampier conhece\n"
+                 "  verify [--cat c]            recalcula o SHA-1 de cada ROM e confere contra o banco\n"
+                 "                              (achou faltando/alterada: codigo de saida 1)\n"
                  "  stats                       contagem por categoria e estado dos bancos\n"
                  "\n"
                  "Categorias: bios, interface, cartucho, disco, tabela, outro.\n"
@@ -114,7 +129,8 @@ int RunRomDbCommand(const std::vector<std::string> &args_in, const std::string &
     // Comandos que nao precisam do banco aberto ainda.
     if (cmd == "fmsx" || cmd == "filehunter" || cmd == "filehunter-full" || cmd == "filehunter-get" ||
         cmd == "vampier" || cmd == "scan" || cmd == "cartsha" || cmd == "add" || cmd == "list" || cmd == "search" ||
-        cmd == "show" || cmd == "edit" || cmd == "del" || cmd == "vsearch" || cmd == "identify" || cmd == "stats") {
+        cmd == "show" || cmd == "edit" || cmd == "del" || cmd == "vsearch" || cmd == "identify" || cmd == "stats" ||
+        cmd == "verify") {
         if (!OpenRomDb(paths, db, error)) return Fail(error);
     }
 
@@ -274,6 +290,38 @@ int RunRomDbCommand(const std::vector<std::string> &args_in, const std::string &
         }
         std::cout << "Vampier importado: " << (db.HasVampier() ? "sim" : "nao") << "\n";
         return 0;
+    }
+
+    if (cmd == "verify") {
+        // Recalcula o SHA-1 de cada ROM cadastrada e confere contra o que
+        // esta' gravado no banco -- detecta arquivo faltando ou alterado
+        // desde que foi cadastrado (ver doc/romdb-spec.md, secao 8:
+        // "Verificar as ROMs baixadas contra o SHA-1 conhecido ... e marcar
+        // as que batem").
+        std::string category;
+        for (size_t i = 1; i < args.size(); ++i)
+            if (args[i] == "--cat") category = Option(args, i);
+        const std::vector<RomRecord> roms = db.Search("", category);
+        int64_t ok = 0, divergente = 0, faltando = 0;
+        for (const RomRecord &r : roms) {
+            const std::string full_path = ResolveRomPath(paths, r);
+            std::vector<uint8_t> bytes;
+            if (!ReadWholeFile(full_path, bytes)) {
+                std::cout << "FALTANDO    " << r.id << "\t" << DisplayName(r) << "\t" << full_path << std::endl;
+                ++faltando;
+                continue;
+            }
+            const std::string sha1 = Sha1Hex(bytes.data(), bytes.size());
+            if (sha1 == r.sha1) {
+                ++ok;
+            } else {
+                std::cout << "DIVERGENTE  " << r.id << "\t" << DisplayName(r) << "\t" << full_path << std::endl;
+                ++divergente;
+            }
+        }
+        std::cout << ok << " ok, " << divergente << " divergente(s), " << faltando << " faltando, de " << roms.size()
+                   << " no total." << std::endl;
+        return (divergente == 0 && faltando == 0) ? 0 : 1;
     }
 
     std::cerr << "fwmsx --romdb: comando desconhecido '" << cmd << "'\n";

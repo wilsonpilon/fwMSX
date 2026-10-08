@@ -12,6 +12,8 @@
 #include "../psg/cpp/wav_writer.h"
 #include "gui/emu_window.h"
 #include "../romdb/service.h"
+#include "../romdb/core/hash.h"
+#include "../romdb/store/romdb.h"
 #include "machine.h"
 
 namespace machine {
@@ -28,6 +30,41 @@ bool ParseMapper(const std::string &s, MemMapMapperType &out) {
     if (s == "ascii8") { out = MEMMAP_MAPPER_ASCII8; return true; }
     if (s == "ascii16") { out = MEMMAP_MAPPER_ASCII16; return true; }
     return false;
+}
+
+// Numero do mapper do fMSX original (CARTS.SHA/cart_mappers do romdb, 0-5 --
+// ver resource/fMSX/fMSX/MSX.h, MAP_GEN8..MAP_ASCII16) para o enum publico
+// MemMapMapperType (que tem MEMMAP_MAPPER_NONE=0 antes de GEN8): soma 1.
+// Qualquer outro valor (desconhecido, ou um mapper que o fwMSX nao suporta)
+// devolve false -- o chamador cai no fallback por tamanho/heuristica de
+// sempre (machine.cpp::LoadRomCell -> memmap::GuessMapper()), sem mudanca.
+bool FmsxMapperToMemMap(int n, MemMapMapperType &out) {
+    if (n < 0 || n > 5) return false;
+    out = static_cast<MemMapMapperType>(n + 1);
+    return true;
+}
+
+// Se o usuario NAO escolheu um mapper a dedo para --cart, consulta o banco
+// de ROMs (fwmsx --romdb cartsha, ja' importado previamente) pelo SHA-1 do
+// arquivo -- so' uma CAMADA OPCIONAL antes da heuristica por tamanho/
+// conteudo de sempre (ver doc/romdb-spec.md, secao 8: "o emulador ainda nao
+// usa o banco para escolher o mapper"). Falha em qualquer etapa (sem banco,
+// sem arquivo, SHA-1 desconhecido) e' SILENCIOSA -- isto e' um atalho, nao
+// um requisito; o fallback de sempre continua intacto em machine.cpp.
+void TryMapperFromRomDb(MachineConfig &config, const std::string &argv0) {
+    const romdb::RomPaths paths = romdb::DefaultRomPaths(argv0);
+    romdb::RomDb db;
+    std::string db_error;
+    if (!romdb::OpenRomDb(paths, db, db_error)) return;
+    std::vector<uint8_t> cart_bytes;
+    if (!romdb::ReadWholeFile(config.cart_path, cart_bytes)) return;
+    const std::string sha1 = romdb::Sha1Hex(cart_bytes.data(), cart_bytes.size());
+    const int fmsx_mapper = db.CartMapper(sha1);
+    MemMapMapperType mapper{};
+    if (FmsxMapperToMemMap(fmsx_mapper, mapper)) {
+        config.cart_mapper = mapper;
+        std::cout << "fwmsx --msx: mapper do cartucho pelo banco de ROMs (CARTS.SHA)" << std::endl;
+    }
 }
 
 // BIOS padrao: resource/fMSX/ROMs/MSX.ROM a partir do diretorio de trabalho,
@@ -132,6 +169,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     bool dump_text = false;
     bool fm_stat = false;
     bool fmpac_explicit = false;
+    bool cart_mapper_explicit = false; // true so' quando o usuario ESCOLHEU um mapper (nao "auto"/omitido)
     std::vector<std::string> slot_specs;
     std::string wav_path;
     std::vector<int16_t> wav_samples;
@@ -221,6 +259,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
                               << "' (use auto, gen8, gen16, konami5, konami4, ascii8 ou ascii16)" << std::endl;
                     return 2;
                 } else {
+                    cart_mapper_explicit = true;
                     ++i;
                 }
             }
@@ -291,6 +330,10 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             std::cerr << "fwmsx --msx: argumento desconhecido: '" << a << "'" << std::endl;
             return 2;
         }
+    }
+
+    if (!config.cart_path.empty() && config.cart_mapper == MEMMAP_MAPPER_NONE && !cart_mapper_explicit) {
+        TryMapperFromRomDb(config, argv0);
     }
 
     if (config.fmpac_rom_path == "auto") {

@@ -30,7 +30,12 @@ no `.gitignore`). O banco guarda o hash, o nome e o caminho local, nao o conteud
   (relativo a pasta de ROMs, sempre com `/`), `source` (fmsx, filehunter, vampier,
   scan, manual), `notes`, `updated`.
 - `cart_mappers`: `sha1` -> `mapper`, importado do `CARTS.SHA`. Quando uma ROM
-  e' cadastrada, o mapper e' preenchido por esta tabela.
+  e' cadastrada, o mapper e' preenchido por esta tabela. **Desde a 1.25.0**, tambem e' consultada
+  ao CARREGAR um cartucho: `--msx --cart <arquivo>` sem mapper explicito calcula o SHA-1 do
+  arquivo e chama `RomDb::CartMapper()` ANTES de cair na heuristica por tamanho/conteudo de sempre
+  (`memmap::GuessMapper()`) -- ver `src/machine/cli.cpp::TryMapperFromRomDb()`. O numero do mapper
+  do fMSX (0-5, `CARTS.SHA`) e' convertido para o enum publico `MemMapMapperType` somando 1
+  (`FmsxMapperToMemMap()`, ja' que `MEMMAP_MAPPER_NONE=0` vem antes de `GEN8` no enum).
 - `meta`: reservado.
 - `msxdb_romdetails`, `msxdb_rominfo`, `msxdb_company`: as tabelas do Vampier, criadas
   pelo proprio dump SQL e recriadas a cada importacao.
@@ -72,7 +77,8 @@ Downloads: `fmsx`, `filehunter [caminho]`, `filehunter-full [--data DD-MM-AAAA]`
 Banco: `scan <pasta>`, `cartsha <arquivo>`, `add <arquivo> [--cat --hw --nome --notas]`,
 `list [--cat]`, `search <texto> [--cat]`, `show <id|sha1>`,
 `edit <id> [--cat --hw --nome --mapper --notas]`, `del <id>` (o arquivo nao e' apagado),
-`vsearch <texto>`, `identify`, `stats`.
+`vsearch <texto>`, `identify`, `verify [--cat]` (recalcula o SHA-1 de cada ROM e confere contra o
+banco -- codigo de saida 1 se achar arquivo faltando ou alterado, ver secao 8), `stats`.
 
 ## 6. Janela (`src/machine/gui/rom_manager.{h,cpp}`)
 
@@ -96,21 +102,24 @@ Banco: `scan <pasta>`, `cartsha <arquivo>`, `add <arquivo> [--cat --hw --nome --
   baixou o Full Set de 15-08-2026 (687 arquivos processados, 534 ROMs unicas);
   `identify` deu nome a 531 ROMs; `filehunter-get` baixou um arquivo avulso; o CRUD
   (`show`, `edit`, `del`) foi conferido numa ROM real.
-- **Janela**: compila e abre sem erro. O menu e as janelas **nao foram operados
-  visualmente**.
+- **Janela**: menu ROMs, Banco de ROMs, Navegar file-hunter -- **confirmados na tela pelo usuario
+  em 2026-10-07** (ver `doc/SPEC.md`, secao 5.0).
 
 ## 8. O que falta
 
-- **Janela**: testar o menu e as janelas na tela; barra de progresso; cancelar um
-  download; continuar um download interrompido.
+- **Janela**: barra de progresso; cancelar um download; continuar um download interrompido.
 - **Vampier em JSON**: so' o SQL foi usado. O JSON (`json-msxromsdb.zip`) nao foi
   importado.
 - **Parser do file-hunter**: depende do HTML atual do Abyss. Se mudar, o parser
   precisa de ajuste.
-- **Verificar as ROMs baixadas** contra o SHA-1 conhecido (Vampier/CARTS.SHA) e
-  marcar as que batem.
-- **Carregar pelo banco**: o emulador ainda nao usa o banco para escolher o mapper
-  (o `CARTS.SHA` ja esta importado) nem para montar a maquina (layout por nome).
+- [x] **Verificar as ROMs baixadas contra o SHA-1 conhecido** (1.25.0): `fwmsx --romdb verify`
+  recalcula o SHA-1 de cada ROM cadastrada e confere contra o banco -- reporta arquivo faltando ou
+  alterado desde que foi cadastrado, codigo de saida 1 se achar algum problema. Ver secao 5
+  (comandos) e `doc/CHANGELOG.md`, `[1.25.0]`.
+- [x] **Carregar pelo banco: escolher o mapper** (1.25.0): `--cart <arquivo>` SEM mapper explicito
+  agora consulta o banco (`CARTS.SHA` ja' importado) pelo SHA-1 do cartucho ANTES da heuristica por
+  tamanho/conteudo de sempre (`memmap::GuessMapper()`, que continua intacta como fallback). Montar
+  a maquina pelo banco (layout por nome) continua pendente.
 - **Frontend para jogar** (biblioteca de jogos e imagens): depois, sobre este banco.
 - **Controle externo** (estilo openMSX): outra fase, em `doc/SPEC.md`.
 - **Politica de distribuicao**: as ROMs nao vao no pacote. Esta regra precisa ser
@@ -125,6 +134,8 @@ Banco: `scan <pasta>`, `cartsha <arquivo>`, `add <arquivo> [--cat --hw --nome --
 - `src/romdb/store/romdb.{h,cpp}` -- banco SQLite.
 - `src/romdb/store/classify.{h,cpp}` -- categorias e pastas.
 - `src/romdb/service.{h,cpp}` -- fluxos de download.
-- `src/romdb/cli.{h,cpp}` -- `fwmsx --romdb`.
+- `src/romdb/cli.{h,cpp}` -- `fwmsx --romdb` (inclui `verify`, 1.25.0).
 - `src/machine/gui/rom_manager.{h,cpp}` -- menu ROMs e janelas.
+- `src/machine/cli.cpp` -- `TryMapperFromRomDb()`/`FmsxMapperToMemMap()` (1.25.0): consulta o
+  banco de ROMs para escolher o mapper do cartucho, ver secao 2.
 - `tests/romdb/romdb_test.cpp` -- `romdbtest`.
