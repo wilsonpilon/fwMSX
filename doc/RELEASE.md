@@ -13,6 +13,68 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.29.0 -- "King's Valley: Save-state" (2026-10-08)
+
+**Fase:** item 5 de "vamos fazer o 1, o 4 e o 5 na sequencia" (item 4, MSX-DOS 2, foi a 1.28.0) --
+o ultimo item dessa sequencia pedida pelo usuario. Pedido explicito logo depois da 1.28.0:
+"prepare o item 4 e 5 entao na sequencia".
+
+### Decisao de design: sobrepor na maquina ja' rodando, nao recriar do zero
+
+A alternativa "completa" seria serializar o `MachineConfig` inteiro (caminhos de BIOS/
+cartucho/disco/fita + layout de slots) e recriar a `Machine` do zero ao carregar. Decisao: NAO
+fazer isso em v1 -- `LoadState()` aplica direto sobre a `Machine` ja' rodando, pressupondo que a
+MESMA midia continua carregada (como a maioria dos emuladores reais: carregar o estado errado
+sobre o jogo errado produz imagem/som estranhos, nunca um erro). Isso eliminou toda a
+complexidade de serializar/validar caminhos de arquivo e reconstruir o layout de slots.
+
+A pesquisa de onde a feature deveria entrar na interface tambem veio do PROPRIO codigo: o menu
+**Arquivo** ja tinha um item desabilitado "Salvar estado (em breve)" desde a janela com menus
+(1.16.0) -- a localizacao e o padrao de dialogo de arquivo (`ShowSaveFileDialog`/
+`ShowOpenFileDialog`, o mesmo ja usado por "Nova fita...") ja estavam decididos pelo proprio
+projeto, sem precisar perguntar ao usuario.
+
+### O que foi feito
+
+- `Machine::SaveState()`/`Machine::LoadState()` (`src/machine/machine.{h,cpp}`): formato
+  binario proprio TLV (tag de 4 bytes + tamanho + payload), versionado, com secoes para Z80,
+  VDP (ate' `scanline_snapshot`, que e' derivado e nunca salvo), PSG (pulando `joy[]`/
+  `cassette_in`, entrada externa), SCC, OPLL, PPI (so' os registradores do chip, sem
+  `key_state`), FDC (registradores do WD2793, pela memoria e/ou pelas portas, sem o ponteiro
+  `ptr` que aponta pra dentro do buffer da imagem -- uma transferencia em andamento e' abortada
+  ao carregar em vez de arriscar um ponteiro invalido), fita (modo/protecao/modo de gravacao/
+  ponto marcado/rele do motor, sem a posicao exata de um pulso em andamento), mapper(es) de RAM
+  (registrador de segmento de cada um) e o conteudo de toda RAM/RAM de mapper.
+- `MemorySystem::MapperRamBase()` (`src/memmap/cpp/memory_system.h`): novo -- `PeekSlot`/
+  `PokeSlot` so' enxergam a vista PAGINADA agora (os 4 segmentos visiveis em 0000h-FFFFh), que
+  para um mapper de ate 1024KB (64 segmentos) deixaria de fora tudo que nao esta' paginado
+  no instante exato do save. O novo metodo devolve o buffer inteiro.
+- `RamMapperDevice::primary()`/`secondary()` (`src/memmap/cpp/ram_mapper.h`): accessors novos
+  (faltavam) para o save-state poder identificar a combinacao de slot de cada mapper.
+- Menu **Arquivo > Salvar estado.../Carregar estado...** (`src/machine/gui/emu_window.cpp`):
+  dialogo de arquivo (`.sst`), substituindo o placeholder desabilitado.
+- Testes: `machinetest`/`machine_frames`, secao 5b -- salva depois do boot + `print 1234`,
+  MUTILA a maquina de proposito (300 quadros a mais, `cls`, PC do Z80 e R7 do PSG escritos
+  direto para valores errados -- prova que a restauracao NAO e' coincidencia), recarrega e
+  confere PC/R7/VRAM inteira restaurados byte a byte, mais os 2 caminhos de erro (arquivo
+  inexistente, assinatura errada).
+
+### Erro cometido e corrigido nesta rodada (de novo)
+
+A mesma licao da 1.28.0 se repetiu: a primeira build desta feature (so' para rodar os testes)
+foi feita ANTES de bumpar a versao, sobrescrevendo `dist/fwMSX-1.28.0.zip`/`dist/fwMSX.exe` ja
+publicados. Detectado com `git status --short dist/` ANTES de qualquer commit; corrigido com
+`git checkout -- dist/fwMSX-1.28.0.zip dist/fwMSX.exe`, so' DEPOIS bumpando a versao para 1.29.0
+e reconstruindo do zero. Nenhum dado publicado foi perdido.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.29.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.29.0-linux.tar.gz`.
+- `ctest`: 18 suites, incluindo a secao 5b nova do `machinetest`/`machine_frames`. Windows:
+  18/18. Linux: 18/18.
+- **Nao verificado ainda**: o fluxo da janela de verdade (so' a API tem teste automatizado).
+
 ## v1.28.0 -- "King's Valley: MSX-DOS 2 (cartucho generico)" (2026-10-08)
 
 **Fase:** item 4 de "vamos fazer o 1, o 4 e o 5 na sequencia" (item 1, efeitos de rastreio, foi a

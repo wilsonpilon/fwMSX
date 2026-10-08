@@ -1,6 +1,8 @@
 #include "machine.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstring>
 #include <fstream>
 #include <iterator>
 
@@ -528,6 +530,37 @@ void Machine::EjectTape() { tape_->Eject(); }
 void Machine::RewindTape() { tape_->Rewind(); }
 void Machine::SetTapeMode(tape::TapeMode mode) { tape_->SetMode(mode); }
 
+namespace {
+
+// Formato de save-state do fwMSX (ver doc/savestate-spec.md): cabecalho fixo
+// (assinatura + versao + modelo + contador de quadros) seguido de secoes
+// TLV (tag de 4 bytes + tamanho de 4 bytes + payload). TLV permite que uma
+// versao futura adicione secoes novas sem quebrar leitores antigos (secao
+// desconhecida e' simplesmente pulada) -- mesmo raciocinio do TZX (ver
+// doc/tape-spec.md). NAO e' um formato portavel entre SO (os structs sao
+// gravados quase crus, o layout de padding pode diferir entre MSVC e GCC) --
+// um estado so' e' garantido carregar de volta no MESMO build que o salvou;
+// ver a nota de escopo em Machine::SaveState() (machine.h).
+constexpr char kStateMagic[8] = {'F', 'W', 'M', 'S', 'X', 'S', 'S', 'T'};
+constexpr uint32_t kStateFormatVersion = 1;
+
+void WriteRaw(std::ofstream &f, const void *data, std::size_t len) {
+    f.write(reinterpret_cast<const char *>(data), static_cast<std::streamsize>(len));
+}
+
+void WriteU32(std::ofstream &f, uint32_t v) { WriteRaw(f, &v, sizeof(v)); }
+void WriteU64(std::ofstream &f, uint64_t v) { WriteRaw(f, &v, sizeof(v)); }
+
+void WriteSection(std::ofstream &f, const char tag[4], const void *data, uint32_t len) {
+    WriteRaw(f, tag, 4);
+    WriteU32(f, len);
+    if (len) WriteRaw(f, data, len);
+}
+
+bool TagIs(const char tag[4], const char *lit) { return std::memcmp(tag, lit, 4) == 0; }
+
+} // namespace
+
 bool Machine::SaveSram(std::string &error) {
     memmap::MemorySystem &mem = *startup_.memory_system;
     for (const SramTarget &t : sram_targets_) {
@@ -549,6 +582,271 @@ bool Machine::sram_dirty() const {
         if (mem.HasSram(t.primary, t.secondary) && mem.SramDirty(t.primary, t.secondary)) return true;
     }
     return false;
+}
+
+bool Machine::SaveState(const std::string &path, std::string &error) const {
+    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+    if (!f) {
+        error = "nao foi possivel criar '" + path + "'";
+        return false;
+    }
+
+    WriteRaw(f, kStateMagic, sizeof(kStateMagic));
+    WriteU32(f, kStateFormatVersion);
+    const uint8_t model_byte = static_cast<uint8_t>(model_);
+    WriteRaw(f, &model_byte, 1);
+    WriteU64(f, frame_count_);
+
+    // Z80: so' os registradores de verdade -- iperiod/icount/ibackup/
+    // irequest/iautoreset/trapbadops/user_data ficam de fora (bookkeeping
+    // interno do core ou ponteiro do host, nunca "estado de jogo"; ver
+    // Z80State em src/z80/common/z80_state.h).
+    WriteSection(f, "Z80 ", &cpu_->state(), static_cast<uint32_t>(offsetof(Z80State, iperiod)));
+
+    // VDP: tudo ate' scanline_snapshot (array derivado, recomputado a cada
+    // RunFrame() -- nao faz sentido salvar, ver vdp_state.h).
+    const VdpState &vdp = startup_.vdp_device->state();
+    WriteSection(f, "VDP ", &vdp, static_cast<uint32_t>(offsetof(VdpState, scanline_snapshot)));
+
+    // PSG: prefixo (r..env_hold) + sufixo (cycle_acc..box_count), pulando
+    // joy[]/cassette_in -- "mundo externo" (joystick/fita), preservado do
+    // estado AO VIVO ao carregar, nunca sobrescrito pelo save.
+    {
+        const PsgState &p = startup_.psg_device->state();
+        const std::size_t prefix_len = offsetof(PsgState, joy);
+        const std::size_t suffix_off = offsetof(PsgState, cycle_acc);
+        const std::size_t suffix_len = sizeof(PsgState) - suffix_off;
+        std::vector<uint8_t> buf(prefix_len + suffix_len);
+        std::memcpy(buf.data(), &p, prefix_len);
+        std::memcpy(buf.data() + prefix_len, reinterpret_cast<const uint8_t *>(&p) + suffix_off, suffix_len);
+        WriteSection(f, "PSG ", buf.data(), static_cast<uint32_t>(buf.size()));
+    }
+
+    // SCC e OPLL: sempre existem (construidos incondicionalmente em
+    // Create(), mesmo quando nao ha' cartucho SCC/FM-PAC -- ver o
+    // comentario de scc_/fm_ em machine.h), sem campo "mundo externo"
+    // nenhum a excluir.
+    WriteSection(f, "SCC ", &scc_->state(), static_cast<uint32_t>(sizeof(SccState)));
+    WriteSection(f, "OPLL", &fm_->state(), static_cast<uint32_t>(sizeof(Ym2413State)));
+
+    // PPI: so' os registradores do chip (r/rout/rin); key_state (ultimo
+    // campo) fica de fora -- teclas pressionadas sao entrada do mundo
+    // externo, nao estado da maquina (ver doc/ppi-spec.md).
+    {
+        const PpiState &ppi = startup_.ppi_device->state();
+        WriteSection(f, "PPI ", &ppi, static_cast<uint32_t>(offsetof(PpiState, key_state)));
+    }
+
+    // Controladora de disco (pela memoria OU pelas portas, nunca as duas ao
+    // mesmo tempo -- ver doc/fdc-spec.md): so' os registradores do WD2793,
+    // ate' (sem incluir) `ptr`/`disk[]` (ponteiros para dentro da imagem
+    // em disco, que continua a mesma -- recarregar o `ptr` exato de uma
+    // transferencia em andamento nao e' suportado, ver a nota de escopo em
+    // machine.h: uma transferencia em andamento no instante do save e'
+    // abortada ao carregar, nunca deixada com um ponteiro invalido).
+    if (fdc_) WriteSection(f, "FDCM", &fdc_->fdc(), static_cast<uint32_t>(offsetof(Fdc, ptr)));
+    if (port_fdc_) WriteSection(f, "FDCP", &port_fdc_->fdc(), static_cast<uint32_t>(offsetof(Fdc, ptr)));
+
+    // Fita: so' os campos pequenos que decidem o comportamento do proximo
+    // TAPION/TAPOON (modo, protecao, modo de gravacao, ponto marcado, rele
+    // do motor) -- a posicao exata de um pulso em andamento no modo Normal
+    // fica de fora (mesma logica da nota do FDC acima).
+    {
+        const uint8_t mode_byte = static_cast<uint8_t>(tape_->mode());
+        const uint8_t read_only_byte = tape_->read_only() ? 1 : 0;
+        const uint8_t write_mode_byte = static_cast<uint8_t>(tape_->write_mode());
+        const uint8_t motor_byte = tape_->motor_on() ? 1 : 0;
+        const uint64_t marked = static_cast<uint64_t>(tape_->marked_file());
+        uint8_t buf[4 + 8];
+        buf[0] = mode_byte;
+        buf[1] = read_only_byte;
+        buf[2] = write_mode_byte;
+        buf[3] = motor_byte;
+        std::memcpy(buf + 4, &marked, 8);
+        WriteSection(f, "TAPE", buf, sizeof(buf));
+    }
+
+    // Mapper(es) de RAM (MSX2, portas FCh-FFh): um por celula Mapper do
+    // layout -- registrador de segmento (4 paginas) de cada um.
+    {
+        std::vector<uint8_t> buf;
+        const uint32_t count = static_cast<uint32_t>(mappers_.size());
+        buf.resize(4 + static_cast<std::size_t>(count) * 6);
+        std::memcpy(buf.data(), &count, 4);
+        std::size_t off = 4;
+        for (const auto &m : mappers_) {
+            buf[off + 0] = static_cast<uint8_t>(m->primary());
+            buf[off + 1] = static_cast<uint8_t>(m->secondary());
+            for (int page = 0; page < 4; ++page) buf[off + 2 + page] = m->segment(page);
+            off += 6;
+        }
+        WriteSection(f, "MAPR", buf.data(), static_cast<uint32_t>(buf.size()));
+    }
+
+    // Conteudo de RAM: toda combinacao (primario,secundario) que e' RAM
+    // comum ou RAM de mapper (SRAM de cartucho/FM-PAC fica de fora -- ja'
+    // persiste sozinha no .sav, ver SaveSram() acima). RAM de mapper usa
+    // MapperRamBase() (buffer inteiro, ate' 1024KB) porque PeekSlot so'
+    // enxerga os 4 segmentos PAGINADOS agora, nao o mapper inteiro.
+    {
+        const memmap::MemorySystem &mem = *startup_.memory_system;
+        for (int primary = 0; primary < MEMMAP_PRIMARY_SLOTS; ++primary) {
+            for (int secondary = 0; secondary < MEMMAP_SECONDARY_SLOTS; ++secondary) {
+                const int segments = mem.MapperSegments(primary, secondary);
+                std::vector<uint8_t> payload;
+                std::size_t size = 0;
+                if (segments > 0) {
+                    size = static_cast<std::size_t>(segments) * 0x4000;
+                    const uint8_t *base = mem.MapperRamBase(primary, secondary);
+                    payload.assign(base, base + size);
+                } else if (mem.Describe(primary, secondary).kind == MEMMAP_KIND_RAM) {
+                    size = mem.Describe(primary, secondary).size;
+                    payload.resize(size);
+                    for (std::size_t i = 0; i < size; ++i)
+                        payload[i] = mem.PeekSlot(primary, secondary, static_cast<uint16_t>(i));
+                } else {
+                    continue;
+                }
+                std::vector<uint8_t> buf(2 + 4 + size);
+                buf[0] = static_cast<uint8_t>(primary);
+                buf[1] = static_cast<uint8_t>(secondary);
+                const uint32_t size32 = static_cast<uint32_t>(size);
+                std::memcpy(buf.data() + 2, &size32, 4);
+                if (size) std::memcpy(buf.data() + 6, payload.data(), size);
+                WriteSection(f, "RAM ", buf.data(), static_cast<uint32_t>(buf.size()));
+            }
+        }
+    }
+
+    if (!f) {
+        error = "erro gravando '" + path + "'";
+        return false;
+    }
+    return true;
+}
+
+bool Machine::LoadState(const std::string &path, std::string &error) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) {
+        error = "nao foi possivel abrir '" + path + "'";
+        return false;
+    }
+
+    char magic[8];
+    if (!f.read(magic, sizeof(magic)) || std::memcmp(magic, kStateMagic, sizeof(magic)) != 0) {
+        error = "'" + path + "' nao e' um estado salvo do fwMSX";
+        return false;
+    }
+    uint32_t version = 0;
+    if (!f.read(reinterpret_cast<char *>(&version), sizeof(version)) || version != kStateFormatVersion) {
+        error = "'" + path + "': versao de formato de estado desconhecida";
+        return false;
+    }
+    uint8_t model_byte = 0;
+    if (!f.read(reinterpret_cast<char *>(&model_byte), 1)) {
+        error = "'" + path + "': arquivo truncado";
+        return false;
+    }
+    if (static_cast<Model>(model_byte) != model_) {
+        error = "'" + path + "' foi salvo numa maquina diferente (MSX1/MSX2/MSX2+)";
+        return false;
+    }
+    uint64_t saved_frame_count = 0;
+    if (!f.read(reinterpret_cast<char *>(&saved_frame_count), sizeof(saved_frame_count))) {
+        error = "'" + path + "': arquivo truncado";
+        return false;
+    }
+
+    memmap::MemorySystem &mem = *startup_.memory_system;
+    char tag[4];
+    while (f.read(tag, sizeof(tag))) {
+        uint32_t len = 0;
+        if (!f.read(reinterpret_cast<char *>(&len), sizeof(len))) break;
+        std::vector<uint8_t> payload(len);
+        if (len && !f.read(reinterpret_cast<char *>(payload.data()), len)) break;
+
+        if (TagIs(tag, "Z80 ")) {
+            if (payload.size() != offsetof(Z80State, iperiod)) continue;
+            std::memcpy(&cpu_->state(), payload.data(), payload.size());
+        } else if (TagIs(tag, "VDP ")) {
+            if (payload.size() != offsetof(VdpState, scanline_snapshot)) continue;
+            std::memcpy(&startup_.vdp_device->state(), payload.data(), payload.size());
+        } else if (TagIs(tag, "PSG ")) {
+            PsgState &p = startup_.psg_device->state();
+            const std::size_t prefix_len = offsetof(PsgState, joy);
+            const std::size_t suffix_off = offsetof(PsgState, cycle_acc);
+            const std::size_t suffix_len = sizeof(PsgState) - suffix_off;
+            if (payload.size() != prefix_len + suffix_len) continue;
+            std::memcpy(&p, payload.data(), prefix_len);
+            std::memcpy(reinterpret_cast<uint8_t *>(&p) + suffix_off, payload.data() + prefix_len, suffix_len);
+        } else if (TagIs(tag, "SCC ")) {
+            if (payload.size() != sizeof(SccState)) continue;
+            std::memcpy(&scc_->state(), payload.data(), payload.size());
+        } else if (TagIs(tag, "OPLL")) {
+            if (payload.size() != sizeof(Ym2413State)) continue;
+            std::memcpy(&fm_->state(), payload.data(), payload.size());
+        } else if (TagIs(tag, "PPI ")) {
+            if (payload.size() != offsetof(PpiState, key_state)) continue;
+            std::memcpy(&startup_.ppi_device->state(), payload.data(), payload.size());
+        } else if (TagIs(tag, "FDCM")) {
+            if (!fdc_ || payload.size() != offsetof(Fdc, ptr)) continue;
+            std::memcpy(&fdc_->fdc(), payload.data(), payload.size());
+            fdc_->fdc().wr_length = 0; // transferencia em andamento no save: abortada, nunca com ptr invalido
+            fdc_->fdc().rd_length = 0;
+        } else if (TagIs(tag, "FDCP")) {
+            if (!port_fdc_ || payload.size() != offsetof(Fdc, ptr)) continue;
+            std::memcpy(&port_fdc_->fdc(), payload.data(), payload.size());
+            port_fdc_->fdc().wr_length = 0;
+            port_fdc_->fdc().rd_length = 0;
+        } else if (TagIs(tag, "TAPE")) {
+            if (payload.size() != 12) continue;
+            tape_->SetMode(static_cast<tape::TapeMode>(payload[0]));
+            tape_->SetReadOnly(payload[1] != 0);
+            tape_->SetWriteMode(static_cast<tape::TapeWriteMode>(payload[2]));
+            const bool motor = payload[3] != 0;
+            tape_->SetMotor(motor);
+            tape_motor_prev_ = motor;
+            uint64_t marked = 0;
+            std::memcpy(&marked, payload.data() + 4, 8);
+            if (marked == static_cast<uint64_t>(tape::kNoMark)) {
+                tape_->ClearMark();
+            } else {
+                tape_->SeekToFile(static_cast<std::size_t>(marked));
+            }
+        } else if (TagIs(tag, "MAPR")) {
+            if (payload.size() < 4) continue;
+            uint32_t count = 0;
+            std::memcpy(&count, payload.data(), 4);
+            if (payload.size() != 4 + static_cast<std::size_t>(count) * 6) continue;
+            std::size_t off = 4;
+            for (uint32_t i = 0; i < count; ++i) {
+                const int primary = payload[off + 0];
+                const int secondary = payload[off + 1];
+                for (int page = 0; page < 4; ++page) mem.SetMapperSegment(primary, secondary, page, payload[off + 2 + page]);
+                off += 6;
+            }
+        } else if (TagIs(tag, "RAM ")) {
+            if (payload.size() < 6) continue;
+            const int primary = payload[0];
+            const int secondary = payload[1];
+            uint32_t size = 0;
+            std::memcpy(&size, payload.data() + 2, 4);
+            if (payload.size() != 6 + static_cast<std::size_t>(size)) continue;
+            const int segments = mem.MapperSegments(primary, secondary);
+            if (segments > 0 && static_cast<std::size_t>(segments) * 0x4000 == size) {
+                uint8_t *base = mem.MapperRamBase(primary, secondary);
+                if (base) std::memcpy(base, payload.data() + 6, size);
+            } else if (mem.Describe(primary, secondary).kind == MEMMAP_KIND_RAM &&
+                       mem.Describe(primary, secondary).size == size) {
+                for (uint32_t i = 0; i < size; ++i) mem.PokeSlot(primary, secondary, static_cast<uint16_t>(i), payload[6 + i]);
+            }
+        }
+        // Tag desconhecida (versao futura): ja' consumida (payload lido
+        // acima), so' ignorada aqui -- compatibilidade com leitores velhos.
+    }
+
+    frame_count_ = saved_frame_count;
+    return true;
 }
 
 void Machine::RunFrame() {

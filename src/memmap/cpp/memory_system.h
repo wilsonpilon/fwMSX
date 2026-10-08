@@ -85,6 +85,22 @@ public:
     // Numero de segmentos da RAM com mapper (0 se a combinacao nao tem mapper).
     int MapperSegments(int primary, int secondary) const;
 
+    // Buffer BRUTO dos MapperSegments(p,s) segmentos de 16KB inteiros da RAM
+    // com mapper (nao so' os 4 PAGINADOS agora em 0000h-FFFFh) -- PeekSlot/
+    // PokeSlot so' enxergam a vista paginada atual, insuficiente para
+    // save-state dumpar/restaurar um mapper de ate 1024KB inteiro de uma vez.
+    // nullptr se a combinacao nao tem mapper (MapperSegments() == 0).
+    uint8_t *MapperRamBase(int primary, int secondary) {
+        if (primary < 0 || primary >= MEMMAP_PRIMARY_SLOTS || secondary < 0 || secondary >= MEMMAP_SECONDARY_SLOTS)
+            return nullptr;
+        return mapper_base_[primary][secondary];
+    }
+    const uint8_t *MapperRamBase(int primary, int secondary) const {
+        if (primary < 0 || primary >= MEMMAP_PRIMARY_SLOTS || secondary < 0 || secondary >= MEMMAP_SECONDARY_SLOTS)
+            return nullptr;
+        return mapper_base_[primary][secondary];
+    }
+
     // Carrega uma imagem de ROM plana (SEM bank-switch -- isso e' Fase 3,
     // ver doc/memory-map-spec.md, secao 6) na combinacao (primary,
     // secondary). `size` deve ser multiplo de MEMMAP_CHUNK_SIZE (8KB) e

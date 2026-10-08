@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 28
+#define FWMSX_VERSION_MINOR 29
 #define FWMSX_VERSION_PATCH 0
 
 #define FWMSX_CODENAME  "King's Valley"
-#define FWMSX_SUBTITLE  "MSX-DOS 2 (cartucho generico)"
+#define FWMSX_SUBTITLE  "Save-state"

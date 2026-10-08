@@ -7,6 +7,30 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.29.0] - 2026-10-08 - "King's Valley: Save-state"
+
+### Adicionado
+- **`Machine::SaveState()`/`Machine::LoadState()`** (`src/machine/machine.{h,cpp}`): gravam/
+  restauram um retrato do estado AO VIVO da maquina (registradores do Z80, VDP incl. VRAM/
+  paleta/modo, PSG, SCC, OPLL, PPI, controladora de disco, conteudo de RAM/RAM de mapper) num
+  arquivo binario proprio (`.sst`, formato TLV versionado, NAO compativel com outros
+  emuladores). `LoadState()` aplica por cima da maquina JA' RODANDO -- NAO recarrega BIOS/
+  cartucho/disco/fita, pressupoe que a mesma midia continua inserida (como a maioria dos
+  emuladores). Fora do escopo, documentado: conteudo de disco/fita/SRAM (ja persistem
+  sozinhos, em arquivo proprio), CMOS do RTC (preferencia de BIOS), teclas pressionadas e
+  joystick (entrada do mundo externo), e transferencias de disco/fita em andamento no instante
+  exato do save (abortadas ao carregar, nunca corrompidas). Ver `doc/savestate-spec.md`.
+- **`MemorySystem::MapperRamBase()`** (`src/memmap/cpp/memory_system.h`): novo acessor ao
+  buffer INTEIRO de uma RAM de mapper (ate 1024KB) -- `PeekSlot`/`PokeSlot` so' enxergam os 4
+  segmentos PAGINADOS agora, insuficiente para dumpar/restaurar um mapper completo de uma vez.
+- **Menu Arquivo > Salvar estado.../Carregar estado...** (`src/machine/gui/emu_window.cpp`):
+  dialogo de arquivo (`.sst`), substituindo o item desabilitado "Salvar estado (em breve)" que
+  existia como placeholder desde a janela com menus (1.16.0).
+- Testes: `machinetest`/`machine_frames`, secao 5b nova -- salva o estado, MUTILA a maquina de
+  proposito (PC do Z80 e registrador do PSG escritos direto para valores errados, tela
+  limpa), recarrega e confere PC/PSG/VRAM inteira restaurados byte a byte, mais os dois
+  caminhos de erro (arquivo inexistente, assinatura errada).
+
 ## [1.28.0] - 2026-10-08 - "King's Valley: MSX-DOS 2 (cartucho generico)"
 
 ### Adicionado

@@ -46,6 +46,8 @@ public:
     }
 
     uint8_t segment(int page) const { return reg_[page & 3]; }
+    int primary() const { return primary_; }
+    int secondary() const { return secondary_; }
 
 private:
     uint8_t Mask() const { return static_cast<uint8_t>(memory_.MapperSegments(primary_, secondary_) - 1); }

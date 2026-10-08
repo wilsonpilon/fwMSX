@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.28.0 "King's Valley: MSX-DOS 2 (cartucho generico)")
+## Estado atual (v1.29.0 "King's Valley: Save-state")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -46,6 +46,9 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   faltando/alterado); `--cart` sem mapper explicito consulta o banco (SHA-1) antes da heuristica por tamanho.
   As ROMs nao vem com o emulador (ver [romdb-spec.md](doc/romdb-spec.md)).
 - **Configuracao**: menu **Maquina > Configuracao de slots...**: 16 celulas (BIOS, BASIC, RAM de 16 a 64 KB, mapper de 64 a 1024 KB, cartucho, disco, sub-ROM e FM-PAC).
+- **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`) -- grava/restaura
+  Z80, VDP, PSG, SCC, OPLL, PPI, controladora de disco e RAM/RAM de mapper. Aplica sobre a maquina
+  ja' rodando (nao recarrega BIOS/cartucho/disco/fita). Ver [savestate-spec.md](doc/savestate-spec.md).
 - **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- confirmados na tela.
 
 **Limites (detalhes em [RELEASE.md](doc/RELEASE.md) e [SPEC.md](doc/SPEC.md), secao 5.0):**
@@ -58,8 +61,8 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   ferramenta batch -- escolhe sempre a 1a opcao. Ver [tape-spec.md](doc/tape-spec.md), secoes 5, 9, 10 e 11.
 - **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada; Mega Chase
   so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
-- **Ausentes**: save-state, GameMaster2, `CALL VOICECOPY`
-  e opcao de linha de comando para o layout de slots.
+- **Ausentes**: GameMaster2, `CALL VOICECOPY` e opcao de linha de comando para o layout de slots.
+  Save-state nao valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo.
 - **BIOS**: so' em 0:0. Outras BIOS (ex.: Gradiente Expert 1.1) montam no layout, mas nao foram testadas.
 
 **Configurar a maquina** (menus da janela; a lista completa de opcoes de linha de comando esta no
@@ -85,7 +88,8 @@ BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas
 `.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; 1.24.0 banco de fitas com
 metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-mapper pelo SHA-1;
 1.26.0 Vampier com Platform/CRC32/tamanho; 1.27.0 efeitos de rastreio no meio do quadro;
-**1.28.0 MSX-DOS 2 (cartucho generico)**. Detalhes em [CHANGELOG.md](doc/CHANGELOG.md).
+1.28.0 MSX-DOS 2 (cartucho generico); **1.29.0 save-state**. Detalhes em
+[CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
 

@@ -17,20 +17,20 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.28.0** "King's Valley: MSX-DOS 2 (cartucho
-  generico)" (ou mais nova -- conferir `git log`). `git status` limpo apos o commit/tag/branch/
-  push desta rodada, `main` local == `origin/main`.
+- **Ultima versao publicada em `main`:** **1.29.0** "King's Valley: Save-state" (ou mais nova --
+  conferir `git log`). `git status` limpo apos o commit/tag/branch/push desta rodada, `main`
+  local == `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
 - **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui
   `tape_load` (leitura/gravacao de fita + navegacao de TZX), `cas_pack` (empacotador + ripper de
   WAV), `tapedb_store` (banco de fitas), `romdb_store` (`verify` + campos novos do Vampier),
-  `vdp_msx2` (secao 10: snapshot por linha de rastreio) e `memmap_slots` (secao 25 nova: mapper
-  de MSX-DOS 2).
-- **Documentos vivos, todos sincronizados com a 1.28.0:** `README.md`, `doc/MANUAL.md`,
+  `vdp_msx2` (secao 10: snapshot por linha de rastreio), `memmap_slots` (secao 25: mapper de
+  MSX-DOS 2) e `machine_frames` (secao 5b nova: save-state).
+- **Documentos vivos, todos sincronizados com a 1.29.0:** `README.md`, `doc/MANUAL.md`,
   `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
   `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md`, `doc/vdp-spec.md`, `doc/msx2-spec.md`,
-  `doc/msx2p-spec.md`, `doc/memory-map-spec.md`, `doc/fdc-spec.md`, `doc/slots-spec.md` e este
-  arquivo.
+  `doc/msx2p-spec.md`, `doc/memory-map-spec.md`, `doc/fdc-spec.md`, `doc/slots-spec.md`,
+  `doc/savestate-spec.md` (novo) e este arquivo.
 - **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
   rodada):** corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1
   a 1.20.3); depois, os 3 itens do "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` ->
@@ -51,8 +51,9 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   1 o 4 e o 5 na sequencia"** -- ou seja, nesta ordem: (1) efeitos de rastreio, (4) MSX-DOS 2, (5)
   save-state. **Item 1 publicado como 1.27.0.** Depois, o usuario pediu **"prepare o item 4 e 5
   entao na sequencia"** -- **item 4 (MSX-DOS 2) publicado como 1.28.0**, testado contra um kernel
-  2.30 e um disco de 720KB REAIS. **Item 5 (save-state) ainda nao comecou** -- ver a secao 7
-  (item 14).
+  2.30 e um disco de 720KB REAIS; **item 5 (save-state) publicado como 1.29.0**, aplicando o
+  estado por cima da maquina ja' rodando (sem recarregar BIOS/cartucho/disco/fita). **A
+  sequencia "1, 4, 5" pedida pelo usuario esta' COMPLETA.**
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -63,6 +64,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   meio do quadro (paleta/scroll trocados por interrupcao de linha, 1.27.0).
 - MSX-DOS 2 (cartucho generico, `--cart <rom> msxdos2`, 1.28.0) -- testado contra um
   `MSXDOS2.ROM` e um disco de 720KB REAIS: `dir`/`cd` em subdiretorios funcionam.
+- Save-state (`Machine::SaveState()`/`LoadState()`, menu **Arquivo**, 1.29.0) -- grava/restaura
+  Z80/VDP/PSG/SCC/OPLL/PPI/FDC/RAM num `.sst` proprio, sobre a maquina ja' rodando. Teste
+  automatizado (round-trip com mutilacao de proposito) passa; a janela de verdade ainda nao foi
+  testada por um humano.
 - PSG, SCC (F1 Spirit), FM (MSX-MUSIC e FM-PAC) com comandos de BASIC, modo ritmo.
 - SRAM de cartucho ASCII8/ASCII16 e FM-PAC (`.sav`).
 - Layout de 16 celulas (slot:subslot) pela janela e pela CLI (`--slot`); RAM 16 KB no fim da celula,
@@ -156,7 +161,17 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   lista arquivos e subdiretorios, `cd` navega para dentro de um subdiretorio e `dir` la' funciona,
   SEM precisar de nenhum mapper de RAM (a nota antiga do projeto, que supunha precisar, estava
   errada). Testado (`memmaptest`/`memmap_slots`, secao 25 nova, 12 checagens).
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.28.0.*` (ver secao 9).
+- **Save-state (1.29.0, 2026-10-08)**: `Machine::SaveState()`/`LoadState()` gravam/restauram o
+  estado AO VIVO da maquina (Z80, VDP incl. VRAM, PSG, SCC, OPLL, PPI, FDC, RAM/RAM de mapper)
+  num `.sst` proprio, aplicado sobre a maquina JA' RODANDO (decisao de design: nao recarrega
+  BIOS/cartucho/disco/fita, pressupoe a mesma midia inserida -- evita toda a complexidade de
+  serializar o layout de slots). `MemorySystem::MapperRamBase()` novo (acesso ao buffer INTEIRO
+  de uma RAM de mapper, ate' 1024KB -- `PeekSlot`/`PokeSlot` so' veem os 4 segmentos paginados
+  agora). Menu **Arquivo > Salvar estado.../Carregar estado...**, substituindo o placeholder
+  desabilitado que existia desde a 1.16.0. Testado (`machinetest`/`machine_frames`, secao 5b
+  nova): salva, MUTILA a maquina de proposito (PC/PSG escritos errados, tela limpa), recarrega e
+  confere tudo restaurado byte a byte, mais os 2 caminhos de erro.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.29.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -172,7 +187,9 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   corrigido na 1.20.2** para fitas GRAVADAS por este emulador (via marca exata `TapeMark` por bloco);
   continua valendo so' para um `.cas` CRU carregado direto do disco, sem ter passado por uma gravacao
   deste emulador (nao ha' marca exata nesse caso, so' a busca pelo proximo cabecalho).
-- Sem save-state, GameMaster2.
+- Sem GameMaster2. Save-state nao valida se o cartucho/disco/fita inserido agora e' o mesmo de
+  quando foi salvo, e o fluxo da janela ainda nao foi testado por um humano (so' a API tem teste
+  automatizado).
 - Cores YJK do V9958 nao conferidas com hardware real.
 
 ## 3. Como compilar e testar
@@ -310,21 +327,29 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    adaptado de `RomMSXDOS2` do openMSX; testado contra um `MSXDOS2.ROM` e um disco de 720KB REAIS
    (`dir`/`cd` em subdiretorios funcionam, sem mapper de RAM). Ver secao 9 e
    `doc/memory-map-spec.md`, secao 6.
-10. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
+10. **[FEITO em 2026-10-08, 1.29.0] Save-state** -- item 5 de "1, 4, 5" (pedido do usuario:
+    "prepare o item 4 e 5 entao na sequencia"), o ULTIMO dessa sequencia. `Machine::SaveState()`/
+    `LoadState()` aplicam o estado (Z80/VDP/PSG/SCC/OPLL/PPI/FDC/RAM) sobre a maquina JA' RODANDO
+    -- decisao deliberada de NAO recarregar BIOS/cartucho/disco/fita. Menu **Arquivo > Salvar
+    estado.../Carregar estado...**. Ver secao 9 e `doc/savestate-spec.md`. **A sequencia "1, 4,
+    5" esta' COMPLETA.**
+11. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
-11. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
+12. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
    de Sony/Philips/Spectravideo do openMSX (so' como referencia).
-12. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
+13. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
    `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
    Ainda nao comecou.
-13. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada -- agora que o rastreio por linha existe,
+14. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada -- agora que o rastreio por linha existe,
     vale re-testar, mas ainda nao foi re-testado); Mega Chase; F-1 Spirit 3D (troca de disco).
-14. **BIOS Expert:** texto com espacos na tela; investigar.
-15. **[PROXIMO] Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **CPU no pior caso** -- item 5 de
-    "1, 4, 5", o unico que falta dessa sequencia pedida pelo usuario.
-16. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
-17. **Cartuchos:** GameMaster2, MSX-MUSIC com BIOS propria (MSX-DOS 2 feito na 1.28.0, item 9 acima).
-18. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+15. **BIOS Expert:** texto com espacos na tela; investigar.
+16. **CPU no pior caso:** medir o custo real (FM ativo, SCC, fita, mapa de slots, disco) em tempo real.
+17. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
+18. **Cartuchos:** GameMaster2, MSX-MUSIC com BIOS propria (MSX-DOS 2 feito na 1.28.0, item 9 acima).
+19. **Save-state, o que falta:** validar na janela de verdade; RAM de mapper sem teste automatizado
+    dedicado; multiplos slots nomeados/atalho de teclado (ex.: F5/F7); validar cartucho/disco/fita
+    contra o save (CRC32). Ver `doc/savestate-spec.md`, secao 7.
+20. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
     com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
@@ -882,6 +907,75 @@ errada sobre precisar de mapper de RAM), `doc/msx2-spec.md` (secao 6), `doc/slot
 `README.md`, `doc/MANUAL.md`, e este `OUTLINE.md`.
 
 Item 5 (save-state) de "1, 4, 5" e' o unico que falta -- ver secao 7, item 15.
+
+### Dia 2, continuacao: save-state (1.29.0)
+
+O usuario pediu **"prepare o item 4 e 5 entao na sequencia"** -- com o item 4 (MSX-DOS 2) feito,
+este e' o item 5, o ULTIMO da sequencia "1, 4, 5".
+
+**Pesquisa antes de codar**: li o header de cada subsistema (Z80State, VdpState, PsgState,
+SccState, Ym2413State, PpiState, Fdc, TapeEngine) para ver se save-state era viavel sem reescrever
+tudo. Achado principal: TODOS sao structs C planos (POD), sem ponteiro nenhum, EXCETO o `Fdc`
+(aponta pra dentro da imagem de disco) e o mapa de memoria (`SlotState`, cujos buffers de RAM/ROM
+sao alocados pelo `MemorySystem` em C++, nao embutidos no struct). Isso sugeriu um design claro:
+serializar os structs pequenos quase crus, referenciar conteudo grande/recarregavel (ROM,
+disco, fita) por CAMINHO DE ARQUIVO (nunca embutir), e so' embutir RAM de verdade (mutavel).
+
+**Decisao de design, a mais importante da rodada**: em vez da alternativa "completa" (serializar
+o `MachineConfig` inteiro e recriar a `Machine` do zero com `Machine::Create()` ao carregar),
+`LoadState()` aplica direto sobre a `Machine` JA' RODANDO -- pressupoe que a MESMA midia
+(BIOS/cartucho/disco/fita) continua carregada, como a maioria dos emuladores reais. Isso
+eliminou toda a complexidade de serializar/validar caminhos e reconstruir o layout de slots, sem
+perder nada que o uso real (salvar e recarregar o MESMO jogo) precisa.
+
+**Onde entra na interface**: nao precisei perguntar ao usuario -- o PROPRIO `emu_window.cpp` ja'
+tinha um item desabilitado `ImGui::MenuItem("Salvar estado (em breve)", nullptr, false, false)`
+no menu **Arquivo**, desde a janela com menus (1.16.0). So' troquei o placeholder por dois itens
+de verdade ("Salvar estado..."/"Carregar estado...") usando `ShowSaveFileDialog`/
+`ShowOpenFileDialog`, o MESMO padrao ja usado por "Nova fita...".
+
+**O que fica de fora, com justificativa documentada** (`doc/savestate-spec.md`, secao 3): teclas
+pressionadas e joystick (entrada do mundo externo, nao estado da maquina -- preservados do
+estado AO VIVO ao carregar); CMOS do RTC (preferencia de BIOS, ja' um limite aceito do projeto);
+SRAM de cartucho/FM-PAC (ja' persiste sozinha no `.sav`); conteudo de disco/fita (continuam
+arquivos separados); uma transferencia de disco/fita EM ANDAMENTO no instante exato do save
+(abortada ao carregar, nunca com um ponteiro invalido); bookkeeping interno do nucleo Z80
+(`iperiod`/`icount`/`ibackup`/`irequest`/`iautoreset`/`trapbadops`/`user_data` -- esse ultimo e'
+um PONTEIRO do host, nunca pode ser sobrescrito); e o array `scanline_snapshot[]` do VDP
+(derivado, recomputado a cada quadro, ver a feature de rastreio da 1.27.0).
+
+**Achado tecnico durante a implementacao**: `MemorySystem::PeekSlot()`/`PokeSlot()` so' enxergam
+a vista PAGINADA agora (os 4 segmentos de 16KB visiveis em 0000h-FFFFh) -- insuficiente para
+dumpar uma RAM de mapper de ate 1024KB (64 segmentos) inteira. Criei
+`MemorySystem::MapperRamBase()` (acesso ao buffer INTEIRO) especificamente para isso.
+`RamMapperDevice` tambem ganhou `primary()`/`secondary()` (faltavam).
+
+**Formato**: binario proprio, TLV (tag de 4 bytes + tamanho + payload, mesmo raciocinio do TZX)
+com cabecalho fixo (assinatura, versao, modelo MSX1/2/2+, contador de quadros). Deliberadamente
+NAO portavel entre sistema operacional (structs quase crus, padding pode diferir entre MSVC e
+GCC) -- decisao aceita pelo mesmo raciocinio de simplificacao ja usado em outras partes do
+projeto (ningeum copia um save do Windows pro Linux do MESMO projeto pessoal).
+
+**Teste** (`machinetest`/`machine_frames`, secao 5b): salva o estado depois do boot + `print
+1234`; MUTILA a maquina de proposito (300 quadros a mais, `cls`, PC do Z80 e R7 do PSG escritos
+DIRETO para valores errados) para provar que a restauracao nao e' coincidencia; recarrega e
+confere PC/R7/VRAM inteira (incluindo o texto na tela) restaurados byte a byte; mais os 2
+caminhos de erro (arquivo inexistente, assinatura errada).
+
+**Erro cometido e corrigido de novo nesta rodada**: a MESMA licao da 1.28.0 se repetiu -- build
+feita antes de bumpar a versao, sobrescrevendo `dist/fwMSX-1.28.0.zip`/`dist/fwMSX.exe` ja'
+publicados. Detectado e corrigido do mesmo jeito (`git status --short dist/` + `git checkout`
+ANTES de qualquer commit). Essa e' a SEGUNDA vez que esse erro especifico acontece na mesma
+sessao -- registrado como licao reforcada: bumpar a versao e' o PRIMEIRO passo de qualquer
+rodada nova, antes de qualquer build, sem excecao.
+
+Build Windows e Linux (WSL), `ctest` 18/18 nos dois. Documentacao sincronizada: `doc/savestate-spec.md`
+(novo), `doc/SPEC.md` (secao 5, item marcado feito), `doc/CHANGELOG.md`/`doc/RELEASE.md`
+(`[1.29.0]`), `README.md`, `doc/MANUAL.md`, e este `OUTLINE.md`.
+
+**A sequencia "1, 4, 5" pedida pelo usuario esta' COMPLETA.** O que falta: validar o fluxo da
+janela de verdade (so' a API tem teste automatizado); RAM de mapper sem teste automatizado
+dedicado; ver secao 7, item 19, para a lista completa de pendencias do save-state.
 
 ---
 

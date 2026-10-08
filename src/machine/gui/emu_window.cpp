@@ -338,6 +338,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     // visual (K7) esta' aberta.
     std::string tape_message;
     bool show_tape_window = false;
+    std::string state_message; // ultimo erro ao salvar/carregar um estado (menu Arquivo)
     std::vector<std::string> deferred_releases;
     const double frame_dt = 1.0 / Machine::kFrameRate;
     double last_time = glfwGetTime();
@@ -536,7 +537,27 @@ int RunEmulatorWindow(const WindowOptions &options) {
         if (menu_visible && ImGui::BeginMainMenuBar()) {
             if (ImGui::BeginMenu("Arquivo")) {
                 if (ImGui::MenuItem("Carregar cartucho...")) LoadCartridgeFromDialog();
-                ImGui::MenuItem("Salvar estado (em breve)", nullptr, false, false);
+                ImGui::Separator();
+                if (ImGui::MenuItem("Salvar estado...")) {
+                    if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Salvar estado", "Estado fwMSX",
+                                                                              "*.sst", "sst", "")) {
+                        std::string state_error;
+                        if (!machine->SaveState(*chosen, state_error)) state_message = state_error;
+                        else state_message.clear();
+                    }
+                }
+                if (ImGui::MenuItem("Carregar estado...")) {
+                    if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Carregar estado", "Estado fwMSX",
+                                                                              "*.sst")) {
+                        std::string state_error;
+                        if (!machine->LoadState(*chosen, state_error)) state_message = state_error;
+                        else state_message.clear();
+                    }
+                }
+                if (!state_message.empty()) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", state_message.c_str());
+                }
                 ImGui::Separator();
                 if (ImGui::MenuItem("Sair")) glfwSetWindowShouldClose(window, GLFW_TRUE);
                 ImGui::EndMenu();

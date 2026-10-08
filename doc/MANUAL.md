@@ -312,7 +312,7 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX (`--msx`) -- v1.28.0
+## Emulador MSX (`--msx`) -- v1.29.0
 
 Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
 `--msx` escolhe a maquina e as opcoes abaixo.
@@ -448,7 +448,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 ### O que funciona e o que nao funciona
 
-**Funciona (v1.28.0):**
+**Funciona (v1.29.0):**
 
 - MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
 - MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
@@ -467,6 +467,9 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 - **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao, identificacao,
   `verify` (SHA-1) e auto-mapper ao carregar `--cart` sem escolher um a dedo.
 - Configuracao de slots pela janela (secao acima).
+- **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`) -- grava/restaura
+  Z80, VDP, PSG, SCC, OPLL, PPI, controladora de disco e RAM/RAM de mapper, aplicado sobre a
+  maquina ja' rodando (nao recarrega BIOS/cartucho/disco/fita). Ver [savestate-spec.md](savestate-spec.md).
 
 **Nao funciona ou nao foi verificado:**
 
@@ -482,7 +485,10 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
   verdade numa ferramenta batch). Ver [tape-spec.md](tape-spec.md), secoes 5, 9, 10 e 11.
 - **Banco de ROMs**: montar a maquina pelo banco (layout por nome) ainda nao existe; o JSON do
   Vampier nao e' usado (so' o SQL, que ja' cobre jogo/empresa/ano/SHA-1).
-- **Sem**: save-state, GameMaster2, cartucho MSX-MUSIC com BIOS propria, e `CALL VOICECOPY`.
+- **Sem**: GameMaster2, cartucho MSX-MUSIC com BIOS propria, e `CALL VOICECOPY`. Save-state nao
+  valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo, e a janela de
+  verdade (dialogo "Salvar/Carregar estado...") ainda nao foi testada por um humano -- so' a API
+  tem teste automatizado.
 - **Outras BIOS** (ex.: Gradiente Expert 1.1): o layout aceita, mas o hardware que a BIOS espera nao foi testado.
 
 Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.md](SPEC.md), secao 5.0.

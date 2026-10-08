@@ -226,6 +226,26 @@ public:
     bool SaveSram(std::string &error);
     const std::string &sram_path() const { return sram_targets_.empty() ? empty_path_ : sram_targets_[0].path; }
 
+    // Save-state: grava/restaura um retrato do estado AO VIVO da maquina
+    // (registradores do Z80, VDP incl. VRAM/paleta, PSG, SCC, OPLL, PPI,
+    // controladora de disco, conteudo de RAM/RAM de mapper) num arquivo
+    // binario proprio (formato fwMSX, NAO compativel com outros
+    // emuladores). LoadState() aplica por cima da maquina JA' RODANDO --
+    // nao recarrega BIOS/cartucho/disco/fita (pressupoe que a MESMA midia
+    // continua inserida, como a maioria dos emuladores: carregar o estado
+    // errado sobre o jogo errado produz imagem/som estranhos, nao um
+    // erro). Fora do escopo (ver doc/savestate-spec.md): conteudo de
+    // disco/fita/SRAM (ja persistem sozinhos, em arquivo proprio), CMOS do
+    // RTC (preferencia de BIOS, nao estado de jogo), teclas pressionadas e
+    // joystick (entrada do mundo externo, nao estado da maquina), e
+    // qualquer transferencia de disco/fita EM ANDAMENTO no instante exato
+    // do save (limitacao documentada: a transferencia e' abortada ao
+    // carregar, nao corrompida). LoadState() recusa um arquivo de um
+    // modelo diferente (MSX1/MSX2/MSX2+) ou de uma versao de formato
+    // desconhecida.
+    bool SaveState(const std::string &path, std::string &error) const;
+    bool LoadState(const std::string &path, std::string &error);
+
     uint64_t frame_count() const { return frame_count_; }
     const VdpState &vdp_state() const { return startup_.vdp_device->state(); }
     PpiState &ppi_state() { return startup_.ppi_device->state(); }

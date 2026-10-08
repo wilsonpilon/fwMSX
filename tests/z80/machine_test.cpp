@@ -349,6 +349,44 @@ int main() {
         Frames(*m, 30);
         check(VramHas(*m, "print 1234") && VramHas(*m, " 1234 "), "teclado: 'print 1234' + ENTER e' executado pelo BASIC (resultado na tela)");
 
+        // --- 5b. Save-state: grava, mutila a maquina de proposito, recarrega -------
+        {
+            const std::string state_path = TempPath("fwmsx_machine_test.sst");
+            const uint16_t pc_before = m->cpu().state().pc.w;
+            const uint8_t psg_r7_before = m->psg().state().r[7];
+            const std::vector<uint8_t> vram_before(m->vdp_state().vram, m->vdp_state().vram + VDP_VRAM_SIZE);
+
+            std::string serr;
+            check(m->SaveState(state_path, serr), "SaveState(): grava com sucesso (" + serr + ")");
+
+            // Mutila a maquina de proposito -- se o teste passar depois, e' porque
+            // LoadState() de fato restaurou, nao porque "ja' estava assim".
+            Frames(*m, 300);
+            Type(*m, "cls|");
+            Frames(*m, 30);
+            m->cpu().state().pc.w = 0x1234;
+            m->psg().state().r[7] = 0x00;
+            check(m->cpu().state().pc.w != pc_before && !VramHas(*m, "print 1234"),
+                  "(mutilacao de proposito: PC e a tela mudaram antes de recarregar)");
+
+            check(m->LoadState(state_path, serr), "LoadState(): recarrega com sucesso (" + serr + ")");
+            check(m->cpu().state().pc.w == pc_before, "LoadState(): PC do Z80 restaurado");
+            check(m->psg().state().r[7] == psg_r7_before, "LoadState(): registrador do PSG restaurado (R7)");
+            check(std::equal(vram_before.begin(), vram_before.end(), m->vdp_state().vram),
+                  "LoadState(): VRAM inteira (incl. o texto 'print 1234' na tela) restaurada byte a byte");
+
+            // Arquivo inexistente / corrompido: erro claro, nunca crash.
+            check(!m->LoadState("/nao/existe/estado.sst", serr) && !serr.empty(), "LoadState(): arquivo inexistente falha com mensagem");
+            const std::string garbage_path = TempPath("fwmsx_machine_test_garbage.sst");
+            {
+                std::ofstream g(garbage_path, std::ios::binary);
+                g << "isso nao e' um estado do fwMSX";
+            }
+            check(!m->LoadState(garbage_path, serr) && Contains(serr, "nao e'"), "LoadState(): arquivo sem a assinatura certa e' recusado");
+            std::remove(garbage_path.c_str());
+            std::remove(state_path.c_str());
+        }
+
         // --- 6. Reset ----------------------------------------------------------------
         const uint64_t before = m->frame_count();
         m->Reset();
