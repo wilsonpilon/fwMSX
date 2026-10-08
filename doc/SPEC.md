@@ -182,23 +182,24 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-08, v1.27.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  **Estado atual (2026-10-08, v1.28.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
   (VDP com efeitos de rastreio por linha, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout
   de slots), com o banco de ROMs (`--romdb`, agora com `verify` e auto-mapper pelo SHA-1 ao
-  carregar um cartucho) e o subsistema de fita completo (leitura, gravacao, empacotador
-  `.BIN`/`.BAS`, ripper de `.WAV`, navegacao de blocos do TZX e banco de metadados `--fitadb`)
-  tambem publicados. Ver a secao 5.0 para o que funciona e o que falta. O mapa de memoria ja tem
-  o FM-PAC e a SRAM; falta o GameMaster2 (`doc/memory-map-spec.md`, secao 6).
+  carregar um cartucho), o subsistema de fita completo (leitura, gravacao, empacotador
+  `.BIN`/`.BAS`, ripper de `.WAV`, navegacao de blocos do TZX e banco de metadados `--fitadb`) e
+  MSX-DOS 2 (cartucho generico) tambem publicados. Ver a secao 5.0 para o que funciona e o que
+  falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o GameMaster2
+  (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.27.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.28.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.27.0, publicada em `main`):**
+**Funcionando (v1.28.0, publicada em `main`):**
 
-- [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`.
-- [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
+- [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`; MSX-DOS 2.30 de verdade via `--cart MSXDOS2.ROM msxdos2` (`dir`/`cd` em subdiretorios).
+- [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8, Gen16 e MSX-DOS 2; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
 - [x] VDP completo: TMS9918 (SCREEN 0-3), V9938 (SCREEN 4-8, comandos, sprites) e V9958 (SCREEN 10-12, YJK/YAE, scroll); efeitos de rastreio no meio do quadro (paleta/scroll por linha, 1.27.0).
 - [x] PSG, SCC e FM (OPLL): 9 canais melodicos, 15 timbres, modo ritmo; comandos de BASIC do MSX-MUSIC pelo FM-PAC.
 - [x] Janela com os menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- **confirmados na tela pelo usuario em 2026-10-07**, junto com o menu ROMs, Banco de ROMs, Navegar file-hunter, Configuracao de disco e de slots.
@@ -228,6 +229,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] **Banco de ROMs: mapper e verificacao** (1.25.0): `--cart <arquivo>` sem mapper explicito consulta o banco pelo SHA-1 antes da heuristica por tamanho/conteudo de sempre; `fwmsx --romdb verify` recalcula o SHA-1 de cada ROM cadastrada e aponta arquivo faltando/alterado. Fecha os dois itens pendentes de `doc/romdb-spec.md`, secao 8. Ver `doc/CHANGELOG.md`, `[1.25.0]`.
 - [x] **Vampier: Platform, CRC32 e tamanho** (1.26.0): o JSON do Vampier foi avaliado e descartado (e' um subconjunto do SQL ja' importado); em vez disso, `VampierSearch()` passou a expor `Platform`/`CRC32`/`FileSize`, que o dump SQL ja' trazia mas a consulta ignorava. Fecha o ultimo item da lista original de ROMs. Ver `doc/romdb-spec.md`, secao 8, e `doc/CHANGELOG.md`, `[1.26.0]`.
 - [x] **Efeitos de rastreio no meio do quadro** (1.27.0): a interrupcao de linha (IE1) e a intercalacao de Z80/VDP ja' eram corretas (confirmado por investigacao dedicada); a lacuna real era `Machine::RenderFrame()` ler so' o estado FINAL do quadro. Corrigido com um snapshot por scanline (`VdpScanlineSnapshot`, capturado em `vdp_step_scanline()` e aplicado linha a linha em `RenderFrame()`) -- paleta e scroll trocados por uma ISR de IE1 no meio do quadro agora aparecem a partir da linha certa, nao retroativos a tela inteira. Ver `doc/vdp-spec.md`, secao 2, `doc/msx2-spec.md`/`doc/msx2p-spec.md`, secao 6, e `doc/CHANGELOG.md`, `[1.27.0]`.
+- [x] **MSX-DOS 2 (cartucho generico)** (1.28.0): `MEMMAP_MAPPER_MSXDOS2`, adaptado de `RomMSXDOS2` do openMSX (GPL, so' estudo) -- ROM de 64KB, granularidade de 16KB, so' a pagina 4000h-7FFFh e' trocavel, endereco de disparo lido do byte 94h da propria ROM. Testado contra um `MSXDOS2.ROM` e um disco de 720KB REAIS: o kernel sobe, `dir`/`cd` em subdiretorios funcionam, sem precisar de mapper de RAM (a suposicao antiga estava errada). Ver `doc/memory-map-spec.md`, secao 6, e `doc/CHANGELOG.md`, `[1.28.0]`.
 
 **Politica de midias (2026-10-06):** o repositorio e' pessoal; ROMs, discos e fitas de terceiros podem ser versionadas. Antes da liberacao publica, revisar cada midia e remover as que o detentor contestar (`LICENSE-THIRD-PARTY.md`).
 
@@ -243,7 +245,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [ ] Disco: formatar disquetes (hoje so' le e grava); FM/MFM modelados; drives A e B com formatos diferentes; mais de um driver de porta (Sony, Philips, Spectravideo do openMSX) se quiser estudar.
 - [ ] Layout de slots: salvar e carregar o layout em arquivo; perfis de maquina salvos no banco.
 - [ ] Controle externo do emulador, no estilo openMSX: canal de controle opt-in em localhost (TCP ou pipe), comandos `status`, `reset`, `pause`/`resume`, `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`; eventos de troca de modelo e de midia. A thread de controle so' enfileira comandos; quem toca na maquina e' o laco de quadros. Ainda nao comecou.
-- [ ] Cartuchos: MSX-DOS 2, GameMaster2 e o MSX-MUSIC com BIOS propria.
+- [ ] Cartuchos: GameMaster2 e o MSX-MUSIC com BIOS propria (MSX-DOS 2 feito na 1.28.0).
 - [ ] BIOS de outras maquinas (ex.: Gradiente Expert 1.1): a BIOS sobe, mas a tela sai com espacos entre as letras; investigar.
 - [ ] Save-state completo, incluindo o estado de PSG, SCC, OPLL, disco, fita e VDP.
 - [ ] Cores YJK do V9958 conferidas com hardware real.

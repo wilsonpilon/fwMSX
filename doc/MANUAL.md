@@ -312,7 +312,7 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX (`--msx`) -- v1.27.0
+## Emulador MSX (`--msx`) -- v1.28.0
 
 Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
 `--msx` escolhe a maquina e as opcoes abaixo.
@@ -324,7 +324,8 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 .\dist\fwMSX.exe --msx --msx2                      # MSX2: MSX BASIC 2.1, SCREEN 0-8
 .\dist\fwMSX.exe --msx --msx2p                     # MSX2+: MSX BASIC 3.0, V9958, SCREEN 10-12
 .\dist\fwMSX.exe --msx --cart jogo.rom             # cartucho no slot 1:0 (ROM plana ou MegaROM detectada)
-.\dist\fwMSX.exe --msx --cart megarom.rom ascii8   # mapper escolhido: auto, gen8, gen16, konami5, konami4, ascii8, ascii16
+.\dist\fwMSX.exe --msx --cart megarom.rom ascii8   # mapper escolhido: auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2
+.\dist\fwMSX.exe --msx --msx2 --cart MSXDOS2.ROM msxdos2 --disk disco720.dsk   # MSX-DOS 2 (cartucho generico)
 .\dist\fwMSX.exe --msx --disk msxdos1.dsk          # MSX-DOS 1.8 (interface de disco + disquete em A:)
 .\dist\fwMSX.exe --msx --disk msxdos1.dsk --disk-ro   # disco somente leitura (o MSX-DOS nao grava)
 .\dist\fwMSX.exe --msx --no-fmpac                  # sem FM-PAC (o padrao liga o FM-PAC)
@@ -447,12 +448,14 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 ### O que funciona e o que nao funciona
 
-**Funciona (v1.27.0):**
+**Funciona (v1.28.0):**
 
 - MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
 - MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
   memoria (DISK.ROM) ou pelas portas (DDX 3.0/CDX-2, estilo Microsol).
-- Cartuchos ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16) e SCC (F1 Spirit toca a trilha de 5 canais).
+- Cartuchos ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SCC (F1 Spirit toca a trilha de 5 canais)
+  e MSX-DOS 2 (cartucho generico, `--cart <rom> msxdos2`, testado com um kernel 2.30 real e um
+  disco de 720KB -- `dir`/`cd` em subdiretorios funcionam).
 - VDP completo (SCREEN 0 a 8 no V9938; V9958 com SCREEN 10-12); efeitos de rastreio no meio do
   quadro (paleta/scroll trocados por interrupcao de linha).
 - PSG, SCC e FM (MSX-MUSIC e FM-PAC) com os comandos de BASIC, modo ritmo e saida ao vivo.
@@ -479,8 +482,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
   verdade numa ferramenta batch). Ver [tape-spec.md](tape-spec.md), secoes 5, 9, 10 e 11.
 - **Banco de ROMs**: montar a maquina pelo banco (layout por nome) ainda nao existe; o JSON do
   Vampier nao e' usado (so' o SQL, que ja' cobre jogo/empresa/ano/SHA-1).
-- **Sem**: save-state, GameMaster2, MSX-DOS 2, cartucho MSX-MUSIC com BIOS propria, e `CALL
-  VOICECOPY`.
+- **Sem**: save-state, GameMaster2, cartucho MSX-MUSIC com BIOS propria, e `CALL VOICECOPY`.
 - **Outras BIOS** (ex.: Gradiente Expert 1.1): o layout aceita, mas o hardware que a BIOS espera nao foi testado.
 
 Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.md](SPEC.md), secao 5.0.

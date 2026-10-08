@@ -105,6 +105,12 @@ typedef struct SlotState {
     /* Chave do FM-PAC (MAP_FMPAC): 5FFEh grava o byte baixo e 5FFFh o alto;
        com 694Dh (4Dh, 69h) a SRAM aparece em 4000h-5FFFh. Ver doc/fm-spec.md. */
     uint16_t fmpac_key[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
+
+    /* Byte do offset 94h da ROM de MSX-DOS 2 (MEMMAP_MAPPER_MSXDOS2), lido
+       uma vez em memmap_attach_megarom() -- decide qual endereco de
+       escrita dispara a troca de banco (00h/60h/7Fh, ver comentario de
+       MEMMAP_MAPPER_MSXDOS2 em memmap_types.h). */
+    uint8_t msxdos2_range[MEMMAP_PRIMARY_SLOTS][MEMMAP_SECONDARY_SLOTS];
 } SlotState;
 
 /* Inicializa todas as 16 combinacoes como vazias (leitura =

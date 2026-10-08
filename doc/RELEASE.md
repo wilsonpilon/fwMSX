@@ -13,6 +13,56 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.28.0 -- "King's Valley: MSX-DOS 2 (cartucho generico)" (2026-10-08)
+
+**Fase:** item 4 de "vamos fazer o 1, o 4 e o 5 na sequencia" (item 1, efeitos de rastreio, foi a
+1.27.0). Pesquisa ja' tinha sido feita numa rodada anterior: um `MSXDOS2.ROM` real ja' estava no
+repositorio (`resource/kizuna/.../Emulicious/MSX/MSXDOS2.ROM`), e o mapper de referencia do
+openMSX (`RomMSXDOS2`, GPL, so' estudo) ja' tinha sido lido.
+
+### Investigacao: o cartucho e' mais simples do que a nota antiga supunha
+
+A nota antiga em `doc/fdc-spec.md` dizia "Sem DiskROM do MSX-DOS 2 (precisa de MSX2 + mapper de
+RAM)" -- supondo que MSX-DOS 2 precisasse substituir a DiskROM do slot 3:1 e de uma RAM extra
+mapeada. Lendo a extensao `msxdos2.xml` do openMSX (`resource/openMSX/share/extensions/`), a
+realidade e' mais simples: o "cartucho generico de MSX-DOS 2" (como foi vendido de verdade na
+Europa) e' so' mais um CARTUCHO, em QUALQUER slot, com um mapper proprio -- nao mexe na DiskROM
+nem precisa de RAM mapeada. `RomMSXDOS2::reset()` deixa a pagina 0 (0000h-3FFFh) e a pagina 2
+(8000h-BFFFh) vazias, so' a pagina 1 (4000h-7FFFh) mostra o banco 0 da ROM; `writeMem()` troca
+esse banco quando o endereco certo (lido do byte 94h da propria ROM) e' escrito.
+
+### O que foi feito
+
+- `MEMMAP_MAPPER_MSXDOS2` (`src/memmap/common/memmap_types.h`): novo valor no enum, sem numero
+  `MAP_*` de referencia (nao existe no fMSX original).
+- `src/memmap/core/slot_state.c`: `memmap_attach_megarom()` agora le `data[0x94]` (so' quando o
+  mapper e' MSXDOS2) e guarda num campo novo (`msxdos2_range`); os quartos 2 e 3 (8000h-BFFFh)
+  ficam sempre vazios para esse mapper, igual ao FM-PAC ja' fazia para a sua propria janela.
+  `memmap_try_bank_switch()` ganhou o case `MEMMAP_MAPPER_MSXDOS2`: confere o endereco contra o
+  `range` guardado (00h -> so' 7FF0h; 60h -> qualquer escrita em 6000h-6FFFh; 7Fh -> so' 7FFEh) e,
+  se bater, troca os quartos 0+1 juntos (granularidade de 16KB, igual GEN16/ASCII16 ja' faziam
+  para as suas proprias trocas "largas").
+- `src/memmap/cpp/memory_system.cpp`: `LoadRom()` recusa a ROM se o byte 94h nao for um dos 3
+  valores conhecidos (mesma checagem que `RomMSXDOS2` faz via excecao no openMSX).
+- `src/machine/cli.cpp`: `--cart <arquivo> msxdos2` reconhecido pelo parser de mapper.
+- Testes: `memmaptest`/`memmap_slots`, secao 25 nova -- ROM sintetica de 64KB com um byte
+  distinto por banco de 16KB, testando os 3 valores de `range`, a pagina 8000h-BFFFh sempre
+  vazia, e a recusa de um byte 94h desconhecido (12 checagens).
+- **Smoke test com hardware real** (executavel isolado, `C:\dos\temp\msxdos2_smoke\`): um
+  `MSXDOS2.ROM` real (64KB, `range=60h`) e um disco de 720KB real
+  (`resource/kizuna/.../MSX-DOS/MSXDOS-230.DSK`, com `MSXDOS2.SYS`/`COMMAND2.COM`/subdiretorios
+  `KHELP`/`UTILS`/`HELP`) rodados via `--cart MSXDOS2.ROM msxdos2 --disk MSXDOS-230.DSK --keys
+  "dir|cd khelp|dir|"`: o kernel MSX-DOS 2 sobe, `dir` lista arquivos e subdiretorios
+  corretamente, `cd khelp` navega para o subdiretorio e `dir` la' dentro mostra os arquivos
+  `.HLP` certos -- tudo sem precisar de NENHUM mapper de RAM.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.28.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.28.0-linux.tar.gz`.
+- `ctest`: 18 suites, incluindo a secao 25 nova do `memmaptest`/`memmap_slots`. Windows: 18/18.
+  Linux: 18/18.
+
 ## v1.27.0 -- "King's Valley: Efeitos de rastreio (paleta/scroll por linha)" (2026-10-08)
 
 **Fase:** primeiro item de "vamos fazer o 1, o 4 e o 5 na sequencia", pedido pelo usuario depois

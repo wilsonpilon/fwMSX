@@ -7,6 +7,30 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.28.0] - 2026-10-08 - "King's Valley: MSX-DOS 2 (cartucho generico)"
+
+### Adicionado
+- **`MEMMAP_MAPPER_MSXDOS2`** (`src/memmap/common/memmap_types.h`, `src/memmap/core/slot_state.{h,c}`):
+  novo mapper para o cartucho generico de MSX-DOS 2, adaptado de `RomMSXDOS2` do openMSX (GPL,
+  so' estudo -- `resource/openMSX/src/memory/RomMSXDOS2.cc`/`.hh`). NAO faz parte da lista
+  original do fMSX (sem numero `MAP_*`). Diferente dos outros mappers MegaROM: granularidade de
+  **16KB** (nao 8KB), so' a pagina 4000h-7FFFh e' trocavel (8000h-BFFFh fica sempre vazia, como
+  0000h-3FFFh/C000h-FFFFh), e o endereco que dispara a troca vem de um byte gravado na propria
+  ROM (offset 94h): 00h = so' 7FF0h; 60h = qualquer escrita em 6000h-6FFFh; 7Fh = so' 7FFEh.
+  `MemorySystem::LoadRom()` recusa a ROM se esse byte nao for um dos 3 valores conhecidos.
+- **`--cart <arquivo> msxdos2`**: novo valor aceito pelo parser de mapper da CLI
+  (`src/machine/cli.cpp`), ao lado de `gen8`/`gen16`/`konami5`/`konami4`/`ascii8`/`ascii16`.
+- **Testado contra o MSX-DOS 2.30 de verdade** (`MSXDOS2.ROM` real, 64KB, 4 bancos de 16KB +
+  um disco de 720KB real com `MSXDOS2.SYS`/`COMMAND2.COM`/subdiretorios, ambos ja' presentes no
+  repositorio): `--cart MSXDOS2.ROM msxdos2 --disk <disco>` sobe o kernel de verdade, `dir` lista
+  arquivos e subdiretorios, `cd` entra num subdiretorio e `dir` dentro dele funciona -- sem
+  precisar de NENHUM mapper de RAM (a suposicao antiga em `doc/fdc-spec.md`, "precisa de MSX2 +
+  mapper de RAM", estava errada: um cartucho generico de MSX-DOS 2 so' precisa da interface de
+  disco de sempre).
+- Testes: `memmaptest`/`memmap_slots`, secao 25 nova (12 checagens: reset no banco 0, troca de
+  banco de 16KB, pagina 8000h-BFFFh sempre vazia, os 3 valores de `range` do byte 94h, e recusa de
+  um byte 94h desconhecido).
+
 ## [1.27.0] - 2026-10-08 - "King's Valley: Efeitos de rastreio (paleta/scroll por linha)"
 
 ### Adicionado

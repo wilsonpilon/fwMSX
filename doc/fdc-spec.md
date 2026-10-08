@@ -104,7 +104,10 @@ por `FdcDisk`. O endereco de um setor e' `((trilha x lados + lado) x setores/tri
   (nao da' para "encaixar" a DISK.ROM com a maquina ligada).
 - **Sem FORMAT** (READ/WRITE TRACK), sem disco de dupla densidade alem dos
   tamanhos acima, sem imagens que nao sejam `.dsk` cru (`.fdi`, `.dmk`...).
-- **Sem DiskROM do MSX-DOS 2** (precisa de MSX2 + mapper de RAM).
+- **MSX-DOS 2**: nao ha' DiskROM de MSX-DOS 2 (a BIOS do slot 3:1 continua sendo a de
+  MSX-DOS 1), mas o cartucho generico de MSX-DOS 2 FUNCIONA via
+  `--cart MSXDOS2.ROM msxdos2` (`MEMMAP_MAPPER_MSXDOS2`) -- nao precisa de mapper de
+  RAM, so' da interface de disco de sempre. Ver `doc/memory-map-spec.md`, secao 6.
 - **Troca de disco "a quente":** funciona (o menu insere/ejeta), mas o
   MSX-DOS 1 so' percebe a troca na proxima leitura do disco; nao ha' o sinal
   de "disk changed" do hardware real alem do que a ROM ja' faz.

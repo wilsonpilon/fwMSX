@@ -140,8 +140,10 @@ os 4 modos de pixel. Adaptado do `V9938.c` do fMSX (reescrito por Alex Wulms).
 - **O depurador (`--z80dbg`) so' conhece o MSX1** (`vdppeek`/`vdppoke` ja' respeitam
   o tamanho da VRAM do modelo, mas nao ha' flag `--msx2` la'): use `--msx --msx2
   --vdplog` e `--shot`.
-- **MSX-DOS 2** (precisa de `MSXDOS2.ROM` e disco de 720KB com a arvore de
-  diretorios) nao foi testado.
+- **MSX-DOS 2 testado (1.28.0, 2026-10-08):** `--cart MSXDOS2.ROM msxdos2 --disk
+  <disco de 720KB>` sobe o kernel de verdade a partir do disco, com arvore de
+  diretorios (`cd`, `dir` dentro de subdiretorios) funcionando. Ver
+  `doc/memory-map-spec.md`, secao 6, para o mapper (`MEMMAP_MAPPER_MSXDOS2`).
 - **Verificado contra uma referencia:** o prompt do BASIC 2.1 bate em 98% dos pixels
   com o fMSXgo em modo MSX2 (o resto e' o cursor piscando); o Firebird mostra o
   mesmo logo MSX, logo Konami e titulo que a referencia. Comparacoes exatas de

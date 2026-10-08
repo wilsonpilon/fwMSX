@@ -206,6 +206,11 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
     state->fmpac_key[primary][secondary] = 0;
     state->rom_base[primary][secondary] = data;
     state->rom_bank_mask[primary][secondary] = (uint8_t)(bank_count - 1);
+    /* MSX-DOS 2: o byte 94h da propria ROM diz qual escrita dispara a troca
+       de banco (ver comentario de MEMMAP_MAPPER_MSXDOS2 em memmap_types.h).
+       94h < MEMMAP_CHUNK_SIZE (2000h), entao sempre cabe dentro do 1o banco
+       de 8KB -- LoadRom() ja garante ROM de pelo menos 1 pedaco de 8KB. */
+    state->msxdos2_range[primary][secondary] = (mapper == MEMMAP_MAPPER_MSXDOS2) ? data[0x94] : 0;
 
     // Estado inicial: os 4 pedacos de 8KB (enderecos 4000h/6000h/8000h/A000h)
     // mostram os bancos 0,1,2,3 -- SetMegaROM(J,0,1,2,3) do fMSX (e o que
@@ -220,9 +225,11 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
         const int chunk_idx = quarter + 2;
         state->chunk[primary][secondary][chunk_idx] = data + (bank << 13);
         state->chunk_writable[primary][secondary][chunk_idx] = 0;
-        // FM-PAC: so' existe a janela 4000h-7FFFh; 8000h-BFFFh fica vazia (como
-        // no cartucho real, sem espelho dos bancos -- ver doc/fm-spec.md, secao 4).
-        if (mapper == MEMMAP_MAPPER_FMPAC && quarter >= 2) state->chunk[primary][secondary][chunk_idx] = g_empty_chunk;
+        // FM-PAC e MSX-DOS 2: so' existe a janela 4000h-7FFFh; 8000h-BFFFh fica
+        // vazia (como no cartucho real -- ver doc/fm-spec.md, secao 4, e o
+        // comentario de MEMMAP_MAPPER_MSXDOS2 em memmap_types.h).
+        if ((mapper == MEMMAP_MAPPER_FMPAC || mapper == MEMMAP_MAPPER_MSXDOS2) && quarter >= 2)
+            state->chunk[primary][secondary][chunk_idx] = g_empty_chunk;
     }
 
     // Recomputa a vista ativa se essa combinacao ja estiver visivel agora
@@ -266,6 +273,7 @@ void memmap_clear_slot(SlotState *state, int primary, int secondary) {
     state->sram_base[primary][secondary] = NULL;
     state->sram_dirty[primary][secondary] = 0;
     state->fmpac_key[primary][secondary] = 0;
+    state->msxdos2_range[primary][secondary] = 0;
     memmap_switch_primary(state, state->psl_reg);
 }
 
@@ -421,6 +429,28 @@ int memmap_try_bank_switch(SlotState *state, int primary, int secondary, uint16_
                 RefreshChunk(state, primary, secondary, quarter + 3, sram, MEMMAP_WRITE_SRAM_MIRROR);
                 return 1;
             }
+            bank = (value << 1) & mask;
+            wide = 1;
+            break;
+        }
+
+        case MEMMAP_MAPPER_MSXDOS2: {
+            /* Adaptado de RomMSXDOS2::writeMem() do openMSX -- o endereco
+               que dispara a troca vem do byte 94h da propria ROM (lido uma
+               vez em memmap_attach_megarom(), ver msxdos2_range). So' a
+               pagina 4000h-7FFFh (quarter 0, "wide" = tambem o quarter 1)
+               e' trocavel; 8000h-BFFFh fica sempre vazio (ver
+               memmap_attach_megarom()). */
+            const uint8_t range = state->msxdos2_range[primary][secondary];
+            int hit;
+            switch (range) {
+                case 0x00: hit = (addr == 0x7FF0); break;
+                case 0x60: hit = (addr >= 0x6000 && addr <= 0x6FFF); break;
+                case 0x7F: hit = (addr == 0x7FFE); break;
+                default: hit = 0; break;
+            }
+            if (!hit) return 0;
+            quarter = 0;
             bank = (value << 1) & mask;
             wide = 1;
             break;

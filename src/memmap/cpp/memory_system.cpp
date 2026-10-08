@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 
 // Implementado em src/memmap/fortran/rom_checksum.f90. Nome exposto via
@@ -27,6 +28,8 @@ const char *MapperName(MemMapMapperType mapper) {
         case MEMMAP_MAPPER_KONAMI4: return "Konami4";
         case MEMMAP_MAPPER_ASCII8: return "ASCII8";
         case MEMMAP_MAPPER_ASCII16: return "ASCII16";
+        case MEMMAP_MAPPER_FMPAC: return "FMPAC";
+        case MEMMAP_MAPPER_MSXDOS2: return "MSXDOS2";
         case MEMMAP_MAPPER_NONE:
         default:
             return "";
@@ -138,6 +141,20 @@ bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std:
     // FM-PAC: o cartucho real e' uma ROM de 16KB (dois bancos de 8KB).
     if (mapper == MEMMAP_MAPPER_FMPAC && size != 0x4000) {
         if (error) *error = "FM-PAC: a ROM precisa ter 16KB (tem " + std::to_string(size) + " bytes)";
+        return false;
+    }
+
+    // MSX-DOS 2: o byte 94h da ROM precisa ser um dos 3 valores conhecidos
+    // (ver RomMSXDOS2 do openMSX, e o comentario de MEMMAP_MAPPER_MSXDOS2
+    // em memmap_types.h) -- um valor diferente e' uma ROM que este mapper
+    // nao sabe como trocar de banco (o endereco de disparo seria
+    // desconhecido). `size >= MEMMAP_CHUNK_SIZE` (8KB) ja' foi checado
+    // acima, 94h sempre cabe dentro do 1o pedaco.
+    if (mapper == MEMMAP_MAPPER_MSXDOS2 && data[0x94] != 0x00 && data[0x94] != 0x60 && data[0x94] != 0x7F) {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "MSXDOS2: byte 94h da ROM desconhecido (%02Xh, esperava 00h, 60h ou 7Fh)",
+                      data[0x94]);
+        if (error) *error = buf;
         return false;
     }
 

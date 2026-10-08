@@ -428,6 +428,24 @@ elas embutidas, o que nunca deve acontecer.
     causa de SRAM (GameMaster2) ou SRAM+som FM (FMPAC); sem isso,
     degeneram pra uma troca de banco trivial não muito diferente do
     `MAP_KONAMI4`. Não implementados.
+  - **Atualizacao (1.28.0, 2026-10-08): `MEMMAP_MAPPER_MSXDOS2` implementado** --
+    NAO fazia parte da lista original (nao existe no fMSX, sem numero `MAP_*` de
+    referencia); adicionado para suportar o cartucho generico de MSX-DOS 2
+    (`MSXDOS2.ROM`), adaptado de `RomMSXDOS2` do openMSX (GPL, so' estudo --
+    `resource/openMSX/src/memory/RomMSXDOS2.cc`/`.hh`). Diferente dos outros
+    mappers MegaROM: granularidade de **16KB** (nao 8KB), so' a pagina
+    `4000h-7FFFh` e' trocavel (`8000h-BFFFh` fica sempre vazia, como
+    `0000h-3FFFh`/`C000h-FFFFh`), e o endereco que dispara a troca vem de um
+    byte gravado na propria ROM (offset `94h`): `00h` = so' `7FF0h`; `60h` =
+    qualquer escrita em `6000h-6FFFh`; `7Fh` = so' `7FFEh`. `LoadRom()` recusa
+    a ROM se esse byte nao for um dos 3 valores conhecidos. **Testado contra o
+    MSX-DOS 2.30 de verdade** (`MSXDOS2.ROM` real + um disco de 720KB real com
+    `MSXDOS2.SYS`/`COMMAND2.COM`/subdiretorios, `--cart MSXDOS2.ROM msxdos2
+    --disk <disco>`): o kernel sobe, `dir`/`cd` dentro de subdiretorios
+    funcionam, sem precisar de nenhum mapper de RAM (a suposicao antiga em
+    `doc/fdc-spec.md` estava errada -- um cartucho generico de MSX-DOS 2 so'
+    precisa da interface de disco de sempre). Ver `doc/CHANGELOG.md`,
+    `[1.28.0]`.
   - **`MAP_GUESS`** (detecção automática de mapper via `GuessROM()` --
     tenta `CARTS.CRC`/`CARTS.SHA` primeiro, depois varre a ROM por
     padrões de bytes característicos) -- feature separada com

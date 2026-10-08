@@ -800,7 +800,72 @@ int main() {
         check(again.PeekSlot(2, 0, 0x4123) == 0x5A, "FM-PAC: depois de recarregar o .sav, a SRAM mostra o mesmo byte");
     }
 
-    // --- 25. RAM de 16KB ocupa as ultimas paginas (C000h-FFFFh), nao 0000h -----
+    // --- 25. MEMMAP_MAPPER_MSXDOS2 (cartucho generico de MSX-DOS 2, adaptado -------
+    //      de RomMSXDOS2 do openMSX): ROM de 64KB (4 bancos de 16KB), so' a pagina
+    //      4000h-7FFFh e' trocavel; o endereco de disparo vem do byte 94h da ROM.
+    {
+        // ROM de 64KB (8 pedacos de 8KB), cada banco de 16KB com um byte distinto
+        // (facil de identificar qual banco esta' visivel).
+        std::vector<uint8_t> rom(0x10000);
+        for (size_t i = 0; i < rom.size(); ++i) rom[i] = static_cast<uint8_t>(0x10 * (i >> 14) + (i & 0x0F));
+        rom[0x94] = 0x60; // gatilho: qualquer escrita em 6000h-6FFFh
+
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(1, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_MSXDOS2),
+              "MSXDOS2: LoadRom aceita 64KB com range=60h (" + error + ")");
+
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 1, 0);
+        check(mem.PeekSlot(1, 0, 0x4000) == rom[0] && mem.PeekSlot(1, 0, 0x7FFF) == rom[0x3FFF],
+              "MSXDOS2: no reset, 4000h-7FFFh mostra o banco 0 (os primeiros 16KB da ROM)");
+        check(mem.PeekSlot(1, 0, 0x0123) == MEMMAP_EMPTY_BYTE && mem.PeekSlot(1, 0, 0x8123) == MEMMAP_EMPTY_BYTE &&
+                  mem.PeekSlot(1, 0, 0xC123) == MEMMAP_EMPTY_BYTE,
+              "MSXDOS2: 0000h-3FFFh, 8000h-BFFFh e C000h-FFFFh ficam vazias (so' a pagina 1 existe)");
+
+        bus.write(0x6789, 0x02); // qualquer endereco de 6000h-6FFFh dispara a troca
+        check(mem.PeekSlot(1, 0, 0x4000) == rom[0x8000] && mem.PeekSlot(1, 0, 0x7FFF) == rom[0xBFFF],
+              "MSXDOS2: escrever 02h em 6789h troca a pagina 1 para o banco 2 (32768-49151)");
+
+        bus.write(0x5000, 0x03); // fora de 6000h-6FFFh: nao reconhecido, descartado em silencio
+        check(mem.PeekSlot(1, 0, 0x4000) == rom[0x8000],
+              "MSXDOS2: escrita fora de 6000h-6FFFh nao troca de banco (range=60h so' aceita esse endereco)");
+
+        // range=00h: so' 7FF0h dispara a troca.
+        std::vector<uint8_t> rom2 = rom;
+        rom2[0x94] = 0x00;
+        memmap::MemorySystem mem2;
+        check(mem2.LoadRom(1, 1, rom2.data(), rom2.size(), &error, MEMMAP_MAPPER_MSXDOS2),
+              "MSXDOS2: LoadRom aceita range=00h");
+        memmap::SlotMemoryBus bus2(mem2);
+        SelectEverywhere(bus2, 1, 1);
+        bus2.write(0x6789, 0x01); // dentro da faixa do range=60h, mas aqui o range e' 00h: ignorado
+        check(mem2.PeekSlot(1, 1, 0x4000) == rom2[0], "MSXDOS2 range=00h: 6789h nao e' o gatilho certo, nao troca");
+        bus2.write(0x7FF0, 0x01);
+        check(mem2.PeekSlot(1, 1, 0x4000) == rom2[0x4000], "MSXDOS2 range=00h: 7FF0h dispara a troca para o banco 1");
+
+        // range=7Fh: so' 7FFEh dispara a troca.
+        std::vector<uint8_t> rom3 = rom;
+        rom3[0x94] = 0x7F;
+        memmap::MemorySystem mem3;
+        check(mem3.LoadRom(1, 2, rom3.data(), rom3.size(), &error, MEMMAP_MAPPER_MSXDOS2),
+              "MSXDOS2: LoadRom aceita range=7Fh");
+        memmap::SlotMemoryBus bus3(mem3);
+        SelectEverywhere(bus3, 1, 2);
+        bus3.write(0x7FF0, 0x03); // dentro da faixa do range=00h, mas aqui o range e' 7Fh: ignorado
+        check(mem3.PeekSlot(1, 2, 0x4000) == rom3[0], "MSXDOS2 range=7Fh: 7FF0h nao e' o gatilho certo, nao troca");
+        bus3.write(0x7FFE, 0x03);
+        check(mem3.PeekSlot(1, 2, 0x4000) == rom3[0xC000], "MSXDOS2 range=7Fh: 7FFEh dispara a troca para o banco 3");
+
+        // Byte 94h desconhecido: a ROM e' recusada (nenhum endereco de disparo conhecido).
+        std::vector<uint8_t> rom4 = rom;
+        rom4[0x94] = 0x12;
+        memmap::MemorySystem mem4;
+        check(!mem4.LoadRom(1, 3, rom4.data(), rom4.size(), &error, MEMMAP_MAPPER_MSXDOS2),
+              "MSXDOS2: byte 94h desconhecido (12h) e' recusado (" + error + ")");
+    }
+
+    // --- 26. RAM de 16KB ocupa as ultimas paginas (C000h-FFFFh), nao 0000h -----
     //      (a BIOS da Gradiente Expert trava se a RAM comeca em 0000h da celula).
     {
         memmap::MemorySystem mem;

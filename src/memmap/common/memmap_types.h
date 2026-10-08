@@ -52,7 +52,17 @@ typedef enum MemMapMapperType {
     /* Panasonic FM-PAC (MAP_FMPAC do fMSX): ROM de 16KB em 4000h-7FFFh com
        troca pela porta 7FF7h, e SRAM de 8KB em 4000h-5FFFh liberada por uma
        chave escrita em 5FFEh/5FFFh. Ver doc/fm-spec.md, secao 4. */
-    MEMMAP_MAPPER_FMPAC
+    MEMMAP_MAPPER_FMPAC,
+    /* Cartucho generico de MSX-DOS 2 (RomMSXDOS2 do openMSX, GPL, so'
+       estudo -- nao existe no fMSX original, entao sem numero MAP_* de
+       referencia). ROM de 64KB (4 bancos de 16KB) que so' ocupa a pagina
+       4000h-7FFFh (bank 0 no reset; 8000h-BFFFh fica vazio, ao contrario
+       dos outros mappers MegaROM). A troca de banco e' de 16KB (nao 8KB) e
+       o endereco de escrita que dispara a troca vem de um byte gravado na
+       propria ROM (offset 94h): 00h = so' 7FF0h; 60h = qualquer escrita em
+       6000h-6FFFh; 7Fh = so' 7FFEh. Ver doc/memory-map-spec.md, secao 6, e
+       resource/openMSX/src/memory/RomMSXDOS2.cc. */
+    MEMMAP_MAPPER_MSXDOS2
 } MemMapMapperType;
 
 #ifdef __cplusplus

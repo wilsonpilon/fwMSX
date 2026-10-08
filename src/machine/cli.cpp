@@ -29,6 +29,7 @@ bool ParseMapper(const std::string &s, MemMapMapperType &out) {
     if (s == "konami4") { out = MEMMAP_MAPPER_KONAMI4; return true; }
     if (s == "ascii8") { out = MEMMAP_MAPPER_ASCII8; return true; }
     if (s == "ascii16") { out = MEMMAP_MAPPER_ASCII16; return true; }
+    if (s == "msxdos2") { out = MEMMAP_MAPPER_MSXDOS2; return true; }
     return false;
 }
 
@@ -256,7 +257,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
                     ++i; // detecta sozinho (o padrao)
                 } else if (!ParseMapper(args[i + 1], config.cart_mapper)) {
                     std::cerr << "fwmsx --msx: mapper desconhecido: '" << args[i + 1]
-                              << "' (use auto, gen8, gen16, konami5, konami4, ascii8 ou ascii16)" << std::endl;
+                              << "' (use auto, gen8, gen16, konami5, konami4, ascii8, ascii16 ou msxdos2)" << std::endl;
                     return 2;
                 } else {
                     cart_mapper_explicit = true;

@@ -17,18 +17,20 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.27.0** "King's Valley: Efeitos de rastreio
-  (paleta/scroll por linha)" (ou mais nova -- conferir `git log`). `git status` limpo apos o
-  commit/tag/branch/push desta rodada, `main` local == `origin/main`.
+- **Ultima versao publicada em `main`:** **1.28.0** "King's Valley: MSX-DOS 2 (cartucho
+  generico)" (ou mais nova -- conferir `git log`). `git status` limpo apos o commit/tag/branch/
+  push desta rodada, `main` local == `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
 - **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui
   `tape_load` (leitura/gravacao de fita + navegacao de TZX), `cas_pack` (empacotador + ripper de
-  WAV), `tapedb_store` (banco de fitas), `romdb_store` (`verify` + campos novos do Vampier) e
-  `vdp_msx2` (secao 10 nova: snapshot por linha de rastreio).
-- **Documentos vivos, todos sincronizados com a 1.27.0:** `README.md`, `doc/MANUAL.md`,
+  WAV), `tapedb_store` (banco de fitas), `romdb_store` (`verify` + campos novos do Vampier),
+  `vdp_msx2` (secao 10: snapshot por linha de rastreio) e `memmap_slots` (secao 25 nova: mapper
+  de MSX-DOS 2).
+- **Documentos vivos, todos sincronizados com a 1.28.0:** `README.md`, `doc/MANUAL.md`,
   `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
   `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md`, `doc/vdp-spec.md`, `doc/msx2-spec.md`,
-  `doc/msx2p-spec.md` e este arquivo.
+  `doc/msx2p-spec.md`, `doc/memory-map-spec.md`, `doc/fdc-spec.md`, `doc/slots-spec.md` e este
+  arquivo.
 - **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
   rodada):** corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1
   a 1.20.3); depois, os 3 itens do "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` ->
@@ -47,9 +49,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   falta no basico do emulador. Resposta: efeitos de rastreio no meio do quadro, MSX-DOS 2,
   save-state, som nunca validado contra hardware real. O usuario respondeu **"vamos entao fazer o
   1 o 4 e o 5 na sequencia"** -- ou seja, nesta ordem: (1) efeitos de rastreio, (4) MSX-DOS 2, (5)
-  save-state. **Item 1 (efeitos de rastreio) foi implementado, testado e publicado como 1.27.0.**
-  Itens 4 e 5 ainda nao comecaram -- ver a secao 7 (itens 16 e 14) para o que ja' foi pesquisado
-  sobre o MSX-DOS 2.
+  save-state. **Item 1 publicado como 1.27.0.** Depois, o usuario pediu **"prepare o item 4 e 5
+  entao na sequencia"** -- **item 4 (MSX-DOS 2) publicado como 1.28.0**, testado contra um kernel
+  2.30 e um disco de 720KB REAIS. **Item 5 (save-state) ainda nao comecou** -- ver a secao 7
+  (item 14).
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -58,6 +61,8 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 - BIOS Gradiente Expert 1.1 sobe com a RAM de 16 KB no fim da celula (C000h-FFFFh).
 - VDP completo (SCREEN 0-8 no V9938, 10-12 no V9958 com YJK/YAE e scroll); efeitos de rastreio no
   meio do quadro (paleta/scroll trocados por interrupcao de linha, 1.27.0).
+- MSX-DOS 2 (cartucho generico, `--cart <rom> msxdos2`, 1.28.0) -- testado contra um
+  `MSXDOS2.ROM` e um disco de 720KB REAIS: `dir`/`cd` em subdiretorios funcionam.
 - PSG, SCC (F1 Spirit), FM (MSX-MUSIC e FM-PAC) com comandos de BASIC, modo ritmo.
 - SRAM de cartucho ASCII8/ASCII16 e FM-PAC (`.sav`).
 - Layout de 16 celulas (slot:subslot) pela janela e pela CLI (`--slot`); RAM 16 KB no fim da celula,
@@ -143,7 +148,15 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   `vdp_render_line()`. Testado (`vdp2test`/`vdp_msx2`, secao 10 nova): simula uma troca de paleta
   no meio de um quadro e confirma que a linha anterior mostra a cor antiga e a posterior mostra a
   nova (e que, sem o snapshot, a linha anterior mostraria errado a cor nova -- prova direta).
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.27.0.*` (ver secao 9).
+- **MSX-DOS 2, cartucho generico (1.28.0, 2026-10-08)**: `MEMMAP_MAPPER_MSXDOS2`, adaptado de
+  `RomMSXDOS2` do openMSX (GPL, so' estudo) -- granularidade de 16KB (nao 8KB), so' a pagina
+  4000h-7FFFh e' trocavel, endereco de disparo lido do byte 94h da propria ROM (00h/60h/7Fh).
+  **Testado contra hardware real**: um `MSXDOS2.ROM` (64KB) e um disco de 720KB REAIS (ambos ja'
+  no repositorio) rodados via `--cart MSXDOS2.ROM msxdos2 --disk <disco>` -- o kernel sobe, `dir`
+  lista arquivos e subdiretorios, `cd` navega para dentro de um subdiretorio e `dir` la' funciona,
+  SEM precisar de nenhum mapper de RAM (a nota antiga do projeto, que supunha precisar, estava
+  errada). Testado (`memmaptest`/`memmap_slots`, secao 25 nova, 12 checagens).
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.28.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -159,7 +172,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   corrigido na 1.20.2** para fitas GRAVADAS por este emulador (via marca exata `TapeMark` por bloco);
   continua valendo so' para um `.cas` CRU carregado direto do disco, sem ter passado por uma gravacao
   deste emulador (nao ha' marca exata nesse caso, so' a busca pelo proximo cabecalho).
-- Sem save-state, GameMaster2, MSX-DOS 2.
+- Sem save-state, GameMaster2.
 - Cores YJK do V9958 nao conferidas com hardware real.
 
 ## 3. Como compilar e testar
@@ -292,23 +305,26 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    estado FINAL do quadro. Corrigido com snapshot por scanline (`VdpScanlineSnapshot`, capturado em
    `vdp_step_scanline()`, aplicado linha a linha em `RenderFrame()`). Ver secao 9 e
    `doc/vdp-spec.md`/`doc/msx2-spec.md`/`doc/msx2p-spec.md`.
-9. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
+9. **[FEITO em 2026-10-08, 1.28.0] MSX-DOS 2 (cartucho generico)** -- item 4 de "1, 4, 5"
+   (pedido do usuario: "prepare o item 4 e 5 entao na sequencia"). `MEMMAP_MAPPER_MSXDOS2`,
+   adaptado de `RomMSXDOS2` do openMSX; testado contra um `MSXDOS2.ROM` e um disco de 720KB REAIS
+   (`dir`/`cd` em subdiretorios funcionam, sem mapper de RAM). Ver secao 9 e
+   `doc/memory-map-spec.md`, secao 6.
+10. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
-10. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
+11. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
    de Sony/Philips/Spectravideo do openMSX (so' como referencia).
-11. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
+12. **Controle externo, estilo openMSX:** canal de controle em localhost (`status`, `reset`, `pause`,
    `type`, `cart`, `disk`, `fita`, `screenshot`, `peek`/`poke`, `quit`); a thread so' enfileira comandos.
    Ainda nao comecou.
-12. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada -- agora que o rastreio por linha existe,
+13. **Jogos:** Lode Runner + SCC; Parodius (tela fragmentada -- agora que o rastreio por linha existe,
     vale re-testar, mas ainda nao foi re-testado); Mega Chase; F-1 Spirit 3D (troca de disco).
-13. **BIOS Expert:** texto com espacos na tela; investigar.
-14. **Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **CPU no pior caso** -- item 5 de "1, 4, 5" vem
-    depois do MSX-DOS 2 (item 4).
-15. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
-16. **Cartuchos:** MSX-DOS 2 (item 4 de "1, 4, 5" -- pesquisa ja' feita: `MSXDOS2.ROM` real em
-    `resource/kizuna/...`, mapper de referencia em `resource/openMSX/src/memory/RomMSXDOS2.cc`),
-    GameMaster2, MSX-MUSIC com BIOS propria.
-17. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+14. **BIOS Expert:** texto com espacos na tela; investigar.
+15. **[PROXIMO] Save-state** (PSG, SCC, OPLL, disco, fita, VDP); **CPU no pior caso** -- item 5 de
+    "1, 4, 5", o unico que falta dessa sequencia pedida pelo usuario.
+16. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
+17. **Cartuchos:** GameMaster2, MSX-MUSIC com BIOS propria (MSX-DOS 2 feito na 1.28.0, item 9 acima).
+18. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
     com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
@@ -805,6 +821,67 @@ uma hipotese levantada na pergunta exploratoria, nunca confirmada com o jogo de 
 re-testar na janela antes de marcar esse item da lista de jogos como resolvido.
 
 Itens 4 (MSX-DOS 2) e 5 (save-state) de "1, 4, 5" ainda nao comecaram -- ver secao 7, itens 16 e 14.
+
+### Dia 2, continuacao: MSX-DOS 2, cartucho generico (1.28.0)
+
+O usuario pediu **"prepare o item 4 e 5 entao na sequencia"**, continuando a sequencia "1, 4, 5"
+ja' combinada. Item 4 e' MSX-DOS 2; uma rodada anterior ja' tinha pesquisado a fundo: um
+`MSXDOS2.ROM` real ja' estava no repositorio
+(`resource/kizuna/resource/MSXgl/tools/build/standalone/Emulicious/MSX/MSXDOS2.ROM`), e o mapper
+de referencia do openMSX (`RomMSXDOS2.cc`/`.hh`, GPL, so' estudo) ja' tinha sido lido.
+
+**Antes de codar**, reli o `RomMSXDOS2.cc` com atencao e confirmei os detalhes exatos: e' um
+mapper de 16KB (nao 8KB como os outros), so' a pagina 4000h-7FFFh e' trocavel (8000h-BFFFh fica
+sempre vazia), e o endereco que dispara a troca de banco vem de um byte na propria ROM (offset
+94h: 00h->7FF0h, 60h->qualquer escrita em 6000h-6FFFh, 7Fh->7FFEh). Tambem descobri, lendo a
+extensao `msxdos2.xml` do openMSX, algo que a nota antiga do projeto (`doc/fdc-spec.md`: "precisa
+de MSX2 + mapper de RAM") tinha ERRADO: o MSX-DOS 2 generico e' so' mais um CARTUCHO comum (slot
+"any"), nao uma substituicao da DiskROM nem precisa de RAM mapeada -- bem mais simples do que a
+nota supunha.
+
+**O que foi feito**: `MEMMAP_MAPPER_MSXDOS2` novo no enum (`src/memmap/common/memmap_types.h`,
+sem numero `MAP_*` porque nao existe no fMSX original). `memmap_attach_megarom()` le o byte 94h
+da ROM (so' para esse mapper) e guarda num campo novo (`msxdos2_range`); os quartos 2-3
+(8000h-BFFFh) ficam sempre vazios, igual ao FM-PAC ja' fazia com a sua propria janela.
+`memmap_try_bank_switch()` ganhou o case do MSX-DOS 2: confere o endereco contra o `range`
+guardado e, se bater, troca os quartos 0+1 juntos (16KB, igual GEN16/ASCII16 ja' faziam para as
+proprias trocas largas -- nenhuma infraestrutura nova precisou ser criada). `LoadRom()` recusa a
+ROM se o byte 94h nao for um dos 3 valores conhecidos (mesma checagem que o openMSX faz via
+excecao). `--cart <arquivo> msxdos2` reconhecido pela CLI.
+
+**Teste novo** (`memmaptest`/`memmap_slots`, secao 25, 12 checagens): ROM sintetica de 64KB com um
+byte distinto por banco de 16KB, testando os 3 valores de `range`, a pagina 8000h-BFFFh sempre
+vazia, e a recusa de um byte 94h desconhecido.
+
+**Smoke test com hardware real** (achado direto no proprio repositorio, nao precisou baixar nada):
+alem do `MSXDOS2.ROM`, encontrei um disco de 720KB REAL de MSX-DOS 2.30
+(`resource/kizuna/resource/MSXFusionC/Working Folder/Tools/MSX-DOS/MSXDOS-230.DSK`) com
+`MSXDOS2.SYS`/`COMMAND2.COM`/`AUTOEXEC.BAT` e tres subdiretorios (`KHELP`/`UTILS`/`HELP`) --
+confirmado com `msxdisk.exe list` antes de usar. Rodado num executavel ISOLADO (nunca o
+`dist/roms/roms.db` real) via `--cart MSXDOS2.ROM msxdos2 --disk MSXDOS-230.DSK --keys "dir|cd
+khelp|dir|"`: o kernel MSX-DOS 2 sobe, `dir` lista arquivos E subdiretorios corretamente, `cd
+khelp` navega para dentro do subdiretorio e `dir` la' mostra os arquivos `.HLP` certos (MOVE.HLP,
+PATH.HLP, RMDIR.HLP...) -- confirmado visualmente convertendo o `.ppm` do `--shot` para `.png`
+(script Python so' com a stdlib, sem instalar nada). Funcionou de primeira, sem precisar de
+NENHUM mapper de RAM.
+
+**Erro cometido e corrigido nesta rodada**: a primeira build (so' para rodar os testes novos do
+`memmaptest`) foi feita ANTES de bumpar a versao -- violando a propria regra do projeto ("bumpar
+a versao ANTES do primeiro build de uma rodada", registrada justamente por um erro assim em
+sessoes anteriores). Isso sobrescreveu `dist/fwMSX-1.27.0.zip`/`dist/fwMSX.exe` (ja' commitados e
+publicados) com conteudo da 1.28.0 ainda incompleta. Detectado com `git status --short dist/`
+(mostrou os dois arquivos como modificados) ANTES de qualquer commit; corrigido com `git checkout
+-- dist/fwMSX-1.27.0.zip dist/fwMSX.exe` (restaura o estado publicado), so' DEPOIS bumpando a
+versao para 1.28.0 e reconstruindo do zero. Nenhum dado publicado foi perdido, mas e' um lembrete
+de seguir a ordem certa (bumpar -> construir) com mais disciplina.
+
+Build Windows e Linux (WSL), `ctest` 18/18 nos dois. Documentacao sincronizada:
+`doc/memory-map-spec.md` (secao 6, nova entrada do mapper), `doc/fdc-spec.md` (corrigida a nota
+errada sobre precisar de mapper de RAM), `doc/msx2-spec.md` (secao 6), `doc/slots-spec.md` (secao
+6), `doc/SPEC.md` (secao 5, item marcado feito), `doc/CHANGELOG.md`/`doc/RELEASE.md` (`[1.28.0]`),
+`README.md`, `doc/MANUAL.md`, e este `OUTLINE.md`.
+
+Item 5 (save-state) de "1, 4, 5" e' o unico que falta -- ver secao 7, item 15.
 
 ---
 

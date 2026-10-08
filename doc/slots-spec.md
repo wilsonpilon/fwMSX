@@ -94,9 +94,12 @@ Suite completa do CTest: 14/14.
 
 - **CLI**: a opcao `--slot P:S=tipo[:arg]` (tipo: empty, rom, sub, ram, mapper, disk, fmpac) monta o layout pela linha de comando, a partir do padrao. Ex.: `--slot 0:0=rom:expert.rom --slot 3:0=ram:16`. Pela janela, o layout tambem pode ser editado. (Antes: o layout so' se editava pelo menu.) Falta uma opcao de linha de comando
   para o layout (ex.: `--slot 2:0=ram:64`), util para testes automatizados.
-- **Outros cartuchos e ROMs**: MSX-DOS 2 (MSXDOS2.ROM), GameMaster2, o cartucho
-  MSX-MUSIC com a propria BIOS. Os tipos atuais cobrem ROM, sub-ROM, RAM, mapper,
-  disco e FM-PAC; um tipo novo entra como um `SlotKind` com a sua regra de carga.
+- **Outros cartuchos e ROMs**: GameMaster2, o cartucho MSX-MUSIC com a propria BIOS.
+  MSX-DOS 2 (`MSXDOS2.ROM`) ja' funciona via `--cart <rom> msxdos2` (nao precisou de
+  um `SlotKind` novo -- e' so' mais um `MemMapMapperType`, ver
+  `doc/memory-map-spec.md`, secao 6). Os tipos atuais de `--slot` cobrem ROM,
+  sub-ROM, RAM, mapper, disco e FM-PAC; um tipo novo entra como um `SlotKind` com a
+  sua regra de carga.
 - **BIOS de outras maquinas** (ex.: Gradiente Expert 1.1): o arquivo entra no slot
   0:0 e o layout monta, mas a BIOS so' funciona se o hardware que ela espera (portas,
   VDP, disco) existir aqui. Isso nao foi testado com nenhuma BIOS fora do fMSX.

@@ -53,6 +53,7 @@ const char *MapperName(MemMapMapperType mapper) {
     case MEMMAP_MAPPER_ASCII8: return "ASCII8";
     case MEMMAP_MAPPER_ASCII16: return "ASCII16";
     case MEMMAP_MAPPER_FMPAC: return "FMPAC";
+    case MEMMAP_MAPPER_MSXDOS2: return "MSXDOS2";
     default: return "ROM plana";
     }
 }
