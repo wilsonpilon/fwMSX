@@ -80,6 +80,28 @@ int main() {
         check(Machine::Create(missing, error) == nullptr && Contains(error, "BIOS"), "BIOS inexistente: Create() falha citando a BIOS");
     }
 
+    // --- 2b. SetCartridge()/CartridgePath()/CartridgeMapper(): mapper explicito pela janela --
+    // (menu Midia > Cartucho > Mapper, ou a Configuracao de slots -- ver
+    // src/machine/gui/emu_window.cpp). Nao precisa de BIOS real: so' mexe no
+    // MachineConfig/SlotLayout.
+    {
+        MachineConfig cfg;
+        check(machine::CartridgePath(cfg).empty() && machine::CartridgeMapper(cfg) == MEMMAP_MAPPER_NONE,
+              "sem cartucho: CartridgePath/CartridgeMapper vazios");
+
+        machine::SetCartridge(cfg, "jogo.rom"); // sem mapper explicito = auto (NONE), como sempre
+        check(machine::CartridgePath(cfg) == "jogo.rom" && machine::CartridgeMapper(cfg) == MEMMAP_MAPPER_NONE,
+              "SetCartridge sem mapper: auto/deteccao (comportamento de sempre preservado)");
+
+        machine::SetCartridge(cfg, "msxdos2.rom", MEMMAP_MAPPER_MSXDOS2);
+        check(machine::CartridgePath(cfg) == "msxdos2.rom" && machine::CartridgeMapper(cfg) == MEMMAP_MAPPER_MSXDOS2,
+              "SetCartridge com mapper explicito (msxdos2): CartridgeMapper devolve o mesmo");
+
+        machine::SetCartridge(cfg, ""); // retirar cartucho zera tudo, inclusive o mapper
+        check(machine::CartridgePath(cfg).empty() && machine::CartridgeMapper(cfg) == MEMMAP_MAPPER_NONE,
+              "retirar cartucho (path vazio): mapper volta a NONE tambem");
+    }
+
 #ifdef FWMSX_SOURCE_DIR
     const std::string rom = std::string(FWMSX_SOURCE_DIR) + "/resource/fMSX/ROMs/MSX.ROM";
     MachineConfig config;

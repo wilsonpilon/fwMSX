@@ -13,6 +13,42 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.30.0 -- "King's Valley: Menus reorganizados + mapper do cartucho na janela" (2026-10-08)
+
+**Fase:** feedback direto do usuario depois de usar a 1.29.0 (save-state) e tentar testar a 1.28.0
+(MSX-DOS 2) pela janela: "save state validade e funcionando normalmente, Nao descobri como inserir
+o cartucho do MSX-DOS2 na configuracao para testar ele. Outra coisa os menus estao ficando muito
+separados" -- com a sugestao explicita de agrupar Disco/Fita/Cartucho num menu Midia, Video/Exibir
+num menu Tela, e Configuracoes dentro de Ferramentas.
+
+### O que foi feito
+
+- **Mapper do cartucho pela janela**: a causa raiz do problema do usuario era que
+  `Machine::SetCartridge()` sempre resetava o mapper do cartucho para `MEMMAP_MAPPER_NONE`
+  (deteccao automatica) -- nao havia NENHUM caminho na GUI para escolher um mapper explicito, so'
+  a CLI (`--cart <rom> msxdos2`) tinha essa opcao. `SetCartridge()` ganhou um parametro `mapper`
+  (default preserva o comportamento antigo) e `CartridgeMapper()` novo para ler de volta. A GUI
+  ganhou DOIS pontos de acesso -- um submenu **Mapper** no menu Cartucho (lista completa: auto +
+  6 mappers de sempre + MSX-DOS 2; com um cartucho ja' carregado, trocar o mapper reinicia na hora
+  com o MESMO arquivo) e um combo equivalente na linha da ROM dentro da **Configuracao de
+  slots...** (onde o usuario provavelmente tinha procurado primeiro, pela palavra "configuracao").
+- **Menus reagrupados** (`src/machine/gui/emu_window.cpp`): os 13 menus do topo viraram 9.
+  - **Midia**: envolve os 3 menus existentes (Disco, Fita, Cartucho) como submenus, sem mudar
+    nada do conteudo de cada um.
+  - **Tela**: envolve os 2 menus existentes (Exibir, Video -- os filtros/interpolacao/scanlines)
+    como submenus.
+  - **Ferramentas**: incorporou o unico item do antigo menu Configuracoes (**Interface** --
+    tema, fonte, moldura) como um submenu a mais, antes dos placeholders "(em breve)" que ja'
+    existiam; o menu Configuracoes (que so' tinha isso) foi removido.
+  - Arquivo, Maquina, Som, Joystick, ROMs e Ajuda continuam como estavam.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.30.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.30.0-linux.tar.gz`.
+- `ctest`: 18 suites, incluindo a secao 2b nova do `machinetest`/`machine_frames`. Windows: 18/18.
+  Linux: 18/18.
+
 ## v1.29.0 -- "King's Valley: Save-state" (2026-10-08)
 
 **Fase:** item 5 de "vamos fazer o 1, o 4 e o 5 na sequencia" (item 4, MSX-DOS 2, foi a 1.28.0) --

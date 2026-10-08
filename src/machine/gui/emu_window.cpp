@@ -339,6 +339,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     std::string tape_message;
     bool show_tape_window = false;
     std::string state_message; // ultimo erro ao salvar/carregar um estado (menu Arquivo)
+    // Mapper escolhido pelo usuario (menu Midia > Cartucho > Mapper) para o PROXIMO
+    // "Inserir cartucho..."/"Carregar cartucho..." -- NONE = deteccao automatica, como
+    // sempre. Troca de mapper com um cartucho ja' inserido reinicia na hora com ele.
+    MemMapMapperType cart_mapper_choice = MEMMAP_MAPPER_NONE;
     std::vector<std::string> deferred_releases;
     const double frame_dt = 1.0 / Machine::kFrameRate;
     double last_time = glfwGetTime();
@@ -351,6 +355,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     // Configuracao usada para criar a maquina atual: trocar modelo ou cartucho
     // recria a maquina a partir dela (os discos montados entram de novo).
     MachineConfig current = options.machine;
+    cart_mapper_choice = CartridgeMapper(current); // reflete um --cart <rom> <mapper> dado na CLI
     auto snapshot = [&]() {
         MachineConfig next = current;
         next.disk_a = machine->disk(0).loaded() ? machine->disk(0).path() : std::string();
@@ -378,7 +383,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
         if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Abrir cartucho MSX", "Cartuchos MSX",
                                                                   "*.rom;*.mx1;*.mx2;*.bin")) {
             MachineConfig next = snapshot();
-            SetCartridge(next, *chosen);
+            SetCartridge(next, *chosen, cart_mapper_choice);
             reboot(next);
         }
     };
@@ -616,62 +621,65 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 }
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Exibir")) {
-                ImGui::TextDisabled("Janela");
-                for (int z = 0; z < 4; ++z) {
-                    if (ImGui::MenuItem(kZoomNames[z], nullptr, !fullscreen && zoom_index == z)) {
-                        zoom_index = z;
-                        if (fullscreen) g_input.toggle_fullscreen = true;
-                        resize_pending = true;
+            if (ImGui::BeginMenu("Tela")) {
+                if (ImGui::BeginMenu("Exibir")) {
+                    ImGui::TextDisabled("Janela");
+                    for (int z = 0; z < 4; ++z) {
+                        if (ImGui::MenuItem(kZoomNames[z], nullptr, !fullscreen && zoom_index == z)) {
+                            zoom_index = z;
+                            if (fullscreen) g_input.toggle_fullscreen = true;
+                            resize_pending = true;
+                        }
                     }
-                }
-                ImGui::Separator();
-                if (ImGui::MenuItem("Tela cheia", "F11", fullscreen)) g_input.toggle_fullscreen = true;
-                ImGui::Separator();
-                ImGui::TextDisabled("Proporcao");
-                if (ImGui::MenuItem("Original (pixels)", nullptr, aspect_mode == 0)) aspect_mode = 0;
-                if (ImGui::MenuItem("4:3 (corrigido)", nullptr, aspect_mode == 1)) aspect_mode = 1;
-                if (ImGui::MenuItem("16:9 (esticado)", nullptr, aspect_mode == 2)) aspect_mode = 2;
-                ImGui::Separator();
-                ImGui::MenuItem("Escala inteira (so' em Original)", nullptr, &integer_scale);
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Video")) {
-                if (ImGui::BeginMenu("Interpolate Video")) {
-                    const struct {
-                        Interpolation mode;
-                        const char *label;
-                    } modes[] = {{Interpolation::Nearest, "Nearest Neighbor"},
-                                 {Interpolation::Linear, "Linear Scaling"},
-                                 {Interpolation::Epx, "EPX Scale 2x"},
-                                 {Interpolation::Eagle, "Eagle Algorithm"},
-                                 {Interpolation::Scale2x, "Scale 2x Algorithm"},
-                                 {Interpolation::Sal2x, "2xSal Algorithm"}};
-                    for (const auto &m : modes) {
-                        if (ImGui::MenuItem(m.label, nullptr, video_opts.interp == m.mode)) video_opts.interp = m.mode;
-                    }
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Tela cheia", "F11", fullscreen)) g_input.toggle_fullscreen = true;
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Proporcao");
+                    if (ImGui::MenuItem("Original (pixels)", nullptr, aspect_mode == 0)) aspect_mode = 0;
+                    if (ImGui::MenuItem("4:3 (corrigido)", nullptr, aspect_mode == 1)) aspect_mode = 1;
+                    if (ImGui::MenuItem("16:9 (esticado)", nullptr, aspect_mode == 2)) aspect_mode = 2;
+                    ImGui::Separator();
+                    ImGui::MenuItem("Escala inteira (so' em Original)", nullptr, &integer_scale);
                     ImGui::EndMenu();
                 }
-                if (ImGui::BeginMenu("Scanlines")) {
-                    if (ImGui::MenuItem("Nenhum", nullptr, video_opts.scanlines == Scanlines::None)) video_opts.scanlines = Scanlines::None;
-                    if (ImGui::MenuItem("TV", nullptr, video_opts.scanlines == Scanlines::Tv)) video_opts.scanlines = Scanlines::Tv;
-                    if (ImGui::MenuItem("LCD", nullptr, video_opts.scanlines == Scanlines::Lcd)) video_opts.scanlines = Scanlines::Lcd;
-                    if (ImGui::MenuItem("LCD Raster", nullptr, video_opts.scanlines == Scanlines::LcdRaster)) video_opts.scanlines = Scanlines::LcdRaster;
-                    ImGui::EndMenu();
-                }
-                if (ImGui::BeginMenu("Color Filter")) {
-                    const struct {
-                        ColorFilter filter;
-                        const char *label;
-                    } filters[] = {{ColorFilter::None, "Nenhum"},
-                                   {ColorFilter::Monochrome, "Monochrome"},
-                                   {ColorFilter::Sepia, "Sepia"},
-                                   {ColorFilter::GreenCrt, "Green CRT"},
-                                   {ColorFilter::AmberCrt, "Amber CRT"},
-                                   {ColorFilter::CmyRaster, "CMY Raster"},
-                                   {ColorFilter::RgbRaster, "RGB Raster"}};
-                    for (const auto &f : filters) {
-                        if (ImGui::MenuItem(f.label, nullptr, video_opts.color == f.filter)) video_opts.color = f.filter;
+                if (ImGui::BeginMenu("Video")) {
+                    if (ImGui::BeginMenu("Interpolate Video")) {
+                        const struct {
+                            Interpolation mode;
+                            const char *label;
+                        } modes[] = {{Interpolation::Nearest, "Nearest Neighbor"},
+                                     {Interpolation::Linear, "Linear Scaling"},
+                                     {Interpolation::Epx, "EPX Scale 2x"},
+                                     {Interpolation::Eagle, "Eagle Algorithm"},
+                                     {Interpolation::Scale2x, "Scale 2x Algorithm"},
+                                     {Interpolation::Sal2x, "2xSal Algorithm"}};
+                        for (const auto &m : modes) {
+                            if (ImGui::MenuItem(m.label, nullptr, video_opts.interp == m.mode)) video_opts.interp = m.mode;
+                        }
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Scanlines")) {
+                        if (ImGui::MenuItem("Nenhum", nullptr, video_opts.scanlines == Scanlines::None)) video_opts.scanlines = Scanlines::None;
+                        if (ImGui::MenuItem("TV", nullptr, video_opts.scanlines == Scanlines::Tv)) video_opts.scanlines = Scanlines::Tv;
+                        if (ImGui::MenuItem("LCD", nullptr, video_opts.scanlines == Scanlines::Lcd)) video_opts.scanlines = Scanlines::Lcd;
+                        if (ImGui::MenuItem("LCD Raster", nullptr, video_opts.scanlines == Scanlines::LcdRaster)) video_opts.scanlines = Scanlines::LcdRaster;
+                        ImGui::EndMenu();
+                    }
+                    if (ImGui::BeginMenu("Color Filter")) {
+                        const struct {
+                            ColorFilter filter;
+                            const char *label;
+                        } filters[] = {{ColorFilter::None, "Nenhum"},
+                                       {ColorFilter::Monochrome, "Monochrome"},
+                                       {ColorFilter::Sepia, "Sepia"},
+                                       {ColorFilter::GreenCrt, "Green CRT"},
+                                       {ColorFilter::AmberCrt, "Amber CRT"},
+                                       {ColorFilter::CmyRaster, "CMY Raster"},
+                                       {ColorFilter::RgbRaster, "RGB Raster"}};
+                        for (const auto &f : filters) {
+                            if (ImGui::MenuItem(f.label, nullptr, video_opts.color == f.filter)) video_opts.color = f.filter;
+                        }
+                        ImGui::EndMenu();
                     }
                     ImGui::EndMenu();
                 }
@@ -691,135 +699,170 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 ImGui::MenuItem("Gravar trilha de som (em breve)", nullptr, false, false);
                 ImGui::EndMenu();
             }
-            if (ImGui::BeginMenu("Disco")) {
-                if (!machine->has_disk_interface()) {
-                    ImGui::TextDisabled("Sem interface de disquete.");
-                    ImGui::TextDisabled("Use --disk <arq.dsk> ao iniciar, ou troque o modelo.");
-                } else {
-                    for (int d = 0; d < 2; ++d) {
-                        const char letter = static_cast<char>('A' + d);
-                        const fdc::DiskImage &img = machine->disk(d);
-                        ImGui::Text("%c: %s", letter, img.loaded() ? img.path().c_str() : "(vazio)");
-                        std::string label = std::string("Inserir em ") + letter + ":...";
-                        if (ImGui::MenuItem(label.c_str())) {
-                            if (const auto chosen = msxdisk::gui::ShowOpenDskDialog(window)) {
-                                std::string disk_error;
-                                if (!machine->InsertDisk(d, *chosen, disk_error)) disk_message = disk_error;
-                                else disk_message.clear();
-                            }
-                        }
-                        label = std::string("Ejetar ") + letter + ":";
-                        if (ImGui::MenuItem(label.c_str(), nullptr, false, img.loaded())) machine->EjectDisk(d);
-                    }
-                    if (!disk_message.empty()) {
-                        ImGui::Separator();
-                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
-                    }
-                    ImGui::Separator();
-                    ImGui::MenuItem("Novo disco... (em breve)", nullptr, false, false);
-                    ImGui::TextDisabled("As gravacoes do MSX-DOS vao direto para o arquivo.");
-                }
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Fita")) {
-                // Ver doc/tape-spec.md: carregamento rapido (gancho de BIOS, sem
-                // som) ou normal (pulsos de verdade, com o barulho do gravador).
-                ImGui::Text("K7: %s", machine->tape().inserted() ? machine->tape().path().c_str() : "(vazia)");
-                if (machine->tape().inserted()) {
-                    ImGui::TextDisabled("%s", machine->tape().read_only() ? "Protegida contra gravacao" : "Destravada (pode gravar)");
-                }
-                if (ImGui::MenuItem("Inserir fita...")) {
-                    if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Inserir fita", "Fitas MSX",
-                                                                              "*.cas;*.tsx;*.tzx")) {
-                        std::string tape_error;
-                        if (!machine->InsertTape(*chosen, tape_error)) tape_message = tape_error;
-                        else tape_message.clear();
-                    }
-                }
-                if (ImGui::MenuItem("Nova fita (.tsx)...")) {
-                    if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Nova fita MSX", "Fitas TSX",
-                                                                             "*.tsx", "tsx", "")) {
-                        std::string tape_error;
-                        if (!machine->NewBlankTape(*chosen, tape_error)) tape_message = tape_error;
-                        else tape_message.clear();
-                    }
-                }
-                if (ImGui::MenuItem("Ejetar", nullptr, false, machine->tape().inserted())) {
-                    machine->EjectTape();
-                    tape_message.clear();
-                }
-                if (ImGui::MenuItem("Rebobinar", nullptr, false, machine->tape().inserted())) machine->RewindTape();
-                if (!tape_message.empty()) {
-                    ImGui::Separator();
-                    ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", tape_message.c_str());
-                }
-                ImGui::Separator();
-                ImGui::TextDisabled("Carregamento");
-                const bool tape_fast = machine->tape().mode() == tape::TapeMode::Fast;
-                if (ImGui::RadioButton("Rapido (sem som)", tape_fast)) machine->SetTapeMode(tape::TapeMode::Fast);
-                if (ImGui::RadioButton("Normal (com o som do gravador)", !tape_fast)) machine->SetTapeMode(tape::TapeMode::Normal);
-                ImGui::Separator();
-                ImGui::TextDisabled("Gravacao (CSAVE/BSAVE \"CAS:\")");
-                {
-                    // Dois itens claros em vez de um so' que alterna (ver
-                    // doc/tape-spec.md, secao 6): um toggle so' mostra o
-                    // estado ATUAL -- clicar sem checar o estado antes
-                    // (ex.: depois de reinserir a mesma fita) travava de
-                    // novo sem avisar, e o proximo CSAVE dava "Device I/O
-                    // error" sem pista nenhuma do motivo. Cada item aqui
-                    // so' fica clicavel quando faz sentido.
-                    const bool ro = machine->tape().read_only();
-                    const bool has_tape = machine->tape().inserted();
-                    if (ImGui::MenuItem("Destravar para gravar", nullptr, false, has_tape && ro))
-                        machine->tape().SetReadOnly(false);
-                    if (ImGui::MenuItem("Travar contra gravacao", nullptr, false, has_tape && !ro))
-                        machine->tape().SetReadOnly(true);
-                    ImGui::TextDisabled("%s", !has_tape ? "(sem fita)" : ro ? "Travada (so' leitura)" : "Destravada (pode gravar)");
-                }
-                ImGui::TextDisabled("Ao gravar:");
-                const tape::TapeWriteMode wmode = machine->tape().write_mode();
-                if (ImGui::RadioButton("Incluir no final da fita", wmode == tape::TapeWriteMode::AppendAtEnd))
-                    machine->tape().SetWriteMode(tape::TapeWriteMode::AppendAtEnd);
-                if (ImGui::RadioButton("Sobrescrever o ponto marcado", wmode == tape::TapeWriteMode::OverwriteAtPoint))
-                    machine->tape().SetWriteMode(tape::TapeWriteMode::OverwriteAtPoint);
-                if (ImGui::RadioButton("Nova fita (apaga tudo)", wmode == tape::TapeWriteMode::NewTape))
-                    machine->tape().SetWriteMode(tape::TapeWriteMode::NewTape);
-                ImGui::Separator();
-                ImGui::MenuItem("Mostrar fita K7", nullptr, &show_tape_window);
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Cartucho")) {
-                const std::string cart = CartridgePath(current);
-                ImGui::Text("Slot 1: %s", cart.empty() ? "(vazio)" : cart.c_str());
-                if (!machine->cart_info().empty()) ImGui::TextDisabled("%s", machine->cart_info().c_str());
-                ImGui::Separator();
-                if (ImGui::MenuItem("Inserir cartucho...")) LoadCartridgeFromDialog();
-                if (ImGui::MenuItem("Retirar cartucho", nullptr, false, !cart.empty())) {
-                    MachineConfig next = snapshot();
-                    SetCartridge(next, "");
-                    reboot(next);
-                }
-                ImGui::Separator();
-                // FM-PAC (OPLL + SRAM de 8KB) no slot 2:0 -- ver doc/fm-spec.md.
-                if (!disk_message.empty()) ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
-                // FM-PAC (OPLL + SRAM de 8KB) no slot 2:0 -- ver doc/fm-spec.md.
-                const bool fmpac_on = !FmPacPath(current).empty();
-                if (ImGui::MenuItem("FM-PAC (Panasonic, slot 2:0)", nullptr, fmpac_on)) {
-                    MachineConfig next = snapshot();
-                    if (!fmpac_on) {
-                        const std::string found = FmpacNear(current.bios_path);
-                        if (found.empty()) {
-                            disk_message = "FMPAC.ROM nao encontrada ao lado das ROMs do fMSX (resource/fMSX/)";
-                        } else {
-                            SetFmPac(next, found);
-                            reboot(next);
-                        }
+            if (ImGui::BeginMenu("Midia")) {
+                if (ImGui::BeginMenu("Disco")) {
+                    if (!machine->has_disk_interface()) {
+                        ImGui::TextDisabled("Sem interface de disquete.");
+                        ImGui::TextDisabled("Use --disk <arq.dsk> ao iniciar, ou troque o modelo.");
                     } else {
-                        SetFmPac(next, "");
+                        for (int d = 0; d < 2; ++d) {
+                            const char letter = static_cast<char>('A' + d);
+                            const fdc::DiskImage &img = machine->disk(d);
+                            ImGui::Text("%c: %s", letter, img.loaded() ? img.path().c_str() : "(vazio)");
+                            std::string label = std::string("Inserir em ") + letter + ":...";
+                            if (ImGui::MenuItem(label.c_str())) {
+                                if (const auto chosen = msxdisk::gui::ShowOpenDskDialog(window)) {
+                                    std::string disk_error;
+                                    if (!machine->InsertDisk(d, *chosen, disk_error)) disk_message = disk_error;
+                                    else disk_message.clear();
+                                }
+                            }
+                            label = std::string("Ejetar ") + letter + ":";
+                            if (ImGui::MenuItem(label.c_str(), nullptr, false, img.loaded())) machine->EjectDisk(d);
+                        }
+                        if (!disk_message.empty()) {
+                            ImGui::Separator();
+                            ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+                        }
+                        ImGui::Separator();
+                        ImGui::MenuItem("Novo disco... (em breve)", nullptr, false, false);
+                        ImGui::TextDisabled("As gravacoes do MSX-DOS vao direto para o arquivo.");
+                    }
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Fita")) {
+                    // Ver doc/tape-spec.md: carregamento rapido (gancho de BIOS, sem
+                    // som) ou normal (pulsos de verdade, com o barulho do gravador).
+                    ImGui::Text("K7: %s", machine->tape().inserted() ? machine->tape().path().c_str() : "(vazia)");
+                    if (machine->tape().inserted()) {
+                        ImGui::TextDisabled("%s", machine->tape().read_only() ? "Protegida contra gravacao" : "Destravada (pode gravar)");
+                    }
+                    if (ImGui::MenuItem("Inserir fita...")) {
+                        if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Inserir fita", "Fitas MSX",
+                                                                                  "*.cas;*.tsx;*.tzx")) {
+                            std::string tape_error;
+                            if (!machine->InsertTape(*chosen, tape_error)) tape_message = tape_error;
+                            else tape_message.clear();
+                        }
+                    }
+                    if (ImGui::MenuItem("Nova fita (.tsx)...")) {
+                        if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Nova fita MSX", "Fitas TSX",
+                                                                                 "*.tsx", "tsx", "")) {
+                            std::string tape_error;
+                            if (!machine->NewBlankTape(*chosen, tape_error)) tape_message = tape_error;
+                            else tape_message.clear();
+                        }
+                    }
+                    if (ImGui::MenuItem("Ejetar", nullptr, false, machine->tape().inserted())) {
+                        machine->EjectTape();
+                        tape_message.clear();
+                    }
+                    if (ImGui::MenuItem("Rebobinar", nullptr, false, machine->tape().inserted())) machine->RewindTape();
+                    if (!tape_message.empty()) {
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", tape_message.c_str());
+                    }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Carregamento");
+                    const bool tape_fast = machine->tape().mode() == tape::TapeMode::Fast;
+                    if (ImGui::RadioButton("Rapido (sem som)", tape_fast)) machine->SetTapeMode(tape::TapeMode::Fast);
+                    if (ImGui::RadioButton("Normal (com o som do gravador)", !tape_fast)) machine->SetTapeMode(tape::TapeMode::Normal);
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Gravacao (CSAVE/BSAVE \"CAS:\")");
+                    {
+                        // Dois itens claros em vez de um so' que alterna (ver
+                        // doc/tape-spec.md, secao 6): um toggle so' mostra o
+                        // estado ATUAL -- clicar sem checar o estado antes
+                        // (ex.: depois de reinserir a mesma fita) travava de
+                        // novo sem avisar, e o proximo CSAVE dava "Device I/O
+                        // error" sem pista nenhuma do motivo. Cada item aqui
+                        // so' fica clicavel quando faz sentido.
+                        const bool ro = machine->tape().read_only();
+                        const bool has_tape = machine->tape().inserted();
+                        if (ImGui::MenuItem("Destravar para gravar", nullptr, false, has_tape && ro))
+                            machine->tape().SetReadOnly(false);
+                        if (ImGui::MenuItem("Travar contra gravacao", nullptr, false, has_tape && !ro))
+                            machine->tape().SetReadOnly(true);
+                        ImGui::TextDisabled("%s", !has_tape ? "(sem fita)" : ro ? "Travada (so' leitura)" : "Destravada (pode gravar)");
+                    }
+                    ImGui::TextDisabled("Ao gravar:");
+                    const tape::TapeWriteMode wmode = machine->tape().write_mode();
+                    if (ImGui::RadioButton("Incluir no final da fita", wmode == tape::TapeWriteMode::AppendAtEnd))
+                        machine->tape().SetWriteMode(tape::TapeWriteMode::AppendAtEnd);
+                    if (ImGui::RadioButton("Sobrescrever o ponto marcado", wmode == tape::TapeWriteMode::OverwriteAtPoint))
+                        machine->tape().SetWriteMode(tape::TapeWriteMode::OverwriteAtPoint);
+                    if (ImGui::RadioButton("Nova fita (apaga tudo)", wmode == tape::TapeWriteMode::NewTape))
+                        machine->tape().SetWriteMode(tape::TapeWriteMode::NewTape);
+                    ImGui::Separator();
+                    ImGui::MenuItem("Mostrar fita K7", nullptr, &show_tape_window);
+                    ImGui::EndMenu();
+                }
+                if (ImGui::BeginMenu("Cartucho")) {
+                    const std::string cart = CartridgePath(current);
+                    ImGui::Text("Slot 1: %s", cart.empty() ? "(vazio)" : cart.c_str());
+                    if (!machine->cart_info().empty()) ImGui::TextDisabled("%s", machine->cart_info().c_str());
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Inserir cartucho...")) LoadCartridgeFromDialog();
+                    if (ImGui::MenuItem("Retirar cartucho", nullptr, false, !cart.empty())) {
+                        MachineConfig next = snapshot();
+                        SetCartridge(next, "");
                         reboot(next);
                     }
+                    if (ImGui::BeginMenu("Mapper")) {
+                        // Escolhe o mapper de bank-switch do cartucho -- precisa ser
+                        // explicito para ROMs que a heuristica de tamanho/conteudo nao
+                        // identifica sozinha (ex.: MSX-DOS 2, ver doc/memory-map-spec.md,
+                        // secao 6). Vale para "Inserir cartucho..." daqui pra frente; com
+                        // um cartucho ja' inserido, troca de mapper reinicia na hora com
+                        // o MESMO arquivo e o mapper novo.
+                        static const struct {
+                            MemMapMapperType mapper;
+                            const char *label;
+                        } kMapperChoices[] = {
+                            {MEMMAP_MAPPER_NONE, "Automatico (deteccao)"},
+                            {MEMMAP_MAPPER_GEN8, "Gen8"},
+                            {MEMMAP_MAPPER_GEN16, "Gen16"},
+                            {MEMMAP_MAPPER_KONAMI5, "Konami5"},
+                            {MEMMAP_MAPPER_KONAMI4, "Konami4"},
+                            {MEMMAP_MAPPER_ASCII8, "ASCII8"},
+                            {MEMMAP_MAPPER_ASCII16, "ASCII16"},
+                            {MEMMAP_MAPPER_MSXDOS2, "MSX-DOS 2 (cartucho generico)"},
+                        };
+                        for (const auto &choice : kMapperChoices) {
+                            if (ImGui::MenuItem(choice.label, nullptr, cart_mapper_choice == choice.mapper)) {
+                                cart_mapper_choice = choice.mapper;
+                                if (!cart.empty()) {
+                                    MachineConfig next = snapshot();
+                                    SetCartridge(next, cart, cart_mapper_choice);
+                                    reboot(next);
+                                }
+                            }
+                        }
+                        ImGui::EndMenu();
+                    }
+                    ImGui::Separator();
+                    // FM-PAC (OPLL + SRAM de 8KB) no slot 2:0 -- ver doc/fm-spec.md.
+                    if (!disk_message.empty()) ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+                    // FM-PAC (OPLL + SRAM de 8KB) no slot 2:0 -- ver doc/fm-spec.md.
+                    const bool fmpac_on = !FmPacPath(current).empty();
+                    if (ImGui::MenuItem("FM-PAC (Panasonic, slot 2:0)", nullptr, fmpac_on)) {
+                        MachineConfig next = snapshot();
+                        if (!fmpac_on) {
+                            const std::string found = FmpacNear(current.bios_path);
+                            if (found.empty()) {
+                                disk_message = "FMPAC.ROM nao encontrada ao lado das ROMs do fMSX (resource/fMSX/)";
+                            } else {
+                                SetFmPac(next, found);
+                                reboot(next);
+                            }
+                        } else {
+                            SetFmPac(next, "");
+                            reboot(next);
+                        }
+                    }
+                    ImGui::MenuItem("Slot 2 (em breve)", nullptr, false, false);
+                    ImGui::EndMenu();
                 }
-                ImGui::MenuItem("Slot 2 (em breve)", nullptr, false, false);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Joystick")) {
@@ -834,18 +877,6 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Ferramentas")) {
-                ImGui::MenuItem("Dispositivos de entrada (em breve)", nullptr, false, false);
-                ImGui::MenuItem("Trapacas (em breve)", nullptr, false, false);
-                ImGui::MenuItem("Buscar trapacas (em breve)", nullptr, false, false);
-                ImGui::Separator();
-                ImGui::MenuItem("Mostrar todos os sprites (em breve)", nullptr, false, false);
-                ImGui::MenuItem("Patch da DiskROM (em breve)", nullptr, false, false);
-                ImGui::MenuItem("Bateria MIDI (em breve)", nullptr, false, false);
-                ImGui::Separator();
-                ImGui::MenuItem("POKE &HFFFF,&HAA (em breve)", nullptr, false, false);
-                ImGui::EndMenu();
-            }
-            if (ImGui::BeginMenu("Configuracoes")) {
                 if (ImGui::BeginMenu("Interface")) {
                     ImGui::TextDisabled("Tema");
                     if (ImGui::MenuItem("Escuro", nullptr, ui_theme == 0)) ui_theme = 0;
@@ -859,6 +890,16 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     ImGui::MenuItem("Borda e sombra da tela", nullptr, &ui_frame);
                     ImGui::EndMenu();
                 }
+                ImGui::Separator();
+                ImGui::MenuItem("Dispositivos de entrada (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Trapacas (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Buscar trapacas (em breve)", nullptr, false, false);
+                ImGui::Separator();
+                ImGui::MenuItem("Mostrar todos os sprites (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Patch da DiskROM (em breve)", nullptr, false, false);
+                ImGui::MenuItem("Bateria MIDI (em breve)", nullptr, false, false);
+                ImGui::Separator();
+                ImGui::MenuItem("POKE &HFFFF,&HAA (em breve)", nullptr, false, false);
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("Ajuda")) {
@@ -1142,6 +1183,21 @@ int RunEmulatorWindow(const WindowOptions &options) {
                                 int page = it.page;
                                 const char *pages[] = {"pagina 0 (0000h)", "pagina 1 (4000h)"};
                                 if (ImGui::Combo("##page", &page, pages, 2)) it.page = page;
+                                // Mapper de bank-switch (MegaROM): precisa ser explicito para
+                                // ROMs que a heuristica de tamanho/conteudo nao identifica
+                                // sozinha (ex.: MSX-DOS 2, ver doc/memory-map-spec.md, secao 6).
+                                static const MemMapMapperType kMapperValues[] = {
+                                    MEMMAP_MAPPER_NONE,    MEMMAP_MAPPER_GEN8,    MEMMAP_MAPPER_GEN16,
+                                    MEMMAP_MAPPER_KONAMI5, MEMMAP_MAPPER_KONAMI4, MEMMAP_MAPPER_ASCII8,
+                                    MEMMAP_MAPPER_ASCII16, MEMMAP_MAPPER_MSXDOS2};
+                                static const char *kMapperNames2[] = {"Automatico (deteccao)", "Gen8", "Gen16",
+                                                                       "Konami5", "Konami4", "ASCII8", "ASCII16",
+                                                                       "MSX-DOS 2"};
+                                int mapper_idx = 0;
+                                for (int i = 0; i < 8; ++i)
+                                    if (kMapperValues[i] == it.mapper) mapper_idx = i;
+                                ImGui::SetNextItemWidth(-FLT_MIN);
+                                if (ImGui::Combo("##mapper_type", &mapper_idx, kMapperNames2, 8)) it.mapper = kMapperValues[mapper_idx];
                             } else if (it.kind == SlotKind::Ram) {
                                 int size = it.size_kb == 16 ? 0 : it.size_kb == 32 ? 1 : 2;
                                 const char *sizes[] = {"16 KB", "32 KB (esta + a seguinte)", "64 KB"};

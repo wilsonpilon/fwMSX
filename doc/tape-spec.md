@@ -249,11 +249,11 @@ do disco ("as gravacoes do MSX-DOS vao direto para o arquivo").
 
 **Protecao contra gravacao** (`TapeEngine::read_only()`): uma fita
 inserida de um ARQUIVO (`Insert()`) comeca SEMPRE travada -- o usuario
-destrava pelo menu Fita antes de gravar. Uma fita NOVA (`NewBlank()`)
+destrava pelo menu Midia > Fita antes de gravar. Uma fita NOVA (`NewBlank()`)
 comeca DESTRAVADA (e' o motivo de criar uma). **Reinserir a MESMA fita**
 (mesmo caminho de arquivo que ja' estava inserido) preserva o estado de
 protecao atual em vez de travar de novo -- corrigido na 1.20.2: como o
-menu Fita reinsere a imagem atual para atualizar a lista, sem essa
+menu Fita (1.30.0: dentro de Midia) reinsere a imagem atual para atualizar a lista, sem essa
 excecao o usuario destravava a fita, marcava um ponto, e a protecao
 "voltava" sozinha ao reabrir o menu, dando "Device I/O error" ao tentar
 gravar. O menu tambem tem dois itens explicitos ("Destravar para

@@ -137,10 +137,16 @@ SlotLayout EffectiveLayout(const MachineConfig &config);
 // Recusa layouts que nao montam: BIOS em 0:0, uma so' RAM mapeada, tamanhos validos.
 bool ValidateLayout(const SlotLayout &layout, std::string &error);
 // Edicao pelos menus (marca layout_set): cartucho no slot 1:0, FM-PAC no slot 2:0.
-void SetCartridge(MachineConfig &config, const std::string &path);
+// `mapper` (MEMMAP_MAPPER_NONE = deteccao automatica, como sempre): escolhe o
+// mapper de bank-switch do cartucho -- precisa ser explicito para ROMs que a
+// heuristica de tamanho/conteudo nao identifica sozinha (ex.: MSX-DOS 2, ver
+// doc/memory-map-spec.md, secao 6). Ignorado quando `path` esta vazio.
+void SetCartridge(MachineConfig &config, const std::string &path, MemMapMapperType mapper = MEMMAP_MAPPER_NONE);
 void SetFmPac(MachineConfig &config, const std::string &path);
 // Caminhos atuais no layout (vazio = nenhum).
 std::string CartridgePath(const MachineConfig &config);
+// Mapper atual do cartucho no slot 1:0 (MEMMAP_MAPPER_NONE = auto/nenhum).
+MemMapMapperType CartridgeMapper(const MachineConfig &config);
 std::string FmPacPath(const MachineConfig &config);
 
 class Machine {

@@ -7,6 +7,28 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.30.0] - 2026-10-08 - "King's Valley: Menus reorganizados + mapper do cartucho na janela"
+
+### Adicionado
+- **Seletor de mapper do cartucho na janela**: `MSX-DOS 2` (e os outros 6 mappers de bank-switch)
+  agora podem ser escolhidos sem a CLI. `Machine::SetCartridge()` ganhou um parametro `mapper`
+  opcional (default `MEMMAP_MAPPER_NONE`, preserva o comportamento de sempre) e
+  `Machine::CartridgeMapper()` novo. Dois pontos de acesso: submenu **Mapper** no menu Cartucho
+  (com um cartucho ja' inserido, trocar o mapper reinicia na hora com o MESMO arquivo), e um
+  combo na linha da ROM da **Configuracao de slots...**.
+- **Menus reagrupados**: de 13 menus no topo da janela para 9 -- **Midia** (Disco/Fita/Cartucho
+  como submenus), **Tela** (Exibir/Video como submenus), e **Ferramentas** incorporou
+  **Configuracoes > Interface** (o antigo menu Configuracoes, so' com esse item, foi removido).
+  Pedido do usuario apos usar a janela: "os menus estao ficando muito separados".
+- Testes: `machinetest`/`machine_frames`, secao 2b nova -- `SetCartridge()`/`CartridgeMapper()`
+  com e sem mapper explicito, e retirar o cartucho zera o mapper tambem.
+
+### Corrigido
+- **Achado pelo usuario testando a 1.28.0/1.29.0 pela janela**: o `MSXDOS2.ROM` so' carregava com
+  o mapper certo pela CLI (`--cart <rom> msxdos2`) -- nem o menu rapido de cartucho nem a
+  Configuracao de slots tinham como escolher um mapper explicito, entao a heuristica automatica
+  (que nao reconhece o MSX-DOS 2) sempre vencia pela janela.
+
 ## [1.29.0] - 2026-10-08 - "King's Valley: Save-state"
 
 ### Adicionado

@@ -312,7 +312,7 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX (`--msx`) -- v1.29.0
+## Emulador MSX (`--msx`) -- v1.30.0
 
 Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
 `--msx` escolhe a maquina e as opcoes abaixo.
@@ -374,25 +374,38 @@ janela abre.
 - **Teclado**: mapeamento posicional (layout US). Alt esquerdo = GRAPH, Alt direito = CODE, End =
   SELECT, Pause = STOP, F11 = tela cheia. Teclado numerico = o do MSX.
 - **Joystick**: setas + Z ou Espaco (botao A) + X (botao B); ou gamepad (menu Joystick).
-- **Arquivo**: Carregar cartucho, Sair.
-- **Maquina**: Reiniciar, **Modelo** (MSX1, MSX2, MSX2+), **Configuracao de slots...** (secao abaixo),
-  Pausar.
-- **Exibir**: zoom 2x, 3x, 4x, 6x; proporcao original, 4:3 corrigido ou 16:9 esticado; tela cheia (o menu
-  some e volta quando o mouse chega ao topo).
-- **Video**: interpolacao, scanlines e filtros de cor (Monochrome, Sepia, Green CRT, Amber CRT, CMY e RGB Raster).
+Os menus foram reagrupados na 1.30.0 (antes eram 13 menus separados no topo da janela; agora sao 9):
+
+- **Arquivo**: Carregar cartucho, **Salvar estado.../Carregar estado...** (`.sst` -- ver
+  `doc/savestate-spec.md`), Sair.
+- **Maquina**: Reiniciar, **Modelo** (MSX1, MSX2, MSX2+), **Configuracao de disco...**,
+  **Configuracao de slots...** (secao abaixo), Pausar.
+- **Midia**: agrupa os tres submenus de midia removivel --
+  - **Disco**: inserir e ejetar A: e B:.
+  - **Fita**: inserir ou criar uma **fita nova (.tsx)**, ejetar e rebobinar; trocar entre
+    carregamento **rapido** (sem som) e **normal** (pulsos de verdade, com o barulho do gravador);
+    **destravar/travar contra gravacao** (uma fita de arquivo entra sempre travada; uma fita nova
+    entra destravada) e escolher o **modo de gravacao** (incluir no final da fita, sobrescrever o
+    ponto marcado, ou nova fita); mostrar a janela visual "Fita K7" (rolos girando enquanto o
+    motor esta' ligado, contagiros, barra de progresso, lista de arquivos -- clicar num arquivo
+    marca o ponto de carga/gravacao, clicar de novo desmarca). `CSAVE`/`BSAVE "CAS:"` gravam na
+    fita destravada, pelo modo escolhido; a gravacao e' salva no arquivo imediatamente. Trocar de
+    fita ou de modo NAO reinicia a maquina. Ver `doc/tape-spec.md`.
+  - **Cartucho**: inserir ou retirar o cartucho do slot 1:0; escolher o **Mapper** (submenu --
+    Automatico/deteccao, ou explicito: Gen8, Gen16, Konami5, Konami4, ASCII8, ASCII16, MSX-DOS 2;
+    com um cartucho ja' inserido, trocar o mapper reinicia na hora com o MESMO arquivo); ligar ou
+    desligar o **FM-PAC** (slot 2:0).
+- **Tela**: agrupa exibicao e filtros de video --
+  - **Exibir**: zoom 2x, 3x, 4x, 6x; proporcao original, 4:3 corrigido ou 16:9 esticado; tela
+    cheia (o menu some e volta quando o mouse chega ao topo).
+  - **Video**: interpolacao, scanlines e filtros de cor (Monochrome, Sepia, Green CRT, Amber CRT,
+    CMY e RGB Raster).
 - **Som**: mudo e volume.
-- **Disco**: inserir e ejetar A: e B:.
-- **Fita**: inserir ou criar uma **fita nova (.tsx)**, ejetar e rebobinar; trocar entre carregamento
-  **rapido** (sem som) e **normal** (pulsos de verdade, com o barulho do gravador); **destravar/travar
-  contra gravacao** (uma fita de arquivo entra sempre travada; uma fita nova entra destravada) e
-  escolher o **modo de gravacao** (incluir no final da fita, sobrescrever o ponto marcado, ou nova
-  fita); mostrar a janela visual "Fita K7" (rolos girando enquanto o motor esta' ligado, contagiros,
-  barra de progresso, lista de arquivos -- clicar num arquivo marca o ponto de carga/gravacao, clicar
-  de novo desmarca). `CSAVE`/`BSAVE "CAS:"` gravam na fita destravada, pelo modo escolhido; a gravacao
-  e' salva no arquivo imediatamente. Trocar de fita ou de modo NAO reinicia a maquina. Ver
-  `doc/tape-spec.md`.
-- **Cartucho**: inserir ou retirar o cartucho do slot 1:0; ligar ou desligar o **FM-PAC** (slot 2:0).
-- **Configuracoes > Interface**: tema escuro ou claro, tamanho da letra e moldura da tela.
+- **Joystick**: status do gamepad em cada porta.
+- **ROMs**: banco de ROMs (menu completo, ver `doc/romdb-spec.md`).
+- **Ferramentas**: **Interface** (tema escuro/claro, tamanho da letra, moldura da tela), mais os
+  placeholders existentes ("em breve").
+- **Ajuda**: teclado, versao.
 
 Trocar o modelo, o cartucho ou o FM-PAC reinicia a maquina. A SRAM (`.sav`) e' gravada antes.
 
@@ -448,14 +461,15 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 ### O que funciona e o que nao funciona
 
-**Funciona (v1.29.0):**
+**Funciona (v1.30.0):**
 
 - MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
 - MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
   memoria (DISK.ROM) ou pelas portas (DDX 3.0/CDX-2, estilo Microsol).
 - Cartuchos ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SCC (F1 Spirit toca a trilha de 5 canais)
-  e MSX-DOS 2 (cartucho generico, `--cart <rom> msxdos2`, testado com um kernel 2.30 real e um
-  disco de 720KB -- `dir`/`cd` em subdiretorios funcionam).
+  e MSX-DOS 2 (cartucho generico, testado com um kernel 2.30 real e um disco de 720KB -- `dir`/`cd`
+  em subdiretorios funcionam). Mapper escolhivel pela CLI (`--cart <rom> msxdos2`) ou pela janela
+  (menu Midia > Cartucho > Mapper, ou a Configuracao de slots).
 - VDP completo (SCREEN 0 a 8 no V9938; V9958 com SCREEN 10-12); efeitos de rastreio no meio do
   quadro (paleta/scroll trocados por interrupcao de linha).
 - PSG, SCC e FM (MSX-MUSIC e FM-PAC) com os comandos de BASIC, modo ritmo e saida ao vivo.
@@ -486,9 +500,9 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 - **Banco de ROMs**: montar a maquina pelo banco (layout por nome) ainda nao existe; o JSON do
   Vampier nao e' usado (so' o SQL, que ja' cobre jogo/empresa/ano/SHA-1).
 - **Sem**: GameMaster2, cartucho MSX-MUSIC com BIOS propria, e `CALL VOICECOPY`. Save-state nao
-  valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo, e a janela de
-  verdade (dialogo "Salvar/Carregar estado...") ainda nao foi testada por um humano -- so' a API
-  tem teste automatizado.
+  valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo. **Confirmado
+  pelo usuario na janela em 2026-10-08**: salvar e carregar estado (**Arquivo > Salvar
+  estado.../Carregar estado...**) funcionam normalmente.
 - **Outras BIOS** (ex.: Gradiente Expert 1.1): o layout aceita, mas o hardware que a BIOS espera nao foi testado.
 
 Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.md](SPEC.md), secao 5.0.

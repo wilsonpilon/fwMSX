@@ -17,20 +17,21 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.29.0** "King's Valley: Save-state" (ou mais nova --
-  conferir `git log`). `git status` limpo apos o commit/tag/branch/push desta rodada, `main`
-  local == `origin/main`.
+- **Ultima versao publicada em `main`:** **1.30.0** "King's Valley: Menus reorganizados + mapper
+  do cartucho na janela" (ou mais nova -- conferir `git log`). `git status` limpo apos o
+  commit/tag/branch/push desta rodada, `main` local == `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
 - **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui
   `tape_load` (leitura/gravacao de fita + navegacao de TZX), `cas_pack` (empacotador + ripper de
   WAV), `tapedb_store` (banco de fitas), `romdb_store` (`verify` + campos novos do Vampier),
   `vdp_msx2` (secao 10: snapshot por linha de rastreio), `memmap_slots` (secao 25: mapper de
-  MSX-DOS 2) e `machine_frames` (secao 5b nova: save-state).
-- **Documentos vivos, todos sincronizados com a 1.29.0:** `README.md`, `doc/MANUAL.md`,
+  MSX-DOS 2) e `machine_frames` (secao 5b: save-state; secao 2b nova: `SetCartridge()`/
+  `CartridgeMapper()`).
+- **Documentos vivos, todos sincronizados com a 1.30.0:** `README.md`, `doc/MANUAL.md`,
   `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
   `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md`, `doc/vdp-spec.md`, `doc/msx2-spec.md`,
   `doc/msx2p-spec.md`, `doc/memory-map-spec.md`, `doc/fdc-spec.md`, `doc/slots-spec.md`,
-  `doc/savestate-spec.md` (novo) e este arquivo.
+  `doc/savestate-spec.md` e este arquivo.
 - **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
   rodada):** corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1
   a 1.20.3); depois, os 3 itens do "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` ->
@@ -54,6 +55,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   2.30 e um disco de 720KB REAIS; **item 5 (save-state) publicado como 1.29.0**, aplicando o
   estado por cima da maquina ja' rodando (sem recarregar BIOS/cartucho/disco/fita). **A
   sequencia "1, 4, 5" pedida pelo usuario esta' COMPLETA.**
+- **Continuacao do dia 2, feedback apos usar a janela (ver secao 9):** o usuario testou save-state
+  (confirmou que funciona normalmente) e tentou testar o MSX-DOS 2, mas nao achou como escolher o
+  mapper pela janela; tambem pediu para reagrupar os menus (Disco/Fita/Cartucho num menu Midia,
+  Video/Exibir num menu Tela, Configuracoes dentro de Ferramentas). **Publicado como 1.30.0**:
+  `SetCartridge()`/`CartridgeMapper()` ganharam um parametro/accessor de mapper; a janela ganhou
+  um submenu Mapper (Cartucho) e um combo na Configuracao de slots; os 13 menus do topo viraram 9.
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -65,9 +72,13 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 - MSX-DOS 2 (cartucho generico, `--cart <rom> msxdos2`, 1.28.0) -- testado contra um
   `MSXDOS2.ROM` e um disco de 720KB REAIS: `dir`/`cd` em subdiretorios funcionam.
 - Save-state (`Machine::SaveState()`/`LoadState()`, menu **Arquivo**, 1.29.0) -- grava/restaura
-  Z80/VDP/PSG/SCC/OPLL/PPI/FDC/RAM num `.sst` proprio, sobre a maquina ja' rodando. Teste
-  automatizado (round-trip com mutilacao de proposito) passa; a janela de verdade ainda nao foi
-  testada por um humano.
+  Z80/VDP/PSG/SCC/OPLL/PPI/FDC/RAM num `.sst` proprio, sobre a maquina ja' rodando. **Confirmado
+  pelo usuario na janela em 2026-10-08**: funciona normalmente.
+- Mapper do cartucho escolhivel pela janela (1.30.0): submenu **Midia > Cartucho > Mapper**, ou
+  combo na **Configuracao de slots...** -- fecha o gap que o usuario achou tentando testar o
+  MSX-DOS 2 (so' existia via `--cart <rom> msxdos2` na CLI).
+- Menus da janela reagrupados (1.30.0): **Midia** (Disco/Fita/Cartucho), **Tela**
+  (Exibir/Video), **Ferramentas** (incorporou Configuracoes > Interface) -- de 13 para 9 menus.
 - PSG, SCC (F1 Spirit), FM (MSX-MUSIC e FM-PAC) com comandos de BASIC, modo ritmo.
 - SRAM de cartucho ASCII8/ASCII16 e FM-PAC (`.sav`).
 - Layout de 16 celulas (slot:subslot) pela janela e pela CLI (`--slot`); RAM 16 KB no fim da celula,
@@ -170,8 +181,19 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   agora). Menu **Arquivo > Salvar estado.../Carregar estado...**, substituindo o placeholder
   desabilitado que existia desde a 1.16.0. Testado (`machinetest`/`machine_frames`, secao 5b
   nova): salva, MUTILA a maquina de proposito (PC/PSG escritos errados, tela limpa), recarrega e
-  confere tudo restaurado byte a byte, mais os 2 caminhos de erro.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.29.0.*` (ver secao 9).
+  confere tudo restaurado byte a byte, mais os 2 caminhos de erro. **Confirmado pelo usuario na
+  janela em 2026-10-08.**
+- **Menus reorganizados + mapper do cartucho na janela (1.30.0, 2026-10-08)**: feedback do usuario
+  apos testar a 1.28.0/1.29.0 -- nao achou como escolher o mapper `msxdos2` pela janela, e os 13
+  menus do topo estavam "muito separados". `Machine::SetCartridge()` ganhou um parametro `mapper`
+  (default preserva o comportamento de sempre) e `Machine::CartridgeMapper()` novo; a janela
+  ganhou um submenu **Mapper** (menu Cartucho) e um combo na linha da ROM da **Configuracao de
+  slots...**. Menus reagrupados: **Midia** (Disco/Fita/Cartucho como submenus), **Tela**
+  (Exibir/Video como submenus), **Ferramentas** (incorporou o antigo menu Configuracoes, que so'
+  tinha o item Interface) -- de 13 para 9 menus no topo. Testado (`machinetest`/`machine_frames`,
+  secao 2b nova): `SetCartridge()`/`CartridgeMapper()` com/sem mapper explicito, e retirar o
+  cartucho zera o mapper tambem.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.30.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -188,8 +210,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   continua valendo so' para um `.cas` CRU carregado direto do disco, sem ter passado por uma gravacao
   deste emulador (nao ha' marca exata nesse caso, so' a busca pelo proximo cabecalho).
 - Sem GameMaster2. Save-state nao valida se o cartucho/disco/fita inserido agora e' o mesmo de
-  quando foi salvo, e o fluxo da janela ainda nao foi testado por um humano (so' a API tem teste
-  automatizado).
+  quando foi salvo (confirmado pelo usuario na janela, funciona normalmente).
 - Cores YJK do V9958 nao conferidas com hardware real.
 
 ## 3. Como compilar e testar
@@ -346,10 +367,14 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 16. **CPU no pior caso:** medir o custo real (FM ativo, SCC, fita, mapa de slots, disco) em tempo real.
 17. **Layout de slots:** salvar/carregar em arquivo; perfis no banco.
 18. **Cartuchos:** GameMaster2, MSX-MUSIC com BIOS propria (MSX-DOS 2 feito na 1.28.0, item 9 acima).
-19. **Save-state, o que falta:** validar na janela de verdade; RAM de mapper sem teste automatizado
-    dedicado; multiplos slots nomeados/atalho de teclado (ex.: F5/F7); validar cartucho/disco/fita
-    contra o save (CRC32). Ver `doc/savestate-spec.md`, secao 7.
-20. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
+19. **[FEITO em 2026-10-08, 1.30.0] Menus reorganizados + mapper do cartucho na janela** --
+    pedido direto do usuario apos testar a 1.28.0/1.29.0 pela janela. `SetCartridge()`/
+    `CartridgeMapper()` ganharam mapper explicito; submenu Mapper (Cartucho) e combo na
+    Configuracao de slots; 13 menus do topo viraram 9 (Midia, Tela, Ferramentas). Ver secao 9.
+20. **Save-state, o que falta:** RAM de mapper sem teste automatizado dedicado; multiplos slots
+    nomeados/atalho de teclado (ex.: F5/F7); validar cartucho/disco/fita contra o save (CRC32).
+    Ver `doc/savestate-spec.md`, secao 7.
+21. **Depois:** frontend para jogar (biblioteca de jogos sobre o banco) com fitas E discos; integracao
     com o msxide (MSX-PoorManOS).
 
 ## 8. Onde esta cada decisao
@@ -973,9 +998,54 @@ Build Windows e Linux (WSL), `ctest` 18/18 nos dois. Documentacao sincronizada: 
 (novo), `doc/SPEC.md` (secao 5, item marcado feito), `doc/CHANGELOG.md`/`doc/RELEASE.md`
 (`[1.29.0]`), `README.md`, `doc/MANUAL.md`, e este `OUTLINE.md`.
 
-**A sequencia "1, 4, 5" pedida pelo usuario esta' COMPLETA.** O que falta: validar o fluxo da
-janela de verdade (so' a API tem teste automatizado); RAM de mapper sem teste automatizado
-dedicado; ver secao 7, item 19, para a lista completa de pendencias do save-state.
+**A sequencia "1, 4, 5" pedida pelo usuario esta' COMPLETA.** O que falta: RAM de mapper sem
+teste automatizado dedicado; ver secao 7, item 20, para a lista completa de pendencias do
+save-state.
+
+### Dia 2, continuacao: menus reorganizados + mapper do cartucho na janela (1.30.0)
+
+O usuario testou a 1.29.0 (save-state) e a 1.28.0 (MSX-DOS 2) pela janela de verdade e deu dois
+retornos diretos: **"save state validade e funcionando normalmente"** (confirmacao -- ver secao
+7, item 20 atualizado), e **"Nao descobri como inserir o cartucho do MSX-DOS2 na configuracao
+para testar ele"** -- um gap real que esta rodada corrigiu. Junto, pediu uma reorganizacao de
+menus: **"Disco, Fita e Cartuchos podem ser um menu chamado Media, com eles de submenus... Video
+E Exibir tambem pode ser colocado em um menu Tela, configuracoes pode ficar em Ferramentas"**.
+
+**Causa raiz do problema do MSX-DOS 2**: `Machine::SetCartridge()` sempre resetava o mapper do
+cartucho para `MEMMAP_MAPPER_NONE` (deteccao automatica) -- a 1.28.0 so' tinha exposto o mapper
+`msxdos2` pela CLI (`--cart <rom> msxdos2`); nem o menu rapido de Cartucho nem a Configuracao de
+slots tinham ALGUM jeito de escolher um mapper explicito pela janela. Corrigido:
+`SetCartridge()` ganhou um parametro `mapper` opcional (default `MEMMAP_MAPPER_NONE`, preserva o
+comportamento de sempre para os dois chamadores existentes) e `CartridgeMapper()` novo para ler
+de volta. A janela ganhou DOIS pontos de acesso: um submenu **Mapper** dentro do menu Cartucho
+(lista completa -- Automatico + os 6 mappers de sempre + MSX-DOS 2; com um cartucho ja'
+carregado, trocar o mapper reinicia na hora com o MESMO arquivo), e um combo equivalente na linha
+da ROM dentro da **Configuracao de slots...** (onde o usuario provavelmente tinha procurado
+primeiro, pela palavra "configuracao" no proprio pedido).
+
+**Reorganizacao de menus** (`src/machine/gui/emu_window.cpp`): os 13 menus do topo da janela
+viraram 9. **Midia** envolve os 3 menus existentes (Disco, Fita, Cartucho) como submenus, sem
+mudar NADA do conteudo interno de cada um -- so' um `BeginMenu`/`EndMenu` a mais por fora (feito
+com um script PowerShell que extraiu o bloco de 163 linhas, indentou 4 espacos a mais, e recolocou
+envolto pelo novo menu, evitando erro de transcricao manual num bloco tao grande). **Tela** envolve
+**Exibir** (zoom/tela cheia/proporcao) e **Video** (interpolacao/scanlines/filtro de cor) do mesmo
+jeito. **Ferramentas** incorporou o unico item do antigo menu **Configuracoes** (**Interface** --
+tema, fonte, moldura) como mais um submenu, antes dos placeholders "(em breve)" que ja existiam;
+o menu Configuracoes (que so' tinha isso) foi removido. Arquivo, Maquina, Som, Joystick, ROMs e
+Ajuda continuam como estavam -- o usuario NAO pediu mexer neles.
+
+**Teste novo** (`machinetest`/`machine_frames`, secao 2b): `SetCartridge()`/`CartridgeMapper()`
+sem mapper explicito (auto, comportamento preservado), com mapper explicito (msxdos2, devolvido
+certo por `CartridgeMapper()`), e retirar o cartucho (path vazio) zera o mapper tambem. Nao
+precisa de BIOS real -- so' mexe no `MachineConfig`/`SlotLayout`.
+
+Build Windows e Linux (WSL), versao bumpada ANTES do primeiro build desta vez (1.30.0) --
+nenhuma repeticao do erro das duas rodadas anteriores. `ctest` 18/18 nos dois. Documentacao
+sincronizada: `doc/memory-map-spec.md` (secao 6, atualizacao sobre o gap da GUI),
+`doc/savestate-spec.md` (secao 7, confirmacao do usuario), `doc/tape-spec.md` (referencias ao
+menu Fita atualizadas para "Midia > Fita"), `doc/SPEC.md`/`doc/CHANGELOG.md`/`doc/RELEASE.md`
+(`[1.30.0]`), `README.md`, `doc/MANUAL.md` (secao "A janela" reescrita com a nova estrutura de
+menus), e este `OUTLINE.md`.
 
 ---
 

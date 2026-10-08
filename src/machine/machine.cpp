@@ -257,13 +257,14 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
     return true;
 }
 
-void SetCartridge(MachineConfig &config, const std::string &path) {
+void SetCartridge(MachineConfig &config, const std::string &path, MemMapMapperType mapper) {
     SlotLayout layout = EffectiveLayout(config);
     layout.cell[1][0] = SlotItem{};
     if (!path.empty()) {
         layout.cell[1][0].kind = SlotKind::Rom;
         layout.cell[1][0].path = path;
         layout.cell[1][0].page = 1;
+        layout.cell[1][0].mapper = mapper;
     }
     config.layout = layout;
     config.layout_set = true;
@@ -283,6 +284,11 @@ void SetFmPac(MachineConfig &config, const std::string &path) {
 std::string CartridgePath(const MachineConfig &config) {
     const SlotItem &item = EffectiveLayout(config).cell[1][0];
     return item.kind == SlotKind::Rom ? item.path : std::string();
+}
+
+MemMapMapperType CartridgeMapper(const MachineConfig &config) {
+    const SlotItem &item = EffectiveLayout(config).cell[1][0];
+    return item.kind == SlotKind::Rom ? item.mapper : MEMMAP_MAPPER_NONE;
 }
 
 std::string FmPacPath(const MachineConfig &config) {

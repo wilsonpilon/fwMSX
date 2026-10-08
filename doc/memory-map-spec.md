@@ -446,6 +446,15 @@ elas embutidas, o que nunca deve acontecer.
     `doc/fdc-spec.md` estava errada -- um cartucho generico de MSX-DOS 2 so'
     precisa da interface de disco de sempre). Ver `doc/CHANGELOG.md`,
     `[1.28.0]`.
+  - **Atualizacao (1.30.0, 2026-10-08):** a 1.28.0 so' expunha o mapper
+    `msxdos2` pela CLI (`--cart <rom> msxdos2`) -- o usuario tentou testar
+    pela janela e nao achou onde escolher o mapper (nem o menu rapido de
+    cartucho nem a Configuracao de slots tinham essa opcao). Corrigido:
+    `SetCartridge()` ganhou um parametro `mapper` (default `MEMMAP_MAPPER_NONE`,
+    preserva o comportamento de sempre) e `CartridgeMapper()` novo; a GUI
+    ganhou um submenu **Mapper** no menu Cartucho e um combo na Configuracao
+    de slots (linha da ROM), os dois com a lista completa (auto + os 6
+    mappers de sempre + MSX-DOS 2). Ver `doc/CHANGELOG.md`, `[1.30.0]`.
   - **`MAP_GUESS`** (detecção automática de mapper via `GuessROM()` --
     tenta `CARTS.CRC`/`CARTS.SHA` primeiro, depois varre a ROM por
     padrões de bytes característicos) -- feature separada com

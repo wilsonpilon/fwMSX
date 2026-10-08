@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.29.0 "King's Valley: Save-state")
+## Estado atual (v1.30.0 "King's Valley: Menus reorganizados + mapper do cartucho na janela")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -36,7 +36,8 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   selecao). Banco de fitas com metadados (`fwmsx --fitadb`, titulo/empresa/ano/SHA-1, SEM download). Ver
   [tape-spec.md](doc/tape-spec.md).
 - **Cartuchos**: ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SRAM com `.sav`, o SCC (F1 Spirit toca
-  a trilha) e MSX-DOS 2 (cartucho generico, `--cart <rom> msxdos2`, testado com um kernel 2.30 real).
+  a trilha) e MSX-DOS 2 (cartucho generico, testado com um kernel 2.30 real) -- mapper escolhivel
+  pela CLI (`--cart <rom> msxdos2`) ou pela janela (menu Midia > Cartucho > Mapper).
 - **Video**: VDP completo: SCREEN 0 a 8 no V9938 e 10 a 12 no V9958 (YJK, YAE e scroll); efeitos
   de rastreio no meio do quadro (paleta/scroll trocados por interrupcao de linha).
 - **Som**: PSG, SCC e **FM (MSX-MUSIC e FM-PAC)** com os comandos de BASIC (`CALL MUSIC`, `PLAY #n`, `CALL VOICE`), modo ritmo e saida ao vivo.
@@ -74,12 +75,13 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   - BIOS e BASIC em dois arquivos de 16KB, na mesma celula 0:0;
   - quatro bancos de RAM de 64KB no slot 2 (celulas 2:0 a 2:3);
   - um mapper de 1024KB no slot 3:1.
-- **Cartucho**: insere ou retira o cartucho do slot 1:0.
-- **FM-PAC**: liga ou desliga o FM-PAC no slot 2:0 (ligado por padrao quando o `FMPAC.ROM` existe).
-- **Disco**: insere e ejeta os discos A: e B:.
-- **Fita**: inserir, criar fita nova, ejetar, rebobinar, trocar o modo de carregamento, destravar/travar
-  contra gravacao, escolher o modo de gravacao, e a janela visual "Fita K7".
-- **Exibir, Video, Som e Configuracoes > Interface**: aparencia e audio.
+- **Midia > Cartucho**: insere ou retira o cartucho do slot 1:0; escolhe o mapper (auto ou
+  explicito -- ex.: MSX-DOS 2) pelo submenu **Mapper**; liga/desliga o FM-PAC no slot 2:0.
+- **Midia > Disco**: insere e ejeta os discos A: e B:.
+- **Midia > Fita**: inserir, criar fita nova, ejetar, rebobinar, trocar o modo de carregamento,
+  destravar/travar contra gravacao, escolher o modo de gravacao, e a janela visual "Fita K7".
+- **Tela > Exibir/Video**: zoom, tela cheia, proporcao, interpolacao, scanlines, filtro de cor.
+- **Som, Ferramentas > Interface**: aparencia e audio.
 
 Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 1.13.0 SCC;
 1.14.0 CPIR/CPDR em Assembly; 1.15.0 MSX2+ (V9958); 1.16.0 janela com menus e filtros; 1.17.0 FM com
@@ -88,7 +90,8 @@ BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas
 `.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; 1.24.0 banco de fitas com
 metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-mapper pelo SHA-1;
 1.26.0 Vampier com Platform/CRC32/tamanho; 1.27.0 efeitos de rastreio no meio do quadro;
-1.28.0 MSX-DOS 2 (cartucho generico); **1.29.0 save-state**. Detalhes em
+1.28.0 MSX-DOS 2 (cartucho generico); 1.29.0 save-state;
+**1.30.0 menus reorganizados + mapper do cartucho na janela**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

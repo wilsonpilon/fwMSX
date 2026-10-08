@@ -138,10 +138,9 @@ MESMA tecnica ja' provada para Z80/VDP/PSG, risco baixo).
 
 ## 7. O que falta
 
-- **Validacao na janela de verdade**: o fluxo da GUI (`Salvar estado...`/
-  `Carregar estado...` com dialogo de arquivo) ainda nao foi testado por um
-  humano na janela real -- so' a API (`Machine::SaveState()`/`LoadState()`)
-  tem teste automatizado.
+- **Validado na janela de verdade em 2026-10-08**: o usuario confirmou que
+  salvar e carregar estado (**Arquivo > Salvar estado.../Carregar
+  estado...**) funcionam normalmente pela GUI real.
 - **RAM de mapper**: logica implementada (`MapperRamBase()`, secao "MAPR"),
   mas sem teste automatizado dedicado (precisaria de uma maquina MSX2 com
   layout de mapper no `machine_test.cpp`).

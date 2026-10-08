@@ -18,8 +18,8 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 29
+#define FWMSX_VERSION_MINOR 30
 #define FWMSX_VERSION_PATCH 0
 
 #define FWMSX_CODENAME  "King's Valley"
-#define FWMSX_SUBTITLE  "Save-state"
+#define FWMSX_SUBTITLE  "Menus reorganizados + mapper do cartucho na janela"
