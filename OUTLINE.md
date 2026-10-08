@@ -32,6 +32,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md`, `doc/vdp-spec.md`, `doc/msx2-spec.md`,
   `doc/msx2p-spec.md`, `doc/memory-map-spec.md`, `doc/fdc-spec.md`, `doc/slots-spec.md`,
   `doc/savestate-spec.md` e este arquivo.
+- **Troca de computador (pedido do usuario em 2026-10-08):** criado `CLAUDE.md` na raiz do
+  repositorio -- e' lido automaticamente pelo Claude Code ao abrir uma sessao nesta pasta,
+  substituindo a dependencia de `claude --resume` (que so' funciona na MESMA maquina). Ele so'
+  guarda as regras fixas (workflow de release, convencoes) e aponta pra este `OUTLINE.md` como
+  o "onde paramos" de verdade. Ao retomar numa maquina nova: o Claude Code ja' le o CLAUDE.md
+  sozinho; se por algum motivo nao ler, peca para ler `CLAUDE.md` e depois `OUTLINE.md`.
 - **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
   rodada):** corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1
   a 1.20.3); depois, os 3 itens do "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` ->
