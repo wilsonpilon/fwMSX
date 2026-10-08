@@ -7,6 +7,25 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.24.0] - 2026-10-08 - "King's Valley: Banco de Fitas (Metadados)"
+
+### Adicionado
+- **`fwmsx --fitadb`**: banco de fitas (SQLite) com metadados -- titulo, empresa, ano e SHA-1 --
+  das fitas (`.cas`/`.tsx`/`.tzx`) que o usuario ja' tem no disco. **SEM download nenhum**: o site
+  de referencia (tsx.eslamejor.com) nao publica termos de uso (verificado em 2026-10-06, ver
+  `doc/SPEC.md`, secao 5.2, item 7) -- este banco so' cadastra o que o usuario ja' tem localmente,
+  fecha o item (e) da lista de pendencias de fita.
+  - `scan <pasta>`: cadastra todas as fitas de uma pasta (recursivo, so' `.cas`/`.tsx`/`.tzx`).
+  - `add`/`list`/`search`/`show`/`edit`/`del`/`stats`: CRUD e busca, mesma estrutura do
+    `fwmsx --romdb` (reaproveitada por analogia -- bancos SQLite separados, ja' que fita nao e'
+    uma categoria de ROM).
+  - **Auto-preenche o titulo** a partir do leitor de fita existente (`cas_reader`/`tzx_reader`):
+    o nome do 1o arquivo encontrado dentro da fita, so' quando ela e' NOVA no banco (um titulo que
+    o usuario edite manualmente nunca e' sobrescrito por um re-scan).
+- Testes: `tapedbtest` (CTest `tapedb_store`) -- CRUD, busca, `ScanFile`/`ScanDirectory` (com o
+  auto-preenchimento de titulo e a preservacao de edicoes manuais), e a CLI completa. Ver
+  `doc/tape-spec.md`, secao 11.
+
 ## [1.23.0] - 2026-10-08 - "King's Valley: Navegacao de Blocos do TZX"
 
 ### Adicionado

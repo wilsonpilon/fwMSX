@@ -607,6 +607,30 @@ if (MINGW)
 endif ()
 add_test(NAME romdb_store COMMAND romdbtest)
 
+# Banco de fitas (SQLite, "fwmsx --fitadb") -- metadados (titulo/empresa/
+# ano/SHA-1) de fitas que o usuario ja' tem no disco, SEM download (ver
+# doc/tape-spec.md, secao 11). Reusa romdb::Sha1Hex() (so' a funcao de
+# hash, generica) e o leitor de fita existente (cas_reader/tzx_reader)
+# para auto-preencher o titulo -- por isso precisa de CAS_PACK_SOURCES
+# (que ja' tem cas_reader.cpp/tzx_reader.cpp) e do hash.cpp do romdb.
+set(TAPEDB_LIB_SOURCES
+        src/tapedb/store/tapedb.cpp
+        src/tapedb/service.cpp
+        src/tapedb/cli.cpp
+        src/romdb/core/hash.cpp
+)
+
+# tapedbtest: CRUD, busca e escaneamento de pasta do banco de fitas --
+# sem Z80/mapa de memoria (reusa CAS_PACK_SOURCES, o leitor de fita
+# "leve" ja' usado por castooltest).
+add_executable(tapedbtest tests/tapedb/tapedb_test.cpp ${TAPEDB_LIB_SOURCES} ${CAS_PACK_SOURCES})
+target_include_directories(tapedbtest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+target_link_libraries(tapedbtest PRIVATE sqlite3)
+if (MINGW)
+    target_link_options(tapedbtest PRIVATE -static -static-libgcc -static-libstdc++)
+endif ()
+add_test(NAME tapedb_store COMMAND tapedbtest)
+
 # videofiltertest: filtros de video da janela (interpolacao, scanlines, cor) -- sem janela.
 add_executable(videofiltertest tests/z80/video_filter_test.cpp src/machine/gui/video_filters.cpp)
 target_include_directories(videofiltertest PRIVATE src/machine/gui)
@@ -637,6 +661,9 @@ add_executable(fwMSX
         ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${TAPE_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
         src/tape/cli/cas_tool.cpp
+        src/tapedb/store/tapedb.cpp
+        src/tapedb/service.cpp
+        src/tapedb/cli.cpp
 )
 
 target_link_libraries(fwMSX PRIVATE miniz)

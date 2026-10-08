@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.23.0 "King's Valley: Navegacao de Blocos do TZX")
+## Estado atual (v1.24.0 "King's Valley: Banco de Fitas (Metadados)")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -33,7 +33,8 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   fita nova, protecao, 3 modos, marcar o ponto, contagiros), janela visual "Fita K7", e a ferramenta de linha
   de comando `fwmsx --cas` (empacotar `.BIN`/`.BAS` num `.TSX`, "ripar" uma gravacao `.wav` real, listar o
   conteudo de uma fita). Navegacao completa dos blocos de controle do TZX (grupos/lacos/saltos/chamadas/
-  selecao). Ver [tape-spec.md](doc/tape-spec.md).
+  selecao). Banco de fitas com metadados (`fwmsx --fitadb`, titulo/empresa/ano/SHA-1, SEM download). Ver
+  [tape-spec.md](doc/tape-spec.md).
 - **Cartuchos**: ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SRAM com `.sav` e o SCC (F1 Spirit toca a trilha).
 - **Video**: VDP completo: SCREEN 0 a 8 no V9938 e 10 a 12 no V9958 (YJK, YAE e scroll).
 - **Som**: PSG, SCC e **FM (MSX-MUSIC e FM-PAC)** com os comandos de BASIC (`CALL MUSIC`, `PLAY #n`, `CALL VOICE`), modo ritmo e saida ao vivo.
@@ -46,10 +47,11 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 **Limites (detalhes em [RELEASE.md](doc/RELEASE.md) e [SPEC.md](doc/SPEC.md), secao 5.0):**
 
 - O **som do FM, do SCC e da fita (modo normal)** ainda nao foram comparados com hardware real. Use `--wav` para gravar e ouvir.
-- **Fita**: banco de fitas/metadados ainda nao existe; `.cas` cru sem gravacao previa deste emulador ainda
+- **Fita**: download de fitas pelo site continua fora de escopo (sem termos de uso publicados -- so' o
+  banco de metadados, sem download, existe); `.cas` cru sem gravacao previa deste emulador ainda
   adivinha o preenchimento de alinhamento; um arquivo ASCII multi-bloco de verdade (256 bytes por bloco)
   aparece fragmentado na lista; "Selecao" (#28 do TZX) nao tem como mostrar um menu de verdade numa
-  ferramenta batch -- escolhe sempre a 1a opcao. Ver [tape-spec.md](doc/tape-spec.md), secoes 5, 9 e 10.
+  ferramenta batch -- escolhe sempre a 1a opcao. Ver [tape-spec.md](doc/tape-spec.md), secoes 5, 9, 10 e 11.
 - **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada; Mega Chase
   so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
 - **Ausentes**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, `CALL VOICECOPY`
@@ -76,7 +78,8 @@ Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 
 1.14.0 CPIR/CPDR em Assembly; 1.15.0 MSX2+ (V9958); 1.16.0 janela com menus e filtros; 1.17.0 FM com
 BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas; 1.19.x fita (leitura);
 1.20.x fita (gravacao); 1.21.0 empacotador `.BIN`/`.BAS` -> `.TSX` (`--cas pack`); 1.22.0 ripper de
-`.WAV` (`--cas rip`); **1.23.0 navegacao de blocos de controle do TZX**. Detalhes em
+`.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; **1.24.0 banco de fitas com
+metadados (`--fitadb`, sem download)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
@@ -116,6 +119,8 @@ fwMSX/
 │   │               doc/tape-spec.md)
 │   ├── romdb/      banco de ROMs (SQLite, downloads, CLI `--romdb` --
 │   │               ver doc/romdb-spec.md)
+│   ├── tapedb/     banco de fitas (SQLite, SEM download, CLI `--fitadb`
+│   │               -- ver doc/tape-spec.md, secao 11)
 │   ├── audio/      saida de audio ao vivo (miniaudio -- ver
 │   │               doc/audio-spec.md)
 │   └── machine/    maquina MSX1 completa + janela (`--msx` -- ver
@@ -125,7 +130,7 @@ fwMSX/
 │                   audio, disco e fita (CTest -- z80test/z80dbgtest/
 │                   memmaptest/vdptest/vdp2test/ppitest/psgtest/
 │                   machinetest/msx2test/audiotest/fdctest/tapetest/
-│                   castooltest), mais tests/romdb/ (romdbtest)
+│                   castooltest), mais tests/romdb/ (romdbtest) e tests/tapedb/ (tapedbtest)
 ├── doc/            documentacao viva do projeto
 │   ├── SPEC.md         especificacao completa + fases do projeto
 │   ├── msxdisk-spec.md especificacao + fases do utilitario msxdisk

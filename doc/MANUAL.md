@@ -312,7 +312,7 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX (`--msx`) -- v1.23.0
+## Emulador MSX (`--msx`) -- v1.24.0
 
 Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
 `--msx` escolhe a maquina e as opcoes abaixo.
@@ -447,7 +447,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 ### O que funciona e o que nao funciona
 
-**Funciona (v1.23.0):**
+**Funciona (v1.24.0):**
 
 - MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
 - MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
@@ -458,7 +458,8 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 - **Fita** (`.cas`, `.tsx`/`.tzx`): leitura (rapida e normal, com som), gravacao (`CSAVE`/`BSAVE "CAS:"`,
   fita nova, protecao, 3 modos, marcar o ponto, contagiros), janela "Fita K7", e a ferramenta de linha
   de comando `fwmsx --cas` (empacotar, "ripar" `.wav`, listar). Navegacao completa dos blocos de
-  controle do TZX. Ver a secao acima e [tape-spec.md](tape-spec.md).
+  controle do TZX. Banco de fitas com metadados (`fwmsx --fitadb`, sem download). Ver as secoes
+  acima e [tape-spec.md](tape-spec.md).
 - **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao e identificacao.
 - Configuracao de slots pela janela (secao acima).
 
@@ -469,12 +470,11 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
   janela nao foi testada.
 - **Som do FM, do SCC e da fita (modo normal)**: nao comparados com hardware real.
 - **Cores YJK** do V9958: nao conferidas com hardware real.
-- **Fita**: banco de fitas/metadados ainda nao existe; `.cas` cru sem gravacao previa deste emulador
-  ainda adivinha o preenchimento de alinhamento; um ASCII multi-bloco de verdade (256 bytes por bloco)
-  aparece fragmentado na lista; "Selecao" (#28 do TZX) escolhe sempre a 1a opcao (sem como mostrar um
-  menu de verdade numa ferramenta batch); o modo "nova fita" de gravacao ainda nao foi testado na
-  janela de verdade (so' "sobrescrever o ponto" e "incluir no final" foram). Ver
-  [tape-spec.md](tape-spec.md), secoes 5, 9 e 10.
+- **Fita**: download pelo site continua fora de escopo (sem termos de uso publicados -- so' o banco
+  de metadados, sem download, existe); `.cas` cru sem gravacao previa deste emulador ainda adivinha
+  o preenchimento de alinhamento; um ASCII multi-bloco de verdade (256 bytes por bloco) aparece
+  fragmentado na lista; "Selecao" (#28 do TZX) escolhe sempre a 1a opcao (sem como mostrar um menu de
+  verdade numa ferramenta batch). Ver [tape-spec.md](tape-spec.md), secoes 5, 9, 10 e 11.
 - **Banco de ROMs**: ainda nao escolhe o mapper ao carregar um cartucho, nem verifica o SHA-1 das
   ROMs baixadas.
 - **Sem**: save-state, GameMaster2, MSX-DOS 2, efeitos de rastreio no meio do quadro, cartucho MSX-MUSIC
@@ -548,6 +548,31 @@ secoes 8 e 9, para o detalhamento completo.
 do MSX embute ponteiros de memoria entre linhas, dependentes do endereco de carga); so' `.BIN`/`.BAS`
 (sem `--tipo ascii`); o `rip` nao tem os modos interativo/preditivo do makeTSX original (um bit ambiguo
 termina o bloco corrente, em vez de tentar adivinhar); um `.wav` estereo e' rejeitado (so' mono).
+
+## Banco de fitas (`fwmsx --fitadb`)
+
+Cadastra metadados (titulo, empresa, ano, SHA-1) das fitas (`.cas`/`.tsx`/`.tzx`) que voce ja' tem no
+disco -- pela extensao e pelo conteudo, igual o `--romdb` faz para ROMs. **Sem download nenhum**: o
+site de referencia nao publica termos de uso (ver [tape-spec.md](tape-spec.md), secao 11). Elas ficam
+em `fitas/` (ao lado do executavel, ou `--fitas <pasta>`); o banco e' `fitas/fitas.db`.
+
+```powershell
+.\dist\fwMSX.exe --fitadb scan fitas                         # cadastra toda fita da pasta (recursivo)
+.\dist\fwMSX.exe --fitadb add jogo.tsx --empresa Konami --ano 1987
+.\dist\fwMSX.exe --fitadb list
+.\dist\fwMSX.exe --fitadb search nemesis
+.\dist\fwMSX.exe --fitadb show 1
+.\dist\fwMSX.exe --fitadb edit 1 --titulo "Nemesis" --notas "minha copia"
+.\dist\fwMSX.exe --fitadb del 1                               # tira do banco (o arquivo nao e' apagado)
+.\dist\fwMSX.exe --fitadb stats
+```
+
+O `titulo` e' auto-preenchido com o nome do 1o arquivo encontrado dentro da fita (pelo mesmo leitor
+que a janela e o `--cas` usam) quando ela e' cadastrada por `scan`/`add` -- um titulo editado
+manualmente nunca e' sobrescrito depois. `empresa`/`ano` so' vem de voce (nenhum formato de fita
+guarda essa informacao).
+
+**Limites**: so' cadastra fitas que voce ja' tem -- sem busca nem download de nenhuma fonte externa.
 
 ### Compilar sem a GUI (sem GLFW/OpenGL)
 

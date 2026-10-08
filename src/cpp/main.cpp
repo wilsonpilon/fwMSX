@@ -43,6 +43,11 @@
 // <arquivo>" lista os arquivos de uma fita -- ver doc/tape-spec.md,
 // secao 8.
 //
+// "fwmsx --fitadb <comando>" cadastra metadados (titulo, empresa, ano,
+// SHA-1) das fitas que o usuario ja' tem no disco -- SEM download nenhum
+// (o site de referencia nao publica termos de uso ainda) -- ver
+// doc/tape-spec.md, secao 11.
+//
 
 #include "romdb/cli.h"
 #include <cstdint>
@@ -62,6 +67,7 @@
 #include "msxdisk/entry.h"
 #include "machine/cli.h"
 #include "tape/cli/cas_tool.h"
+#include "tapedb/cli.h"
 #include "z80/debug/z80_debug_shell.h"
 
 namespace {
@@ -105,6 +111,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--cas") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return tape::RunCasToolCommand(tokens, argv[0]);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--fitadb") {
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return tapedb::RunTapeDbCommand(tokens, argv[0]);
     }
 
     std::cout << "Copyright (c) 1972-2026 Cybernostra, Inc." << std::endl;

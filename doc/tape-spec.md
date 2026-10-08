@@ -504,3 +504,62 @@ o corpo 3 vezes; laco com 0 repeticoes pula o corpo inteiro; chamada com
 lista de 2 execucoes + retorno; selecao escolhe a 1a opcao; salto fora
 dos limites e' recusado com erro) e confere a ORDEM REAL de execucao
 pela ordem dos arquivos reconhecidos no resultado (`img.files`).
+
+## 11. Banco de fitas (`fwmsx --fitadb`)
+
+Banco de metadados (SQLite) das fitas que o usuario ja' tem no disco --
+titulo, empresa, ano e SHA-1 -- fecha o item (e) da lista original de
+fitas (`doc/SPEC.md`, secao 5.2). **Sem download nenhum**: o site de
+referencia (tsx.eslamejor.com, "TSX MSX Files Repository") nao publica
+termos de uso (paginas de termos/politica/FAQ dao 404, verificado em
+2026-10-06) e oferece a colecao so' como um `.torrent`, nao downloads
+individuais -- sem uma licenca clara, o fwMSX nao implementa download
+automatico nenhum (ver `doc/SPEC.md`, secao 5.2, item 7, para a analise
+completa). Este banco so' CADASTRA o que o usuario ja' tem localmente,
+igual `fwmsx --romdb scan` faz para ROMs.
+
+**Modulo** (`src/tapedb/`): estrutura espelhada em `src/romdb/`
+(`store/`, `service.h/.cpp`, `cli.h/.cpp`) POR ANALOGIA -- mesmo padrao
+de CRUD/busca/SQLite, mas um banco SEPARADO (`fitas/fitas.db`, nao uma
+categoria dentro de `roms.db`, ja' que fita nunca foi uma categoria de
+ROM). Reusa `romdb::Sha1Hex()` diretamente (e' uma funcao generica, nao
+especifica de ROM) em vez de duplicar o calculo de hash.
+
+```
+fwmsx --fitadb scan <pasta> [--origem x]
+fwmsx --fitadb add <arquivo> [--titulo t] [--empresa e] [--ano a] [--notas t]
+fwmsx --fitadb list
+fwmsx --fitadb search <texto>
+fwmsx --fitadb show <id|sha1>
+fwmsx --fitadb edit <id> [--titulo t] [--empresa e] [--ano a] [--notas t]
+fwmsx --fitadb del <id>
+fwmsx --fitadb stats
+```
+
+- `scan`: varre uma pasta (recursivo), cadastrando toda fita `.cas`/
+  `.tsx`/`.tzx` encontrada pelo SHA-1 do ARQUIVO (nao do bloco #4B --
+  um `.tsx` e' um arquivo binario como outro qualquer para esse fim).
+- **Auto-preenchimento do titulo**: `TapeDb::ScanFile()` abre a fita com
+  o leitor existente (`cas_reader`/`tzx_reader`, o MESMO que a janela e
+  o `--cas` usam) e usa o nome do 1o arquivo encontrado dentro dela como
+  palpite de titulo -- so' quando a fita e' NOVA no banco. Uma fita ja'
+  cadastrada MANTEM o titulo que o usuario tiver editado manualmente,
+  mesmo re-escaneando a mesma pasta depois (mesma logica de preservar
+  nome/notas que o `romdb` ja' usava para ROMs).
+- `empresa`/`ano` (convencao TOSEC) nunca vem da fita em si -- nenhum
+  desses dois formatos (`.cas`/`.tsx`/`.tzx`) guarda editora ou ano --
+  so' podem ser preenchidos manualmente (`--empresa`/`--ano`).
+- `--fitas <pasta>`: pasta de fitas e banco, em qualquer comando (padrao:
+  `fitas/` ao lado do executavel, mesma convencao de `--roms` no
+  `--romdb`).
+
+Testes: `tapedbtest` (CTest `tapedb_store`) -- CRUD, busca,
+`ScanFile`/`ScanDirectory` (com o auto-preenchimento de titulo e a
+preservacao de edicoes manuais em um re-scan), e a CLI completa (todos
+os comandos + validacao de argumentos). Smoke test manual contra uma
+fita real (`resource/fmsxgo/media/teste.tsx`): `--fitadb add` detectou
+o titulo certo ("teste") sozinho.
+
+**Fora de escopo (por natureza, nao por falta de tempo):** qualquer
+download automatico (ver acima); importar um indice/torrent de terceiros
+sem antes confirmar os termos de uso por escrito.

@@ -15,25 +15,27 @@ chamado **MSX-PoorManOS**. Ainda sem data.
 Este repositorio e' **pessoal**. Midias de terceiros (ROMs, discos, fitas) podem ser versionadas por
 enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver `LICENSE-THIRD-PARTY.md`).
 
-## 2. Onde estamos (encerrado em 2026-10-08, pronto para continuar amanha)
+## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.23.0** "King's Valley: Navegacao de Blocos do TZX"
-  -- commit `527f763`, tag `1.23.0`, branch `v1.23.0`, tudo com push feito. `git status` limpo,
-  `main` local == `origin/main`. Nao ha' nada pendente de commit/push desta sessao.
+- **Ultima versao publicada em `main`:** **1.24.0** "King's Valley: Banco de Fitas (Metadados)"
+  (ou mais nova -- conferir `git log`). `git status` limpo, `main` local == `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
-- **Testes:** `ctest` com **17 suites**, todas passando em Windows E Linux (WSL) -- inclui
-  `tape_load` (leitura/gravacao de fita + navegacao de TZX) e `cas_pack` (empacotador + ripper de
-  WAV, novo nesta sessao).
-- **Documentos vivos, todos sincronizados com a 1.23.0 nesta sessao:** `README.md`,
-  `doc/MANUAL.md`, `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
-  `doc/tape-spec.md` (secoes 1-10) e este arquivo.
-- **Resumo da sessao de hoje (ver secao 9 para o detalhamento completo, rodada por rodada):**
-  corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1 a 1.20.3:
-  piloto/ZERO/UM trocados, `Device I/O error` ao reinserir fita destravada, preenchimento de
-  alinhamento gravado como dado, corte repetido em "sobrescrever o ponto"); depois, os 3 itens do
-  "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` -> `.TSX` (`fwmsx --cas pack`, 1.21.0);
-  port do makeTSX, WAV -> TSX (`fwmsx --cas rip`, 1.22.0); navegacao de verdade dos blocos de
-  controle do TZX (grupos/lacos/saltos/chamadas/selecao, 1.23.0). O "passo 1" esta' COMPLETO.
+- **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui
+  `tape_load` (leitura/gravacao de fita + navegacao de TZX), `cas_pack` (empacotador + ripper de
+  WAV) e `tapedb_store` (banco de fitas, novo hoje).
+- **Documentos vivos, todos sincronizados com a 1.24.0:** `README.md`, `doc/MANUAL.md`,
+  `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
+  `doc/tape-spec.md` (secoes 1-11) e este arquivo.
+- **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
+  rodada):** corrigidos 3 bugs reais de gravacao achados pelo usuario testando pela janela (1.20.1
+  a 1.20.3); depois, os 3 itens do "passo 1" pedido pelo usuario: empacotador `.BIN`/`.BAS` ->
+  `.TSX` (`fwmsx --cas pack`, 1.21.0); port do makeTSX, WAV -> TSX (`fwmsx --cas rip`, 1.22.0);
+  navegacao de verdade dos blocos de controle do TZX (1.23.0). "Passo 1" COMPLETO; sessao encerrada
+  com tudo documentado e sincronizado.
+- **Resumo do dia 2 (hoje, em andamento -- ver secao 9):** o usuario confirmou que "nova fita"
+  tambem ja' tinha sido validada na janela, e pediu para seguir com os itens 2 e 3 da lista de
+  pendencias (banco de fitas, depois banco de ROMs): **banco de fitas com metadados** (`fwmsx
+  --fitadb`, SEM download, 1.24.0) feito. Banco de ROMs (SHA-1 + mapper) e' o proximo.
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -100,7 +102,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   navega por indice), nao so' pulados em sequencia linear como antes. Testado com 6 cenarios
   sinteticos (`tapetest`) que confirmam a ORDEM REAL de execucao. Fecha o "passo 1" pedido pelo
   usuario por completo (empacotador, ripper WAV, navegacao TZX).
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.23.0.*` (ver secao 9).
+- **Banco de fitas com metadados (1.24.0, 2026-10-08)**: `fwmsx --fitadb` cadastra titulo/empresa/
+  ano/SHA-1 das fitas que o usuario ja' tem no disco -- SEM download (site de referencia sem
+  termos de uso publicados). Estrutura espelhada no `romdb` por analogia (banco SEPARADO,
+  `src/tapedb/`); auto-preenche o titulo a partir do leitor de fita existente, preservando edicoes
+  manuais num re-scan. Testado (`tapedbtest`) e com smoke test manual contra uma fita real.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.24.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -217,8 +224,8 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    contagiros "parado" que nao era bug); e o bug do corte repetido em "sobrescrever o ponto"
    (apagava o cabecalho que o proprio CSAVE tinha acabado de escrever). **Revalidado pelo usuario
    na janela em 2026-10-08**: gravou num ponto no meio da fita, sobrescrevendo um programa
-   existente, com sucesso. Ver secao 2, secao 9 e `doc/tape-spec.md`, secoes 5-7. **Ainda nao
-   testado na janela:** o modo "nova fita".
+   existente, com sucesso. Ver secao 2, secao 9 e `doc/tape-spec.md`, secoes 5-7. **Modo "nova
+   fita" tambem confirmado pelo usuario na janela em 2026-10-08** (dia 2).
 3. **[FEITO em 2026-10-08, 1.21.0] Empacotador de fita por linha de comando** -- `fwmsx --cas
    pack --tipo bin|bas` empacota um `.BIN`/`.BAS` solto num `.TSX`/`.CAS` sem abrir o emulador
    (resto do item c); `fwmsx --cas list` confirma o resultado. Ver secao 9 e `doc/tape-spec.md`,
@@ -229,14 +236,18 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 5. **[FEITO em 2026-10-08, 1.23.0] Navegacao de blocos de controle do TZX** -- Grupo/Salto/Laco/
    Chamada/Selecao (IDs 21-28) agora sao executados de verdade, nao so' pulados. Fecha o "passo 1"
    pedido pelo usuario por completo. Ver secao 9 e `doc/tape-spec.md`, secao 10.
-6. **Fitas, o que ainda falta** (`doc/SPEC.md`, secao 5.2): (e) banco de fitas (metadados, sem
-   download automatico ate ter autorizacao); preenchimento de alinhamento ainda adivinhado so' para
-   `.cas` cru carregado direto do disco; `ScanCasFiles()` so' junta 2 blocos por arquivo (um ASCII
-   multi-bloco de verdade aparece fragmentado, ver `doc/tape-spec.md`, secoes 5 e 9).
-   Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT), `resource/openMSX_TSXadv/` (GPL,
-   so' estudo).
-7. **Banco de ROMs:** conferir as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o
-   mapper ao carregar cartucho (`CARTS.SHA` ja' importado); importar o JSON do Vampier se for util.
+6. **[FEITO em 2026-10-08, 1.24.0] Banco de fitas com metadados** -- `fwmsx --fitadb` cadastra
+   titulo/empresa/ano/SHA-1, SEM download (fecha o item (e), exceto a parte de download, fora de
+   escopo por nao ter termos de uso publicados). Ver secao 9 e `doc/tape-spec.md`, secao 11.
+   **Fitas, o que ainda falta** (so' limitacoes conhecidas, `doc/SPEC.md`, secao 5.2): preenchimento
+   de alinhamento ainda adivinhado so' para `.cas` cru carregado direto do disco; `ScanCasFiles()`
+   so' junta 2 blocos por arquivo (um ASCII multi-bloco de verdade aparece fragmentado, ver
+   `doc/tape-spec.md`, secoes 5 e 9). Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT),
+   `resource/openMSX_TSXadv/` (GPL, so' estudo).
+7. **[EM ANDAMENTO, 2026-10-08] Banco de ROMs: SHA-1 + mapper** -- conferir as ROMs baixadas contra
+   o SHA-1 conhecido; usar o banco para escolher o mapper ao carregar cartucho (`CARTS.SHA` ja'
+   importado); importar o JSON do Vampier se for util. Pedido pelo usuario como "passo 3" desta
+   leva, logo depois do banco de fitas.
 8. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
 9. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
@@ -258,7 +269,8 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
 - Disco por portas (convencao Microsol, mapa de bits, drivers DDX/CDX): `doc/fdc-spec.md`, secao 6.
 - Banco de ROMs (esquema, downloads, CLI): `doc/romdb-spec.md`.
 - FM (OPLL, FM-PAC, comandos de BASIC): `doc/fm-spec.md`.
-- **Fita** (.CAS, .TSX/.TZX, enderecos da BIOS, layout do bloco #4B, pulsos, limites): `doc/tape-spec.md`.
+- **Fita** (.CAS, .TSX/.TZX, enderecos da BIOS, layout do bloco #4B, pulsos, CLI, TZX, banco de
+  metadados, limites): `doc/tape-spec.md` (secoes 1-11).
 - Politica de midias e licencas: `LICENSE-THIRD-PARTY.md`.
 
 ## 9. Nota de fechamento desta sessao (2026-10-07)
@@ -577,6 +589,38 @@ repositorio ainda).
   simplicidade) passava, mas escondia o bug real -- so' apareceu com um teste que simula a sequencia
   de chamadas de verdade. Pensar "o que a BIOS real faz, passo a passo, com UM comando do BASIC"
   antes de assumir que um gancho so' e' chamado uma vez por acao do usuario.
+
+---
+
+### Dia 2 (2026-10-08, continuacao): banco de fitas com metadados (1.24.0)
+
+Ao retomar pela manha, o usuario confirmou que o modo "nova fita" (unico item pendente de
+validacao na janela da rodada anterior) ja' tinha sido testado, junto com os outros pontos, e
+pediu para seguir com os itens 2 e 3 da lista de pendencias que eu tinha apresentado (banco de
+fitas, depois banco de ROMs) -- "vamos para o passo 2 e 3 na sequencia".
+
+**Banco de fitas** (`fwmsx --fitadb`, item (e) da lista original, SEM download -- o site de
+referencia nao publica termos de uso, verificado em 2026-10-06 e nunca revertido): novo modulo
+`src/tapedb/` (store/service/cli), estrutura ESPELHADA em `src/romdb/` por analogia (mesmo padrao
+de CRUD/busca/SQLite), mas um banco SEPARADO (`fitas/fitas.db`, nao uma categoria de ROM).
+Reaproveitou `romdb::Sha1Hex()` direto (funcao generica) em vez de duplicar o calculo de hash.
+Decisao de design propria (nao pedida explicitamente): `ScanFile()` abre a fita com o leitor
+EXISTENTE (`cas_reader`/`tzx_reader`, o mesmo que a janela e o `--cas` usam) para auto-preencher o
+titulo com o nome do 1o arquivo encontrado dentro da fita -- so' quando ela e' NOVA no banco; uma
+fita ja' cadastrada mantem o titulo que o usuario editar, mesmo re-escaneando a mesma pasta depois
+(mesma logica de preservacao que o `romdb` ja' usava para nome/notas de ROMs).
+
+Build Windows e Linux (WSL) rodados, versao bumpada ANTES do primeiro build (ja' habito desta
+leva de sessoes) -- nenhum pacote antigo sobrescrito. `ctest` 18/18 nos dois (`tapedbtest`/
+`tapedb_store`, novo: CRUD, busca, scan de arquivo/pasta com o auto-preenchimento de titulo e a
+preservacao de edicoes manuais, e a CLI completa). Smoke test manual com o `fwMSX.exe` de
+verdade: `--fitadb add` numa fita real (`resource/fmsxgo/media/teste.tsx`) detectou o titulo
+"teste" sozinho, aceitou `--empresa`/`--ano` manuais. Escrito como versao `1.24.0` (minor --
+feature nova) com o mesmo codename e um subtitulo novo: "Banco de Fitas (Metadados)". Ver
+`doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.24.0]`, e `doc/tape-spec.md`, secao 11 (nova).
+
+**Proximo passo, ja' confirmado pelo usuario (passo 3 desta leva):** Banco de ROMs -- SHA-1 +
+mapper (item 7 da secao 7).
 
 ---
 

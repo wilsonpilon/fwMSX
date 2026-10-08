@@ -189,6 +189,8 @@ dkms.conf
 /dist/tapetest
 /dist/castooltest.exe
 /dist/castooltest
+/dist/tapedbtest.exe
+/dist/tapedbtest
 
 # Diretorios de build gerados automaticamente pelo CLion
 /cmake-build-*/

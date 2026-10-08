@@ -13,6 +13,38 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.24.0 -- "King's Valley: Banco de Fitas (Metadados)" (2026-10-08)
+
+**Fase:** segundo item que o usuario pediu na sequencia nesta rodada (depois de confirmar que o
+modo "nova fita" ja' tinha sido validado na janela): o item (e) da lista original de fitas --
+banco de fitas (SQLite), SEM download (o site de referencia nao publica termos de uso, ver
+`doc/SPEC.md`, secao 5.2, item 7, verificado em 2026-10-06 e nunca revertido).
+
+### O que foi feito
+
+- Novo modulo `src/tapedb/` (store/service/cli), estrutura espelhada em `src/romdb/` por analogia
+  -- MESMO padrao de CRUD/busca/SQLite, mas um banco SEPARADO (`fitas/fitas.db`, nao uma categoria
+  dentro de `roms.db`): `TapeDb::Add/Update/Delete/Get/FindBySha1/Search/Count/ScanFile/
+  ScanDirectory`, reaproveitando `romdb::Sha1Hex()` (funcao generica, nao especifica de ROM) em
+  vez de duplicar o hash.
+- `fwmsx --fitadb scan|add|list|search|show|edit|del|stats` -- os mesmos comandos do `--romdb`,
+  sem os de download (`fmsx`/`filehunter*`/`vampier`), que nao se aplicam aqui.
+- **Auto-preenchimento do titulo**: `ScanFile()` abre a fita com o leitor existente (`cas_reader`/
+  `tzx_reader`, o MESMO usado pelo `--cas`/pela janela) e usa o nome do 1o arquivo encontrado
+  dentro dela como palpite de titulo -- so' para uma fita NOVA no banco; uma fita ja' cadastrada
+  mantem o titulo que o usuario tiver editado, mesmo re-escaneando a mesma pasta depois.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.24.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.24.0-linux.tar.gz`.
+- `ctest`: 18 suites (nova: `tapedbtest`/`tapedb_store` -- CRUD, busca, scan de arquivo/pasta com
+  auto-preenchimento de titulo e preservacao de edicoes manuais, e a CLI completa). Windows:
+  18/18. Linux: 18/18.
+- Smoke test manual com o `fwMSX.exe` de verdade: `--fitadb add` numa fita real
+  (`resource/fmsxgo/media/teste.tsx`) auto-detectou o titulo "teste" certo, aceitou `--empresa`/
+  `--ano` manuais, e `--fitadb list`/`stats` confirmaram o cadastro.
+
 ## v1.23.0 -- "King's Valley: Navegacao de Blocos do TZX" (2026-10-08)
 
 **Fase:** terceiro e ultimo item do "passo 1" pedido pelo usuario -- navegar os blocos de controle

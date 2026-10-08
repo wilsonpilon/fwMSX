@@ -182,19 +182,20 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-08, v1.23.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  **Estado atual (2026-10-08, v1.24.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
   (VDP, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout de slots), com o banco de ROMs
   (`--romdb`) e o subsistema de fita completo (leitura, gravacao, empacotador `.BIN`/`.BAS`,
-  ripper de `.WAV` e navegacao de blocos do TZX) tambem publicados. Ver a secao 5.0 para o que
-  funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
+  ripper de `.WAV`, navegacao de blocos do TZX e banco de metadados `--fitadb`) tambem publicados.
+  Ver a secao 5.0 para o que funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM;
+  falta o GameMaster2
   (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.23.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.24.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.23.0, publicada em `main`):**
+**Funcionando (v1.24.0, publicada em `main`):**
 
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`.
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
@@ -206,7 +207,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] **Fita** (.CAS e .TSX/.TZX): leitura completa, carregamento rapido (sem som) e normal (pulsos de verdade, com som), menu "Fita" e janela visual "Fita K7". **Confirmado pelo usuario em 2026-10-07**: carregou um jogo completo (modo normal) e jogou um pouco, som nitido. Ver `doc/tape-spec.md`.
 - [x] Pacotes Windows (zip) e Linux (tar.gz); `ctest` com 16 suites.
 
-**Fita -- gravacao, empacotador, ripper de WAV e navegacao de TZX (v1.20.0 a v1.23.0, 2026-10-07/08, todas publicadas em `main`):**
+**Fita -- gravacao, empacotador, ripper de WAV, navegacao de TZX e banco de metadados (v1.20.0 a v1.24.0, 2026-10-07/08, todas publicadas em `main`):**
 
 - [x] **Gravacao** (`CSAVE`/`BSAVE "CAS:"`, sempre pelo gancho de BIOS TAPOON/TAPOUT/TAPOOF, independente do modo de carregamento escolhido). **Confirmado pelo usuario em 2026-10-08**, testando pela janela: criou uma fita nova, gravou um programa, rebobinou e recarregou com sucesso.
 - [x] **Corrigido** (1.20.1, achado pelo usuario testando pela janela): pulsos de ZERO e UM do #4B estavam trocados (zero tem que ser 2x o pulso de um, nao o contrario) e o piloto era curto demais para a BIOS de verdade calibrar -- sem isso, uma fita GRAVADA pelo emulador nunca carregava no modo normal (so' no rapido, que nao usa pulso). Ver `doc/tape-spec.md`, secao 4, e `doc/CHANGELOG.md`, `[1.20.1]`.
@@ -223,6 +224,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] **`fwmsx --cas pack`/`list`** (1.21.0): ferramenta de linha de comando para empacotar um `.BIN`/`.BAS` solto (ja no formato binario/tokenizado do MSX) num `.TSX`/`.CAS` valido sem passar pelo emulador -- fecha o resto do item (c) da lista de fitas. Reusa o escritor `WriteTsxFromCas()` existente. Ver `doc/tape-spec.md`, secao 8, e `doc/CHANGELOG.md`, `[1.21.0]`.
 - [x] **`fwmsx --cas rip`** (1.22.0): port do CONCEITO do makeTSX (WAV -> TSX, item f) -- demodula uma gravacao real de fita (`.wav` PCM mono) detectando o piloto e decodificando os bytes do bloco #4B, simplificado para o caso fixo do MSX (sem os modos interativo/preditivo do original). Testado contra uma fita real dos anos 80 (86 blocos reconhecidos sem erro). Ver `doc/tape-spec.md`, secao 9, e `doc/CHANGELOG.md`, `[1.22.0]`.
 - [x] **Navegacao de blocos de controle do TZX** (1.23.0): Grupo/Salto/Laco/Chamada/Selecao (IDs 21-28) agora sao executados de verdade (leitor em 2 passadas -- indexa os blocos, depois navega por indice), nao so' pulados com seguranca como antes. Fecha o ultimo item do "passo 1" pedido pelo usuario. Ver `doc/tape-spec.md`, secao 5, e `doc/CHANGELOG.md`, `[1.23.0]`.
+- [x] **`fwmsx --fitadb`** (1.24.0): banco de fitas (SQLite) com metadados (titulo/empresa/ano/SHA-1) -- fecha o item (e), SEM download (o site de referencia nao publica termos de uso). Estrutura espelhada no `romdb` por analogia (banco SEPARADO); auto-preenche o titulo a partir do leitor de fita existente. Ver `doc/tape-spec.md`, secao 11, e `doc/CHANGELOG.md`, `[1.24.0]`.
 
 **Politica de midias (2026-10-06):** o repositorio e' pessoal; ROMs, discos e fitas de terceiros podem ser versionadas. Antes da liberacao publica, revisar cada midia e remover as que o detentor contestar (`LICENSE-THIRD-PARTY.md`).
 
@@ -230,7 +232,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 
 **Pendencias (ordem sugerida):**
 
-- [ ] Fitas: banco de fitas e download (item e, depois de confirmar com o site); preenchimento de alinhamento ainda e' adivinhado (busca pelo proximo cabecalho) para `.cas` cru carregado direto do disco, sem passar por uma gravacao deste emulador (limitacao conhecida, ver `doc/tape-spec.md`, secao 5); `ScanCasFiles()` so' junta DOIS blocos por arquivo (nome + dados) -- um ASCII multi-bloco de verdade (256 bytes por bloco) aparece fragmentado (ver `doc/tape-spec.md`, secao 9); revalidar na tela o modo "nova fita" (so' "sobrescrever o ponto" e "incluir no final" foram confirmados pelo usuario ate' agora).
+- [ ] Fitas: download pelo site continua fora de escopo (sem termos de uso publicados -- so' o banco de metadados, sem download, foi feito na 1.24.0); preenchimento de alinhamento ainda e' adivinhado (busca pelo proximo cabecalho) para `.cas` cru carregado direto do disco, sem passar por uma gravacao deste emulador (limitacao conhecida, ver `doc/tape-spec.md`, secao 5); `ScanCasFiles()` so' junta DOIS blocos por arquivo (nome + dados) -- um ASCII multi-bloco de verdade (256 bytes por bloco) aparece fragmentado (ver `doc/tape-spec.md`, secao 9). **Revalidado pelo usuario em 2026-10-08**: o modo "nova fita" de gravacao ja' foi confirmado na janela de verdade (junto com os outros modos).
 - [ ] Banco de ROMs: verificar as ROMs baixadas contra o SHA-1 conhecido; usar o banco para escolher o mapper ao carregar cartucho; importar o JSON do Vampier se for util.
 - [ ] Ouvir o FM, o SCC, o disco e a fita (modo normal) contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
 - [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao diagnosticada; Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
@@ -303,15 +305,17 @@ Fase 5c):
 projeto avancar.)*
 ### 5.2 Feature a desenvolver em breve: fitas (TSX, TZX e CAS) e banco de fitas
 
-Estado: **leitura, carregamento e gravacao prontos (2026-10-07)**; banco de fitas e download ainda nao
-comecaram. Pedido do usuario: ler e criar TSX, ler e criar CAS, um banco de fitas com download pelo
-site oficial, e uma ferramenta de linha de comando e pelo menu para manipular esses arquivos, com duas
-opcoes de carregamento (rapido, sem som; normal, com o barulho do gravador), uma fita K7 nova e limpa
-em .TSX para salvar programas, uma janela com o conteudo da fita (marcar o ponto de carga), tres modos
-de gravacao (sobrescrever o ponto/nova fita/incluir no final), protecao contra gravacao por padrao em
-fitas existentes, e um contagiros simulado. Os itens (a), (b), (d), (g) e parte do (c) estao feitos --
-ver `doc/tape-spec.md` para o detalhamento completo (enderecos da BIOS, layout do bloco #4B, gravacao,
-limites). Ver tambem `doc/SPEC.md`, secao 5.0, e a viabilidade abaixo (mantida como registro da analise
+Estado: **leitura, carregamento, gravacao, empacotador, ripper de WAV, navegacao de TZX e banco de
+metadados prontos (2026-10-08)**; so' o download pelo site continua fora de escopo (sem termos de uso
+publicados, ver item 7 da viabilidade abaixo). Pedido original do usuario: ler e criar TSX, ler e criar
+CAS, um banco de fitas com download pelo site oficial, e uma ferramenta de linha de comando e pelo menu
+para manipular esses arquivos, com duas opcoes de carregamento (rapido, sem som; normal, com o barulho
+do gravador), uma fita K7 nova e limpa em .TSX para salvar programas, uma janela com o conteudo da fita
+(marcar o ponto de carga), tres modos de gravacao (sobrescrever o ponto/nova fita/incluir no final),
+protecao contra gravacao por padrao em fitas existentes, e um contagiros simulado. Todos os itens (a)
+a (g) estao feitos, exceto a parte de DOWNLOAD do item (e) -- ver `doc/tape-spec.md` para o
+detalhamento completo (enderecos da BIOS, layout do bloco #4B, gravacao, CLI, TZX, banco, limites). Ver
+tambem `doc/SPEC.md`, secao 5.0, e a viabilidade abaixo (mantida como registro da analise
 original).
 
 **Formatos.**
@@ -383,7 +387,10 @@ referencia, sem copia de codigo. Os arquivos TSX/CAS de jogos sao de terceiros: 
       padrao); 3 modos de gravacao (incluir no final, sobrescrever o ponto marcado, nova fita); marcar
       um arquivo da lista como ponto de carga/gravacao; persistencia imediata no arquivo. Falta:
       navegacao pelos blocos de controle do TZX (grupos/lacos/saltos). Ver `doc/tape-spec.md`, secoes 5-6.
-- [ ] (e) Banco de fitas (SQLite) e download pelo site, depois de conferir os termos.
+- [x] (e, parcial -- 1.24.0) Banco de fitas (SQLite) com metadados, via `fwmsx --fitadb`. O download
+      pelo site continua fora de escopo (sem termos de uso publicados, ver item 7 da viabilidade
+      acima) -- o banco so' cadastra fitas que o usuario ja' tem no disco. Ver `doc/tape-spec.md`,
+      secao 11.
 - [ ] (f) Port do makeTSX (WAV para TSX).
 - [x] (g) CLI `fwmsx --fita`/`--fita-modo` e menu "Fita" na janela (inserir, nova fita, ejetar, rebobinar,
       trocar de modo de carregamento, travar/destravar gravacao, modo de gravacao, janela visual "Fita K7"
