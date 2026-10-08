@@ -182,7 +182,7 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-08, v1.25.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  **Estado atual (2026-10-08, v1.26.0):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
   (VDP, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout de slots), com o banco de ROMs
   (`--romdb`, agora com `verify` e auto-mapper pelo SHA-1 ao carregar um cartucho) e o subsistema
   de fita completo (leitura, gravacao, empacotador `.BIN`/`.BAS`, ripper de `.WAV`, navegacao de
@@ -190,12 +190,12 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC e a SRAM; falta o GameMaster2
   (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.25.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-08, depois da v1.26.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.25.0, publicada em `main`):**
+**Funcionando (v1.26.0, publicada em `main`):**
 
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`.
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8 e Gen16; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`).
@@ -226,6 +226,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] **Navegacao de blocos de controle do TZX** (1.23.0): Grupo/Salto/Laco/Chamada/Selecao (IDs 21-28) agora sao executados de verdade (leitor em 2 passadas -- indexa os blocos, depois navega por indice), nao so' pulados com seguranca como antes. Fecha o ultimo item do "passo 1" pedido pelo usuario. Ver `doc/tape-spec.md`, secao 5, e `doc/CHANGELOG.md`, `[1.23.0]`.
 - [x] **`fwmsx --fitadb`** (1.24.0): banco de fitas (SQLite) com metadados (titulo/empresa/ano/SHA-1) -- fecha o item (e), SEM download (o site de referencia nao publica termos de uso). Estrutura espelhada no `romdb` por analogia (banco SEPARADO); auto-preenche o titulo a partir do leitor de fita existente. Ver `doc/tape-spec.md`, secao 11, e `doc/CHANGELOG.md`, `[1.24.0]`.
 - [x] **Banco de ROMs: mapper e verificacao** (1.25.0): `--cart <arquivo>` sem mapper explicito consulta o banco pelo SHA-1 antes da heuristica por tamanho/conteudo de sempre; `fwmsx --romdb verify` recalcula o SHA-1 de cada ROM cadastrada e aponta arquivo faltando/alterado. Fecha os dois itens pendentes de `doc/romdb-spec.md`, secao 8. Ver `doc/CHANGELOG.md`, `[1.25.0]`.
+- [x] **Vampier: Platform, CRC32 e tamanho** (1.26.0): o JSON do Vampier foi avaliado e descartado (e' um subconjunto do SQL ja' importado); em vez disso, `VampierSearch()` passou a expor `Platform`/`CRC32`/`FileSize`, que o dump SQL ja' trazia mas a consulta ignorava. Fecha o ultimo item da lista original de ROMs. Ver `doc/romdb-spec.md`, secao 8, e `doc/CHANGELOG.md`, `[1.26.0]`.
 
 **Politica de midias (2026-10-06):** o repositorio e' pessoal; ROMs, discos e fitas de terceiros podem ser versionadas. Antes da liberacao publica, revisar cada midia e remover as que o detentor contestar (`LICENSE-THIRD-PARTY.md`).
 
@@ -234,7 +235,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Pendencias (ordem sugerida):**
 
 - [ ] Fitas: download pelo site continua fora de escopo (sem termos de uso publicados -- so' o banco de metadados, sem download, foi feito na 1.24.0); preenchimento de alinhamento ainda e' adivinhado (busca pelo proximo cabecalho) para `.cas` cru carregado direto do disco, sem passar por uma gravacao deste emulador (limitacao conhecida, ver `doc/tape-spec.md`, secao 5); `ScanCasFiles()` so' junta DOIS blocos por arquivo (nome + dados) -- um ASCII multi-bloco de verdade (256 bytes por bloco) aparece fragmentado (ver `doc/tape-spec.md`, secao 9). **Revalidado pelo usuario em 2026-10-08**: o modo "nova fita" de gravacao ja' foi confirmado na janela de verdade (junto com os outros modos).
-- [ ] Banco de ROMs: so' resta importar o JSON do Vampier, se for util (o SQL ja cobre jogo/empresa/ano/SHA-1); montar a maquina pelo banco (layout por nome) continua sem comecar.
+- [ ] Banco de ROMs: montar a maquina pelo banco (layout por nome) continua sem comecar. Lista de ROMs esta' fechada por ora (ver `doc/romdb-spec.md`, secao 8).
 - [ ] Ouvir o FM, o SCC, o disco e a fita (modo normal) contra referencia; ajustar as constantes do OPLL (`doc/fm-spec.md`, secao 2) e os ganhos da mistura.
 - [ ] Jogos: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada, causa nao diagnosticada; Mega Chase validado so' ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
 - [ ] FM: `CALL VOICECOPY` (a ROM do fMSX nao aceita); status e timers do OPLL.

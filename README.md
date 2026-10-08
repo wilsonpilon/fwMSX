@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.25.0 "King's Valley: Banco de ROMs: Mapper e Verificacao")
+## Estado atual (v1.26.0 "King's Valley: Vampier: Platform, CRC32 e Tamanho")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -81,8 +81,8 @@ Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 
 BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas; 1.19.x fita (leitura);
 1.20.x fita (gravacao); 1.21.0 empacotador `.BIN`/`.BAS` -> `.TSX` (`--cas pack`); 1.22.0 ripper de
 `.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; 1.24.0 banco de fitas com
-metadados (`--fitadb`, sem download); **1.25.0 banco de ROMs com `verify` e auto-mapper pelo
-SHA-1**. Detalhes em
+metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-mapper pelo SHA-1;
+**1.26.0 Vampier com Platform/CRC32/tamanho**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

@@ -17,14 +17,13 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **Ultima versao publicada em `main`:** **1.25.0** "King's Valley: Banco de ROMs: Mapper e
-  Verificacao" (ou mais nova -- conferir `git log`). `git status` limpo, `main` local ==
-  `origin/main`.
+- **Ultima versao publicada em `main`:** **1.26.0** "King's Valley: Vampier: Platform, CRC32 e
+  Tamanho" (ou mais nova -- conferir `git log`). `git status` limpo, `main` local == `origin/main`.
 - **Branch:** trabalhe direto em `main`. `estudo/openmsx` ja' foi mesclada (pode apagar).
 - **Testes:** `ctest` com **18 suites**, todas passando em Windows E Linux (WSL) -- inclui
   `tape_load` (leitura/gravacao de fita + navegacao de TZX), `cas_pack` (empacotador + ripper de
-  WAV), `tapedb_store` (banco de fitas) e `romdb_store` (com `verify`, novo hoje).
-- **Documentos vivos, todos sincronizados com a 1.25.0:** `README.md`, `doc/MANUAL.md`,
+  WAV), `tapedb_store` (banco de fitas) e `romdb_store` (`verify` + campos novos do Vampier).
+- **Documentos vivos, todos sincronizados com a 1.26.0:** `README.md`, `doc/MANUAL.md`,
   `doc/SPEC.md` (secao 5.0 = estado atual), `doc/CHANGELOG.md`, `doc/RELEASE.md`,
   `doc/tape-spec.md` (secoes 1-11), `doc/romdb-spec.md` e este arquivo.
 - **Resumo do dia 1 (2026-10-08, ontem -- ver secao 9 para o detalhamento completo, rodada por
@@ -35,9 +34,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   com tudo documentado e sincronizado.
 - **Resumo do dia 2 (hoje -- ver secao 9):** o usuario confirmou que "nova fita" tambem ja' tinha
   sido validada na janela, e pediu para seguir com os itens 2 e 3 da lista de pendencias: **banco
-  de fitas com metadados** (`fwmsx --fitadb`, SEM download, 1.24.0); depois **banco de ROMs: mapper
-  e verificacao** (`--cart` auto-mapper pelo SHA-1 + `fwmsx --romdb verify`, 1.25.0). Os dois itens
-  pedidos para hoje estao FECHADOS.
+  de fitas com metadados** (`fwmsx --fitadb`, SEM download, 1.24.0); **banco de ROMs: mapper e
+  verificacao** (`--cart` auto-mapper pelo SHA-1 + `fwmsx --romdb verify`, 1.25.0); e, por pedido
+  explicito do usuario depois, **Vampier: Platform/CRC32/tamanho** (JSON avaliado e descartado --
+  e' subconjunto do SQL ja' importado; o valor real era expor colunas que o SQL ja' trazia e a
+  consulta ignorava, 1.26.0). TODA a lista original de pendencias de ROMs/fitas deste "passo 2/3"
+  esta' FECHADA.
 
 ### Funciona (validado)
 - MSX1, MSX2, MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1, 3.0).
@@ -116,7 +118,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   Fecha os 2 itens pendentes de `doc/romdb-spec.md`, secao 8. Testado (`romdbtest`) e com smoke
   test manual (executavel isolado, sem tocar no banco real do usuario): mapper do banco escolhido
   sozinho, mapper explicito com prioridade sobre o banco, cartucho desconhecido no fallback normal.
-- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.25.0.*` (ver secao 9).
+- **Vampier: Platform, CRC32 e tamanho (1.26.0, 2026-10-08)**: JSON do Vampier baixado e comparado
+  contra o SQL (ja' importado) de verdade -- e' um subconjunto, sem dado novo. `VampierSearch()`
+  passou a expor `Platform`/`CRC32`/`FileSize`, que o SQL ja' trazia mas a consulta ignorava.
+  Testado (`romdbtest`) e contra o dump REAL do Vampier (11.313 ROMs) com `vsearch`.
+- Pacotes gerados em `dist/`: `fwMSX-1.19.1.zip`/`.tar.gz` (publicados) e `fwMSX-1.26.0.*` (ver secao 9).
 
 ### Nao funciona / limites conhecidos
 - Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada (causa nao diagnosticada);
@@ -253,11 +259,12 @@ Versao: `src/common/version.h` (fonte unica). Nome do jogo + subtitulo a cada ve
    so' junta 2 blocos por arquivo (um ASCII multi-bloco de verdade aparece fragmentado, ver
    `doc/tape-spec.md`, secoes 5 e 9). Referencias: `resource/makeTSX/` (MIT), `resource/CLK/` (MIT),
    `resource/openMSX_TSXadv/` (GPL, so' estudo).
-7. **[FEITO em 2026-10-08, 1.25.0] Banco de ROMs: SHA-1 + mapper** -- `fwmsx --romdb verify`
-   confere o SHA-1 de cada ROM cadastrada contra o banco; `--cart` sem mapper explicito consulta o
-   banco (`CARTS.SHA` ja' importado) antes da heuristica de sempre. So' resta importar o JSON do
-   Vampier, se for util (o SQL ja' cobre jogo/empresa/ano/SHA-1) -- nao parece necessario por
-   agora. Ver secao 9 e `doc/romdb-spec.md`, secoes 2, 5 e 8.
+7. **[FEITO em 2026-10-08, 1.25.0/1.26.0] Banco de ROMs: SHA-1, mapper e Vampier** --
+   `fwmsx --romdb verify` confere o SHA-1 de cada ROM cadastrada contra o banco; `--cart` sem
+   mapper explicito consulta o banco (`CARTS.SHA` ja' importado) antes da heuristica de sempre;
+   JSON do Vampier avaliado e descartado (subconjunto do SQL ja' importado), `VampierSearch()`
+   exposta com `Platform`/`CRC32`/`FileSize` em troca. Lista original de ROMs FECHADA por ora. Ver
+   secao 9 e `doc/romdb-spec.md`, secoes 2, 5 e 8.
 8. **FM e fita:** ouvir o WAV (`--wav`) e o modo normal da fita contra referencia (hardware real, nao
    so' "parece certo"); `CALL VOICECOPY`; status/timers do OPLL.
 9. **Disco:** formatar disquetes; modelar FM/MFM; formatos independentes para A e B; estudar o driver
@@ -671,6 +678,55 @@ com o mesmo codename e um subtitulo novo: "Banco de ROMs: Mapper e Verificacao".
 Com isso, os dois itens que o usuario pediu para hoje ("passo 2 e 3") estao FECHADOS. So' resta
 importar o JSON do Vampier no banco de ROMs, se for util (o SQL ja' cobre jogo/empresa/ano/SHA-1 --
 nao parece necessario agora), e montar a maquina pelo banco (layout por nome, item maior, sem data).
+
+### Dia 2, continuacao: Vampier -- Platform, CRC32 e tamanho (1.26.0)
+
+O usuario pediu explicitamente para seguir com o JSON do Vampier ("vamos com o json do vampier"),
+o ultimo item da lista original. Em vez de implementar de cara, pesquisa primeiro: baixei os dois
+arquivos reais do site (`https://romdb.vampier.net/Archive/json-msxromsdb.zip` e
+`sql-msxromdb.zip`, confirmados por HEAD request antes de baixar o conteudo) e comparei a
+ESTRUTURA de verdade:
+
+- **JSON**: `{ "roms": [ { "gameid", "gamename", "year", "publisher", "platform", "hashes": [
+  { "sha1", "remark", "meta", "dump", "stillforsale", "romtype", "preferred", "RomInCollection",
+  "FileName" } ] } ] }` -- 3.829 jogos no arquivo baixado.
+- **SQL** (ja' importado desde a 1.18.0): `msxdb_rominfo` tem `GenMSXId`, `CompanyID2`,
+  `ShowInROMDB`, `RomCat`, `Notes`, `CreatedBy` ALEM de `Platform`; `msxdb_romdetails` tem `Active`,
+  `IP`, `CreateDtTM`, `RomFound`, `FileSize`, `Suspect`, `UpdateDtTm`, `CRC32`, `StartBytes` ALEM
+  do que o JSON tem. **O JSON e' estritamente um SUBCONJUNTO de colunas do SQL** -- mesma base de
+  dados, exportada em dois formatos, um deles mais pobre.
+
+Antes de implementar um importador para dados que nao trariam nada de novo, levei essa descoberta
+de volta ao usuario com 4 opcoes (trocar SQL por JSON por seguranca -- JSON parseado + insert
+parametrizado e' mais defensivo que `Exec()` de SQL bruto baixado da internet; expor os campos
+extras que o SQL ja' tem; importar os dois; ou nao mudar nada). Escolhida a recomendada: **expor
+os campos que o SQL ja' trazia mas `VampierSearch()` ignorava** (so' selecionava 7 das muitas
+colunas ja' no banco desde a importacao).
+
+`VampierHit` ganhou `platform`/`crc32`/`file_size`; a consulta em `VampierSearch()`
+(`store/romdb.cpp`) passou a selecionar `i.Platform`/`d.CRC32`/`d.FileSize` tambem (com `IFNULL`/
+checagem de `NULL` -- um campo ausente no dump vira string vazia ou `-1`, nunca quebra). `vsearch`
+imprime as 3 colunas novas.
+
+Build Windows e Linux (WSL), versao bumpada ANTES do primeiro build. `ctest` 18/18 nos dois
+(`romdbtest`/`romdb_store` com 2 checagens novas: campos presentes quando o dump tem os dados,
+vazio/-1 quando o dump tem `NULL` -- usando um fixture de teste com os NOMES REAIS das colunas do
+SQL, conferidos no dump de verdade, nao mais um fixture simplificado de 3 colunas). Smoke test
+manual MUITO mais forte que o habitual: `--romdb vampier` de VERDADE (executavel isolado, dump
+real do site, 11.313 ROMs importadas) seguido de `--romdb vsearch Nemesis` confirmou
+`platform`("MSX")/`crc32`/`file_size` certos nas linhas devolvidas pelo banco real. Escrito como
+versao `1.26.0` (minor) com o mesmo codename e um subtitulo novo: "Vampier: Platform, CRC32 e
+Tamanho". Ver `doc/CHANGELOG.md`/`doc/RELEASE.md`, `[1.26.0]`, e `doc/romdb-spec.md`, secoes 2 e 8.
+
+Com isso, TODA a lista original de pendencias de ROMs e fitas deste "passo 2/3" esta' FECHADA.
+
+**Licao desta rodada:** antes de implementar uma feature pedida de uma lista antiga de pendencias,
+vale a pena CONFERIR DE NOVO se a premissa ainda e' valida -- a nota original ("Vampier em JSON:
+so' o SQL foi usado") sugeria uma lacuna, mas investigar a fundo (baixar os dois arquivos de
+verdade, comparar byte a byte a estrutura) revelou que a lacuna real era OUTRA (campos ja'
+importados mas nunca lidos pela consulta). Apresentar a descoberta ao usuario ANTES de codar (em
+vez de silenciosamente implementar o que foi pedido literalmente, ou silenciosamente decidir fazer
+outra coisa) foi o caminho certo -- ele escolheu a opcao de maior valor real.
 
 ---
 

@@ -270,7 +270,8 @@ int RunRomDbCommand(const std::vector<std::string> &args_in, const std::string &
         const std::vector<VampierHit> hits = db.VampierSearch(text);
         for (const VampierHit &h : hits) {
             std::cout << h.sha1.substr(0, 12) << "\t" << h.game << "\t" << h.year << "\t" << h.company << "\t"
-                      << h.rom_type << "\t" << h.dump << std::endl;
+                      << h.rom_type << "\t" << h.dump << "\t" << h.platform << "\t" << h.crc32 << "\t"
+                      << h.file_size << std::endl;
         }
         std::cout << hits.size() << " resultado(s)." << std::endl;
         return 0;

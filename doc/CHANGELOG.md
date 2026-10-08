@@ -7,6 +7,23 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.26.0] - 2026-10-08 - "King's Valley: Vampier: Platform, CRC32 e Tamanho"
+
+### Adicionado
+- **`VampierHit` ganhou `platform`, `crc32` e `file_size`**: campos que o dump SQL do Vampier
+  (`fwmsx --romdb vampier`) ja' importava desde sempre (`msxdb_rominfo.Platform`,
+  `msxdb_romdetails.CRC32`/`FileSize`), mas que `VampierSearch()` nunca lia -- a consulta so'
+  selecionava SHA-1/nome/ano/empresa/tipo/dump/observacao. `vsearch` agora imprime as 3 colunas
+  novas tambem. Testado contra o dump REAL do Vampier (11.313 ROMs, 2026-10-08): `platform`
+  ("MSX"), `crc32` e `file_size` vem certos.
+- **Decisao registrada** (pedido original era "importar o JSON do Vampier, se for util"): baixado
+  e comparado o JSON (`json-msxromsdb.zip`) contra o SQL (`sql-msxromdb.zip`) de verdade -- o JSON
+  tem MENOS colunas que o SQL (que ja' era importado), entao nao haveria dado novo em importa-lo.
+  A melhoria de valor real era expor os campos que o SQL ja' trazia mas a consulta ignorava --
+  feito aqui. O JSON continua nao importado (ver `doc/romdb-spec.md`, secao 8).
+- Testes: `romdbtest`/`romdb_store` com 2 checagens novas (platform/CRC32/FileSize presentes; e
+  os mesmos campos NULL no dump nao travam, vem vazio/-1).
+
 ## [1.25.0] - 2026-10-08 - "King's Valley: Banco de ROMs: Mapper e Verificacao"
 
 ### Adicionado

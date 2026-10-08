@@ -335,7 +335,7 @@ std::vector<VampierHit> RomDb::VampierSearch(const std::string &text) const {
     std::string error;
     const char *sql =
         "SELECT d.SHA1, IFNULL(i.GameName,''), IFNULL(i.Year,''), IFNULL(c.ShortName,''), IFNULL(d.RomType,''),"
-        " IFNULL(d.Dump,''), IFNULL(d.Remark,'')"
+        " IFNULL(d.Dump,''), IFNULL(d.Remark,''), IFNULL(i.Platform,''), IFNULL(d.CRC32,''), d.FileSize"
         " FROM msxdb_romdetails d"
         " LEFT JOIN msxdb_rominfo i ON i.GameID = d.GameID"
         " LEFT JOIN msxdb_company c ON c.CompanyID = i.CompanyID1"
@@ -352,6 +352,9 @@ std::vector<VampierHit> RomDb::VampierSearch(const std::string &text) const {
         h.rom_type = Text(st.s, 4);
         h.dump = Text(st.s, 5);
         h.remark = Text(st.s, 6);
+        h.platform = Text(st.s, 7);
+        h.crc32 = Text(st.s, 8);
+        h.file_size = sqlite3_column_type(st.s, 9) == SQLITE_NULL ? -1 : sqlite3_column_int64(st.s, 9);
         out.push_back(h);
     }
     return out;

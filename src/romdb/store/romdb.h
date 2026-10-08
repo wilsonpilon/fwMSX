@@ -36,6 +36,9 @@ struct VampierHit {
     std::string rom_type;
     std::string dump;
     std::string remark;
+    std::string platform; // "MSX" ou "MSX2" (msxdb_rominfo.Platform) -- 1.26.0
+    std::string crc32;    // msxdb_romdetails.CRC32, maiusculo -- 1.26.0
+    int64_t file_size = -1; // msxdb_romdetails.FileSize em bytes, -1 = nao informado -- 1.26.0
 };
 
 class RomDb {

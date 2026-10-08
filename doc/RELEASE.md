@@ -13,6 +13,44 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.26.0 -- "King's Valley: Vampier: Platform, CRC32 e Tamanho" (2026-10-08)
+
+**Fase:** ultimo item da lista original de pendencias de ROMs -- "importar o JSON do Vampier, se
+for util" -- pedido pelo usuario em sequencia logo depois do mapper/verify.
+
+### Investigacao primeiro, antes de codar
+
+Baixado e comparado os dois formatos reais que o Vampier oferece (`romdb.vampier.net/downloads.php`):
+- **JSON** (`json-msxromsdb.zip`, 641 KB): estrutura aninhada jogo -> lista de hashes, com
+  `gamename`/`year`/`publisher`/`platform` por jogo e `sha1`/`romtype`/`dump`/`remark`/`FileName`
+  por hash.
+- **SQL** (`sql-msxromdb.zip`, 851 KB, JA' importado desde a 1.18.0): tabelas `msxdb_rominfo`
+  (inclui `Platform`, `GenMSXId`, `RomCat`...) e `msxdb_romdetails` (inclui `CRC32`, `FileSize`,
+  `StartBytes`, `Suspect`...) com MAIS colunas que o JSON.
+
+Conclusao: o JSON e' um SUBCONJUNTO do SQL (mesma base, menos campos) -- importa-lo nao traria
+dado novo nenhum. O ganho de valor real estava em `VampierSearch()`: a consulta SQL interna so'
+selecionava 7 das muitas colunas ja' importadas, ignorando `Platform`/`CRC32`/`FileSize` que
+estavam no banco desde sempre. Essa foi a mudanca de fato implementada (com a concordancia do
+usuario, apresentada como pergunta antes de codar).
+
+### O que foi feito
+
+- `VampierHit` (`src/romdb/store/romdb.h`) ganhou `platform`, `crc32` e `file_size`.
+  `RomDb::VampierSearch()` (`store/romdb.cpp`) agora seleciona `i.Platform`, `d.CRC32` e
+  `d.FileSize` tambem (com `IFNULL`/checagem de `NULL` -- um campo ausente no dump vira string
+  vazia ou `-1`, nunca quebra a consulta). `fwmsx --romdb vsearch` imprime as 3 colunas novas.
+
+### Build usado para validar esta release
+
+- Windows: `.\build.ps1` gerou `dist\fwMSX-1.26.0.zip`.
+- Linux: `./build.sh` (WSL Ubuntu 26.04, GCC 15.2) gerou `dist/fwMSX-1.26.0-linux.tar.gz`.
+- `ctest`: 18 suites (`romdbtest`/`romdb_store` com 2 checagens novas: campos presentes quando o
+  dump tem os dados, vazio/-1 quando o dump tem `NULL`). Windows: 18/18. Linux: 18/18.
+- Smoke test manual (executavel isolado): `--romdb vampier` de verdade (11.313 ROMs, dump real do
+  site) seguido de `--romdb vsearch Nemesis` confirmou `platform`/`crc32`/`file_size` certos nas
+  linhas devolvidas.
+
 ## v1.25.0 -- "King's Valley: Banco de ROMs: Mapper e Verificacao" (2026-10-08)
 
 **Fase:** "passo 3" desta leva de sessoes, pedido pelo usuario em sequencia logo depois do banco

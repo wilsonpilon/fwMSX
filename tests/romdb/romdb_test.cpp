@@ -161,24 +161,34 @@ int main() {
     check(db.CartMapper("0733CD627467A866846E15CAF1770A5594EAF4CC") == 4, "mapper do CARTS.SHA (SHA-1 em maiusculas)");
     check(db.CartMapper("0000") == -1, "SHA-1 desconhecido: mapper -1");
 
-    // Dump do Vampier: tabelas msxdb_* com jogo, empresa e ROM.
+    // Dump do Vampier: tabelas msxdb_* com jogo, empresa e ROM -- colunas (e nomes) iguais ao
+    // dump real (conferido baixando sql-msxromdb.zip em 2026-10-08: msxdb_romdetails tem CRC32 e
+    // FileSize, msxdb_rominfo tem Platform -- nenhum dos dois estava no fixture antigo deste teste).
     const fs::path vam = tmp / "sql-romdb.sql";
     WriteText(vam,
               "CREATE TABLE msxdb_romdetails (`HashID` INTEGER, `GameID` INTEGER, `RomType` VARCHAR(1020),"
-              " `SHA1` VARCHAR(1020), `Dump` VARCHAR(1020), `Remark` VARCHAR(1020));\n"
+              " `SHA1` VARCHAR(1020), `Dump` VARCHAR(1020), `Remark` VARCHAR(1020), `CRC32` VARCHAR(32),"
+              " `FileSize` INTEGER);\n"
               "CREATE TABLE msxdb_rominfo (`GameID` INTEGER, `GameName` VARCHAR(1020), `Year` VARCHAR(16),"
-              " `CompanyID1` INTEGER);\n"
+              " `CompanyID1` INTEGER, `Platform` VARCHAR(1020));\n"
               "CREATE TABLE msxdb_company (`CompanyID` INTEGER, `ShortName` VARCHAR(400));\n"
               "BEGIN;\n"
               "INSERT INTO msxdb_company VALUES ('276','Konami');\n"
-              "INSERT INTO msxdb_rominfo VALUES ('7','Nemesis','1986','276');\n"
-              "INSERT INTO msxdb_romdetails VALUES ('1','7','Normal','A9993E364706816ABA3E25717850C26C9CD0D89D','GoodMSX','');\n"
+              "INSERT INTO msxdb_rominfo VALUES ('7','Nemesis','1986','276','MSX');\n"
+              "INSERT INTO msxdb_rominfo VALUES ('8','Sem Dados','','276',NULL);\n"
+              "INSERT INTO msxdb_romdetails VALUES ('1','7','Normal','A9993E364706816ABA3E25717850C26C9CD0D89D','GoodMSX','','4E20D256','32768');\n"
+              "INSERT INTO msxdb_romdetails VALUES ('2','8','Normal','0000000000000000000000000000000000000000','','',NULL,NULL);\n"
               "COMMIT;\n");
     rows = 0;
-    check(db.ImportVampierSql(vam.string(), rows, err) && rows == 1, "Vampier: dump importado (1 ROM)");
+    check(db.ImportVampierSql(vam.string(), rows, err) && rows == 2, "Vampier: dump importado (2 ROMs)");
     check(db.HasVampier(), "Vampier: presente no banco");
     const auto hits = db.VampierSearch("Nemesis");
     check(hits.size() == 1 && hits[0].company == "Konami" && hits[0].year == "1986", "Vampier: busca pelo nome do jogo");
+    check(hits[0].platform == "MSX" && hits[0].crc32 == "4E20D256" && hits[0].file_size == 32768,
+          "Vampier: platform/CRC32/FileSize (ja' no dump SQL, so' nao eram lidos) -- 1.26.0");
+    const auto hits2 = db.VampierSearch("Sem Dados");
+    check(hits2.size() == 1 && hits2[0].platform.empty() && hits2[0].crc32.empty() && hits2[0].file_size == -1,
+          "Vampier: platform/CRC32/FileSize NULL no dump viram vazio/-1, sem travar -- 1.26.0");
     rec.name = "";
     check(db.Update(rec, err), "ROM sem nome (para testar a identificacao)");
     check(db.IdentifyWithVampier(err) == 1, "identificar: a ROM sem nome recebe o nome do Vampier");

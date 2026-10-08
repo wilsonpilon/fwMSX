@@ -38,7 +38,10 @@ no `.gitignore`). O banco guarda o hash, o nome e o caminho local, nao o conteud
   (`FmsxMapperToMemMap()`, ja' que `MEMMAP_MAPPER_NONE=0` vem antes de `GEN8` no enum).
 - `meta`: reservado.
 - `msxdb_romdetails`, `msxdb_rominfo`, `msxdb_company`: as tabelas do Vampier, criadas
-  pelo proprio dump SQL e recriadas a cada importacao.
+  pelo proprio dump SQL e recriadas a cada importacao -- o dump TEM muito mais colunas do que
+  `VampierSearch()` le (`StartBytes`, `Suspect`, `GenMSXId`, `RomCat`, `Notes` etc.); so' as usadas
+  de verdade (SHA-1, nome, ano, empresa, tipo, dump, observacao, e desde a 1.26.0 `Platform`/
+  `CRC32`/`FileSize`) sao expostas em `VampierHit`.
 - **Add** com SHA-1 ja cadastrado atualiza caminho, origem e tamanho, e mantem nome,
   hardware e notas do usuario.
 - **Identificar** preenche o nome das ROMs com nome vazio, pelo SHA-1 no Vampier. Nao
@@ -108,8 +111,12 @@ banco -- codigo de saida 1 se achar arquivo faltando ou alterado, ver secao 8), 
 ## 8. O que falta
 
 - **Janela**: barra de progresso; cancelar um download; continuar um download interrompido.
-- **Vampier em JSON**: so' o SQL foi usado. O JSON (`json-msxromsdb.zip`) nao foi
-  importado.
+- [x] **Vampier em JSON -- avaliado e descartado (1.26.0)**: baixado e comparado o JSON
+  (`json-msxromsdb.zip`) contra o SQL (`sql-msxromsdb.zip`, ja' importado) de verdade -- o JSON e'
+  um SUBCONJUNTO do SQL (menos colunas: falta `GenMSXId`, `RomCat`, `StartBytes`, `Suspect` etc.),
+  nao traria dado novo. O valor real estava em `VampierSearch()` ignorar colunas que o SQL ja'
+  trazia (`Platform`, `CRC32`, `FileSize`) -- corrigido, ver secao 2 e `doc/CHANGELOG.md`,
+  `[1.26.0]`. O JSON continua nao importado (decisao final, nao uma pendencia).
 - **Parser do file-hunter**: depende do HTML atual do Abyss. Se mudar, o parser
   precisa de ajuste.
 - [x] **Verificar as ROMs baixadas contra o SHA-1 conhecido** (1.25.0): `fwmsx --romdb verify`
