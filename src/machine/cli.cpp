@@ -163,6 +163,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     MachineConfig config;
     config.fmpac_rom_path = "auto"; // FM-PAC ligado por padrao (--no-fmpac desliga)
     int frames = 0;
+    int ctl_port = -1; // -1 = sem ponte de controle
     std::string shot_path;
     std::string keys;
     bool mute = false;
@@ -263,6 +264,15 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
                     cart_mapper_explicit = true;
                     ++i;
                 }
+            }
+        } else if (a == "--ctl-port") {
+            // Ponte de controle externo (doc/control-spec.md): 0 = o sistema escolhe a porta.
+            const std::string *v = need("um numero de porta (0 = automatica)");
+            if (!v) return 2;
+            ctl_port = std::atoi(v->c_str());
+            if (ctl_port < 0 || ctl_port > 65535) {
+                std::cerr << "fwmsx --msx: --ctl-port precisa estar entre 0 e 65535" << std::endl;
+                return 2;
             }
         } else if (a == "--frames") {
             const std::string *v = need("um numero");
@@ -498,6 +508,11 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     options.rom_root = romdb::DefaultRomPaths(argv0).root;
     options.autoquit_frames = frames;
     options.audio = !mute;
+    options.ctl_port = ctl_port;
+    {
+        std::error_code ec;
+        options.exe_dir = fs::absolute(fs::path(argv0), ec).parent_path().string();
+    }
     return gui::RunEmulatorWindow(options);
 }
 

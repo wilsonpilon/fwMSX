@@ -481,6 +481,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 - **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao, identificacao,
   `verify` (SHA-1) e auto-mapper ao carregar `--cart` sem escolher um a dedo.
 - Configuracao de slots pela janela (secao acima).
+- **Ponte de controle**: `fwMSX.exe --msx --ctl-port 0` abre um servidor em 127.0.0.1 (a porta vai para `fwmsx.port`). Outros programas mandam uma linha de texto por comando e recebem `ok ...` ou `err ...`: `peek 0xC000 4`, `poke`, `type "print 1\n"`, `cart jogo.rom`, `disk A d.dsk`, `state save x.sst`, `screenshot x.png`, `pause`, `step`, `quit`... Teste com `telnet 127.0.0.1 <porta>`. Ver `doc/control-spec.md`.
 - **Disco novo**: **Midia > Disco > Novo disco em branco em A:/B:** cria um disquete formatado (5 1/4 face simples 180 KB, 5 1/4 face dupla 360 KB, 3 1/2 face simples 360 KB, 3 1/2 face dupla 720 KB -- o MSX nao tem 1,44 MB) e ja' o insere. Pela linha de comando: `fwMSX.exe --disknew disco.dsk ds35` (`ss525`, `ds525`, `ss35`, `ds35`). Dentro do MSX, `CALL FORMAT` (Disk BASIC) formata o disco inserido. Ver `doc/diskfmt-spec.md`.
 - **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`; atalhos **F6** salva / **F7** carrega o slot atual (`fwmsx-estado-N.sst`), **F8/F9** trocam de slot (1 a 9); avisa na tela se a BIOS/cartucho mudou desde o save; **F12** captura a tela em PNG) -- grava/restaura
   Z80, VDP, PSG, SCC, OPLL, PPI, controladora de disco e RAM/RAM de mapper, aplicado sobre a

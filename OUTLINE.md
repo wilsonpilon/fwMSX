@@ -17,7 +17,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **1.31.0 (em andamento, nao comitada)**: disco novo em branco/formatado (`src/diskfmt/`: C + Assembly
+- **1.32.0 "Nemesis" (Konami; esquema de nomes novo: X = empresa, Y = jogo novo, Z = jogo + subtitulo -- ver CLAUDE.md)**: ponte de controle externa (`src/control/`, TCP em
+  localhost, protocolo de texto de uma linha por comando, `--ctl-port`), com um `Commander` unico que
+  a futura TUI vai reutilizar. Proximo passo combinado com o usuario: a TUI (FTXUI) sobre o mesmo
+  Commander + ferramentas integradas; eventos assincronos so' quando o depurador existir. Ver
+  `doc/control-spec.md`.
+- **1.31.0 (publicada)**: disco novo em branco/formatado (`src/diskfmt/`: C + Assembly
   + C++, reescrita do msxDiskUtil PureBasic a pedido do usuario) + WRITE TRACK no WD2793 (`CALL
   FORMAT` funciona com o DISK.ROM real). Menu Midia > Disco > Novo disco em branco; `fwmsx --disknew`.
   Ver `doc/diskfmt-spec.md`.

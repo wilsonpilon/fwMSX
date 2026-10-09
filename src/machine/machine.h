@@ -131,6 +131,10 @@ struct MachineConfig {
 };
 
 // Layout padrao (o mesmo de sempre) a partir dos campos de MachineConfig.
+// Nome de mapper da CLI/ponte de controle (gen8, gen16, konami5, konami4, ascii8, ascii16,
+// msxdos2) -> enum. "" e "auto" = MEMMAP_MAPPER_NONE (deteccao). false se desconhecido.
+bool ParseMapperName(const std::string &name, MemMapMapperType &out);
+
 SlotLayout DefaultLayout(const MachineConfig &config);
 // O layout que a maquina usa: o editado, se houver, senao o padrao.
 SlotLayout EffectiveLayout(const MachineConfig &config);
@@ -255,6 +259,11 @@ public:
     // cartucho inseridos agora NAO sao os mesmos de quando foi salvo (CRC32 diferente).
     // Vazio = tudo conferiu (ou o estado e' de uma versao sem essa informacao).
     const std::string &state_warning() const { return state_warning_; }
+
+    // Memoria como o Z80 enxerga agora (slots/paginas atuais). Usado pela ponte de controle
+    // (peek/poke) -- ver doc/control-spec.md. A escrita respeita ROM (nao grava em ROM).
+    uint8_t ReadMemory(uint16_t addr) { return startup_.slot_bus->read(addr); }
+    void WriteMemory(uint16_t addr, uint8_t value) { startup_.slot_bus->write(addr, value); }
 
     uint64_t frame_count() const { return frame_count_; }
     const VdpState &vdp_state() const { return startup_.vdp_device->state(); }

@@ -7,19 +7,22 @@
 // atualizado manualmente a cada fase do trabalho, seguindo a politica de
 // versionamento descrita em doc/SPEC.md:
 //
-//   X (major) -> sobe quando um grupo de mudancas fecha uma base estavel.
-//   Y (minor) -> sobe a cada feature nova incorporada ao projeto.
-//   Z (patch) -> sobe a cada compilacao/build gerado.
+//   X (major) -> sobe quando um conjunto grande de mudancas esta' praticamente todo feito.
+//                Recebe o nome de uma EMPRESA de MSX (1 = Konami, 2 = ASCII, 3 = Compile...).
+//   Y (minor) -> bloco maior de funcionalidade publicado como release. Recebe o nome de um
+//                JOGO NOVO de MSX (nunca repetido). Zera o patch.
+//   Z (patch) -> feature pequena, ajuste ou correcao. Leva o nome do jogo do Y mais um
+//                SUBTITULO ("Nemesis: Ponte de controle"). X.Y.0 leva so' o nome do jogo.
 //
-// Cada versao tambem recebe o nome de um jogo classico de MSX + um
-// subtitulo curto indicando em que ponto do projeto estamos. O historico
-// completo de versoes fica em doc/RELEASE.md e doc/CHANGELOG.md.
-
+// Ao subir o Y: trocar FWMSX_CODENAME por um jogo novo e esvaziar o subtitulo. Ao subir o X:
+// trocar FWMSX_COMPANY. Lista de jogos e empresas reservados: CLAUDE.md, regra 1.
+//
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 31
+#define FWMSX_VERSION_MINOR 32
 #define FWMSX_VERSION_PATCH 0
 
-#define FWMSX_CODENAME  "King's Valley"
-#define FWMSX_SUBTITLE  "Disco novo em branco e FORMAT"
+#define FWMSX_COMPANY   "Konami"
+#define FWMSX_CODENAME  "Nemesis"
+#define FWMSX_SUBTITLE  ""  // so' nas versoes X.Y.Z com Z > 0

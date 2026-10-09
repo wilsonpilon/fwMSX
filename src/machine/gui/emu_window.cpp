@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <string>
 #include <utility>
@@ -17,6 +18,8 @@
 #include <miniz.h>
 #include "../../audio/audio_output.h"
 #include "../../common/version.h"
+#include "../../control/command.h"
+#include "../../control/server.h"
 #include "../../diskfmt/cpp/disk_creator.h"
 #include "../../msxdisk/gui/file_dialog.h"
 #include "../../msxdisk/gui/style.h"
@@ -127,7 +130,7 @@ std::string StateSlotPath(int slot) { return "fwmsx-estado-" + std::to_string(sl
 
 // Captura a tela da maquina (com a proporcao certa) num PNG "fwmsx-AAAAMMDD-HHMMSS.png" na
 // pasta de trabalho. Devolve o nome do arquivo, ou "" com a razao em `error`.
-std::string SaveScreenshotPng(const Machine &machine, std::string &error) {
+std::string SaveScreenshotPng(const Machine &machine, std::string &error, const std::string &path = std::string()) {
     std::vector<uint32_t> rgba;
     const FrameSize fs = machine.RenderFrame(rgba);
     const int out_h = fs.height * fs.y_scale;
@@ -148,18 +151,38 @@ std::string SaveScreenshotPng(const Machine &machine, std::string &error) {
         return "";
     }
     const std::time_t t = std::time(nullptr);
-    char name[64];
-    std::strftime(name, sizeof(name), "fwmsx-%Y%m%d-%H%M%S.png", std::localtime(&t));
-    std::FILE *f = std::fopen(name, "wb");
+    char auto_name[64];
+    std::strftime(auto_name, sizeof(auto_name), "fwmsx-%Y%m%d-%H%M%S.png", std::localtime(&t));
+    const std::string name = path.empty() ? std::string(auto_name) : path;
+    std::FILE *f = std::fopen(name.c_str(), "wb");
     const bool ok = f && std::fwrite(png, 1, png_len, f) == png_len;
     if (f) std::fclose(f);
     mz_free(png);
     if (!ok) {
-        error = std::string("nao foi possivel gravar '") + name + "'";
+        error = "nao foi possivel gravar '" + name + "'";
         return "";
     }
     return name;
 }
+
+// Dono da maquina visto pela ponte de controle (control::Commander): a janela preenche os ganchos.
+struct WindowControlHost : control::Host {
+    std::function<Machine &()> get_machine;
+    std::function<bool()> get_paused;
+    std::function<void(bool)> put_paused;
+    std::function<void()> do_quit;
+    std::function<bool(const std::string &, const std::string &, std::string &)> do_cart;
+    std::function<bool(const std::string &, std::string &)> do_shot;
+
+    Machine &machine() override { return get_machine(); }
+    bool paused() const override { return get_paused(); }
+    void set_paused(bool p) override { put_paused(p); }
+    void quit() override { do_quit(); }
+    bool LoadCartridge(const std::string &path, const std::string &mapper, std::string &error) override {
+        return do_cart(path, mapper, error);
+    }
+    bool SaveScreenshot(const std::string &path, std::string &error) override { return do_shot(path, error); }
+};
 
 // Estado compartilhado com os callbacks do GLFW (que nao carregam ponteiro
 // de usuario por padrao aqui -- uma unica janela por processo).
@@ -435,7 +458,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
         next.tape_mode = machine->tape().mode();
         return next;
     };
-    auto reboot = [&](const MachineConfig &next) {
+    auto reboot = [&](const MachineConfig &next) -> bool {
         // A SRAM do cartucho atual e' gravada antes de a maquina ser recriada.
         std::string save_error;
         if (!machine->SaveSram(save_error)) disk_message = save_error;
@@ -443,13 +466,67 @@ int RunEmulatorWindow(const WindowOptions &options) {
         std::unique_ptr<Machine> fresh = Machine::Create(next, reboot_error);
         if (!fresh) {
             disk_message = reboot_error;
-            return;
+            return false;
         }
         machine = std::move(fresh);
         current = next;
         machine->EnableLiveAudio(audio_ok);
         disk_message.clear();
+        return true;
     };
+
+    // Ponte de controle externa: comandos de texto em 127.0.0.1 (doc/control-spec.md). As threads
+    // do servidor so' enfileiram; os comandos rodam aqui, na thread do emulador (Poll, abaixo).
+    WindowControlHost ctl_host;
+    ctl_host.get_machine = [&]() -> Machine & { return *machine; };
+    ctl_host.get_paused = [&]() { return paused; };
+    ctl_host.put_paused = [&](bool p) { paused = p; };
+    ctl_host.do_quit = [&]() { glfwSetWindowShouldClose(window, GLFW_TRUE); };
+    ctl_host.do_cart = [&](const std::string &path, const std::string &mapper_name, std::string &error) {
+        MemMapMapperType mapper_kind = MEMMAP_MAPPER_NONE;
+        if (!ParseMapperName(mapper_name, mapper_kind)) {
+            error = "mapper desconhecido '" + mapper_name + "' (auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2)";
+            return false;
+        }
+        MachineConfig next = snapshot();
+        SetCartridge(next, path, mapper_kind);
+        if (!reboot(next)) {
+            error = disk_message;
+            return false;
+        }
+        cart_mapper_choice = mapper_kind;
+        return true;
+    };
+    ctl_host.do_shot = [&](const std::string &path, std::string &error) {
+        return !SaveScreenshotPng(*machine, error, path).empty();
+    };
+    control::Commander ctl_commander(ctl_host);
+    control::Server ctl_server;
+    // Arquivos fwmsx.port (pasta do executavel e pasta de trabalho): apagados ao sair, para uma
+    // ferramenta nao tentar uma porta que ja' fechou.
+    struct PortFileGuard {
+        std::vector<std::string> paths;
+        ~PortFileGuard() {
+            for (const std::string &p : paths) std::remove(p.c_str());
+        }
+    } port_guard;
+    if (options.ctl_port >= 0) {
+        std::string ctl_error;
+        if (!ctl_server.Start(options.ctl_port, ctl_error)) {
+            std::fprintf(stderr, "fwmsx: ponte de controle: %s\n", ctl_error.c_str());
+        } else {
+            std::fprintf(stderr, "fwmsx: ponte de controle em 127.0.0.1:%d\n", ctl_server.port());
+            std::vector<std::string> port_paths = {"fwmsx.port"};
+            if (!options.exe_dir.empty()) port_paths.push_back((std::filesystem::path(options.exe_dir) / "fwmsx.port").string());
+            for (const std::string &pp : port_paths) {
+                if (std::FILE *pf = std::fopen(pp.c_str(), "w")) {
+                    std::fprintf(pf, "%d\n", ctl_server.port());
+                    std::fclose(pf);
+                    port_guard.paths.push_back(pp);
+                }
+            }
+        }
+    }
     auto LoadCartridgeFromDialog = [&]() {
         if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Abrir cartucho MSX", "Cartuchos MSX",
                                                                   "*.rom;*.mx1;*.mx2;*.bin")) {
@@ -495,6 +572,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     };
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
+        if (ctl_server.port() != 0) ctl_server.Poll(ctl_commander);
 
         if (g_input.slot_delta != 0) {
             state_slot = ((state_slot - 1 + g_input.slot_delta) % kStateSlots + kStateSlots) % kStateSlots + 1;
@@ -563,6 +641,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
         if (ran == 0 && accumulator >= frame_dt) g_input.joy_latched = 0;
         while (!paused && accumulator >= frame_dt && ran < 4) {
             machine->RunFrame();
+            ctl_commander.Tick(); // fila de digitacao do comando "type"
             g_input.joy_latched = 0; // o toque ja' foi visto por este quadro
             accumulator -= frame_dt;
             ++ran;
@@ -604,8 +683,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
             fps_window_start = now;
             fps_frames = 0;
             char title[96];
-            std::snprintf(title, sizeof(title), "fwMSX - SCREEN %d - %.1f fps%s%s", machine->vdp_state().scr_mode, fps,
-                          paused ? " (pausado)" : "", audio_ok ? "" : " (mudo)");
+            char ctl_note[32] = "";
+            if (ctl_server.port() != 0) std::snprintf(ctl_note, sizeof(ctl_note), " - controle: porta %d", ctl_server.port());
+            std::snprintf(title, sizeof(title), "fwMSX - SCREEN %d - %.1f fps%s%s%s", machine->vdp_state().scr_mode, fps,
+                          paused ? " (pausado)" : "", audio_ok ? "" : " (mudo)", ctl_note);
             glfwSetWindowTitle(window, title);
         }
 
@@ -1030,8 +1111,9 @@ int RunEmulatorWindow(const WindowOptions &options) {
             if (ImGui::BeginMenu("Ajuda")) {
                 ImGui::MenuItem("Teclado", nullptr, &show_keys);
                 ImGui::Separator();
-                ImGui::TextDisabled("fwMSX v%d.%d.%d (%s \"%s\")", FWMSX_VERSION_MAJOR, FWMSX_VERSION_MINOR,
-                                    FWMSX_VERSION_PATCH, FWMSX_CODENAME, FWMSX_SUBTITLE);
+                ImGui::TextDisabled("fwMSX v%d.%d.%d - %s: %s%s%s", FWMSX_VERSION_MAJOR, FWMSX_VERSION_MINOR,
+                                    FWMSX_VERSION_PATCH, FWMSX_COMPANY, FWMSX_CODENAME, FWMSX_SUBTITLE[0] ? ": " : "",
+                                    FWMSX_SUBTITLE);
                 ImGui::EndMenu();
             }
             ImGui::EndMainMenuBar();

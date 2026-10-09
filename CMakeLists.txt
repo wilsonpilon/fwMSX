@@ -344,6 +344,12 @@ set(FDC_LIB_SOURCES
         src/fdc/cpp/disk_image.cpp
 )
 
+# --- Ponte de controle externa (comandos de texto sobre TCP em 127.0.0.1) -- ver doc/control-spec.md.
+set(CONTROL_LIB_SOURCES
+        src/control/command.cpp
+        src/control/server.cpp
+)
+
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
 set(DISKFMT_LIB_SOURCES
@@ -480,6 +486,19 @@ if (MINGW)
 endif ()
 
 add_test(NAME machine_frames COMMAND machinetest)
+
+# controltest: ponte de controle (despachante de comandos + servidor TCP) sobre uma Machine de verdade.
+add_executable(controltest tests/z80/control_test.cpp ${CONTROL_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
+target_include_directories(controltest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
+target_compile_definitions(controltest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(controltest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/controltest)
+if (MINGW)
+    target_link_options(controltest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+if (WIN32)
+    target_link_libraries(controltest PRIVATE ws2_32)
+endif ()
+add_test(NAME control COMMAND controltest)
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})
@@ -671,6 +690,7 @@ add_executable(fwMSX
         src/fortran/init_fortran.f90
         ${MSXDISK_LIB_SOURCES}
         ${DISKFMT_LIB_SOURCES}
+        ${CONTROL_LIB_SOURCES}
         ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}
@@ -698,6 +718,9 @@ target_include_directories(fwMSX PRIVATE
 )
 msxdisk_link_target(fwMSX)
 audio_link_target(fwMSX)
+if (WIN32)
+    target_link_libraries(fwMSX PRIVATE ws2_32)
+endif ()
 if (WIN32)
     # Subsistema "windows": sem janela de console no duplo clique (main.cpp religa o
     # console do terminal quando ha' um).

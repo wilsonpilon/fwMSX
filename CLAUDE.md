@@ -24,18 +24,23 @@ utilitario chamado **MSX-PoorManOS**.
 
 ## Regras do workflow de release (ja' causaram retrabalho quando ignoradas)
 
-1. **Politica de numeracao (definida pelo usuario em 2026-10-08)**: tres
-   niveis, em vez de uma minor por feature (que levou 1.19 -> 1.30 em dias):
-   - **Terceiro numero (patch, X.Y.Z)**: features pequenas, ajustes e
-     correcoes. Muda quase sempre; o Y fica parado.
-   - **Segundo numero (minor, X.Y.0)**: bloco maior de funcionalidade que
-     vale publicar como release de verdade. Zera o patch.
-   - **Primeiro numero (major, X.0.0)**: quando um conjunto grande esta
-     praticamente todo feito. Zera minor e patch.
-   Na duvida entre patch e minor, usar patch. Codename "King's Valley"
-   continua; o subtitulo so' precisa mudar em minor/major (em patch pode
-   ficar o mesmo ou ganhar um complemento curto).
-   A proxima versao apos a 1.30.0 e' **1.30.1** se for feature pequena.
+1. **Politica de numeracao e de NOMES (definida pelo usuario em 2026-10-09)**: `X.Y.Z`, cada
+   nivel com um nome proprio:
+   - **X (major)**: um conjunto grande esta' praticamente todo feito. Recebe o nome de uma
+     **EMPRESA de MSX**. 1 = **Konami** (atual). Proximas: 2 = ASCII, 3 = Compile, 4 = Hudson
+     Soft, 5 = T&E Soft, 6 = Microsoft... (nao repetir).
+   - **Y (minor)**: bloco maior de funcionalidade, publicado como release. Recebe o nome de um
+     **JOGO NOVO de MSX**, nunca repetido. Zera o Z. Para o X = Konami, jogos reservados na
+     ordem: ~~Nemesis (1.32)~~, Penguin Adventure (1.33), Metal Gear (1.34), Vampire Killer
+     (1.35), Salamander (1.36), Knightmare (1.37), Road Fighter (1.38), Yie Ar Kung-Fu (1.39),
+     Antarctic Adventure (1.40), Hyper Sports (1.41)... (as versoes 1.19 a 1.31 ficaram todas
+     como "King's Valley", do esquema antigo -- nao renomear).
+   - **Z (patch)**: feature pequena, ajuste ou correcao. Leva o nome do jogo do Y **mais um
+     subtitulo** ("Nemesis: Ponte de controle"). A versao X.Y.0 leva so' o nome do jogo.
+   Na duvida entre patch e minor, usar patch. Em `version.h`: `FWMSX_COMPANY`,
+   `FWMSX_CODENAME` (jogo) e `FWMSX_SUBTITLE` (vazio quando Z = 0). Ao subir o Y, trocar o
+   jogo e esvaziar o subtitulo; ao subir o X, trocar a empresa.
+   Titulo nos docs/release: `vX.Y.Z -- "Jogo: Subtitulo"` (ou so' `"Jogo"` com Z = 0).
 
    **Bumpar `src/common/version.h`** (conforme a politica acima)
    **ANTES do primeiro build de QUALQUER

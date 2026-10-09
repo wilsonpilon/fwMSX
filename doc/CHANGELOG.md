@@ -7,6 +7,28 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.32.0] - 2026-10-09 - "Nemesis" (Konami)
+
+> **Novo esquema de nomes (2026-10-09):** X = empresa de MSX (1 = Konami), Y = jogo novo de MSX
+> (1.32 = Nemesis), Z = nome do jogo + subtitulo. As versoes antigas (1.19 a 1.31) ficam como
+> "King's Valley".
+
+### Adicionado (alem do que segue: o `fwmsx.port` tambem e' gravado ao lado do executavel e a porta aparece no titulo da janela)
+
+### Adicionado
+- **Ponte de controle externa** (`src/control/`): outros programas (editor, depurador, montador, a
+  futura TUI) mandam comandos ao emulador por **TCP em 127.0.0.1**, num protocolo de texto de uma
+  linha por comando (`peek 0xC000 4` -> `ok 00 01 02 03`). Ligar com `fwMSX.exe --msx --ctl-port 0`
+  (0 = porta livre; a porta vai para `fwmsx.port`). Comandos: help, version, status, reset, pause,
+  resume, step, type, peek, poke, regs, cart, disk, eject, tape, state, screenshot, quit. Ver
+  `doc/control-spec.md`.
+- **Um despachante de comandos para tudo** (`control::Commander`): a janela, e depois a TUI e a
+  linha de comando, usam a mesma camada. As threads do servidor so' enfileiram; os comandos rodam
+  na thread do emulador, entre quadros.
+- `Machine::ReadMemory()/WriteMemory()`, `ParseMapperName()` publico.
+- Testes: `controltest` (CTest `control`, suite 20): despachante sobre uma Machine de verdade e
+  servidor TCP real; smoke test manual com a janela real.
+
 ## [1.31.0] - 2026-10-09 - "King's Valley: Disco novo em branco e FORMAT"
 
 ### Adicionado

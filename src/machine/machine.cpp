@@ -16,6 +16,18 @@ extern "C" void rom_crc32(const uint8_t *data, int32_t length, uint32_t *crc_out
 
 namespace machine {
 
+bool ParseMapperName(const std::string &name, MemMapMapperType &out) {
+    if (name.empty() || name == "auto") { out = MEMMAP_MAPPER_NONE; return true; }
+    if (name == "gen8") { out = MEMMAP_MAPPER_GEN8; return true; }
+    if (name == "gen16") { out = MEMMAP_MAPPER_GEN16; return true; }
+    if (name == "konami5") { out = MEMMAP_MAPPER_KONAMI5; return true; }
+    if (name == "konami4") { out = MEMMAP_MAPPER_KONAMI4; return true; }
+    if (name == "ascii8") { out = MEMMAP_MAPPER_ASCII8; return true; }
+    if (name == "ascii16") { out = MEMMAP_MAPPER_ASCII16; return true; }
+    if (name == "msxdos2") { out = MEMMAP_MAPPER_MSXDOS2; return true; }
+    return false;
+}
+
 namespace {
 
 // CRC32 do conteudo de um arquivo (0 se vazio/ilegivel) -- usa o mesmo rom_crc32 (Assembly)

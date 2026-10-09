@@ -1,15 +1,37 @@
 # Releases
 
-Cada versao do fwMSX recebe o nome de um jogo classico de MSX, seguido de
-um subtitulo curto indicando em que ponto do projeto estamos -- nao se
-usam tags puramente numericas. Versionamento no formato `X.Y.Z`:
+Versionamento no formato `X.Y.Z`, cada nivel com um nome (esquema de 2026-10-09; ver
+`CLAUDE.md`, regra 1):
 
-- **X** (major): sobe quando um grupo de mudancas fecha uma base estavel.
-- **Y** (minor): sobe a cada bloco maior de funcionalidade publicado como release.
-- **Z** (patch): features pequenas, ajustes e correcoes (politica de 2026-10-08).
+- **X** (major): um conjunto grande esta' praticamente todo feito. Leva o nome de uma **empresa
+  de MSX** (1 = Konami).
+- **Y** (minor): bloco maior de funcionalidade publicado como release. Leva o nome de um
+  **jogo novo de MSX**, nunca repetido (1.32 = Nemesis).
+- **Z** (patch): feature pequena, ajuste ou correcao. Leva o nome do jogo do Y + um subtitulo
+  ("Nemesis: Ponte de controle"). X.Y.0 leva so' o nome do jogo.
+
+As versoes 1.19 a 1.31 (esquema antigo) ficam todas como "King's Valley".
 
 Resumo curto de cada versao tambem em [CHANGELOG.md](CHANGELOG.md);
 especificacao completa e historico de fases em [SPEC.md](SPEC.md).
+
+---
+
+## v1.32.0 -- "Nemesis" (Konami) (2026-10-09)
+
+**Fase:** primeiro passo de "TUI + ferramentas integradas": a ponte para outros programas falarem
+com o emulador. Metodo escolhido com o usuario: protocolo de texto, uma linha por comando, TCP em
+localhost (em vez do XML do openMSX); so' pergunta/resposta, sem eventos assincronos ainda.
+
+### O que foi feito
+- `src/control/command.{h,cpp}` (Commander + interface Host) e `server.{h,cpp}` (TCP Winsock/POSIX).
+- Janela: `--ctl-port N`; ganchos de Host (pausa, sair, trocar cartucho, captura PNG); `Tick()` por
+  quadro para a fila do `type`; `fwmsx.port`.
+- Achado de projeto: dentro de aspas a barra invertida e' literal (so' `\"` e' escape), senao
+  `"C:\temp"` virava `C:<tab>emp`; o `\n` e' tratado so' pelo comando `type`.
+
+### Validacao
+`ctest` 20/20 (Windows e Linux). Smoke test com a janela real via socket. Ver `doc/control-spec.md`.
 
 ---
 
