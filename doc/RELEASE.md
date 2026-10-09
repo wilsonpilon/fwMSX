@@ -17,6 +17,24 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.35.0 -- "Vampire Killer" (Konami) (2026-10-09)
+
+**Fase:** a TUI de menus que o usuario tinha em mente desde o inicio: colocar em menus os comandos da CLI
+e controlar o emulador em janela (o modo terminal `--term` ficou como estava).
+
+### O que foi feito
+- `src/tui/tui_model.*` (modelo, sem FTXUI) e `tui_app.*` (desenho FTXUI + thread de comandos + status).
+- Menus: Emulador, Arquivo, Maquina, Midia, Ferramentas, Ajuda; assistentes de varios passos; navegador
+  de arquivos com filtro por extensao; linha de comando com historico/cursor/Tab; mouse.
+- A saida das ferramentas (que escrevem em `std::cout`) e' capturada para o historico.
+- `--dump` / `--run` / `--attach` para teste de fumaca e automacao sem terminal.
+
+### Validacao
+`ctest` 22/22 (Windows e Linux). Fumaca real: menus, conexao ao emulador em janela, `peek`/`regs`,
+`newdisk`, erro, e `romdb stats` no historico. Teclado/mouse num terminal de verdade: teste do usuario.
+
+---
+
 ## v1.34.0 -- "Metal Gear" (Konami) (2026-10-09)
 
 **Fase:** o modo terminal do emulador (`--term`), combinado com o usuario: a maquina dentro do terminal, as mesmas opcoes da

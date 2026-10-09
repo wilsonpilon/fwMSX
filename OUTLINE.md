@@ -17,7 +17,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
-- **1.34.0 "Metal Gear" (em andamento, nao comitada)**: modo terminal do emulador (`fwMSXc.exe --term`, FTXUI,
+- **1.35.0 "Vampire Killer" (em andamento, nao comitada)**: TUI de menus (`fwMSXc.exe --tui`, `src/tui/`):
+  os comandos do console em menus, controlando o emulador em janela pela ponte. Modelo testavel sem terminal
+  (`tuitest`). Falta: teste do usuario num terminal de verdade; mnemonicos Alt+letra; depurador e montador
+  (PaleoBASIC/msxIDE) como menu/comandos; eventos assincronos. Ver `doc/tui-spec.md`.
+- **1.34.0 "Metal Gear" (publicada)**: modo terminal do emulador (`fwMSXc.exe --term`, FTXUI,
   `src/term/`): a maquina dentro do terminal, menu F10, linha de comando F11, atalhos como a janela, tudo
   pelo Commander. Pedido do usuario: manter este modo (terminal embutido, bom para testes rapidos) e fazer DEPOIS a TUI de menus (`--tui`, nome reservado: so' controla o emulador em janela pela ponte); graficos agora em 4:3. Falta: teste do usuario num terminal de verdade; mouse; configuracao de slots/disco; depurador
   e montador (do PaleoBASIC/msxIDE) como comandos; eventos assincronos. Ver `doc/term-spec.md`.

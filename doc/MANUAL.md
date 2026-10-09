@@ -38,7 +38,7 @@
 | **Ponte de controle** | `fwMSX.exe --msx --ctl-port 7777` | outros programas (editor, depurador, montador) mandam comandos por TCP |
 | **Depurador do Z80** | `fwMSXc.exe --z80dbg` | depurar o nucleo do Z80 |
 | **Modo terminal** | `fwMSXc.exe --term [opcoes do --msx]` | a maquina dentro do terminal, com menu e atalhos (bom para testes rapidos) |
-| **TUI de menus** | `--tui` *(reservado)* | menus com os comandos da CLI, controlando o emulador em janela (a fazer) |
+| **TUI de menus** | `fwMSXc.exe --tui` | menus com os comandos da CLI que controlam o emulador em **janela** |
 
 ### Inicio rapido
 
@@ -95,6 +95,13 @@ Para um comando digitado sem teclado fisico, ou para automatizar: `type` (consol
 Porta A: **setas** + **Z** ou **Espaco** (botao A) + **X** (botao B). Gamepads (GLFW): o 1o vai para
 a porta A e o 2o para a porta B (menu **Joystick** mostra o estado). As setas e o Espaco continuam
 valendo tambem como cursor e barra de espaco.
+
+### Na TUI de menus (`fwMSXc.exe --tui`)
+
+**F10** abre a barra de menus (setas, Enter, Esc; o mouse tambem funciona) - **F1** ajuda - **Enter**
+executa a linha de comando - **setas cima/baixo** historico - **Tab** completa - **PgUp/PgDn** rola o
+historico. Nos assistentes: Enter avanca, Esc cancela; no navegador de arquivos: Enter entra/escolhe,
+Backspace sobe, `t` digita o caminho. `exit`/`quit` sai da TUI. Ver [tui-spec.md](tui-spec.md).
 
 ### No modo terminal (`fwMSXc.exe --term`)
 
@@ -652,12 +659,22 @@ Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.
 ### Documentacao por assunto
 
 [machine-spec.md](machine-spec.md) (maquina e janela), [slots-spec.md](slots-spec.md) (layout de slots),
-[term-spec.md](term-spec.md) (modo terminal), [control-spec.md](control-spec.md) (ponte de controle), [repl-spec.md](repl-spec.md) (console),
+[tui-spec.md](tui-spec.md) (TUI de menus), [term-spec.md](term-spec.md) (modo terminal), [control-spec.md](control-spec.md) (ponte de controle), [repl-spec.md](repl-spec.md) (console),
 [diskfmt-spec.md](diskfmt-spec.md) (disco novo e FORMAT), [savestate-spec.md](savestate-spec.md) (save-state),
 [tape-spec.md](tape-spec.md) (fita), [romdb-spec.md](romdb-spec.md) (banco de ROMs),
 [fm-spec.md](fm-spec.md) (FM, MSX-MUSIC e FM-PAC), [sram-spec.md](sram-spec.md) (SRAM e `.sav`),
 [audio-spec.md](audio-spec.md) (audio), [fdc-spec.md](fdc-spec.md) (disco), [msx2-spec.md](msx2-spec.md) e
 [msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
+
+## TUI de menus (`--tui`)
+
+`fwMSXc.exe --tui` mostra os comandos do console em **menus** e controla o emulador em **janela** pela ponte
+de controle (nao embute a maquina). Comece por **Emulador > Iniciar MSX1/MSX2/MSX2+**, que abre a janela do
+emulador e conecta; depois use Arquivo (estado, captura), Maquina (reiniciar, pausar, registradores,
+memoria, digitar texto), Midia (cartucho, disco, fita, disco novo) e Ferramentas (banco de ROMs, fitas,
+banco de fitas, msxdisk). Itens com `...` perguntam os dados e, para arquivos, abrem um navegador. Embaixo
+ha' a linha de comando (os mesmos comandos do console) e um status do emulador. `--attach <porta>` conecta
+num emulador ja' aberto. Ver [tui-spec.md](tui-spec.md).
 
 ## Modo terminal do emulador (`--term`)
 

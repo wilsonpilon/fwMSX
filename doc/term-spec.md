@@ -2,7 +2,7 @@
 
 > Introduzida na **1.34.0 "Metal Gear"** (2026-10-09). `fwMSXc.exe --term` roda a maquina MSX
 > **dentro do terminal** (FTXUI), com menu, linha de comando e os mesmos atalhos da janela.
-> (O nome `--tui` ficou reservado para a TUI de menus, que controla o emulador em janela -- secao 6.)
+> (A TUI de MENUS, que controla o emulador em janela, e' o `--tui`: `doc/tui-spec.md`.)
 
 ## 1. Uso
 
@@ -81,10 +81,8 @@ src/machine/screenshot.*  captura PNG, compartilhada com a janela
 
 ## 6. O que falta
 
-- **A TUI de menus (pedido do usuario):** uma TUI que NAO embute a maquina, so' coloca em menus os
-  comandos da CLI/console e controla o emulador em JANELA pela ponte (inicia o `fwMSX.exe`, como o
-  `emu start`). O modo terminal de hoje continua, e e' otima para testes rapidos de programacao;
-  o nome `--tui` esta' reservado para ela (hoje `fwmsx --tui` so' avisa); o terminal embutido e' `--term`.
+- A **TUI de menus** (`--tui`), que controla o emulador em janela, existe desde a 1.35.0: `doc/tui-spec.md`.
+  Este modo terminal continua, e e' otimo para testes rapidos de programacao.
 - Teclado/menu so' foram exercitados por mim via ponte e saida renderizada; a digitacao num terminal de
   verdade (TAB, setas, F-keys por terminal) depende de teste seu.
 - Mouse (cliques no menu), redimensionar com graficos mais finos (braille), ajuste de proporcao.

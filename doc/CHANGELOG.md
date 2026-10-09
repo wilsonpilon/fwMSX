@@ -7,6 +7,22 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.35.0] - 2026-10-09 - "Vampire Killer" (Konami)
+
+### Adicionado
+- **TUI de menus** (`fwMSXc.exe --tui`, FTXUI): os comandos do console em menus (Emulador, Arquivo,
+  Maquina, Midia, Ferramentas, Ajuda), com barra de menus (F10 ou mouse), linha de comando com historico
+  e Tab, assistentes de varios passos e navegador de arquivos. Controla o emulador em **janela** pela
+  ponte de controle (nao embute a maquina); `Emulador > Iniciar MSX1/MSX2/MSX2+` abre a janela. As
+  ferramentas (`romdb`, `cas`, `fitadb`, `msxdisk`, `newdisk`) rodam numa thread a parte e a saida vai para
+  o historico. Ver `doc/tui-spec.md`.
+- `repl::BuildSession()`: o console e a TUI usam a mesma sessao, com as mesmas ferramentas.
+- Testes: `tuitest` (CTest `tui_model`, suite 22): todo o comportamento dos menus sem terminal; teste de
+  fumaca real com `--tui --attach <porta> --run "..." --dump`.
+
+### Mudou
+- `--tui` deixou de ser "reservado": e' a TUI de menus. O terminal embutido continua em `--term`.
+
 ## [1.34.0] - 2026-10-09 - "Metal Gear" (Konami)
 
 ### Adicionado

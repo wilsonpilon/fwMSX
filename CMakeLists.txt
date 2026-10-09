@@ -356,6 +356,10 @@ set(TERM_LIB_SOURCES
         src/machine/screenshot.cpp
 )
 
+# --- TUI de menus (FTXUI) -- ver doc/tui-spec.md. O modelo (tui_model) nao depende do FTXUI e tem teste proprio.
+set(TUI_MODEL_SOURCES src/tui/tui_model.cpp)
+set(TUI_LIB_SOURCES src/tui/tui_app.cpp ${TUI_MODEL_SOURCES})
+
 # --- Console (REPL) -- cliente da ponte de controle; ver doc/repl-spec.md.
 # repl.cpp (replxx + as ferramentas) so' entra no fwMSX; o teste usa so' a sessao e a ligacao.
 set(REPL_CORE_SOURCES
@@ -500,6 +504,13 @@ if (MINGW)
 endif ()
 
 add_test(NAME machine_frames COMMAND machinetest)
+
+# tuitest: o modelo da TUI de menus (menus, assistentes, navegador de arquivos, linha de comando).
+add_executable(tuitest tests/z80/tui_test.cpp ${TUI_MODEL_SOURCES})
+if (MINGW)
+    target_link_options(tuitest PRIVATE -static -static-libgcc -static-libstdc++)
+endif ()
+add_test(NAME tui_model COMMAND tuitest)
 
 # repltest: sessao do console (emu attach/detach/stop, encaminhamento, ferramentas) contra um servidor
 # de controle real em outra thread.
@@ -721,6 +732,7 @@ add_executable(fwMSX
         ${CONTROL_LIB_SOURCES}
         ${REPL_LIB_SOURCES}
         ${TERM_LIB_SOURCES}
+        ${TUI_LIB_SOURCES}
         ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}

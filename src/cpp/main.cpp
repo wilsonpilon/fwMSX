@@ -34,7 +34,10 @@
 // host (ou sem janela, com --frames/--shot) -- ver doc/machine-spec.md.
 //
 // "fwmsx --term [opcoes do --msx]" roda a maquina DENTRO do terminal (FTXUI): menu, linha de comando e
-// os mesmos atalhos da janela -- ver doc/term-spec.md. ("--tui" fica reservado para a TUI de menus.)
+// os mesmos atalhos da janela -- ver doc/term-spec.md.
+//
+// "fwmsx --tui" abre a TUI de MENUS: os comandos do console em menus, controlando o emulador em JANELA
+// pela ponte de controle -- ver doc/tui-spec.md.
 //
 // "fwmsx --cli" abre o console (REPL): inicia o emulador (emu start), conecta num que ja' esta'
 // aberto (emu attach) e encaminha comandos pela ponte de controle -- ver doc/repl-spec.md.
@@ -80,6 +83,7 @@
 #include "diskfmt/cpp/cli.h"
 #include "repl/repl.h"
 #include "term/term_app.h"
+#include "tui/tui_app.h"
 #include "machine/cli.h"
 #include "tape/cli/cas_tool.h"
 #include "tapedb/cli.h"
@@ -180,11 +184,15 @@ int main(int argc, char* argv[]) {
         return machine::RunMachineCommand(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--tui") {
-        // Reservado: a TUI de MENUS (comandos da CLI em menus, controlando o emulador em janela pela
-        // ponte de controle). Ainda nao existe -- ver doc/term-spec.md, secao 6.
-        std::cerr << "fwmsx --tui: reservado para a TUI de menus (ainda nao implementada).\n"
-                     "  Use --term (a maquina dentro do terminal) ou --cli (console)." << std::endl;
-        return 2;
+#ifdef _WIN32
+        if (g_gui_on_terminal) {
+            std::cerr << "fwmsx --tui: use o fwMSXc.exe (versao de console) para a TUI de menus:\n"
+                         "  fwMSXc.exe --tui" << std::endl;
+            return 2;
+        }
+#endif
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return tui::RunTui(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--cli") {
 #ifdef _WIN32

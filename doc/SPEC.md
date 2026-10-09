@@ -182,7 +182,7 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-09, v1.34.0 "Metal Gear", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  **Estado atual (2026-10-09, v1.35.0 "Vampire Killer", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
   (VDP com efeitos de rastreio por linha, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout
   de slots), com o banco de ROMs (`--romdb`, agora com `verify` e auto-mapper pelo SHA-1 ao
   carregar um cartucho), o subsistema de fita completo (leitura, gravacao, empacotador
@@ -192,12 +192,12 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-09, depois da v1.34.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-09, depois da v1.35.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.34.0, publicada em `main`):**
+**Funcionando (v1.35.0, publicada em `main`):**
 
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`; MSX-DOS 2.30 de verdade via `--cart MSXDOS2.ROM msxdos2` (`dir`/`cd` em subdiretorios).
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8, Gen16 e MSX-DOS 2; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`); save-state (menu Arquivo, `.sst`).
@@ -232,6 +232,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 - [x] **Efeitos de rastreio no meio do quadro** (1.27.0): a interrupcao de linha (IE1) e a intercalacao de Z80/VDP ja' eram corretas (confirmado por investigacao dedicada); a lacuna real era `Machine::RenderFrame()` ler so' o estado FINAL do quadro. Corrigido com um snapshot por scanline (`VdpScanlineSnapshot`, capturado em `vdp_step_scanline()` e aplicado linha a linha em `RenderFrame()`) -- paleta e scroll trocados por uma ISR de IE1 no meio do quadro agora aparecem a partir da linha certa, nao retroativos a tela inteira. Ver `doc/vdp-spec.md`, secao 2, `doc/msx2-spec.md`/`doc/msx2p-spec.md`, secao 6, e `doc/CHANGELOG.md`, `[1.27.0]`.
 - [x] **MSX-DOS 2 (cartucho generico)** (1.28.0): `MEMMAP_MAPPER_MSXDOS2`, adaptado de `RomMSXDOS2` do openMSX (GPL, so' estudo) -- ROM de 64KB, granularidade de 16KB, so' a pagina 4000h-7FFFh e' trocavel, endereco de disparo lido do byte 94h da propria ROM. Testado contra um `MSXDOS2.ROM` e um disco de 720KB REAIS: o kernel sobe, `dir`/`cd` em subdiretorios funcionam, sem precisar de mapper de RAM (a suposicao antiga estava errada). Ver `doc/memory-map-spec.md`, secao 6, e `doc/CHANGELOG.md`, `[1.28.0]`.
 - [x] **Save-state** (1.29.0): `Machine::SaveState()`/`LoadState()` gravam/restauram o estado AO VIVO da maquina (Z80, VDP incl. VRAM, PSG, SCC, OPLL, PPI, controladora de disco, RAM/RAM de mapper) num arquivo `.sst` proprio, aplicado por cima da maquina JA' RODANDO (nao recarrega BIOS/cartucho/disco/fita -- pressupoe a mesma midia inserida). Menu **Arquivo > Salvar estado.../Carregar estado...**. Fecha o ultimo item de "1, 4, 5". **Confirmado pelo usuario na janela em 2026-10-08.** Ver `doc/savestate-spec.md` e `doc/CHANGELOG.md`, `[1.29.0]`.
+- [x] **TUI de menus** (1.35.0): `fwMSXc.exe --tui` -- os comandos do console em menus (Emulador, Arquivo, Maquina, Midia, Ferramentas, Ajuda), com assistentes, navegador de arquivos e linha de comando; controla o emulador em janela pela ponte de controle. Ver `doc/tui-spec.md`.
 - [x] **Modo terminal do emulador** (1.34.0): `fwMSXc.exe --term` -- a maquina dentro do terminal (FTXUI), menu, linha de comando e atalhos da janela, tudo via `control::Commander`. Ver `doc/term-spec.md`.
 - [x] **Console (REPL)** (1.33.0): `fwmsx --cli` -- `emu start` abre o emulador em outro processo e o console segue livre, mandando comandos pela ponte de controle; `newdisk`, `romdb`, `cas`, `fitadb`, `msxdisk` como comandos. Ver `doc/repl-spec.md`.
 - [x] **Ponte de controle externa** (1.32.0): `src/control/` -- protocolo de texto (uma linha por comando) sobre TCP em 127.0.0.1; `fwMSX.exe --msx --ctl-port N`; comandos peek/poke/type/cart/disk/state/screenshot/pause/step/quit... num `Commander` unico que a TUI tambem usara. Ver `doc/control-spec.md`.

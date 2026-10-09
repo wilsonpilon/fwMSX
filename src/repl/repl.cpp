@@ -38,7 +38,7 @@ const std::vector<std::string> kCompletions = {
 
 } // namespace
 
-int RunReplCommand(const std::vector<std::string> &args, const std::string &argv0) {
+std::unique_ptr<ReplSession> BuildSession(const std::string &argv0) {
     std::string exe = SelfExePath();
     if (exe.empty()) exe = argv0;
     // `emu start` abre a JANELA: no Windows e' o fwMSX.exe (janela), nao o fwMSXc.exe (console) em que
@@ -55,18 +55,24 @@ int RunReplCommand(const std::vector<std::string> &args, const std::string &argv
         }
     }
 
-    ReplSession session(exe);
+    auto session = std::make_unique<ReplSession>(exe);
     // As ferramentas que ja' existiam como opcoes soltas viram comandos do console.
-    session.AddTool("newdisk", [](const std::vector<std::string> &a) { return diskfmt::RunDiskNewCommand(a); },
-                    "cria um disquete novo e formatado: newdisk <arq.dsk> <ss525|ds525|ss35|ds35>");
-    session.AddTool("romdb", [&](const std::vector<std::string> &a) { return romdb::RunRomDbCommand(a, argv0); },
-                    "banco de ROMs (o fwmsx --romdb)");
-    session.AddTool("cas", [&](const std::vector<std::string> &a) { return tape::RunCasToolCommand(a, argv0); },
-                    "ferramentas de fita .CAS/.TSX (o fwmsx --cas)");
-    session.AddTool("fitadb", [&](const std::vector<std::string> &a) { return tapedb::RunTapeDbCommand(a, argv0); },
-                    "banco de fitas (o fwmsx --fitadb)");
-    session.AddTool("msxdisk", [](const std::vector<std::string> &a) { return msxdisk::RunEntryPoint(a); },
-                    "utilitario de imagens de disco (o fwmsx --msxdisk)");
+    session->AddTool("newdisk", [](const std::vector<std::string> &a) { return diskfmt::RunDiskNewCommand(a); },
+                     "cria um disquete novo e formatado: newdisk <arq.dsk> <ss525|ds525|ss35|ds35>");
+    session->AddTool("romdb", [argv0](const std::vector<std::string> &a) { return romdb::RunRomDbCommand(a, argv0); },
+                     "banco de ROMs (o fwmsx --romdb)");
+    session->AddTool("cas", [argv0](const std::vector<std::string> &a) { return tape::RunCasToolCommand(a, argv0); },
+                     "ferramentas de fita .CAS/.TSX (o fwmsx --cas)");
+    session->AddTool("fitadb", [argv0](const std::vector<std::string> &a) { return tapedb::RunTapeDbCommand(a, argv0); },
+                     "banco de fitas (o fwmsx --fitadb)");
+    session->AddTool("msxdisk", [](const std::vector<std::string> &a) { return msxdisk::RunEntryPoint(a); },
+                     "utilitario de imagens de disco (o fwmsx --msxdisk)");
+    return session;
+}
+
+int RunReplCommand(const std::vector<std::string> &args, const std::string &argv0) {
+    std::unique_ptr<ReplSession> session_ptr = BuildSession(argv0);
+    ReplSession &session = *session_ptr;
 
     for (size_t i = 0; i + 1 < args.size(); ++i) {
         if (args[i] == "--attach") session.Execute("emu attach " + args[i + 1], std::cout);
