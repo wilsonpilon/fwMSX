@@ -63,8 +63,8 @@ src/control/
 ```
 
 - **Uma camada de comandos para tudo.** `Commander` fala com a maquina pela interface `Host`
-  (maquina, pausa, sair, trocar cartucho, captura de tela). A janela implementa `Host`; a TUI e a
-  linha de comando usarao o MESMO `Commander` -- o que a TUI faz e o que uma ferramenta remota faz
+  (maquina, pausa, sair, trocar cartucho, captura de tela). A janela implementa `Host`; a TUI, o modo
+  terminal e a linha de comando usam o MESMO `Commander` -- o que a TUI faz e o que uma ferramenta remota faz
   e' a mesma coisa.
 - **Concorrencia.** As threads do servidor so' leem/escrevem no socket e ENFILEIRAM; quem executa
   e' a thread do emulador, chamando `Server::Poll()` uma vez por volta do laco (nenhum codigo do

@@ -37,7 +37,8 @@
 | **Console interativo** | `fwMSXc.exe --cli` | iniciar o emulador e mandar comandos a ele sem sair do terminal |
 | **Ponte de controle** | `fwMSX.exe --msx --ctl-port 7777` | outros programas (editor, depurador, montador) mandam comandos por TCP |
 | **Depurador do Z80** | `fwMSXc.exe --z80dbg` | depurar o nucleo do Z80 |
-| **TUI do emulador** | `fwMSXc.exe --tui [opcoes do --msx]` | a maquina dentro do terminal, com menu e atalhos |
+| **Modo terminal** | `fwMSXc.exe --term [opcoes do --msx]` | a maquina dentro do terminal, com menu e atalhos (bom para testes rapidos) |
+| **TUI de menus** | `--tui` *(reservado)* | menus com os comandos da CLI, controlando o emulador em janela (a fazer) |
 
 ### Inicio rapido
 
@@ -95,12 +96,12 @@ Porta A: **setas** + **Z** ou **Espaco** (botao A) + **X** (botao B). Gamepads (
 a porta A e o 2o para a porta B (menu **Joystick** mostra o estado). As setas e o Espaco continuam
 valendo tambem como cursor e barra de espaco.
 
-### Na TUI do emulador (`fwMSXc.exe --tui`)
+### No modo terminal (`fwMSXc.exe --term`)
 
 **F10** menu (setas + Enter) - **F11** linha de comando - **F6/F7** salva/carrega estado - **F8/F9** slot
 - **F12** captura PNG - **Ctrl+C** = CTRL+STOP do MSX - todas as outras teclas vao para o MSX (F1-F5,
 End = SELECT, setas = cursor e joystick). Para sair: menu > Sair, ou o comando `quit`. Ver
-[tui-spec.md](tui-spec.md).
+[term-spec.md](term-spec.md).
 
 ### Operar tudo sem o mouse
 
@@ -651,21 +652,21 @@ Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.
 ### Documentacao por assunto
 
 [machine-spec.md](machine-spec.md) (maquina e janela), [slots-spec.md](slots-spec.md) (layout de slots),
-[tui-spec.md](tui-spec.md) (TUI), [control-spec.md](control-spec.md) (ponte de controle), [repl-spec.md](repl-spec.md) (console),
+[term-spec.md](term-spec.md) (modo terminal), [control-spec.md](control-spec.md) (ponte de controle), [repl-spec.md](repl-spec.md) (console),
 [diskfmt-spec.md](diskfmt-spec.md) (disco novo e FORMAT), [savestate-spec.md](savestate-spec.md) (save-state),
 [tape-spec.md](tape-spec.md) (fita), [romdb-spec.md](romdb-spec.md) (banco de ROMs),
 [fm-spec.md](fm-spec.md) (FM, MSX-MUSIC e FM-PAC), [sram-spec.md](sram-spec.md) (SRAM e `.sav`),
 [audio-spec.md](audio-spec.md) (audio), [fdc-spec.md](fdc-spec.md) (disco), [msx2-spec.md](msx2-spec.md) e
 [msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
 
-## TUI do emulador (`--tui`)
+## Modo terminal do emulador (`--term`)
 
-`fwMSXc.exe --tui` roda a maquina dentro do terminal (use o `fwMSXc.exe` no Windows). Aceita as mesmas
+`fwMSXc.exe --term` roda a maquina dentro do terminal (use o `fwMSXc.exe` no Windows). Aceita as mesmas
 opcoes do `--msx` (`--msx2p --cart jogo.rom msxdos2 --disk d.dsk ...`) e `--ctl-port`. Texto de
 verdade em SCREEN 0/1 (prompt do BASIC, MSX-DOS); graficos em meios blocos reduzidos para caber no
 terminal, na proporcao 4:3 (o menu alterna para pixels originais). **F10** abre o menu (as mesmas acoes da janela), **F11** a linha de comando (todos os comandos
 da ponte de controle mais `newdisk`), e F6/F7/F8/F9/F12 como na janela. Um terminal nao avisa quando uma
-tecla e' solta: cada tecla vale como segura por uma fracao de segundo, e segurar repete. Ver [tui-spec.md](tui-spec.md).
+tecla e' solta: cada tecla vale como segura por uma fracao de segundo, e segurar repete. Ver [term-spec.md](term-spec.md).
 
 ## Disco novo em branco e FORMAT
 

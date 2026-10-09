@@ -350,9 +350,9 @@ set(CONTROL_LIB_SOURCES
         src/control/server.cpp
 )
 
-# --- TUI do emulador (FTXUI) -- ver doc/tui-spec.md. screenshot.cpp usa o miniz (so' o fwMSX linka).
-set(TUI_LIB_SOURCES
-        src/tui/tui_app.cpp
+# --- Modo terminal do emulador (FTXUI) -- ver doc/term-spec.md. screenshot.cpp usa o miniz (so' o fwMSX linka).
+set(TERM_LIB_SOURCES
+        src/term/term_app.cpp
         src/machine/screenshot.cpp
 )
 
@@ -720,7 +720,7 @@ add_executable(fwMSX
         ${DISKFMT_LIB_SOURCES}
         ${CONTROL_LIB_SOURCES}
         ${REPL_LIB_SOURCES}
-        ${TUI_LIB_SOURCES}
+        ${TERM_LIB_SOURCES}
         ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}

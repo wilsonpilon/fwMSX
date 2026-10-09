@@ -1,14 +1,15 @@
-# TUI do emulador -- especificacao (documento vivo)
+# Modo terminal do emulador (`--term`) -- especificacao (documento vivo)
 
-> Introduzida na **1.34.0 "Metal Gear"** (2026-10-09). `fwMSXc.exe --tui` roda a maquina MSX
+> Introduzida na **1.34.0 "Metal Gear"** (2026-10-09). `fwMSXc.exe --term` roda a maquina MSX
 > **dentro do terminal** (FTXUI), com menu, linha de comando e os mesmos atalhos da janela.
+> (O nome `--tui` ficou reservado para a TUI de menus, que controla o emulador em janela -- secao 6.)
 
 ## 1. Uso
 
 ```
-fwMSXc.exe --tui                                   # MSX1 no terminal
-fwMSXc.exe --tui --msx2p --cart jogo.rom msxdos2   # aceita as MESMAS opcoes do --msx
-fwMSXc.exe --tui --ctl-port 0                      # e liga a ponte de controle, como a janela
+fwMSXc.exe --term                                   # MSX1 no terminal
+fwMSXc.exe --term --msx2p --cart jogo.rom msxdos2   # aceita as MESMAS opcoes do --msx
+fwMSXc.exe --term --ctl-port 0                      # e liga a ponte de controle, como a janela
 ```
 
 No Windows use o **`fwMSXc.exe`** (versao de console): o `fwMSX.exe` e' de janela e o terminal nao o
@@ -38,7 +39,7 @@ espera (ver `doc/repl-spec.md`). Num terminal de 80x24 ou maior; truecolor melho
 | **F8** / **F9** | slot de estado anterior / proximo (1 a 9) |
 | **F12** | captura a tela em PNG (`fwmsx-AAAAMMDD-HHMMSS.png`) |
 | qualquer outra | vai para o MSX (letras, numeros, simbolos, Enter, Backspace, Tab, Esc, setas, Home, Ins, Del, **End = SELECT**, **F1-F5**) |
-| **Ctrl+C** | CTRL+STOP do MSX (nao fecha a TUI) |
+| **Ctrl+C** | CTRL+STOP do MSX (nao fecha o programa) |
 | **Ctrl+letra** | CTRL+letra do MSX |
 
 Para sair: menu (F10) > **Sair**, ou o comando `quit`. As setas, a barra de espaco, **Z** e **X** tambem
@@ -56,7 +57,7 @@ A **linha de comando** entende todos os comandos da ponte de controle (`doc/cont
 ## 4. Arquitetura
 
 ```
-src/tui/tui_app.{h,cpp}   Runner (thread da maquina) + interface FTXUI
+src/term/term_app.{h,cpp}   Runner (thread da maquina) + interface FTXUI
 src/machine/screenshot.*  captura PNG, compartilhada com a janela
 ```
 
@@ -71,21 +72,21 @@ src/machine/screenshot.*  captura PNG, compartilhada com a janela
 
 ## 5. Testes
 
-- Teste manual com o executavel real (a TUI precisa de um terminal; o ambiente de teste so' tem pipes):
-  `fwMSXc.exe --tui --ctl-port 0` com um cliente na ponte -- `type "print 6*7\n"` aparece na saida
+- Teste manual com o executavel real (o modo terminal precisa de um terminal; o ambiente de teste so' tem pipes):
+  `fwMSXc.exe --term --ctl-port 0` com um cliente na ponte -- `type "print 6*7\n"` aparece na saida
   renderizada ("print 6*7" e " 42"), os graficos geram meio-blocos, o quadro avanca a 60/s, o
-  `quit` encerra a TUI (codigo 0) e o `fwmsx.port` e' apagado.
-- **Nao ha teste automatizado da TUI** (a interface depende de um terminal); o `Commander` e a ponte,
+  `quit` encerra o programa (codigo 0) e o `fwmsx.port` e' apagado.
+- **Nao ha teste automatizado do modo terminal** (a interface depende de um terminal); o `Commander` e a ponte,
   que ela usa, sao cobertos por `controltest`.
 
 ## 6. O que falta
 
-- **Outra TUI, a de menus (pedido do usuario):** uma TUI que NAO embute a maquina, so' coloca em menus os
+- **A TUI de menus (pedido do usuario):** uma TUI que NAO embute a maquina, so' coloca em menus os
   comandos da CLI/console e controla o emulador em JANELA pela ponte (inicia o `fwMSX.exe`, como o
-  `emu start`). A TUI de hoje (terminal embutido) continua, e e' otima para testes rapidos de programacao;
-  falta decidir o nome do modo de menus (hoje `--tui` e' o terminal embutido).
+  `emu start`). O modo terminal de hoje continua, e e' otima para testes rapidos de programacao;
+  o nome `--tui` esta' reservado para ela (hoje `fwmsx --tui` so' avisa); o terminal embutido e' `--term`.
 - Teclado/menu so' foram exercitados por mim via ponte e saida renderizada; a digitacao num terminal de
   verdade (TAB, setas, F-keys por terminal) depende de teste seu.
 - Mouse (cliques no menu), redimensionar com graficos mais finos (braille), ajuste de proporcao.
-- Configuracao de slots/disco pela TUI (hoje so' pelas opcoes de linha de comando ou comandos).
-- Ferramentas integradas (depurador, montador, banco de ROMs) dentro da TUI.
+- Configuracao de slots/disco pelo modo terminal (hoje so' pelas opcoes de linha de comando ou comandos).
+- Ferramentas integradas (depurador, montador, banco de ROMs) dentro do modo terminal.

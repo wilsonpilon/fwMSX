@@ -10,16 +10,16 @@ e o historico de fases, veja [SPEC.md](SPEC.md).
 ## [1.34.0] - 2026-10-09 - "Metal Gear" (Konami)
 
 ### Adicionado
-- **TUI do emulador** (`fwMSXc.exe --tui [opcoes do --msx]`, FTXUI): a maquina roda dentro do
+- **Modo terminal do emulador** (`fwMSXc.exe --term [opcoes do --msx]`, FTXUI; o nome `--tui` fica reservado para uma TUI de menus futura): a maquina roda dentro do
   terminal. Texto de verdade em SCREEN 0/1/TEXT80; graficos em meios blocos reduzidos. Menu (F10),
   linha de comando (F11) e os mesmos atalhos da janela (F6/F7 estado, F8/F9 slot, F12 captura). Todo
-  comando passa pelo `control::Commander`; aceita `--ctl-port`. Ver `doc/tui-spec.md`.
-- Graficos da TUI na proporcao **4:3** (a imagem inteira e' ajustada), com alternancia para pixels
+  comando passa pelo `control::Commander`; aceita `--ctl-port`. Ver `doc/term-spec.md`.
+- Graficos do modo terminal na proporcao **4:3** (a imagem inteira e' ajustada), com alternancia para pixels
   originais no menu F10.
-- `src/machine/screenshot.{h,cpp}`: a captura PNG virou compartilhada (janela e TUI).
+- `src/machine/screenshot.{h,cpp}`: a captura PNG virou compartilhada (janela e modo terminal).
 
 ### Observacao
-- A TUI nao tem teste automatizado (precisa de um terminal); foi validada pela ponte de controle e pela
+- O modo terminal nao tem teste automatizado (precisa de um terminal); foi validada pela ponte de controle e pela
   saida renderizada. O `Commander` que ela usa e' coberto por `controltest`.
 
 ## [1.33.0] - 2026-10-09 - "Penguin Adventure" (Konami)

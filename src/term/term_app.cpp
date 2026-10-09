@@ -1,5 +1,5 @@
-// fwMSX -- TUI do emulador. Ver tui_app.h e doc/tui-spec.md.
-#include "tui_app.h"
+// fwMSX -- modo terminal do emulador. Ver term_app.h e doc/term-spec.md.
+#include "term_app.h"
 
 #include <algorithm>
 #include <atomic>
@@ -32,7 +32,7 @@
 #include "../psg/cpp/psg_device.h"
 #include "../vdp/core/vdp_state.h"
 
-namespace tui {
+namespace term {
 
 namespace {
 
@@ -64,7 +64,7 @@ constexpr int kKeyHoldFrames = 6;
 
 class Runner : public control::Host {
 public:
-    explicit Runner(const TuiOptions &options) : opts_(options), commander_(*this), audio_(psg::kSampleRate) {}
+    explicit Runner(const TermOptions &options) : opts_(options), commander_(*this), audio_(psg::kSampleRate) {}
     ~Runner() override { Stop(); }
 
     bool Start(std::string &error) {
@@ -321,7 +321,7 @@ private:
         }
     }
 
-    TuiOptions opts_;
+    TermOptions opts_;
     MachineConfig config_;
     std::unique_ptr<Machine> machine_;
     control::Commander commander_;
@@ -510,11 +510,11 @@ const char *const kHelpText[] = {
 
 } // namespace
 
-int RunTui(const TuiOptions &options) {
+int RunTerm(const TermOptions &options) {
     Runner runner(options);
     std::string error;
     if (!runner.Start(error)) {
-        std::fprintf(stderr, "fwmsx --tui: %s\n", error.c_str());
+        std::fprintf(stderr, "fwmsx --term: %s\n", error.c_str());
         return 1;
     }
 
@@ -612,7 +612,7 @@ int RunTui(const TuiOptions &options) {
     auto renderer = Renderer([&] {
         const Snapshot snap = runner.Snap();
         Elements rows;
-        rows.push_back(text(" fwMSX TUI  F10 Menu  F11 Comando  F6/F7 Estado  F8/F9 Slot  F12 Captura  Ctrl+C = STOP ") | inverted);
+        rows.push_back(text(" fwMSX TERM  F10 Menu  F11 Comando  F6/F7 Estado  F8/F9 Slot  F12 Captura  Ctrl+C = STOP ") | inverted);
         Element view = std::make_shared<MsxView>(snap, four_three);
         rows.push_back(view | flex);
 
@@ -728,4 +728,4 @@ int RunTui(const TuiOptions &options) {
     return 0;
 }
 
-} // namespace tui
+} // namespace term

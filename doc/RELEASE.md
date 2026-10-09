@@ -19,19 +19,19 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ## v1.34.0 -- "Metal Gear" (Konami) (2026-10-09)
 
-**Fase:** a TUI do emulador, combinada com o usuario: a maquina dentro do terminal, as mesmas opcoes da
+**Fase:** o modo terminal do emulador (`--term`), combinado com o usuario: a maquina dentro do terminal, as mesmas opcoes da
 janela e a mesma camada de comandos (Commander) da ponte de controle e do console.
 
 ### O que foi feito
-- `src/tui/tui_app.{h,cpp}`: `Runner` (thread da maquina a 60 quadros/s, implementa `control::Host`) e a
+- `src/term/term_app.{h,cpp}`: `Runner` (thread da maquina a 60 quadros/s, implementa `control::Host`) e a
   interface FTXUI (tela do MSX, barra de status, menu, linha de comando).
 - Tela: texto de verdade em SCREEN 0/1/TEXT80; meios blocos reduzidos nos graficos.
 - Teclado: terminal nao envia "soltar"; cada tecla vale por 6 quadros, renovada pelo auto-repeat.
-- Captura PNG movida para `src/machine/screenshot.*` (janela e TUI).
+- Captura PNG movida para `src/machine/screenshot.*` (janela e modo terminal).
 
 ### Validacao
-`ctest` 21/21. TUI validada pela ponte de controle e pela saida renderizada; digitacao num terminal de
-verdade depende de teste do usuario. Ver `doc/tui-spec.md`.
+`ctest` 21/21. Modo terminal validado pela ponte de controle e pela saida renderizada; digitacao num terminal de
+verdade depende de teste do usuario. Ver `doc/term-spec.md`.
 
 ---
 

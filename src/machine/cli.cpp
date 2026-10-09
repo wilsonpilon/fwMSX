@@ -11,7 +11,7 @@
 #include "../fm/cpp/fm_device.h"
 #include "../psg/cpp/wav_writer.h"
 #include "gui/emu_window.h"
-#include "../tui/tui_app.h"
+#include "../term/term_app.h"
 #include "../romdb/service.h"
 #include "../romdb/core/hash.h"
 #include "../romdb/store/romdb.h"
@@ -165,7 +165,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     config.fmpac_rom_path = "auto"; // FM-PAC ligado por padrao (--no-fmpac desliga)
     int frames = 0;
     int ctl_port = -1; // -1 = sem ponte de controle
-    bool use_tui = false;
+    bool use_term = false;
     std::string shot_path;
     std::string keys;
     bool mute = false;
@@ -267,8 +267,8 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
                     ++i;
                 }
             }
-        } else if (a == "--tui") {
-            use_tui = true; // maquina dentro do terminal (FTXUI) -- doc/tui-spec.md
+        } else if (a == "--term") {
+            use_term = true; // maquina dentro do terminal (FTXUI) -- doc/term-spec.md
         } else if (a == "--ctl-port") {
             // Ponte de controle externo (doc/control-spec.md): 0 = o sistema escolhe a porta.
             const std::string *v = need("um numero de porta (0 = automatica)");
@@ -507,14 +507,14 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
         return 0;
     }
 
-    if (use_tui) {
-        tui::TuiOptions topts;
+    if (use_term) {
+        term::TermOptions topts;
         topts.machine = config;
         topts.audio = !mute;
         topts.ctl_port = ctl_port;
         std::error_code ec;
         topts.exe_dir = fs::absolute(fs::path(argv0), ec).parent_path().string();
-        return tui::RunTui(topts);
+        return term::RunTerm(topts);
     }
 
     gui::WindowOptions options;
