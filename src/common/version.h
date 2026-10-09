@@ -20,9 +20,9 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 32
+#define FWMSX_VERSION_MINOR 33
 #define FWMSX_VERSION_PATCH 0
 
 #define FWMSX_COMPANY   "Konami"
-#define FWMSX_CODENAME  "Nemesis"
+#define FWMSX_CODENAME  "Penguin Adventure"
 #define FWMSX_SUBTITLE  ""  // so' nas versoes X.Y.Z com Z > 0

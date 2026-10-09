@@ -7,6 +7,29 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.33.0] - 2026-10-09 - "Penguin Adventure" (Konami)
+
+### Adicionado
+- **Console interativo (REPL)**: `fwmsx --cli` (`src/repl/`, replxx com historico e TAB). O
+  terminal fica livre e o emulador roda em outro processo: `emu start [opcoes do --msx]` abre a
+  janela e conecta pela ponte de controle; `emu attach <porta>`, `emu detach`, `emu stop`,
+  `emu status`. Todo comando que o console nao conhece vai para o emulador (`peek`, `poke`, `type`,
+  `cart`, `state`...). Ver `doc/repl-spec.md`.
+- As opcoes soltas viram comandos do console: `newdisk` (= `--disknew`), `romdb`, `cas`, `fitadb`,
+  `msxdisk`.
+- Testes: `repltest` (CTest `repl`, suite 21): sessao contra um servidor de controle real e
+  `emu start` com iniciador falso; smoke test manual com o executavel real.
+
+- **`fwMSXc.exe`** (Windows): o mesmo programa com o subsistema "console", gerado no build por
+  `tools/pe_subsystem`. O `fwMSX.exe` (janela) nao e' esperado pelo terminal e disputa o teclado com
+  ele, o que quebrava o console interativo (letras trocadas, lentidao, saida sozinho); o
+  `fwMSXc.exe` e' o certo para `--cli` e para as ferramentas de linha de comando. Vai no `.zip`.
+
+### Corrigido
+- Windows: ao abrir de um terminal, os handles do sistema (nao so' o stdio do C) passam a apontar
+  para o console -- o replxx usa `GetStdHandle`.
+- `fwMSX.exe --cli` num terminal agora avisa para usar o `fwMSXc.exe` em vez de se comportar mal.
+
 ## [1.32.0] - 2026-10-09 - "Nemesis" (Konami)
 
 > **Novo esquema de nomes (2026-10-09):** X = empresa de MSX (1 = Konami), Y = jogo novo de MSX

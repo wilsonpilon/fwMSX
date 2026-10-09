@@ -49,6 +49,12 @@ if (-not (Test-Path $exe)) {
     exit 1
 }
 
+$consoleExe = Join-Path $distDir "fwMSXc.exe"
+if (-not (Test-Path $consoleExe)) {
+    Write-Error "Build concluido mas $consoleExe nao foi gerado."
+    exit 1
+}
+
 $msxdiskExe = Join-Path $distDir "msxdisk.exe"
 if (-not (Test-Path $msxdiskExe)) {
     Write-Error "Build concluido mas $msxdiskExe nao foi gerado."
@@ -70,6 +76,7 @@ if (Test-Path $stageDir) { Remove-Item $stageDir -Recurse -Force }
 New-Item -ItemType Directory -Path $stageDir | Out-Null
 
 Copy-Item $exe $stageDir
+Copy-Item $consoleExe $stageDir
 Copy-Item $msxdiskExe $stageDir
 Copy-Item (Join-Path $root "README.md") $stageDir
 Copy-Item (Join-Path $root "LICENSE") $stageDir
@@ -83,5 +90,6 @@ Remove-Item $stageDir -Recurse -Force
 
 Write-Host "==> Pronto:" -ForegroundColor Green
 Write-Host "    $exe"
+Write-Host "    $consoleExe"
 Write-Host "    $msxdiskExe"
 Write-Host "    $zipPath"

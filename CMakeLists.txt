@@ -350,6 +350,14 @@ set(CONTROL_LIB_SOURCES
         src/control/server.cpp
 )
 
+# --- Console (REPL) -- cliente da ponte de controle; ver doc/repl-spec.md.
+# repl.cpp (replxx + as ferramentas) so' entra no fwMSX; o teste usa so' a sessao e a ligacao.
+set(REPL_CORE_SOURCES
+        src/repl/emu_link.cpp
+        src/repl/repl_session.cpp
+)
+set(REPL_LIB_SOURCES ${REPL_CORE_SOURCES} src/repl/repl.cpp)
+
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
 set(DISKFMT_LIB_SOURCES
@@ -486,6 +494,20 @@ if (MINGW)
 endif ()
 
 add_test(NAME machine_frames COMMAND machinetest)
+
+# repltest: sessao do console (emu attach/detach/stop, encaminhamento, ferramentas) contra um servidor
+# de controle real em outra thread.
+add_executable(repltest tests/z80/repl_test.cpp ${REPL_CORE_SOURCES} ${CONTROL_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
+target_include_directories(repltest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
+target_compile_definitions(repltest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(repltest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/repltest)
+if (MINGW)
+    target_link_options(repltest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+if (WIN32)
+    target_link_libraries(repltest PRIVATE ws2_32)
+endif ()
+add_test(NAME repl COMMAND repltest)
 
 # controltest: ponte de controle (despachante de comandos + servidor TCP) sobre uma Machine de verdade.
 add_executable(controltest tests/z80/control_test.cpp ${CONTROL_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
@@ -691,6 +713,7 @@ add_executable(fwMSX
         ${MSXDISK_LIB_SOURCES}
         ${DISKFMT_LIB_SOURCES}
         ${CONTROL_LIB_SOURCES}
+        ${REPL_LIB_SOURCES}
         ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}
@@ -720,6 +743,15 @@ msxdisk_link_target(fwMSX)
 audio_link_target(fwMSX)
 if (WIN32)
     target_link_libraries(fwMSX PRIVATE ws2_32)
+    # fwMSXc.exe = o MESMO programa com o subsistema "console". O fwMSX.exe (janela) nao abre console no
+    # duplo clique, mas o shell nao o espera e disputa o teclado com ele -- o console interativo
+    # (--cli) precisa do fwMSXc.exe (como pythonw/python). O utilitario troca o byte do cabecalho PE.
+    add_executable(pe_subsystem tools/pe_subsystem/main.cpp)
+    set_target_properties(pe_subsystem PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/tools)
+    add_dependencies(fwMSX pe_subsystem)
+    add_custom_command(TARGET fwMSX POST_BUILD
+            COMMAND pe_subsystem $<TARGET_FILE:fwMSX> $<TARGET_FILE_DIR:fwMSX>/fwMSXc.exe 3
+            COMMENT "Gerando fwMSXc.exe (subsistema console)")
 endif ()
 if (WIN32)
     # Subsistema "windows": sem janela de console no duplo clique (main.cpp religa o

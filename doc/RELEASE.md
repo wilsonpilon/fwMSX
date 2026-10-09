@@ -17,6 +17,26 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.33.0 -- "Penguin Adventure" (Konami) (2026-10-09)
+
+**Fase:** pedido do usuario: um console tipo openMSX (`fwmsx --cli`) de onde se inicia o emulador e
+que continua livre para mandar comandos a ele pela conexao que ja' existe (a ponte de controle).
+Decisao: o REPL e' um CLIENTE, nao embute a maquina (emulador em processo separado).
+
+### O que foi feito
+- `src/repl/`: `EmuLink` (cliente TCP, porta livre, iniciar processo sem herdar o console),
+  `ReplSession` (comandos locais + encaminhamento + ferramentas registradas) e `repl.cpp` (replxx).
+- Ferramentas existentes como comandos: `newdisk`, `romdb`, `cas`, `fitadb`, `msxdisk`.
+- Windows: handles do sistema apontam para o console (replxx).
+- **`fwMSXc.exe`**: achado ao testar o console interativo de verdade (letras trocadas, lentidao,
+  fechando sozinho): um programa de janela nao e' esperado pelo shell, que disputa o teclado com ele.
+  Solucao: o build gera tambem o mesmo programa com o subsistema console (`tools/pe_subsystem`).
+
+### Validacao
+`ctest` 21/21 (Windows e Linux). Smoke test com o executavel real por pipe. Ver `doc/repl-spec.md`.
+
+---
+
 ## v1.32.0 -- "Nemesis" (Konami) (2026-10-09)
 
 **Fase:** primeiro passo de "TUI + ferramentas integradas": a ponte para outros programas falarem

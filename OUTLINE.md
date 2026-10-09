@@ -17,6 +17,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
+- **1.33.0 "Penguin Adventure" (em andamento, nao comitada)**: console `fwMSXc.exe --cli` (no Windows o fwMSX.exe e' de janela e nao serve para o REPL interativo; o build gera o fwMSXc.exe) (`src/repl/`) --
+  `emu start` abre o emulador em OUTRO processo e o console segue livre mandando comandos pela
+  ponte de controle; ferramentas como comandos (newdisk, romdb, cas, fitadb, msxdisk). Proximos
+  passos combinados: TUI (FTXUI) sobre o mesmo Commander; depurador e montador (do PaleoBASIC/
+  msxIDE) como comandos do console; eventos assincronos; integracao com msxIDE/PaleoBASIC pela
+  ponte (projetos separados). Ver `doc/repl-spec.md`.
 - **1.32.0 "Nemesis" (Konami; esquema de nomes novo: X = empresa, Y = jogo novo, Z = jogo + subtitulo -- ver CLAUDE.md)**: ponte de controle externa (`src/control/`, TCP em
   localhost, protocolo de texto de uma linha por comando, `--ctl-port`), com um `Commander` unico que
   a futura TUI vai reutilizar. Proximo passo combinado com o usuario: a TUI (FTXUI) sobre o mesmo

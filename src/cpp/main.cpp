@@ -33,6 +33,9 @@
 // "fwmsx --msx" liga a maquina MSX1 completa numa janela com teclado do
 // host (ou sem janela, com --frames/--shot) -- ver doc/machine-spec.md.
 //
+// "fwmsx --cli" abre o console (REPL): inicia o emulador (emu start), conecta num que ja' esta'
+// aberto (emu attach) e encaminha comandos pela ponte de controle -- ver doc/repl-spec.md.
+//
 // "fwmsx --disknew <arq.dsk> <ss525|ds525|ss35|ds35>" cria um disquete em branco
 // e formatado -- ver doc/diskfmt-spec.md.
 //
@@ -72,6 +75,7 @@
 
 #include "msxdisk/entry.h"
 #include "diskfmt/cpp/cli.h"
+#include "repl/repl.h"
 #include "machine/cli.h"
 #include "tape/cli/cas_tool.h"
 #include "tapedb/cli.h"
@@ -92,15 +96,34 @@ void print_signature(const char* label, std::uint16_t signature) {
 // Quando ele e' aberto de dentro de um terminal, religa stdout/stderr/stdin
 // ao console do terminal -- mas so' as saidas que NAO foram redirecionadas
 // (pipe/arquivo continuam intactos, entao "fwMSX.exe ... | tail" funciona).
+// true quando este processo e' do subsistema janela E ficou ligado a um terminal interativo (entrada
+// do teclado nao redirecionada): ai' o console interativo nao funciona (ver main()).
+bool g_gui_on_terminal = false;
+
 void attach_parent_console() {
-    if (!AttachConsole(ATTACH_PARENT_PROCESS)) return;
+    if (!AttachConsole(ATTACH_PARENT_PROCESS)) return; // fwMSXc.exe (console) ja' tem o seu
     auto redirected = [](DWORD which) {
         const HANDLE h = GetStdHandle(which);
         return h != nullptr && h != INVALID_HANDLE_VALUE;
     };
-    if (!redirected(STD_OUTPUT_HANDLE)) freopen("CONOUT$", "w", stdout);
-    if (!redirected(STD_ERROR_HANDLE)) freopen("CONOUT$", "w", stderr);
-    if (!redirected(STD_INPUT_HANDLE)) freopen("CONIN$", "r", stdin);
+    // replxx (console interativo) usa GetStdHandle direto, nao o stdio do C: entao os handles do
+    // sistema tambem precisam apontar para o console, nao so' stdout/stderr/stdin.
+    auto console_handle = [](const char *name, DWORD access) {
+        return CreateFileA(name, access, FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING, 0, nullptr);
+    };
+    if (!redirected(STD_OUTPUT_HANDLE)) {
+        SetStdHandle(STD_OUTPUT_HANDLE, console_handle("CONOUT$", GENERIC_READ | GENERIC_WRITE));
+        freopen("CONOUT$", "w", stdout);
+    }
+    if (!redirected(STD_ERROR_HANDLE)) {
+        SetStdHandle(STD_ERROR_HANDLE, console_handle("CONOUT$", GENERIC_READ | GENERIC_WRITE));
+        freopen("CONOUT$", "w", stderr);
+    }
+    if (!redirected(STD_INPUT_HANDLE)) {
+        g_gui_on_terminal = true;
+        SetStdHandle(STD_INPUT_HANDLE, console_handle("CONIN$", GENERIC_READ | GENERIC_WRITE));
+        freopen("CONIN$", "r", stdin);
+    }
     std::ios::sync_with_stdio(true);
     std::cout.clear();
     std::cerr.clear();
@@ -139,6 +162,19 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return z80::debug::RunZ80DebugShell(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--cli") {
+#ifdef _WIN32
+        if (g_gui_on_terminal) {
+            // O shell nao espera um programa de janela e disputa o teclado com ele: o console
+            // interativo ficaria lento, trocando letras e fechando sozinho.
+            std::cerr << "fwmsx --cli: use o fwMSXc.exe (versao de console) para o console interativo:\n"
+                         "  fwMSXc.exe --cli" << std::endl;
+            return 2;
+        }
+#endif
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return repl::RunReplCommand(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--disknew") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
