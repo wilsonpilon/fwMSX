@@ -1,8 +1,131 @@
-# fwMSX -- Manual de compilacao e execucao
+# fwMSX -- Manual
 
-> Como compilar e executar o fwMSX (emulador MSX1/MSX2, `msxdisk` embutido e
-> o depurador do Z80). O estado de cada parte esta em [SPEC.md](SPEC.md) e nas
-> specs de fase (`doc/*-spec.md`).
+> Como compilar, executar e operar o fwMSX: emulador MSX1/MSX2/MSX2+, utilitario de discos
+> (`msxdisk`), console interativo, ponte de controle para outros programas e depurador do Z80. O
+> estado de cada parte esta em [SPEC.md](SPEC.md) e nas specs de fase (`doc/*-spec.md`).
+
+## Indice
+
+1. [Visao geral e inicio rapido](#visao-geral-e-inicio-rapido)
+2. [Atalhos de teclado e como operar sem o mouse](#atalhos-de-teclado-e-como-operar-sem-o-mouse)
+3. [Pre-requisitos](#pre-requisitos) e [Compilar](#compilar)
+4. [Emulador MSX](#emulador-msx---msx) (opcoes, janela, slots, FM, SRAM)
+5. [Disco novo e FORMAT](#disco-novo-em-branco-e-format)
+6. [Save-state e captura de tela](#save-state-e-captura-de-tela)
+7. [Console (`--cli`)](#console-interativo---cli) e [Ponte de controle](#ponte-de-controle-externa---ctl-port)
+8. [Banco de ROMs](#banco-de-roms---romdb), [Fita](#fita-por-linha-de-comando-fwmsx---cas) e [Banco de fitas](#banco-de-fitas-fwmsx---fitadb)
+9. [msxdisk](#msxdisk----utilitario-de-imagens-de-disco-msx) e [depurador do Z80](#nucleo-z80----depurador-embutido---z80dbg)
+
+## Visao geral e inicio rapido
+
+### Os executaveis
+
+| Arquivo | Para que serve |
+|---|---|
+| `fwMSX.exe` | O emulador em **janela** (nao abre console no duplo clique). Aceita todas as opcoes (`--msx`, `--romdb`, `--cas`...), mas e' um programa "de janela": o terminal **nao espera** o fim dele. |
+| `fwMSXc.exe` | O **mesmo programa em modo console** (Windows). Use no terminal para o console interativo (`--cli`) e para as ferramentas de linha de comando: o terminal espera o fim e o codigo de saida e' o certo. |
+| `msxdisk.exe` | Utilitario de imagens de disco (CLI, shell, TUI e GUI). Tambem embutido: `fwMSX.exe --msxdisk ...`. |
+| `fwMSX` (Linux) | Um unico executavel de console, que faz tudo. |
+
+### As formas de usar
+
+| Forma | Como abrir | Para que |
+|---|---|---|
+| **Janela** | `fwMSX.exe` (ou duplo clique) | jogar e usar o MSX, com menus e atalhos |
+| **Opcoes de linha de comando** | `fwMSX.exe --msx --msx2p --cart jogo.rom --disk d.dsk` | escolher a maquina e a midia ao iniciar |
+| **Ferramentas de linha de comando** | `fwMSXc.exe --romdb ...`, `--cas ...`, `--fitadb ...`, `--disknew ...`, `--msxdisk ...` | uma tarefa e sai |
+| **Console interativo** | `fwMSXc.exe --cli` | iniciar o emulador e mandar comandos a ele sem sair do terminal |
+| **Ponte de controle** | `fwMSX.exe --msx --ctl-port 7777` | outros programas (editor, depurador, montador) mandam comandos por TCP |
+| **Depurador do Z80** | `fwMSXc.exe --z80dbg` | depurar o nucleo do Z80 |
+| **TUI do emulador** | *(em desenvolvimento)* | as mesmas opcoes da janela, dentro do terminal |
+
+### Inicio rapido
+
+```powershell
+.\dist\fwMSX.exe                                           # MSX1 numa janela (MSX BASIC)
+.\dist\fwMSX.exe --msx --msx2p --cart jogo.rom             # MSX2+ com um cartucho
+.\dist\fwMSX.exe --msx --disk msxdos1.dsk                  # MSX-DOS 1.8
+.\dist\fwMSXc.exe --disknew meu.dsk ds35                   # cria um disquete novo de 720 KB, formatado
+.\dist\fwMSXc.exe --cli                                    # console: 'emu start', 'peek', 'type', 'help'...
+```
+
+Dentro da janela: **F6** salva o estado, **F7** carrega, **F11** tela cheia, **F12** captura a tela.
+A lista completa de teclas esta na proxima secao.
+
+## Atalhos de teclado e como operar sem o mouse
+
+### Atalhos do emulador (na janela; **nao** vao para o MSX)
+
+| Tecla | Faz |
+|---|---|
+| **F6** | salva o estado da maquina no slot atual (`fwmsx-estado-N.sst`, na pasta de trabalho) |
+| **F7** | carrega o estado do slot atual |
+| **F8** / **F9** | slot de estado anterior / proximo (1 a 9); o aviso na tela mostra o slot |
+| **F11** | tela cheia (o menu some e reaparece quando o mouse chega ao topo) |
+| **F12** | captura a tela em PNG (`fwmsx-AAAAMMDD-HHMMSS.png`, na pasta de trabalho) |
+
+F1-F5 sao teclas do MSX, por isso os atalhos do emulador comecam em F6. A janela mostra um aviso
+temporario no canto inferior esquerdo ao salvar, carregar ou capturar (laranja quando ha' erro ou
+quando o estado carregado e' de outra BIOS/cartucho).
+
+### O teclado do MSX (mapeamento posicional, layout US)
+
+Letras, numeros e simbolos vao para a **mesma tecla** do MSX.
+
+| Tecla do PC | Tecla do MSX |
+|---|---|
+| `A`-`Z`, `0`-`9`, `- = \ [ ] ; ' ` , . /` | a mesma |
+| Espaco, Enter, Backspace, Tab, Esc | SPACE, RETURN, BS, TAB, ESC |
+| Shift, Ctrl | SHIFT, CTRL |
+| Alt esquerdo / Alt direito | **GRAPH** / **CODE** |
+| Caps Lock | CAPS |
+| F1 a F5 | F1 a F5 |
+| Home / Ins / Del | HOME / INS / DEL |
+| **End** | **SELECT** |
+| **Pause** | **STOP** |
+| Setas | cursor |
+| Teclado numerico (`0`-`9`, `* + / - .`, Enter) | teclado numerico do MSX |
+
+Para um comando digitado sem teclado fisico, ou para automatizar: `type` (console e ponte) e `--keys`
+(linha de comando), onde `|` e `\n` sao Enter.
+
+### Joystick
+
+Porta A: **setas** + **Z** ou **Espaco** (botao A) + **X** (botao B). Gamepads (GLFW): o 1o vai para
+a porta A e o 2o para a porta B (menu **Joystick** mostra o estado). As setas e o Espaco continuam
+valendo tambem como cursor e barra de espaco.
+
+### Operar tudo sem o mouse
+
+Os **menus da janela sao de mouse**. Tudo o que eles fazem tem um equivalente por teclado, de tres jeitos:
+
+| Menu da janela | Por teclado |
+|---|---|
+| Arquivo > Salvar/Carregar estado | **F6** / **F7** / **F8** / **F9**; `state save` / `state load` |
+| Arquivo > Capturar tela | **F12**; `screenshot` |
+| Tela > Exibir > Tela cheia | **F11** |
+| Maquina > Reiniciar / Pausar | `reset`, `pause`, `resume`, `step` (console/ponte) |
+| Maquina > Modelo | `--msx2` / `--msx2p` ao iniciar |
+| Midia > Cartucho | `--cart arq [mapper]` ao iniciar; `cart arq [mapper]` (console/ponte) |
+| Midia > Disco | `--disk` / `--diskb`; `disk A arq`, `eject A`; `--disknew` |
+| Midia > Fita | `--fita`; `tape arq`, `tape eject`, `tape rewind` |
+| Sair | `quit` (ponte) ou fechar a janela |
+
+Ou seja: **tudo** pode ser feito pelo console (`fwMSXc.exe --cli`), que e' 100% teclado, com
+historico (seta para cima/baixo) e **TAB** para completar.
+
+### No console (`--cli`)
+
+Edicao de linha (replxx): **TAB** completa o comando; **Seta para cima/baixo** percorre o historico
+(guardado em `~/.fwmsx_history`); **Home/End** ou **Ctrl+A/Ctrl+E** vao ao inicio/fim da linha;
+**Ctrl+U/Ctrl+K** apagam ate' o inicio/fim; **Ctrl+W** apaga a palavra; **Ctrl+R** busca no
+historico; **Ctrl+L** limpa a tela; **Ctrl+D** (linha vazia) ou `exit` sai.
+
+### No msxdisk (TUI de discos)
+
+`F2` Novo, `F3` Abrir, `F4` Renomear, `F5` Salvar, `F6` Salvar como, `F7` Enviar (local -> imagem),
+`F8` Receber (imagem -> local), `F9` Tema, `F11` Nova pasta, `Del` Excluir, `Espaco` marca,
+`F10`/`Esc` sai. Detalhes em [msxdisk-spec.md](msxdisk-spec.md).
 
 ## Pre-requisitos
 
@@ -42,9 +165,10 @@ O script:
 1. Coloca `C:\msys64\ucrt64\bin` no inicio do `PATH` (so para o processo
    do script, sem alterar o `PATH` do sistema);
 2. Configura o build com CMake + Ninja em `build\`;
-3. Compila e gera `dist\fwMSX.exe`;
+3. Compila e gera `dist\fwMSX.exe` (janela) e `dist\fwMSXc.exe` (o mesmo programa em
+   modo console, gerado por `tools/pe_subsystem`) e `dist\msxdisk.exe`;
 4. Le a versao corrente em `src\common\version.h` e empacota
-   `dist\fwMSX-X.Y.Z.zip` com o executavel, `README.md`, `LICENSE`,
+   `dist\fwMSX-X.Y.Z.zip` com os executaveis, `README.md`, `LICENSE`,
    `doc\MANUAL.md` e `doc\RELEASE.md`.
 
 ### Opcao 2 -- manual (MSYS2 UCRT64 shell)
@@ -57,7 +181,8 @@ cmake -S . -B build -G Ninja
 cmake --build build
 ```
 
-O executavel fica em `dist/fwMSX.exe`.
+O executavel fica em `dist/fwMSX.exe` (o `fwMSXc.exe` e' gerado no fim do link; no MSYS2 UCRT64
+o utilitario `pe_subsystem` entra no build normalmente).
 
 ### Linux
 
@@ -94,10 +219,11 @@ esta' numa copia antiga do `build.sh` (versoes anteriores usavam
 .\dist\fwMSX.exe
 ```
 
-**Desde a v1.12.0**, sem nenhum argumento isso abre a maquina MSX1 completa
-numa janela (os mesmos padroes de `--msx`: BIOS `resource/fMSX/ROMs/MSX.ROM`
-ao lado do executavel, sem cartucho/disco) -- ver secao "Emulador MSX1 numa
-janela" abaixo e `doc/machine-spec.md`.
+Sem nenhum argumento isso abre a maquina MSX1 completa numa janela (os mesmos
+padroes de `--msx`: BIOS `resource/fMSX/ROMs/MSX.ROM` ao lado do executavel,
+sem cartucho/disco) -- ver a secao "Emulador MSX" abaixo e `doc/machine-spec.md`.
+No terminal, prefira o `fwMSXc.exe` (o terminal espera o fim dele); o `fwMSX.exe`
+e' pensado para o duplo clique e para atalhos.
 
 ### Esqueleto multi-linguagem (historico)
 
@@ -130,7 +256,7 @@ Assinaturas dos modulos:
 
 Cada versao gera dois pacotes em `dist/`:
 
-- **Windows**: `fwMSX-X.Y.Z.zip` (executavel `fwMSX.exe`, `msxdisk.exe`, README, licenca, MANUAL e RELEASE).
+- **Windows**: `fwMSX-X.Y.Z.zip` (executaveis `fwMSX.exe` e `fwMSXc.exe`, `msxdisk.exe`, README, licenca, MANUAL e RELEASE).
   `fwMSX.exe` e' linkado estaticamente e depende apenas do **UCRT** (`ucrtbase.dll`, nativo do Windows 10
   versao 1607 ou mais recente): roda em outra maquina sem instalar o MSYS2.
 - **Linux**: `fwMSX-X.Y.Z-linux.tar.gz` (mesmos arquivos, executaveis `fwMSX` e `msxdisk`), gerado por
@@ -312,7 +438,7 @@ O arquivo PPM (`P6`, binario) pode ser aberto em qualquer visualizador
 de imagem que suporte o formato, ou inspecionado byte a byte -- ainda
 para ver a maquina rodando numa janela, use `fwmsx --msx` (secao abaixo).
 
-## Emulador MSX (`--msx`) -- v1.30.0
+## Emulador MSX (`--msx`)
 
 Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o MSX BASIC).
 `--msx` escolhe a maquina e as opcoes abaixo.
@@ -362,6 +488,7 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 | `--fita <arquivo>` | insere uma fita (`.cas`, `.tsx` ou `.tzx`, pela extensao) na unidade |
 | `--fita-modo rapido\|normal` | carregamento rapido (gancho de BIOS, sem som, padrao) ou normal (pulsos de verdade, com o barulho do gravador) -- ver `doc/tape-spec.md` |
 | `--frames N` | quadros de boot antes dos comandos seguintes (sem janela) |
+| `--ctl-port N` | liga a ponte de controle em 127.0.0.1:N (0 = porta livre; vai para `fwmsx.port`) -- ver a secao da ponte |
 | `--vdplog` | mostra os registradores do VDP que mudam, quadro a quadro |
 | `--mute` | sem audio |
 
@@ -371,17 +498,23 @@ janela abre.
 
 ### A janela
 
-- **Teclado**: mapeamento posicional (layout US). Alt esquerdo = GRAPH, Alt direito = CODE, End =
-  SELECT, Pause = STOP, F6/F7 = salvar/carregar estado, F8/F9 = slot de estado, F11 = tela cheia, F12 = captura de tela (PNG). Teclado numerico = o do MSX.
-- **Joystick**: setas + Z ou Espaco (botao A) + X (botao B); ou gamepad (menu Joystick).
-Os menus foram reagrupados na 1.30.0 (antes eram 13 menus separados no topo da janela; agora sao 9):
+- **Teclado e joystick**: ver [Atalhos de teclado](#atalhos-de-teclado-e-como-operar-sem-o-mouse)
+  (F6/F7/F8/F9 estado, F11 tela cheia, F12 captura; Alt esq. = GRAPH, Alt dir. = CODE, End = SELECT,
+  Pause = STOP; joystick = setas + Z/Espaco + X).
+- **Titulo da janela**: `fwMSX - SCREEN n - fps` (mais `(pausado)`, `(mudo)` e, com a ponte ligada,
+  `controle: porta N`).
 
-- **Arquivo**: Carregar cartucho, **Salvar estado.../Carregar estado...** (`.sst` -- ver
-  `doc/savestate-spec.md`), Sair.
+Os menus do topo da janela (9):
+
+- **Arquivo**: Carregar cartucho; **Salvar no slot atual (F6)**, **Carregar do slot atual (F7)**,
+  **Slot de estado (F8/F9)** (1 a 9), **Capturar tela (PNG) (F12)**; **Salvar estado.../Carregar
+  estado...** (escolhe o arquivo `.sst` na mao); Sair.
 - **Maquina**: Reiniciar, **Modelo** (MSX1, MSX2, MSX2+), **Configuracao de disco...**,
-  **Configuracao de slots...** (secao abaixo), Pausar.
+  **Configuracao de slots...** (secao abaixo), Video (NTSC; PAL e' "em breve"), **Pausar**,
+  **Soltar todas as teclas** (util se uma tecla "ficou presa").
 - **Midia**: agrupa os tres submenus de midia removivel --
-  - **Disco**: inserir e ejetar A: e B:.
+  - **Disco**: inserir e ejetar A: e B:; **Novo disco em branco em A:/B:** (cria um disquete
+    formatado nos 4 formatos do MSX e ja' o insere -- ver "Disco novo e FORMAT").
   - **Fita**: inserir ou criar uma **fita nova (.tsx)**, ejetar e rebobinar; trocar entre
     carregamento **rapido** (sem som) e **normal** (pulsos de verdade, com o barulho do gravador);
     **destravar/travar contra gravacao** (uma fita de arquivo entra sempre travada; uma fita nova
@@ -400,14 +533,16 @@ Os menus foram reagrupados na 1.30.0 (antes eram 13 menus separados no topo da j
     cheia (o menu some e volta quando o mouse chega ao topo).
   - **Video**: interpolacao, scanlines e filtros de cor (Monochrome, Sepia, Green CRT, Amber CRT,
     CMY e RGB Raster).
-- **Som**: mudo e volume.
+- **Som**: mudo e volume (gravar trilha de som e' "em breve").
 - **Joystick**: status do gamepad em cada porta.
 - **ROMs**: banco de ROMs (menu completo, ver `doc/romdb-spec.md`).
 - **Ferramentas**: **Interface** (tema escuro/claro, tamanho da letra, moldura da tela), mais os
   placeholders existentes ("em breve").
-- **Ajuda**: teclado, versao.
+- **Ajuda**: **Teclado** (janela com o mapeamento e os atalhos) e a versao
+  (`fwMSX vX.Y.Z - Empresa: Jogo: Subtitulo`).
 
-Trocar o modelo, o cartucho ou o FM-PAC reinicia a maquina. A SRAM (`.sav`) e' gravada antes.
+Os itens marcados "(em breve)" (PAL, trapacas, dispositivos de entrada, bateria MIDI...) ainda
+nao fazem nada. Trocar o modelo, o cartucho ou o FM-PAC reinicia a maquina. A SRAM (`.sav`) e' gravada antes.
 
 ### Configuracao de slots (Maquina > Configuracao de slots...)
 
@@ -461,7 +596,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 ### O que funciona e o que nao funciona
 
-**Funciona (v1.30.0):**
+**Funciona:**
 
 - MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
 - MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
@@ -481,12 +616,9 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 - **Banco de ROMs** (`fwmsx --romdb` e menu **ROMs**): downloads, busca, edicao, identificacao,
   `verify` (SHA-1) e auto-mapper ao carregar `--cart` sem escolher um a dedo.
 - Configuracao de slots pela janela (secao acima).
-- **Console**: no Windows, `fwMSXc.exe --cli` (a versao de **console** do programa; o `fwMSX.exe` e' de janela e o terminal nao o espera) abre um console interativo (historico, TAB). `emu start --msx2p --cart jogo.rom` abre o emulador numa janela e conecta; depois `peek 0xC000 4`, `type "print 1\n"`, `state save x.sst`, `emu stop`... Tambem `newdisk`, `romdb`, `cas`, `fitadb`, `msxdisk`. `emu attach <porta>` conecta num emulador ja' aberto. Ver `doc/repl-spec.md`.
-- **Ponte de controle**: `fwMSX.exe --msx --ctl-port 0` abre um servidor em 127.0.0.1 (a porta vai para `fwmsx.port`). Outros programas mandam uma linha de texto por comando e recebem `ok ...` ou `err ...`: `peek 0xC000 4`, `poke`, `type "print 1\n"`, `cart jogo.rom`, `disk A d.dsk`, `state save x.sst`, `screenshot x.png`, `pause`, `step`, `quit`... Teste com `telnet 127.0.0.1 <porta>`. Ver `doc/control-spec.md`.
-- **Disco novo**: **Midia > Disco > Novo disco em branco em A:/B:** cria um disquete formatado (5 1/4 face simples 180 KB, 5 1/4 face dupla 360 KB, 3 1/2 face simples 360 KB, 3 1/2 face dupla 720 KB -- o MSX nao tem 1,44 MB) e ja' o insere. Pela linha de comando: `fwMSX.exe --disknew disco.dsk ds35` (`ss525`, `ds525`, `ss35`, `ds35`). Dentro do MSX, `CALL FORMAT` (Disk BASIC) formata o disco inserido. Ver `doc/diskfmt-spec.md`.
-- **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`; atalhos **F6** salva / **F7** carrega o slot atual (`fwmsx-estado-N.sst`), **F8/F9** trocam de slot (1 a 9); avisa na tela se a BIOS/cartucho mudou desde o save; **F12** captura a tela em PNG) -- grava/restaura
-  Z80, VDP, PSG, SCC, OPLL, PPI, controladora de disco e RAM/RAM de mapper, aplicado sobre a
-  maquina ja' rodando (nao recarrega BIOS/cartucho/disco/fita). Ver [savestate-spec.md](savestate-spec.md).
+- **Console** e **ponte de controle** (para outros programas): ver as secoes proprias, abaixo.
+- **Disco novo e FORMAT**: ver a secao propria, abaixo.
+- **Save-state** e **captura de tela**: ver a secao propria, abaixo.
 
 **Nao funciona ou nao foi verificado:**
 
@@ -502,20 +634,113 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
   verdade numa ferramenta batch). Ver [tape-spec.md](tape-spec.md), secoes 5, 9, 10 e 11.
 - **Banco de ROMs**: montar a maquina pelo banco (layout por nome) ainda nao existe; o JSON do
   Vampier nao e' usado (so' o SQL, que ja' cobre jogo/empresa/ano/SHA-1).
-- **Sem**: GameMaster2, cartucho MSX-MUSIC com BIOS propria, e `CALL VOICECOPY`. Save-state nao
-  valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo. **Confirmado
-  pelo usuario na janela em 2026-10-08**: salvar e carregar estado (**Arquivo > Salvar
-  estado.../Carregar estado...**) funcionam normalmente.
-- **Outras BIOS** (ex.: Gradiente Expert 1.1): o layout aceita, mas o hardware que a BIOS espera nao foi testado.
+- **Sem**: GameMaster2, cartucho MSX-MUSIC com BIOS propria, e `CALL VOICECOPY`. O save-state avisa
+  se a BIOS ou o cartucho mudaram desde o save, mas nao confere disco nem fita.
+- **Outras BIOS** (ex.: Gradiente Expert 1.1): sobem ate o BASIC. O texto da Expert com espacos entre
+  as letras ("G r a d i e n t e") esta' gravado na propria ROM -- nao e' defeito do emulador.
 
 Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.md](SPEC.md), secao 5.0.
 
 ### Documentacao por assunto
 
 [machine-spec.md](machine-spec.md) (maquina e janela), [slots-spec.md](slots-spec.md) (layout de slots),
+[control-spec.md](control-spec.md) (ponte de controle), [repl-spec.md](repl-spec.md) (console),
+[diskfmt-spec.md](diskfmt-spec.md) (disco novo e FORMAT), [savestate-spec.md](savestate-spec.md) (save-state),
+[tape-spec.md](tape-spec.md) (fita), [romdb-spec.md](romdb-spec.md) (banco de ROMs),
 [fm-spec.md](fm-spec.md) (FM, MSX-MUSIC e FM-PAC), [sram-spec.md](sram-spec.md) (SRAM e `.sav`),
 [audio-spec.md](audio-spec.md) (audio), [fdc-spec.md](fdc-spec.md) (disco), [msx2-spec.md](msx2-spec.md) e
 [msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
+
+## Disco novo em branco e FORMAT
+
+Cria um disquete **formatado** (boot sector com o bootstrap do MSX-DOS 1, duas FATs, diretorio raiz
+vazio e area de dados com E5h). So' os 4 formatos que o MSX tem -- **nao existe 3 1/2 de 1,44 MB**:
+
+| Chave | Disco | Lados | Capacidade |
+|---|---|---|---|
+| `ss525` | 5 1/4, densidade simples | 1 | 180 KB |
+| `ds525` | 5 1/4, densidade dupla | 2 | 360 KB |
+| `ss35` | 3 1/2, densidade dupla | 1 | 360 KB |
+| `ds35` | 3 1/2, densidade dupla | 2 | 720 KB |
+
+- **Janela**: **Midia > Disco > Novo disco em branco em A: / B:** -> escolhe o formato -> escolhe o
+  nome do arquivo; o disco ja' entra no drive.
+- **Linha de comando**: `fwMSXc.exe --disknew meu.dsk ds35`. No console: `newdisk meu.dsk ds35`.
+- **Dentro do MSX**: `CALL FORMAT` (Disk BASIC) formata o disco inserido -- "Drive name? (A,B)",
+  "Strike a key when ready", "Format complete". O Disk BASIC 1.0 do fMSX formata sempre em face simples
+  (360 KB). A controladora aceita o comando WRITE TRACK; a imagem precisa ter o tamanho do formato
+  (use um disco novo, ou um `.dsk` do tamanho desejado).
+
+Ver [diskfmt-spec.md](diskfmt-spec.md).
+
+## Save-state e captura de tela
+
+- **Estado**: **F6** salva, **F7** carrega, **F8/F9** trocam o slot (1 a 9; arquivos
+  `fwmsx-estado-N.sst` na pasta de trabalho). O menu **Arquivo** tambem salva/carrega um `.sst` em
+  qualquer lugar. Guarda Z80, VDP (inclusive a VRAM), PSG, SCC, OPLL, PPI, controladora de disco e
+  RAM/RAM de mapper, e e' aplicado **sobre a maquina que ja' esta' rodando** (nao recarrega
+  BIOS/cartucho/disco/fita: deixe a mesma midia inserida). O `.sst` guarda o CRC32 da BIOS e do
+  cartucho, e a janela **avisa** (em laranja) se voce carregar sobre outra midia. Disco e fita nao sao
+  conferidos. Ver [savestate-spec.md](savestate-spec.md).
+- **Captura de tela**: **F12** (ou **Arquivo > Capturar tela**) grava um PNG com a proporcao certa; no
+  console/ponte, `screenshot arquivo.png`; sem janela, `--shot arquivo.ppm`.
+
+## Console interativo (`--cli`)
+
+No Windows use o **`fwMSXc.exe`** (a versao de console); o `fwMSX.exe` e' de janela e o terminal nao o
+espera, o que quebra a digitacao. O console **nao embute o emulador**: ele inicia o emulador em outro
+processo e manda comandos a ele pela ponte de controle.
+
+```
+fwMSXc.exe --cli                  # abre o console
+fwMSXc.exe --cli --attach 7777    # ja' conecta num emulador aberto com --ctl-port 7777
+
+fwmsx> emu start --msx2p --cart jogo.rom msxdos2     # abre a janela do emulador e conecta
+fwmsx:51607> peek 0xC000 4
+fwmsx:51607> type "print 6*7\n"
+fwmsx:51607> state save meu.sst
+fwmsx:51607> emu stop
+fwmsx> newdisk novo.dsk ds35
+```
+
+| Comando | Faz |
+|---|---|
+| `emu start [opcoes do --msx]` | inicia o emulador (janela) e conecta |
+| `emu attach <porta>` / `emu detach` | conecta / desconecta de um emulador ja' aberto |
+| `emu stop` / `emu status` | encerra o emulador / mostra o estado |
+| `newdisk <arq> <ss525\|ds525\|ss35\|ds35>` | disquete novo e formatado (`--disknew`) |
+| `romdb`, `cas`, `fitadb`, `msxdisk` | as ferramentas de mesmo nome (`--romdb`, `--cas`, `--fitadb`, `--msxdisk`) |
+| `help`, `exit` / `quit` | ajuda / sai (o emulador continua aberto) |
+| *qualquer outro* | vai para o emulador conectado (comandos da tabela abaixo) |
+
+As respostas aparecem sem o `ok`; os erros como `erro: ...`. O prompt mostra a porta
+(`fwmsx:51607> `). Se o emulador for fechado, o proximo comando avisa e o console volta ao prompt
+sem emulador. Teclas de edicao: ver [No console](#no-console---cli). Ver [repl-spec.md](repl-spec.md).
+
+## Ponte de controle externa (`--ctl-port`)
+
+`fwMSX.exe --msx --ctl-port 0` (ou um numero de porta) abre um servidor **so' em 127.0.0.1**. A porta
+vai para `fwmsx.port` (na pasta do executavel e na de trabalho; apagado ao sair) e aparece no titulo
+da janela. Qualquer programa manda **uma linha de texto por comando** e recebe uma linha: `ok ...` ou
+`err ...`. Teste com `telnet 127.0.0.1 <porta>`. Argumentos com espaco vao entre aspas duplas (a
+barra invertida dos caminhos do Windows e' literal). Numeros: `123`, `0x7B`, `$7B`, `7Bh`.
+
+| Comando | Faz |
+|---|---|
+| `help`, `version`, `status` | ajuda, versao, `frame=N paused=0 screen=M pc=XXXX typing=0 cart=... diskA=... tape=...` |
+| `reset` | reinicia a maquina |
+| `pause`, `resume`, `step [n]` | pausa, retoma, avanca n quadros (so' pausado) |
+| `type <texto>` | digita no teclado do MSX; `\n` = Enter (use aspas) |
+| `peek <end> [n]`, `poke <end> <v>...` | le/grava memoria como o Z80 enxerga (ROM nao e' alterada) |
+| `regs` | registradores do Z80 |
+| `cart <arq\|-> [mapper]` | troca o cartucho (reinicia); `-` retira; mapper: auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2 |
+| `disk <A\|B> <arq>`, `eject <A\|B>` | insere / ejeta disco |
+| `tape <arq>`, `tape eject`, `tape rewind` | fita |
+| `state save <arq>`, `state load <arq>` | save-state (`ok aviso: ...` se a BIOS/cartucho mudou) |
+| `screenshot <arq>` | grava a tela (PNG) |
+| `quit` | fecha o emulador |
+
+Ver [control-spec.md](control-spec.md).
 
 ## Banco de ROMs (`--romdb`)
 
@@ -606,7 +831,7 @@ guarda essa informacao).
 
 **Limites**: so' cadastra fitas que voce ja' tem -- sem busca nem download de nenhuma fonte externa.
 
-### Compilar sem a GUI (sem GLFW/OpenGL)
+## Compilar sem a GUI (sem GLFW/OpenGL)
 
 A GUI (Dear ImGui + GLFW + OpenGL3) vem ligada por padrao. Pra compilar
 so a versao console (CLI/shell/TUI), sem essa dependencia:
@@ -620,6 +845,16 @@ cmake --build build
 compilar sem audio: `-DFWMSX_AUDIO=OFF` (o emulador roda mudo).
 
 ## Problemas comuns
+
+- **O console (`--cli`) troca letras, fica lento ou fecha sozinho (Windows)**: voce abriu o `fwMSX.exe`
+  (programa de janela): o terminal nao o espera e disputa o teclado com ele. Use o **`fwMSXc.exe --cli`**.
+- **Nao acho a porta da ponte de controle**: ela aparece no titulo da janela (`controle: porta N`) e
+  em `fwmsx.port` (pasta do executavel e pasta de trabalho). Use `--ctl-port 7777` para uma porta fixa.
+- **O build do Windows falha com "Permission denied" em `fwMSX.exe`**: ainda ha' uma janela do
+  emulador (ou do console) aberta com esse executavel. Feche-a e compile de novo.
+- **Uma tecla "ficou presa" no MSX**: **Maquina > Soltar todas as teclas**.
+- **`CALL FORMAT` diz erro de disco**: a imagem precisa existir e ter o tamanho do formato (crie com
+  `--disknew`); discos protegidos contra gravacao (`--disk-ro`) respondem "Write protect".
 
 - **`cmake` ou `gcc` errado sendo usado / erros estranhos de link**: quase
   sempre e outro toolchain (ex.: FPC, Visual Studio) na frente do UCRT64
