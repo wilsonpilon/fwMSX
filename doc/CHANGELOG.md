@@ -7,6 +7,20 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.31.0] - 2026-10-09 - "King's Valley: Disco novo em branco e FORMAT"
+
+### Adicionado
+- **Disco novo em branco e formatado** (`src/diskfmt/`, C + Assembly + C++, reescrita do
+  `CreateDisk()` do msxDiskUtil em PureBasic): **Midia > Disco > Novo disco em branco em A:/B:**
+  e `fwmsx --disknew <arq.dsk> <ss525|ds525|ss35|ds35>`. Os 4 formatos do MSX: 5 1/4 face simples
+  180 KB, 5 1/4 face dupla 360 KB, 3 1/2 face simples 360 KB, 3 1/2 face dupla 720 KB. **Nao** ha'
+  3 1/2 de 1,44 MB (o MSX nao suporta). `diskfmt_fill()` (Assembly dual-ABI) enche a area de dados
+  com E5h. Ver `doc/diskfmt-spec.md`.
+- **FORMAT / CALL FORMAT**: o WD2793 aceita WRITE TRACK (F0h/F4h); o fluxo de formatacao do
+  driver e' copiado para os setores que os campos de ID apontam. Testado com o DISK.ROM de
+  verdade (`machinetest`, secao 7d: `CALL FORMAT` -> "Format complete").
+- Testes: `diskfmttest` (CTest `diskfmt`, suite 19) e `machinetest` secao 7d.
+
 ## [1.30.1] - 2026-10-08 - "King's Valley: Atalhos de save-state, captura de tela e janela sem console"
 
 ### Adicionado

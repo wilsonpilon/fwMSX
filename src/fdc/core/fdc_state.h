@@ -87,7 +87,23 @@ typedef struct Fdc {
     int rd_length;           /* bytes ainda a ler */
     uint8_t *ptr;            /* posicao atual dentro da imagem */
     FdcDisk *disk[FDC_DRIVES];
+    /* WRITE TRACK (formatacao): ficam DEPOIS de `disk` de proposito -- o save-state grava o
+     * Fdc so' ate' `ptr`, e uma formatacao em andamento e' abortada ao carregar (como as
+     * transferencias de setor). */
+    int trk_left;            /* bytes do fluxo de formatacao ainda por receber (0 = ocioso) */
+    uint8_t trk_mode;        /* FDC_TRK_GAP, FDC_TRK_ID ou FDC_TRK_DATA */
+    uint8_t trk_id[4];       /* trilha, lado, setor, codigo de tamanho do ultimo campo ID */
+    uint8_t trk_id_ok;       /* ha' um campo ID valido esperando o campo de dados */
+    int trk_cnt;             /* bytes ja' recebidos do campo atual (ID ou dados) */
+    int trk_len;             /* tamanho do campo de dados atual */
+    uint8_t *trk_dst;        /* onde gravar o campo de dados (NULL = setor inexistente/diferente) */
 } Fdc;
+
+/* Comprimento de uma trilha MFM de 250 kbit/s a 300 rpm (bytes do fluxo do WRITE TRACK). */
+#define FDC_TRACK_BYTES 6250
+#define FDC_TRK_GAP 0
+#define FDC_TRK_ID 1
+#define FDC_TRK_DATA 2
 
 /* Zera a controladora (os ponteiros para as imagens sao mantidos). */
 void fdc_reset(Fdc *f);

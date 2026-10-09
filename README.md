@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.30.1 "King's Valley: Atalhos de save-state, captura de tela e janela sem console")
+## Estado atual (v1.31.0 "King's Valley: Disco novo em branco e FORMAT")
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -92,7 +92,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.26.0 Vampier com Platform/CRC32/tamanho; 1.27.0 efeitos de rastreio no meio do quadro;
 1.28.0 MSX-DOS 2 (cartucho generico); 1.29.0 save-state;
 1.30.0 menus reorganizados + mapper do cartucho na janela;
-**1.30.1 atalhos de save-state (9 slots), captura de tela (F12) e janela sem console**. Detalhes em
+1.30.1 atalhos de save-state (9 slots), captura de tela (F12) e janela sem console;
+**1.31.0 disco novo em branco/formatado (180/360/720 KB) e `CALL FORMAT`**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

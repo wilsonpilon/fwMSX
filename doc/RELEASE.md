@@ -13,6 +13,26 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.31.0 -- "King's Valley: Disco novo em branco e FORMAT" (2026-10-09)
+
+**Fase:** pedido do usuario: criar discos novos em branco e formatados para A: ou B: (180/360/720 KB,
+5 1/4 e 3 1/2, sem 1,44 MB), convertendo o msxDiskUtil (PureBasic) para C++ misturado com C e
+Assembly, e aceitar FORMAT / CALL FORMAT. **Descoberta antes de codar:** o `src/msxdisk` ja' era um
+port do msxDiskUtil (so' criava 720 KB); o usuario preferiu refazer do zero mesmo assim, entao
+nasceu `src/diskfmt/` em paralelo (as duas convivem).
+
+### O que foi feito
+- `src/diskfmt/`: nucleo em C (formatos, BPB, FAT12, boot, raiz), Assembly (`diskfmt_fill`, E5h),
+  C++ (arquivo + `fwmsx --disknew`). Menu **Midia > Disco > Novo disco em branco em A:/B:**.
+- WD2793: comando **WRITE TRACK** (`track_byte()` em `src/fdc/core/fdc_state.c`).
+- Achado: o DISK.ROM do fMSX (Disk BASIC 1.0) formata em **face simples** (F8h, 720 setores) e nao
+  pergunta o tipo; o teste `machinetest` 7d confirma o ciclo completo.
+
+### Validacao
+`ctest` 19/19 (Windows e Linux). Ver `doc/diskfmt-spec.md`.
+
+---
+
 ## v1.30.1 -- "King's Valley: Atalhos de save-state, captura de tela e janela sem console" (2026-10-08)
 
 **Fase:** primeira versao pela NOVA politica de numeracao (patch para feature pequena -- ver

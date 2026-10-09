@@ -17,6 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
 
+- **1.31.0 (em andamento, nao comitada)**: disco novo em branco/formatado (`src/diskfmt/`: C + Assembly
+  + C++, reescrita do msxDiskUtil PureBasic a pedido do usuario) + WRITE TRACK no WD2793 (`CALL
+  FORMAT` funciona com o DISK.ROM real). Menu Midia > Disco > Novo disco em branco; `fwmsx --disknew`.
+  Ver `doc/diskfmt-spec.md`.
 - **1.30.1 (publicada)**: nova politica de versao no `CLAUDE.md` (patch
   para features pequenas); atalhos de save-state **F6** (salvar) / **F7** (carregar) / **F8-F9** (slot 1-9,
   `fwmsx-estado-N.sst`) com aviso na tela, validacao de BIOS/cartucho por CRC32 no .sst (secao

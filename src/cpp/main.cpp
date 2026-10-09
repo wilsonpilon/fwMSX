@@ -33,6 +33,9 @@
 // "fwmsx --msx" liga a maquina MSX1 completa numa janela com teclado do
 // host (ou sem janela, com --frames/--shot) -- ver doc/machine-spec.md.
 //
+// "fwmsx --disknew <arq.dsk> <ss525|ds525|ss35|ds35>" cria um disquete em branco
+// e formatado -- ver doc/diskfmt-spec.md.
+//
 // "fwmsx --z80dbg" abre o REPL de depuracao do nucleo Z80 (RAM plana de
 // teste, sem maquina MSX ainda) -- ver doc/z80-core-spec.md, Fase 4.
 // "fwmsx --z80dbg --slots" liga o mapa de memoria de verdade (slots/
@@ -68,6 +71,7 @@
 #include "init_fortran.h"
 
 #include "msxdisk/entry.h"
+#include "diskfmt/cpp/cli.h"
 #include "machine/cli.h"
 #include "tape/cli/cas_tool.h"
 #include "tapedb/cli.h"
@@ -135,6 +139,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return z80::debug::RunZ80DebugShell(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--disknew") {
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return diskfmt::RunDiskNewCommand(tokens);
     }
     if (argc > 1 && std::string(argv[1]) == "--cas") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);

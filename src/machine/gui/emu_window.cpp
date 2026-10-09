@@ -17,6 +17,7 @@
 #include <miniz.h>
 #include "../../audio/audio_output.h"
 #include "../../common/version.h"
+#include "../../diskfmt/cpp/disk_creator.h"
 #include "../../msxdisk/gui/file_dialog.h"
 #include "../../msxdisk/gui/style.h"
 #include "video_filters.h"
@@ -832,7 +833,24 @@ int RunEmulatorWindow(const WindowOptions &options) {
                             ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
                         }
                         ImGui::Separator();
-                        ImGui::MenuItem("Novo disco... (em breve)", nullptr, false, false);
+                        // Disco novo em branco e FORMATADO (src/diskfmt), ja' inserido no drive.
+                        // So' os 4 formatos que o MSX tem -- sem 3 1/2 de 1,44 MB.
+                        for (int d = 0; d < 2; ++d) {
+                            const char letter = static_cast<char>('A' + d);
+                            const std::string menu_label = std::string("Novo disco em branco em ") + letter + ":";
+                            if (!ImGui::BeginMenu(menu_label.c_str())) continue;
+                            for (int k = 0; k < DISKFMT_COUNT; ++k) {
+                                const DiskFmtSpec *spec = diskfmt_spec(static_cast<DiskFmtId>(k));
+                                if (!ImGui::MenuItem(spec->name)) continue;
+                                const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Novo disco", "Disco MSX", "*.dsk", "dsk", "");
+                                if (!chosen) continue;
+                                std::string disk_error;
+                                if (!diskfmt::CreateBlankDisk(*chosen, spec, disk_error)) disk_message = disk_error;
+                                else if (!machine->InsertDisk(d, *chosen, disk_error)) disk_message = disk_error;
+                                else disk_message.clear();
+                            }
+                            ImGui::EndMenu();
+                        }
                         ImGui::TextDisabled("As gravacoes do MSX-DOS vao direto para o arquivo.");
                     }
                     ImGui::EndMenu();

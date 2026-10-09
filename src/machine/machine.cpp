@@ -831,11 +831,13 @@ bool Machine::LoadState(const std::string &path, std::string &error) {
             std::memcpy(&fdc_->fdc(), payload.data(), payload.size());
             fdc_->fdc().wr_length = 0; // transferencia em andamento no save: abortada, nunca com ptr invalido
             fdc_->fdc().rd_length = 0;
+            fdc_->fdc().trk_left = 0; // formatacao em andamento no save: abortada
         } else if (TagIs(tag, "FDCP")) {
             if (!port_fdc_ || payload.size() != offsetof(Fdc, ptr)) continue;
             std::memcpy(&port_fdc_->fdc(), payload.data(), payload.size());
             port_fdc_->fdc().wr_length = 0;
             port_fdc_->fdc().rd_length = 0;
+            port_fdc_->fdc().trk_left = 0;
         } else if (TagIs(tag, "TAPE")) {
             if (payload.size() != 12) continue;
             tape_->SetMode(static_cast<tape::TapeMode>(payload[0]));

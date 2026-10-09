@@ -32,6 +32,46 @@ static uint8_t *seek_sector(FdcDisk *d, int side, int track, int side_id, int tr
     }
 }
 
+/* Um byte do fluxo do WRITE TRACK. O fluxo e' o que o driver monta para formatar uma trilha:
+ * lacunas (4Eh/00h), F5h (A1h de sincronismo), FEh + 4 bytes de ID (trilha, lado, setor, tamanho)
+ * + F7h (CRC), FBh + dados + F7h. Como o .dsk e' cru (setores em sequencia), nao ha' o que
+ * "criar": cada campo de dados e' COPIADO para o setor que o ID aponta, e o resto (lacunas, CRC,
+ * sincronismo) e' descartado. E' isso que faz o FORMAT / CALL FORMAT do MSX funcionar. */
+static void track_byte(Fdc *f, FdcDisk *d, uint8_t v) {
+    switch (f->trk_mode) {
+    case FDC_TRK_ID:
+        f->trk_id[f->trk_cnt++] = v;
+        if (f->trk_cnt == 4) {
+            f->trk_id_ok = 1;
+            f->trk_mode = FDC_TRK_GAP;
+        }
+        break;
+    case FDC_TRK_DATA:
+        if (f->trk_dst && f->trk_cnt < f->trk_len) f->trk_dst[f->trk_cnt] = v;
+        if (++f->trk_cnt >= f->trk_len) {
+            if (f->trk_dst && d && d->write_cb)
+                d->write_cb(d->write_user, (size_t)(f->trk_dst - d->data), (size_t)f->trk_len);
+            f->trk_mode = FDC_TRK_GAP;
+            f->trk_id_ok = 0;
+        }
+        break;
+    default:
+        if (v == 0xFE) { /* marca de ID */
+            f->trk_mode = FDC_TRK_ID;
+            f->trk_cnt = 0;
+            f->trk_id_ok = 0;
+        } else if ((v == 0xFB || v == 0xF8) && f->trk_id_ok) { /* marca de dados */
+            f->trk_len = 128 << (f->trk_id[3] & 3);
+            f->trk_dst = (d && f->trk_len == d->sec_size)
+                             ? seek_sector(d, f->side, f->track[f->drive], f->trk_id[1], f->trk_id[0], f->trk_id[2])
+                             : NULL;
+            f->trk_mode = FDC_TRK_DATA;
+            f->trk_cnt = 0;
+        }
+        break;
+    }
+}
+
 void fdc_reset(Fdc *f) {
     int j;
     f->r[0] = 0x00;
@@ -48,6 +88,10 @@ void fdc_reset(Fdc *f) {
     f->wait = 0;
     f->cmd = 0xD0;
     f->ptr = NULL;
+    f->trk_left = 0;
+    f->trk_mode = FDC_TRK_GAP;
+    f->trk_id_ok = 0;
+    f->trk_dst = NULL;
     for (j = 0; j < FDC_DRIVES; ++j) f->track[j] = 0;
 }
 
@@ -94,6 +138,7 @@ uint8_t fdc_read(Fdc *f, uint8_t reg) {
         if (f->wait) {
             if (!--f->wait) {
                 f->rd_length = f->wr_length = 0;
+                f->trk_left = 0;
                 f->r[0] = (uint8_t)((f->r[0] & ~(FDC_F_DRQ | FDC_F_BUSY)) | FDC_F_LOSTDATA);
                 f->irq = FDC_IRQ;
             }
@@ -114,6 +159,7 @@ uint8_t fdc_write(Fdc *f, uint8_t reg, uint8_t v) {
         /* FORCE INTERRUPT */
         if ((v & 0xF0) == 0xD0) {
             f->rd_length = f->wr_length = 0;
+            f->trk_left = 0;
             f->cmd = 0xD0;
             if (f->r[0] & FDC_F_BUSY) f->r[0] &= (uint8_t)~FDC_F_BUSY;
             else f->r[0] = (uint8_t)((f->track[f->drive] ? 0 : FDC_F_TRACK0) | FDC_F_INDEX);
@@ -207,7 +253,27 @@ uint8_t fdc_write(Fdc *f, uint8_t reg, uint8_t v) {
             }
             break;
 
-        default: /* READ/WRITE TRACK: nao suportados (como no fMSX) */
+        case 0xF0: /* WRITE TRACK (formatacao de uma trilha) */
+            if (!d || !d->data) {
+                f->r[0] |= FDC_F_NOTREADY;
+                f->irq = FDC_IRQ;
+                break;
+            }
+            if (d->write_protected) {
+                f->r[0] |= 0x40; /* protegido contra gravacao */
+                f->irq = FDC_IRQ;
+                break;
+            }
+            f->trk_left = FDC_TRACK_BYTES;
+            f->trk_mode = FDC_TRK_GAP;
+            f->trk_id_ok = 0;
+            f->trk_dst = NULL;
+            f->r[0] |= (uint8_t)(FDC_F_BUSY | FDC_F_DRQ);
+            f->irq = FDC_DRQ;
+            f->wait = 255;
+            break;
+
+        default: /* READ TRACK: nao suportado (como no fMSX) */
             break;
         }
         break;
@@ -226,6 +292,17 @@ uint8_t fdc_write(Fdc *f, uint8_t reg, uint8_t v) {
         break;
 
     case FDC_REG_DATA:
+        if (f->trk_left) {
+            track_byte(f, d, v);
+            if (--f->trk_left) {
+                f->wait = 255;
+            } else {
+                f->r[0] &= (uint8_t) ~(FDC_F_DRQ | FDC_F_BUSY);
+                f->irq = FDC_IRQ;
+            }
+            f->r[reg] = v;
+            break;
+        }
         if (f->wr_length) {
             *f->ptr++ = v;
             if (--f->wr_length) {

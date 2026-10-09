@@ -42,6 +42,22 @@ bool VramHas(const machine::Machine &m, const std::string &text) {
     return false;
 }
 
+// Texto da tela (SCREEN 0, 40 colunas, tabela de nomes em 0000h) para diagnostico.
+std::string ScreenText(const machine::Machine &m) {
+    std::string out;
+    const uint8_t *v = m.vdp_state().vram;
+    for (int row = 0; row < 24; ++row) {
+        std::string line;
+        for (int col = 0; col < 40; ++col) {
+            const uint8_t c = v[row * 40 + col];
+            line += (c >= 32 && c < 127) ? static_cast<char>(c) : ' ';
+        }
+        while (!line.empty() && line.back() == ' ') line.pop_back();
+        if (!line.empty()) out += line + "\n";
+    }
+    return out;
+}
+
 void Frames(machine::Machine &m, int n) {
     for (int i = 0; i < n; ++i) m.RunFrame();
 }
@@ -527,6 +543,57 @@ int main() {
             } else {
                 check(false, "Create() so' com a interface de disco: " + error);
             }
+        }
+        // --- 7d. CALL FORMAT: o DISK.ROM de verdade formata uma imagem crua (WRITE TRACK) --------
+        {
+            const std::string blank = TempPath("fwmsx_format_blank.dsk");
+            {
+                std::ofstream f(blank, std::ios::binary | std::ios::trunc);
+                const std::vector<uint8_t> zeros(737280, 0x00);
+                f.write(reinterpret_cast<const char *>(zeros.data()), static_cast<std::streamsize>(zeros.size()));
+            }
+            MachineConfig fc = config;
+            fc.disk_a = blank;
+            std::unique_ptr<Machine> fm = Machine::Create(fc, error);
+            if (!fm) {
+                check(false, "CALL FORMAT: Create() com disco cru: " + error);
+            } else {
+                Frames(*fm, 500);
+                Type(*fm, "|");
+                Frames(*fm, 200);
+                Type(*fm, "call format|");
+                Frames(*fm, 120);
+                if (std::getenv("FWMSX_DUMP")) std::printf("--- apos CALL FORMAT ---\n%s\n", ScreenText(*fm).c_str());
+                Type(*fm, "a|");
+                Frames(*fm, 120);
+                if (std::getenv("FWMSX_DUMP")) std::printf("--- depois do drive ---\n%s\n", ScreenText(*fm).c_str());
+                Type(*fm, "x"); // "Strike a key when ready"
+                Frames(*fm, 3000);
+                if (std::getenv("FWMSX_DUMP")) std::printf("--- depois de formatar ---\n%s\n", ScreenText(*fm).c_str());
+                std::vector<uint8_t> after;
+                {
+                    std::ifstream in(blank, std::ios::binary);
+                    after.assign(std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>());
+                }
+                check(VramHas(*fm, "Format complete"), "CALL FORMAT: o DISK.ROM de verdade termina com 'Format complete'");
+                if (std::getenv("FWMSX_DUMP")) {
+                    size_t e5 = 0, zero = 0;
+                    for (uint8_t b : after) { e5 += (b == 0xE5); zero += (b == 0); }
+                    std::printf("arquivo: %zu bytes, E5=%zu, 00=%zu, setor0:", after.size(), e5, zero);
+                    for (int i = 0; i < 32 && i < static_cast<int>(after.size()); ++i) std::printf(" %02X", after[i]);
+                    std::printf("\n");
+                }
+                // O Disk BASIC 1.0 formata em face simples (F8h, 360 KB = 720 setores, 1 lado, 9 setores).
+                const bool bpb_ok = after.size() == 737280 && after[0x15] == 0xF8 && after[0x0B] == 0x00 && after[0x0C] == 0x02 &&
+                                    (after[0x13] | (after[0x14] << 8)) == 720 && after[0x1A] == 1;
+                check(bpb_ok, "CALL FORMAT: o DISK.ROM gravou o boot sector com o BPB de 360KB face simples (media F8h, 720 setores)");
+                check(after.size() == 737280 && after[512] == 0xF8 && after[513] == 0xFF && after[514] == 0xFF,
+                      "CALL FORMAT: a FAT foi gravada (F8 FF FF)");
+                size_t e5 = 0;
+                for (size_t i = 6 * 512; i < after.size(); ++i) e5 += (after[i] == 0xE5);
+                check(e5 > 150000, "CALL FORMAT: a area de dados das trilhas de face 0 foi preenchida com E5h pelo WRITE TRACK (" + std::to_string(e5) + " bytes)");
+            }
+            std::remove(blank.c_str());
         }
         const std::string dos_src = std::string(FWMSX_SOURCE_DIR) + "/msxdos1.dsk";
         const std::string dos_tmp = TempPath("fwmsx_machine_dos.dsk");

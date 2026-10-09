@@ -344,6 +344,15 @@ set(FDC_LIB_SOURCES
         src/fdc/cpp/disk_image.cpp
 )
 
+# --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
+# msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
+set(DISKFMT_LIB_SOURCES
+        src/diskfmt/core/diskfmt.c
+        src/diskfmt/asm/diskfmt_fill.asm
+        src/diskfmt/cpp/disk_creator.cpp
+        src/diskfmt/cpp/cli.cpp
+)
+
 # --- Fita (.CAS e .TSX/.TZX, carregamento rapido e normal) -- ver doc/tape-spec.md
 #
 # Cursor de pulsos e framing KCS em C (tape_pulse.c, kcs_codec.c, design
@@ -471,6 +480,14 @@ if (MINGW)
 endif ()
 
 add_test(NAME machine_frames COMMAND machinetest)
+
+# diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
+add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})
+set_target_properties(diskfmttest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/diskfmttest)
+if (MINGW)
+    target_link_options(diskfmttest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME diskfmt COMMAND diskfmttest)
 
 # fdctest: controladora de disquete WD2793 -- ver doc/fdc-spec.md.
 add_executable(fdctest tests/z80/fdc_test.cpp ${MEMMAP_LIB_SOURCES} ${FDC_LIB_SOURCES})
@@ -653,6 +670,7 @@ add_executable(fwMSX
         src/asm/init_asm.asm
         src/fortran/init_fortran.f90
         ${MSXDISK_LIB_SOURCES}
+        ${DISKFMT_LIB_SOURCES}
         ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}

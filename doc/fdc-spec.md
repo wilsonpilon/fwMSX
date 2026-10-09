@@ -4,7 +4,7 @@
 > `doc/audio-spec.md`: o que foi feito, as decisoes e o que falta, para
 > retomar do ponto exato onde parou.
 
-Estado: **Fase 1 concluida em 2026-10-02**. `fwmsx --msx --disk msxdos1.dsk`
+Estado: **Fase 1 concluida em 2026-10-02**. **WRITE TRACK (formatacao) desde a 1.31.0** -- ver `doc/diskfmt-spec.md`, secao 4. `fwmsx --msx --disk msxdos1.dsk`
 **boota o MSX-DOS 1.8** pela controladora, le e grava arquivos no `.dsk`.
 
 ## 1. Uso
