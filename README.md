@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.33.0 "Penguin Adventure", Konami)
+## Estado atual (v1.34.0 "Metal Gear", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -95,7 +95,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.30.1 atalhos de save-state (9 slots), captura de tela (F12) e janela sem console;
 1.31.0 disco novo em branco/formatado (180/360/720 KB) e `CALL FORMAT`;
 1.32.0 ponte de controle externa (comandos de texto por TCP em localhost);
-**1.33.0 console `fwMSXc.exe --cli` (inicia o emulador e manda comandos a ele)**. Detalhes em
+1.33.0 console `fwMSXc.exe --cli` (inicia o emulador e manda comandos a ele);
+**1.34.0 TUI `fwMSXc.exe --tui` (a maquina rodando dentro do terminal)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

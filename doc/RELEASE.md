@@ -17,6 +17,24 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.34.0 -- "Metal Gear" (Konami) (2026-10-09)
+
+**Fase:** a TUI do emulador, combinada com o usuario: a maquina dentro do terminal, as mesmas opcoes da
+janela e a mesma camada de comandos (Commander) da ponte de controle e do console.
+
+### O que foi feito
+- `src/tui/tui_app.{h,cpp}`: `Runner` (thread da maquina a 60 quadros/s, implementa `control::Host`) e a
+  interface FTXUI (tela do MSX, barra de status, menu, linha de comando).
+- Tela: texto de verdade em SCREEN 0/1/TEXT80; meios blocos reduzidos nos graficos.
+- Teclado: terminal nao envia "soltar"; cada tecla vale por 6 quadros, renovada pelo auto-repeat.
+- Captura PNG movida para `src/machine/screenshot.*` (janela e TUI).
+
+### Validacao
+`ctest` 21/21. TUI validada pela ponte de controle e pela saida renderizada; digitacao num terminal de
+verdade depende de teste do usuario. Ver `doc/tui-spec.md`.
+
+---
+
 ## v1.33.0 -- "Penguin Adventure" (Konami) (2026-10-09)
 
 **Fase:** pedido do usuario: um console tipo openMSX (`fwmsx --cli`) de onde se inicia o emulador e

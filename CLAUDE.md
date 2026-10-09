@@ -31,7 +31,7 @@ utilitario chamado **MSX-PoorManOS**.
      Soft, 5 = T&E Soft, 6 = Microsoft... (nao repetir).
    - **Y (minor)**: bloco maior de funcionalidade, publicado como release. Recebe o nome de um
      **JOGO NOVO de MSX**, nunca repetido. Zera o Z. Para o X = Konami, jogos reservados na
-     ordem: ~~Nemesis (1.32)~~, ~~Penguin Adventure (1.33)~~, Metal Gear (1.34), Vampire Killer
+     ordem: ~~Nemesis (1.32)~~, ~~Penguin Adventure (1.33)~~, ~~Metal Gear (1.34)~~, Vampire Killer
      (1.35), Salamander (1.36), Knightmare (1.37), Road Fighter (1.38), Yie Ar Kung-Fu (1.39),
      Antarctic Adventure (1.40), Hyper Sports (1.41)... (as versoes 1.19 a 1.31 ficaram todas
      como "King's Valley", do esquema antigo -- nao renomear).

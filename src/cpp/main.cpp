@@ -33,6 +33,9 @@
 // "fwmsx --msx" liga a maquina MSX1 completa numa janela com teclado do
 // host (ou sem janela, com --frames/--shot) -- ver doc/machine-spec.md.
 //
+// "fwmsx --tui [opcoes do --msx]" roda a maquina DENTRO do terminal (FTXUI): menu, linha de comando e
+// os mesmos atalhos da janela -- ver doc/tui-spec.md.
+//
 // "fwmsx --cli" abre o console (REPL): inicia o emulador (emu start), conecta num que ja' esta'
 // aberto (emu attach) e encaminha comandos pela ponte de controle -- ver doc/repl-spec.md.
 //
@@ -76,6 +79,7 @@
 #include "msxdisk/entry.h"
 #include "diskfmt/cpp/cli.h"
 #include "repl/repl.h"
+#include "tui/tui_app.h"
 #include "machine/cli.h"
 #include "tape/cli/cas_tool.h"
 #include "tapedb/cli.h"
@@ -162,6 +166,18 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--z80dbg") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return z80::debug::RunZ80DebugShell(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--tui") {
+#ifdef _WIN32
+        if (g_gui_on_terminal) {
+            std::cerr << "fwmsx --tui: use o fwMSXc.exe (versao de console) para a TUI:\n"
+                         "  fwMSXc.exe --tui" << std::endl;
+            return 2;
+        }
+#endif
+        std::vector<std::string> tokens(argv + 2, argv + argc);
+        tokens.insert(tokens.begin(), "--tui"); // o mesmo analisador do --msx entende as opcoes da maquina
+        return machine::RunMachineCommand(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--cli") {
 #ifdef _WIN32
