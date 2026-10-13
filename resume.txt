@@ -17,12 +17,12 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
 - 1.36.0: montador Z80 fwasm (fwmsx --asm, comando asm do console); C + Fortran + C++. Saidas .z80/.sym/.txt.
 - 1.36.1: texto de 40 colunas/TEXT80 comeca no pixel 9 (como o fMSX).
 - 1.36.2: R-Type inicia (MegaROM de bancos nao potencia de 2 completada para 2^n; AB no fim = comeca nas ultimas paginas).
-- tests/media/: 19 ROMs de jogo PROVISORIAS do acervo D:\msxrchive\download.file-hunter.com - 24-06-2026\Games (o usuario
+- tests/media/: 19 ROMs de jogo PROVISORIAS do acervo D:\msx\archive\download.file-hunter.com - 24-06-2026\Games (o usuario
   liberou o uso; saem na versao final, que nao leva midia nenhuma nem as ROMs do fMSX -- havera um baixador de ROMs do site
   do fMSX e um navegador do file-hunter, planejados mas nao iniciados). Comparacao com o fMSX: 26/26 casos.
 - Ferramenta nova (fora do ctest): tools/fmsxgo_ref/compare.py compara quadros do fwMSX com o fMSX ORIGINAL
   (resource/fMSX compilado sem janela por tools/fmsx_ref/Headless.c; --ref fmsxgo usa o port em Go como 2a opiniao).
-  7/7 casos a 100% pixel a pixel. Precisa de gcc (MSYS2 UCRT64) no PATH, Go so' para --ref fmsxgo, e das ROMs de jogo
+  26 casos aprovados (19 em tests/media + 7 com ROMs do fmsxgo). Precisa de gcc (MSYS2 UCRT64) no PATH, Go so' para --ref fmsxgo, e das ROMs de jogo
   de E:\fmsxgo\media (se nao existirem no outro PC, os casos de jogo sao ignorados). Ver doc/fmsx-compare-spec.md.
   Armadilha: o fMSX grava CMOS.ROM e le na partida seguinte (o compare.py apaga entre os casos).
 
