@@ -59,6 +59,29 @@ configuracao de tela deixada pela BIOS MSX2 do caso anterior e parecia ter um "b
 igualdade). Era artefato: o `compare.py` agora apaga o `CMOS.ROM` antes de cada execucao do fMSX, e o resultado
 do MSX2+ e' 100%.
 
+## Jogos provisorios do file-hunter (`tests/media/`, 2026-10-13)
+
+O usuario liberou o uso do acervo `D:\msx\archive\download.file-hunter.com - 24-06-2026\Games` para testes. 19 ROMs
+(2,7 MB; Konami, Compile, IREM) foram copiadas para `tests/media/` (`MSX1_<nome>.rom` roda como MSX1, `MSX2_<nome>.rom`
+como MSX2; cada uma vira um caso com pontos em 600/900/1200 quadros). **Provisorio**: na versao final nenhuma midia de
+terceiros fica no repositorio nem nos pacotes (nem as ROMs do fMSX): o fwMSX tera uma opcao para baixar as ROMs do
+site do fMSX e navegar/baixar arquivos de https://download.file-hunter.com. O `compare.py` da o mesmo `CARTS.SHA` aos
+dois emuladores (sem ele o fMSX adivinha o mapper e erra, como em R-Type e Aleste).
+
+Resultado (26 casos): 25 passam (>= 98% em min(forma, detalhe)); so' o R-Type falha (91,7%). A maioria bate a 100%
+pixel a pixel nos pontos em que as animacoes de abertura coincidem. Diferencas abaixo de 100% sao quase todas de **sincronia** (modo de atracao/fade em quadros
+diferentes: Pippols, Vampire Killer, Space Manbow, Metal Gear, Firebird, Yie Ar Kung-Fu, Gofer no Yabou).
+A metrica `forma` agora casa as cores UM-PARA-UM (antes uma tela quase uniforme, como o prompt do BASIC contra um jogo
+parado, passava a 98%: o R-Type enganou a primeira versao) e ha' a metrica `detalhe` (so' os pixels que nao sao o fundo).
+
+### Diferenca real achada (aberta): R-Type nao inicia
+
+R-Type (IREM, 384 KB, ASCII16 pelo `CARTS.SHA`) mostra o titulo no fMSX e fica no prompt do BASIC no fwMSX. O
+cabecalho `AB` dessa ROM esta' no FIM (banco 23, offset 0x5C000), nao no comeco. O fMSX trata isso em `ResetMSX`
+(`MSX.c`, "Some MegaROMs default to last pages on reset": se nao ha `AB` no inicio mas ha' nas duas ultimas paginas
+de 8 KB, mapeia `SetMegaROM(J, I-2, I-1, I-2, I-1)`); o fwMSX so' parte das primeiras paginas. Conserto previsto em
+`src/memmap` (estado inicial do mapper de MegaROM). Mesmo criterio vale para outras MegaROMs com `AB` no fim.
+
 ## O que falta
 
 - Caso de TEXT80 (precisa injetar teclas no `Headless.c`).

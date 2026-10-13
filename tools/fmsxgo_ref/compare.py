@@ -12,9 +12,11 @@ Uso (a partir da raiz do repo):
 
 Duas metricas por caso, na janela comum depois de alinhar os quadros (as bordas dos emuladores podem diferir):
   exato  = fracao de pixels identicos;
-  forma  = fracao de pixels iguais depois de mapear cada cor da referencia para a cor mais comum do fwMSX naquela
-           regiao (ignora paletas diferentes e olha so' a estrutura da imagem).
-Um caso passa se algum dos seus pontos (quadros) atingir --min na metrica "forma"; sai com codigo 1 se algum caso falhar.
+  forma  = fracao de pixels iguais depois de casar cada cor da referencia com UMA cor do fwMSX (correspondencia
+           um-para-um pelas maiores contagens): ignora paletas diferentes, mas duas cores fundidas contam como erro.
+  detalhe = a mesma coisa so' nos pixels que nao sao o fundo dominante de nenhuma das imagens (uma tela quase
+           uniforme nao engana a metrica: ex. prompt do BASIC contra um jogo parado).
+Um caso passa se algum dos seus pontos (quadros) atingir --min em min(forma, detalhe); sai com codigo 1 se algum falhar.
 """
 import argparse, collections, os, shutil, struct, subprocess, sys, tempfile, zlib
 
@@ -65,6 +67,21 @@ def build_fmsx(tmp):
     return exe
 
 
+# Jogos provisorios copiados do acervo do file-hunter para tests/media (sairao do repositorio na versao final):
+# "MSX1_<nome>.rom" roda como MSX1, "MSX2_<nome>.rom" como MSX2. Cada um vira um caso com 3 pontos de comparacao.
+MEDIA_DIR = os.path.join(ROOT, "tests", "media")
+
+
+def media_cases():
+    out = []
+    if os.path.isdir(MEDIA_DIR):
+        for f in sorted(os.listdir(MEDIA_DIR)):
+            if f.lower().endswith(".rom") and f[:5] in ("MSX1_", "MSX2_"):
+                name = "".join(ch if ch.isalnum() else "_" for ch in f[5:].split(" - ")[0]).strip("_").lower()
+                out.append((name, 0 if f.startswith("MSX1_") else 1, os.path.join(MEDIA_DIR, f), (600, 900, 1200)))
+    return out
+
+
 def read_ppm(path):
     with open(path, "rb") as f:
         data = f.read()
@@ -101,6 +118,21 @@ def overlap(ref, fw, dx, dy):
     return x0, y0, x1, y1
 
 
+def greedy_match(votes):
+    """Casa cada cor da referencia com UMA cor do fwMSX (e vice-versa), pelas maiores contagens: devolve
+    (soma dos pixels casados, {cor ref: cor fw})."""
+    pairs = sorted(((n, r, f) for r, cnt in votes.items() for f, n in cnt.items()), key=lambda t: -t[0])
+    used_r, used_f, total, mapping = set(), set(), 0, {}
+    for n, r, f in pairs:
+        if r in used_r or f in used_f:
+            continue
+        used_r.add(r)
+        used_f.add(f)
+        mapping[r] = f
+        total += n
+    return total, mapping
+
+
 def score_shape(ref, fw, dx, dy, step=1):
     x0, y0, x1, y1 = overlap(ref, fw, dx, dy)
     if x1 - x0 < 64 or y1 - y0 < 64:
@@ -115,8 +147,36 @@ def score_shape(ref, fw, dx, dy, step=1):
             votes[r][f] += 1
             exact += r == f
             n += 1
-    score_shape.last_map = {r: c.most_common(1)[0][0] for r, c in votes.items() if r != c.most_common(1)[0][0]}
-    return exact / n, sum(c.most_common(1)[0][1] for c in votes.values()) / n, n
+    matched, mapping = greedy_match(votes)
+    score_shape.last_map = {r: f for r, f in mapping.items() if r != f}
+    return exact / n, matched / n, n
+
+
+def score_detail(ref, fw, dx, dy):
+    """Como 'forma', mas so' nos pixels que nao sao o fundo dominante de NENHUMA das duas imagens: telas quase
+    uniformes (prompt do BASIC contra um jogo parado) nao enganam. Sem pixels de detalhe, vale 1.0."""
+    x0, y0, x1, y1 = overlap(ref, fw, dx, dy)
+    cnt_r, cnt_f, pairs = collections.Counter(), collections.Counter(), []
+    for y in range(y0, y1):
+        rr, fr = y * ref[0] * 3, (y - dy) * fw[0] * 3
+        for x in range(x0, x1):
+            r = ref[2][rr + x * 3:rr + x * 3 + 3]
+            f = fw[2][fr + (x - dx) * 3:fr + (x - dx) * 3 + 3]
+            cnt_r[r] += 1
+            cnt_f[f] += 1
+            pairs.append((r, f))
+    if not pairs:
+        return 0.0
+    dom_r, dom_f = cnt_r.most_common(1)[0][0], cnt_f.most_common(1)[0][0]
+    votes = collections.defaultdict(collections.Counter)
+    n = 0
+    for r, f in pairs:
+        if r != dom_r or f != dom_f:
+            votes[r][f] += 1
+            n += 1
+    if n < 50:
+        return 1.0
+    return greedy_match(votes)[0] / n
 
 
 def align(ref, fw):
@@ -181,7 +241,7 @@ def main():
             shutil.copy(os.path.join(ROOT, "dist", "roms", "bios", n), roms)
         if a.ref == "fmsx":
             # fMSX original: as sub-ROMs do proprio fMSX; sem DISK.ROM/FMPAC.ROM (o fwMSX sobe sem disco)
-            for n in ("MSX2EXT.ROM", "MSX2PEXT.ROM"):
+            for n in ("MSX2EXT.ROM", "MSX2PEXT.ROM", "CARTS.SHA"):  # CARTS.SHA: mesma fonte de mapper do fwMSX
                 shutil.copy(os.path.join(FMSX_SRC, n), roms)
             ref_exe = build_fmsx(tmp)
             if not ref_exe:
@@ -204,11 +264,11 @@ def main():
         if a.png:
             os.makedirs(a.png, exist_ok=True)
         bad = 0
-        print(f"{'caso@quadros':<22}{'exato':>8}{'forma':>8}")
-        for name, model, rom, points in CASES:
+        print(f"{'caso@quadros':<22}{'exato':>8}{'forma':>8}{'detalhe':>9}")
+        for name, model, rom, points in CASES + media_cases():
             if a.casos and name not in a.casos:
                 continue
-            cart = os.path.join(a.fmsxgo, "media", rom) if rom else None
+            cart = (rom if os.path.isabs(rom) else os.path.join(a.fmsxgo, "media", rom)) if rom else None
             if cart and not os.path.exists(cart):
                 print(f"{name:<18} (ROM nao encontrada, ignorado)")
                 continue
@@ -245,8 +305,9 @@ def main():
                     continue
                 ref, fw = halve(read_ppm(ref_ppm)), halve(read_ppm(fw_ppm))
                 exact, shape, off = metrics(ref, fw)
-                best = max(best, shape)
-                print(f"{label:<22}{exact * 100:7.2f}%{shape * 100:7.2f}%  desloc={off}")
+                detail = score_detail(ref, fw, *off)
+                best = max(best, min(shape, detail))
+                print(f"{label:<22}{exact * 100:7.2f}%{shape * 100:7.2f}%{detail * 100:8.2f}%  desloc={off}")
                 if a.cores:
                     score_shape(ref, fw, *off)
                     for r, f in sorted(score_shape.last_map.items()):
@@ -255,7 +316,7 @@ def main():
                     side_by_side(os.path.join(a.png, label + ".png"), ref, fw, off)
             ok = best >= a.min
             bad += not ok
-            print(f"  => {name}: {'OK' if ok else 'ABAIXO DO PISO'} (melhor 'forma' {best * 100:.2f}%)")
+            print(f"  => {name}: {'OK' if ok else 'ABAIXO DO PISO'} (melhor min(forma, detalhe) {best * 100:.2f}%)")
         return 1 if bad else 0
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

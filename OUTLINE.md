@@ -30,6 +30,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   das 4 linguagens ainda nao esta' cumprida aqui). Obs.: `resource/asMSX/` (fonte GPLv3 do original) e `resource/
   asmsx.exe` ficam so' como referencia/oraculo; o codigo do fwasm NAO deriva dele. Ver `doc/asm-spec.md`.
   Sem teste do usuario ainda: a TUI/terminal (1.34/1.35) num terminal de verdade.
+- **Jogos provisorios para teste (2026-10-13)**: o usuario liberou o acervo `D:\msx\archive\download.file-hunter.com -
+  24-06-2026\Games` (MSX1/MSX2/MSX2+, ROM/DSK/CAS) e 19 ROMs foram copiadas para `tests/media/` (provisorio; saem na
+  versao final, que nao leva midia nenhuma nem as ROMs do fMSX: havera uma opcao no fwMSX para baixar as ROMs do site do
+  fMSX e navegar/baixar de https://download.file-hunter.com). A comparacao (26 casos) achou **uma diferenca real: R-Type
+  nao inicia no fwMSX** (o `AB` esta' no fim da ROM; falta a regra "MegaROM default to last pages on reset" do fMSX em
+  `src/memmap`). Ver `doc/fmsx-compare-spec.md`.
 - **Comparacao com o fMSX original (ferramenta, 2026-10-13; entrou na 1.36.1)**:
   `tools/fmsxgo_ref/compare.py` roda a mesma ROM no **fMSX original** (resource/fMSX compilado sem janela por
   `tools/fmsx_ref/Headless.c`; o fmsxgo, ainda em desenvolvimento, fica como segunda opiniao) e no fwMSX e compara
