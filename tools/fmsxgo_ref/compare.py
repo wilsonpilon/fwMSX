@@ -217,6 +217,11 @@ def main():
                 label = f"{name}@{frames}"
                 ref_ppm, fw_ppm = os.path.join(tmp, label + "_ref.ppm"), os.path.join(tmp, label + "_fw.ppm")
                 if a.ref == "fmsx":
+                    # o fMSX grava CMOS.ROM ao sair e le na proxima partida: sem apagar, um caso herda a
+                    # configuracao da BIOS do caso anterior (ja' enganou uma medicao de boot do MSX2+)
+                    for d in (tmp, roms):
+                        if os.path.exists(os.path.join(d, "CMOS.ROM")):
+                            os.remove(os.path.join(d, "CMOS.ROM"))
                     cmd = [ref_exe, ["-msx1", "-msx2", "-msx2+"][model], "-home", roms, "-verbose", "0",
                            "-frames", str(frames), "-out", ref_ppm]
                     if cart:

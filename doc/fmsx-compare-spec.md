@@ -36,29 +36,33 @@ MSX2EXT/MSX2PEXT vem de `resource/fMSX`; as ROMs de jogo vem de `E:\fmsxgo\media
 |------|--------|-------|-------|------------|
 | bios_msx1 | MSX1 | 100% | 100% | deslocamento de 1 pixel (ver abaixo) |
 | bios_msx2 | MSX2 | 100% | 100% | idem |
-| bios_msx2p | MSX2+ | 86% | 87% | **DIFERENTE**: ver abaixo |
+| bios_msx2p | MSX2+ | 100% | 100% | |
 | kings_valley | MSX1 | 100% | 100% | |
 | f1_spirit | MSX1 | 100% | 100% | (99,88% aos 700 quadros) |
-| lode_runner_scc | MSX1 | 100% | 100% | deslocamento de 1 pixel |
+| lode_runner_scc | MSX1 | 100% | 100% | deslocamento de 1 pixel (tela de texto, SCREEN 0) |
 | firebird_msx2 | MSX2 | 100% (500 e 800 quadros) | 100% | aos 600 o fade esta' uma etapa adiante (sincronia) |
 
-A **paleta e' identica** (a diferenca de cor que o fmsxgo mostrava era do fmsxgo, nao do fwMSX).
+A **paleta e' identica** (a diferenca de cor que o fmsxgo mostrava era do fmsxgo, nao do fwMSX), e a BIOS dos tres
+modelos sobe ate o prompt exatamente igual ao fMSX.
 
-### Diferencas reais achadas (abertas)
+### Diferenca real achada (aberta)
 
-1. **Boot do MSX2+ diferente.** No fMSX a BIOS MSX2+ passa pela abertura em SCREEN 1 (quadros 61-111) e cai no
-   prompt em **SCREEN 0, 40 colunas, cores 15/4/4** (R#7 = F4) a partir do quadro 112. No fwMSX a primeira escrita
-   no VDP so' vem no quadro 140, a abertura nunca termina em SCREEN 0 e o prompt fica em **SCREEN 1** com borda
-   ciano (R#7 = 07), mesmo aos 1500 quadros. A CMOS padrao (`RTCInit`) e a leitura do RTC sao identicas as do
-   fMSX, e a `MSX2P.ROM` e' a mesma; a causa nao foi achada. Pista: o MSX2 tambem chega mais tarde no fwMSX
-   (primeira tela aos 81 quadros contra 66 no fMSX; fim da abertura aos 269 contra 223, ~1,2x), o que sugere
-   tempo de CPU por quadro ou espera de BIOS diferente; no MSX2+ o efeito e' muito maior.
-2. **Texto de SCREEN 0 deslocado 1 pixel a esquerda** no fwMSX (conteudo de x=28..212 contra 29..213 no fMSX,
-   borda e altura iguais). Aparece nos casos de texto (BIOS MSX1/MSX2, Lode Runner na tela de texto).
+**Texto de SCREEN 0 (40 colunas) deslocado 1 pixel a esquerda** no fwMSX: o conteudo vai de x=28 a 212 contra
+29 a 213 no fMSX (borda e altura iguais). Causa: o fMSX desenha o texto a partir do pixel 9 da area de 256
+(`RefreshLine0`: `P+=9`, 9 pixels de borda a esquerda e 7 a direita), e o fwMSX centraliza os 240 pixels (8 e 8;
+`Machine::RenderFrame`, `src/machine/machine.cpp`, calculo de `pad`). Nao foi alterado: o 8/8 e' o centrado, o 9/7
+e' o do fMSX; decidir se vale seguir o fMSX.
+
+### Licao do harness (armadilha)
+
+O fMSX **grava `CMOS.ROM` ao sair e le na proxima partida**. Sem apagar entre os casos, o MSX2+ herdou a
+configuracao de tela deixada pela BIOS MSX2 do caso anterior e parecia ter um "boot diferente" no fwMSX (86% de
+igualdade). Era artefato: o `compare.py` agora apaga o `CMOS.ROM` antes de cada execucao do fMSX, e o resultado
+do MSX2+ e' 100%.
 
 ## O que falta
 
-- Investigar as duas diferencas acima (a 1 e' a que mais importa: muda a tela de partida do MSX2+).
+- Decidir sobre o deslocamento de 1 pixel do texto de SCREEN 0 (seguir o 9/7 do fMSX ou manter o 8/8).
 - Jogos citados no OUTLINE como pendentes (Parodius, Mega Chase, F-1 Spirit 3D) nao estao no acervo local
   (`dist/roms` so' tem BIOS/sistema); entram na lista quando houver a ROM.
 - Casos com disco (MSX-DOS), teclas digitadas e SCREEN 5-8 de jogo (o `Headless.c` ainda nao injeta teclas).

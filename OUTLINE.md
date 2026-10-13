@@ -29,11 +29,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 - **Comparacao com o fMSX original (ferramenta, 2026-10-13, apos a 1.36.0; sem versao nova)**:
   `tools/fmsxgo_ref/compare.py` roda a mesma ROM no **fMSX original** (resource/fMSX compilado sem janela por
   `tools/fmsx_ref/Headless.c`; o fmsxgo, ainda em desenvolvimento, fica como segunda opiniao) e no fwMSX e compara
-  a tela. Resultado: jogos MSX1/MSX2 e BIOS MSX1/MSX2 **100% pixel a pixel** (paleta identica); 2 diferencas
-  reais abertas: (1) **boot do MSX2+** (fMSX: SCREEN 0 em 40 col aos 112 quadros; fwMSX: fica em SCREEN 1 com
-  borda ciano, primeira escrita no VDP so' aos 140 quadros); (2) texto de SCREEN 0 **1 pixel a esquerda** no
-  fwMSX. Proximos: achar a causa do item 1, casos com disco/teclas, audio, ROMs pendentes. Ver
-  `doc/fmsx-compare-spec.md`.
+  a tela. Resultado: **7/7 casos 100% pixel a pixel** (BIOS MSX1/MSX2/MSX2+, King's Valley, F1 Spirit, Lode Runner
+  SCC, Firebird; paleta identica). Unica diferenca real: texto de SCREEN 0 **1 pixel a esquerda** no fwMSX (o fMSX
+  comeca o texto no pixel 9, o fwMSX centraliza em 8) -- nao alterado, decidir. Armadilha do harness: o fMSX grava
+  `CMOS.ROM` e le na partida seguinte (o compare.py apaga entre casos). Proximos: casos com disco/teclas, audio,
+  ROMs pendentes (Parodius, Mega Chase). Ver `doc/fmsx-compare-spec.md`.
 - **1.35.0 "Vampire Killer" (publicada)**: TUI de menus (`fwMSXc.exe --tui`, `src/tui/`):
   os comandos do console em menus, controlando o emulador em janela pela ponte. Modelo testavel sem terminal
   (`tuitest`). Falta: teste do usuario num terminal de verdade; mnemonicos Alt+letra; depurador e montador
