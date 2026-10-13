@@ -39,6 +39,8 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
   Armadilha: o fMSX grava CMOS.ROM e le na partida seguinte (o compare.py apaga entre os casos).
 
 == Proximos passos sugeridos ==
+00. BUG achado: --keys e `type` digitam pontuacao no layout INTERNACIONAL, mas a BIOS do fMSX e' JAPONESA ( ( vira ), = vira ^ ). Ver OUTLINE.
+    Capturas do README: python tools/assets/make_screenshots.py (precisa de tests/media e do build).
 0. Conferir a olho, com o teclado real: o painel Z80 Debugger NA JANELA (F10) e o splash (nada disso foi visto em tela, so' testado por
    modelo/tempo). Depois: depurador sofisticado (doc/debug-spec.md secao 7), --cmd, baixador de ROMs do fMSX + navegador do file-hunter.
 1. Montador: formatos rom/megarom/basic/msxdos/cas/wav, select/subpage/search, debug/break e o modulo em ASSEMBLY (a regra

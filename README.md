@@ -24,9 +24,19 @@ name mangling, calling conventions, linkedicao).
 O **fwMSX e um emulador de MSX** (MSX1, MSX2 e MSX2+) escrito em C, C++, Assembly e Fortran. Sem
 argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX BASIC.
 
+<p align="center">
+  <img src="images/fwMSX-05.png" alt="Gradius (MSX1) rodando no fwMSX" width="49%">
+  <img src="images/fwMSX-06.png" alt="Vampire Killer (MSX2) rodando no fwMSX" width="49%"><br>
+  <em>Um jogo de MSX1 (Gradius / Nemesis) e um de MSX2 (Vampire Killer), como o emulador os desenha.</em>
+</p>
+
 **Funciona hoje:**
 
 - **Maquinas**: MSX1 (BASIC 1.0), MSX2 (BASIC 2.1) e MSX2+ (BASIC 3.0, V9958), ate o prompt do BASIC.
+
+  <p align="center"><img src="images/fwMSX-04.png" alt="MSX BASIC 3.0 (MSX2+) no fwMSX" width="60%"><br>
+  <em>MSX BASIC 3.0 (MSX2+) com a BIOS real, comandos digitados pela ponte de controle (<code>--keys</code>).</em></p>
+
 - **Disco**: MSX-DOS 1.8 a partir de `.dsk`, com leitura e gravacao (e protecao contra gravacao); tambem pela
   controladora por portas (estilo Microsol, driver DDX 3.0/CDX-2), formatos 180/360/720 KB.
 - **Fita** (`.cas`, `.tsx`/`.tzx`): leitura (modo rapido e normal, com som), gravacao (`CSAVE`/`BSAVE "CAS:"`,
@@ -54,6 +64,13 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   (desligaveis; ver [splash-spec.md](doc/splash-spec.md)); tema, letra e moldura ficam gravados em `fwmsx.cfg`.
 - **Depurador**: breakpoints, watchpoints, passo/passo sobre/ate', desmontagem, memoria, pilha e registradores, com avisos assincronos
   (`! break ...`); **Z80 Debugger visual** na janela (F10, com a fonte do proprio MSX) e na TUI. Ver [debug-spec.md](doc/debug-spec.md).
+
+  <p align="center">
+    <img src="images/fwMSX-07.png" alt="Z80 Debugger: desmontagem" width="48%">
+    <img src="images/fwMSX-08.png" alt="Z80 Debugger: dump de memoria com os caracteres do MSX" width="48%"><br>
+    <em>O Z80 Debugger parado num breakpoint do jogo (desmontagem: endereco, bytes e instrucao, registradores no topo) e o dump de memoria,
+    onde os bytes aparecem tambem como os caracteres do MSX (fonte tirada da BIOS).</em>
+  </p>
 - **Controle externo e interfaces**: ponte de controle por TCP (`--ctl-port`), console (`fwMSXc.exe --cli`), TUI de menus (`--tui`) e modo
   terminal (`--term`). Ver [control-spec.md](doc/control-spec.md).
 - **Montador Z80** (`fwmsx --asm`, compativel com o asMSX 1.2.0; saidas `.z80`/`.sym`/`.txt` -- formatos de ROM ainda por vir). Ver [asm-spec.md](doc/asm-spec.md).
