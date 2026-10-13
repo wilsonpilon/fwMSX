@@ -219,8 +219,14 @@ void memmap_attach_megarom(SlotState *state, int primary, int secondary, uint8_t
     // o banco 1 ali -- com todos os pedacos no banco 0 esse codigo executava
     // lixo, o que travava o Firebird). Os bancos sao mascarados pelo tamanho
     // da ROM (uma MegaROM de 16KB so' tem os bancos 0 e 1).
+    //
+    // Excecao do fMSX (ResetMSX, "Some MegaROMs default to last pages on reset"): MegaROM de mais de 4 bancos SEM o
+    // cabecalho "AB" no inicio mas COM ele nas duas ultimas paginas de 8KB (ex.: R-Type, 384KB, "AB" em 0x5C000)
+    // comeca com os bancos N-2, N-1, N-2, N-1. Sem isso o BIOS nao acha o cartucho e cai no BASIC.
+    const int last_pages = bank_count > 4 && !(data[0] == 'A' && data[1] == 'B') &&
+                           data[(bank_count - 2) << 13] == 'A' && data[((bank_count - 2) << 13) + 1] == 'B';
     for (int quarter = 0; quarter < 4; ++quarter) {
-        const size_t bank = (size_t)quarter & (bank_count - 1);
+        const size_t bank = last_pages ? (bank_count - 2 + ((size_t)quarter & 1)) : ((size_t)quarter & (bank_count - 1));
         state->rom_bank[primary][secondary][quarter] = (uint8_t)bank;
         const int chunk_idx = quarter + 2;
         state->chunk[primary][secondary][chunk_idx] = data + (bank << 13);

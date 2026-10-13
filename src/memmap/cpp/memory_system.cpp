@@ -177,7 +177,27 @@ bool MemorySystem::LoadRom(int primary, int secondary, const uint8_t *data, std:
         // MegaROM (Fase 3): so os 4 pedacos enderecaveis por bank-switch
         // (4000h-BFFFh) sao ocupados, com todos os quartos comecando no
         // banco 0 -- ver memmap_attach_megarom() em slot_state.c.
-        memmap_attach_megarom(&state_, primary, secondary, buffer.get(), size, mapper);
+        // MegaROM com numero de bancos que nao e' potencia de 2 (R-Type: 48 bancos de 8KB; Metal Gear: 20): o
+        // fMSX completa para 2^n bancos espelhando o fim (LoadCart: "Mirror ROM if it is smaller than 2^n pages")
+        // e usa 2^n-1 como mascara de banco. Sem isso a mascara (bancos-1) nao e' uma mascara de bits: o teste de
+        // SRAM do ASCII (valor & (mascara+1)) pegava bancos validos e o R-Type travava no INIT.
+        std::size_t padded = size;
+        const std::size_t pages = size / MEMMAP_CHUNK_SIZE;
+        if (pages > 4) {
+            std::size_t pow2 = 1;
+            while (pow2 < pages) pow2 <<= 1;
+            if (pow2 > pages) {
+                padded = pow2 * MEMMAP_CHUNK_SIZE;
+                auto big = std::make_unique<uint8_t[]>(padded);
+                std::copy(buffer.get(), buffer.get() + size, big.get());
+                // memcpy(P+Len*0x2000, P+(Len-Pages/2)*0x2000, (Pages-Len)*0x2000) do fMSX (Pages = 2^n)
+                std::copy(big.get() + (pages - pow2 / 2) * MEMMAP_CHUNK_SIZE,
+                          big.get() + (pages - pow2 / 2) * MEMMAP_CHUNK_SIZE + (pow2 - pages) * MEMMAP_CHUNK_SIZE,
+                          big.get() + pages * MEMMAP_CHUNK_SIZE);
+                buffer = std::move(big);
+            }
+        }
+        memmap_attach_megarom(&state_, primary, secondary, buffer.get(), padded, mapper);
     }
     owned_buffers_.push_back(std::move(buffer));
     rom_crc32_[primary][secondary] = crc;

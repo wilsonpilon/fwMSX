@@ -879,6 +879,54 @@ int main() {
         check(mem.Describe(3, 0).kind == MEMMAP_KIND_RAM, "RAM 16KB: a celula e' RAM");
     }
 
+    // --- 27. MegaROM com numero de bancos que nao e' potencia de 2, e "AB" no FIM -----
+    //      (R-Type: 384KB = 48 bancos de 8KB). O fMSX completa para 2^n bancos espelhando o
+    //      fim e, sem "AB" no inicio mas com "AB" nas duas ultimas paginas (da imagem ja'
+    //      completada), comeca nelas (ResetMSX: "default to last pages on reset").
+    {
+        const size_t kBank = 0x2000;
+        std::vector<uint8_t> rom(48 * kBank);                       // 48 bancos de 8KB
+        for (size_t b = 0; b < 48; ++b) std::fill(rom.begin() + b * kBank, rom.begin() + (b + 1) * kBank, static_cast<uint8_t>(b));
+        // "AB" na pagina 30 (que o fMSX espelha em 62): bancos 30,31 sao os que a maquina enxerga ao ligar.
+        rom[30 * kBank] = 'A';
+        rom[30 * kBank + 1] = 'B';
+
+        memmap::MemorySystem mem;
+        std::string error;
+        check(mem.LoadRom(1, 0, rom.data(), rom.size(), &error, MEMMAP_MAPPER_ASCII16),
+              "MegaROM 384KB: LoadRom aceita (" + error + ")");
+        memmap::SlotMemoryBus bus(mem);
+        SelectEverywhere(bus, 1, 0);
+        check(mem.PeekSlot(1, 0, 0x4000) == 'A' && mem.PeekSlot(1, 0, 0x4001) == 'B',
+              "MegaROM com AB so' no fim: 4000h mostra a pagina do AB (espelhada, como no fMSX)");
+        check(mem.PeekSlot(1, 0, 0x6000) == 31 && mem.PeekSlot(1, 0, 0x8000) == 'A' && mem.PeekSlot(1, 0, 0xA000) == 31,
+              "MegaROM com AB so' no fim: 6000h = pagina 31, 8000h = o AB de novo (pagina 30 espelhada), A000h = pagina 31");
+
+        // Banco 23 (16KB) tem valor 0x17: a mascara e' 63 (2^6-1), entao 0x17 NAO e' "selecionar SRAM" (bit 6).
+        bus.write(0x7000, 0x17);
+        check(mem.PeekSlot(1, 0, 0x8000) == 46 && mem.PeekSlot(1, 0, 0xA000) == 47,
+              "MegaROM 48 bancos: escrever 17h em 7000h mapeia o banco de 16KB 23 (paginas 46/47) em 8000h");
+        // Valor 20 (14h) = banco 20 (paginas 40/41), ainda dentro da ROM de verdade.
+        bus.write(0x6000, 0x14);
+        check(mem.PeekSlot(1, 0, 0x4000) == 40 && mem.PeekSlot(1, 0, 0x6000) == 41,
+              "MegaROM 48 bancos: 14h em 6000h mapeia as paginas 40/41 em 4000h");
+        // Banco 25 (16KB) = paginas 50/51: fora da ROM (48), cai no espelho (paginas 18/19 do fMSX: 48+2 -> 16+2).
+        bus.write(0x6000, 0x19);
+        check(mem.PeekSlot(1, 0, 0x4000) == 18 && mem.PeekSlot(1, 0, 0x6000) == 19,
+              "MegaROM 48 bancos: banco alem do fim cai no espelho do fMSX (paginas 18/19)");
+
+        // AB no INICIO: continua comecando nos bancos 0,1,2,3.
+        std::vector<uint8_t> rom2 = rom;
+        rom2[0] = 'A';
+        rom2[1] = 'B';
+        memmap::MemorySystem mem2;
+        check(mem2.LoadRom(1, 1, rom2.data(), rom2.size(), &error, MEMMAP_MAPPER_ASCII16), "MegaROM AB no inicio: LoadRom aceita");
+        memmap::SlotMemoryBus bus2(mem2);
+        SelectEverywhere(bus2, 1, 1);
+        check(mem2.PeekSlot(1, 1, 0x4001) == 'B' && mem2.PeekSlot(1, 1, 0x6000) == 1 && mem2.PeekSlot(1, 1, 0xA000) == 3,
+              "MegaROM com AB no inicio: continua nos bancos 0,1,2,3");
+    }
+
     if (g_failures == 0) {
         std::printf("\nTodos os testes passaram.\n");
         return 0;
