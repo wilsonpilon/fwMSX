@@ -17,6 +17,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-13)
 
+- **1.36.2 "Salamander: MegaROM com AB no fim" (publicada)**: R-Type (384KB, "AB" no fim) agora inicia: MegaROM de bancos
+  nao potencia de 2 e' completada para 2^n bancos (espelho do fim, mascara 2^n-1) e o endereco inicial segue a regra
+  do fMSX ("default to last pages on reset"). Comparacao com o fMSX original: **26/26 casos aprovados** (19 jogos
+  provisorios do file-hunter em `tests/media/`, que saem na versao final). Proximos: comparar mais jogos (MSX2/MSX2+,
+  disco, teclas), audio; depois o baixador de ROMs (site do fMSX) e navegador do file-hunter planejados pelo usuario.
 - **1.36.1 "Salamander: Texto de SCREEN 0 como no fMSX" (publicada)**: o texto de 40 colunas/TEXT80 passa a comecar
   no pixel 9 da area de 256, como o fMSX (antes saia 1 pixel a esquerda). Com isso a comparacao com o fMSX original
   (`tools/fmsxgo_ref/compare.py`, abaixo) fecha **7/7 casos a 100% pixel a pixel**. Proximos: casos com disco/teclas
@@ -33,8 +38,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 - **Jogos provisorios para teste (2026-10-13)**: o usuario liberou o acervo `D:\msx\archive\download.file-hunter.com -
   24-06-2026\Games` (MSX1/MSX2/MSX2+, ROM/DSK/CAS) e 19 ROMs foram copiadas para `tests/media/` (provisorio; saem na
   versao final, que nao leva midia nenhuma nem as ROMs do fMSX: havera uma opcao no fwMSX para baixar as ROMs do site do
-  fMSX e navegar/baixar de https://download.file-hunter.com). A comparacao (26 casos) achou **uma diferenca real: R-Type
-  nao inicia no fwMSX** (o `AB` esta' no fim da ROM; falta a regra "MegaROM default to last pages on reset" do fMSX em
+  fMSX e navegar/baixar de https://download.file-hunter.com). A comparacao (26 casos) achou **uma diferenca real: R-Type nao iniciava no fwMSX** (corrigida na 1.36.2) (o `AB` esta' no fim da ROM; falta a regra "MegaROM default to last pages on reset" do fMSX em
   `src/memmap`). Ver `doc/fmsx-compare-spec.md`.
 - **Comparacao com o fMSX original (ferramenta, 2026-10-13; entrou na 1.36.1)**:
   `tools/fmsxgo_ref/compare.py` roda a mesma ROM no **fMSX original** (resource/fMSX compilado sem janela por

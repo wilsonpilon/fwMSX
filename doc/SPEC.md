@@ -182,7 +182,7 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-13, v1.36.1 "Salamander: Texto de SCREEN 0 como no fMSX", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  **Estado atual (2026-10-13, v1.36.2 "Salamander: MegaROM com AB no fim", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
   (VDP com efeitos de rastreio por linha, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout
   de slots), com o banco de ROMs (`--romdb`, agora com `verify` e auto-mapper pelo SHA-1 ao
   carregar um cartucho), o subsistema de fita completo (leitura, gravacao, empacotador
@@ -192,15 +192,14 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.36.1)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.36.2)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.36.1, publicada em `main`):**
+**Funcionando (v1.36.2, publicada em `main`):**
 
-- [x] **Comparacao de quadros com o fMSX original** (ferramenta, `tools/fmsxgo_ref/` + `tools/fmsx_ref/`): 7 casos, todos 100% pixel a pixel (BIOS MSX1/MSX2/MSX2+ e 4 jogos) desde a 1.36.1, que corrigiu o texto de SCREEN 0 (1 px a esquerda). Ver `doc/fmsx-compare-spec.md`.
-- [x] **Montador Z80 `fwasm`** (1.36.0): `fwmsx --asm` / comando `asm` do console -- reescrita clean-room do asMSX 1.2.0 (C + Fortran + C++), saidas `.z80`/`.sym`/`.txt`, testado contra ~6.200 casos gerados pelo `asmsx.exe` real (`ctest` `asm`). Falta: ROM/MegaROM/BASIC/MSX-DOS/CAS/WAV, `select`/`subpage`/`search`, e o modulo Assembly. Ver `doc/asm-spec.md`.
+- [x] **Comparacao de quadros com o fMSX original** (ferramenta, `tools/fmsxgo_ref/` + `tools/fmsx_ref/`): 26 casos (BIOS MSX1/MSX2/MSX2+, 4 jogos do fmsxgo e 19 do file-hunter em `tests/media/`, provisorios), todos aprovados; achou o texto de SCREEN 0 (1.36.1) e o R-Type (1.36.2). Ver `doc/fmsx-compare-spec.md`.- [x] **Montador Z80 `fwasm`** (1.36.0): `fwmsx --asm` / comando `asm` do console -- reescrita clean-room do asMSX 1.2.0 (C + Fortran + C++), saidas `.z80`/`.sym`/`.txt`, testado contra ~6.200 casos gerados pelo `asmsx.exe` real (`ctest` `asm`). Falta: ROM/MegaROM/BASIC/MSX-DOS/CAS/WAV, `select`/`subpage`/`search`, e o modulo Assembly. Ver `doc/asm-spec.md`.
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`; MSX-DOS 2.30 de verdade via `--cart MSXDOS2.ROM msxdos2` (`dir`/`cd` em subdiretorios).
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8, Gen16 e MSX-DOS 2; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`); save-state (menu Arquivo, `.sst`).
 - [x] VDP completo: TMS9918 (SCREEN 0-3), V9938 (SCREEN 4-8, comandos, sprites) e V9958 (SCREEN 10-12, YJK/YAE, scroll); efeitos de rastreio no meio do quadro (paleta/scroll por linha, 1.27.0).

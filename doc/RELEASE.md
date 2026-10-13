@@ -17,6 +17,23 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.36.2 -- "Salamander: MegaROM com AB no fim" (Konami) (2026-10-13)
+
+**Fase:** primeiro bug de jogo achado pela comparacao com o fMSX usando o acervo do file-hunter: o R-Type nao iniciava.
+
+### O que foi feito
+- `MemorySystem::LoadRom` (`src/memmap/cpp/memory_system.cpp`): MegaROM com banco-de-8KB nao potencia de 2 e' completada
+  para 2^n bancos espelhando o fim (como `LoadCart` do fMSX) e a mascara de banco vira 2^n-1.
+- `memmap_attach_megarom` (`src/memmap/core/slot_state.c`): sem "AB" no inicio e com "AB" nas duas ultimas paginas,
+  comeca em N-2, N-1, N-2, N-1 (como `ResetMSX` do fMSX).
+- Teste novo (`memmaptest` secao 27) e 19 jogos provisorios em `tests/media/` na comparacao.
+
+### Validacao
+`ctest` 23/23 (Windows e Linux). Comparacao com o fMSX original: 26/26 casos aprovados (R-Type 100% pixel a pixel;
+Metal Gear passou a ser testado como MSX1, que e' o modelo dele).
+
+---
+
 ## v1.36.1 -- "Salamander: Texto de SCREEN 0 como no fMSX" (Konami) (2026-10-13)
 
 **Fase:** primeiro fruto da comparacao com o fMSX original: o texto de 40 colunas saia 1 pixel a esquerda.

@@ -99,7 +99,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.34.0 modo terminal `fwMSXc.exe --term` (a maquina rodando dentro do terminal);
 1.35.0 TUI de menus `fwMSXc.exe --tui` (menus que controlam o emulador em janela);
 1.36.0 montador Z80 `fwmsx --asm` (compativel com o asMSX 1.2.0);
-**1.36.1 texto de SCREEN 0 como no fMSX (comparacao pixel a pixel com o fMSX original)**. Detalhes em
+1.36.1 texto de SCREEN 0 como no fMSX (comparacao pixel a pixel com o fMSX original);
+**1.36.2 MegaROM com AB no fim (R-Type)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

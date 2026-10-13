@@ -68,19 +68,21 @@ terceiros fica no repositorio nem nos pacotes (nem as ROMs do fMSX): o fwMSX ter
 site do fMSX e navegar/baixar arquivos de https://download.file-hunter.com. O `compare.py` da o mesmo `CARTS.SHA` aos
 dois emuladores (sem ele o fMSX adivinha o mapper e erra, como em R-Type e Aleste).
 
-Resultado (26 casos): 25 passam (>= 98% em min(forma, detalhe)); so' o R-Type falha (91,7%). A maioria bate a 100%
+Resultado (26 casos): todos passam (>= 98% em min(forma, detalhe)) desde a 1.36.2 (o R-Type falhava a 91,7%). A maioria bate a 100%
 pixel a pixel nos pontos em que as animacoes de abertura coincidem. Diferencas abaixo de 100% sao quase todas de **sincronia** (modo de atracao/fade em quadros
 diferentes: Pippols, Vampire Killer, Space Manbow, Metal Gear, Firebird, Yie Ar Kung-Fu, Gofer no Yabou).
 A metrica `forma` agora casa as cores UM-PARA-UM (antes uma tela quase uniforme, como o prompt do BASIC contra um jogo
 parado, passava a 98%: o R-Type enganou a primeira versao) e ha' a metrica `detalhe` (so' os pixels que nao sao o fundo).
 
-### Diferenca real achada (aberta): R-Type nao inicia
+### Diferenca real achada e corrigida (1.36.2): R-Type nao iniciava
 
 R-Type (IREM, 384 KB, ASCII16 pelo `CARTS.SHA`) mostra o titulo no fMSX e fica no prompt do BASIC no fwMSX. O
 cabecalho `AB` dessa ROM esta' no FIM (banco 23, offset 0x5C000), nao no comeco. O fMSX trata isso em `ResetMSX`
 (`MSX.c`, "Some MegaROMs default to last pages on reset": se nao ha `AB` no inicio mas ha' nas duas ultimas paginas
-de 8 KB, mapeia `SetMegaROM(J, I-2, I-1, I-2, I-1)`); o fwMSX so' parte das primeiras paginas. Conserto previsto em
-`src/memmap` (estado inicial do mapper de MegaROM). Mesmo criterio vale para outras MegaROMs com `AB` no fim.
+de 8 KB, mapeia `SetMegaROM(J, I-2, I-1, I-2, I-1)`); o fwMSX so' parte das primeiras paginas. Corrigido na 1.36.2 em duas partes: (1) `LoadRom` completa MegaROM de bancos nao potencia de 2 para 2^n bancos
+(espelho do fim, como `LoadCart` do fMSX) com mascara 2^n-1 -- antes o teste de SRAM do ASCII16 (`valor & (mascara+1)`) pegava o
+banco 17h; (2) `memmap_attach_megarom` comeca nas ultimas paginas quando o `AB` so esta la. Resultado: R-Type 100% pixel a pixel;
+Metal Gear passou a ser testado como MSX1. 26/26 casos aprovados.
 
 ## O que falta
 

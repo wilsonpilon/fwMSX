@@ -7,6 +7,25 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.36.2] - 2026-10-13 - "Salamander: MegaROM com AB no fim" (Konami)
+
+### Corrigido
+- **R-Type (e MegaROMs parecidas) nao iniciava**: duas diferencas em relacao ao fMSX, achadas pela comparacao
+  quadro a quadro com jogos do acervo do file-hunter (`tests/media/`):
+  1. MegaROM cujo tamanho nao e' potencia de 2 (R-Type: 48 bancos de 8KB; Metal Gear: 20) passa a ser completada para
+     2^n bancos espelhando o fim, e a mascara de banco vira 2^n-1 (`MemorySystem::LoadRom`). Antes a mascara
+     (bancos-1) nao era uma mascara de bits e o teste de SRAM do ASCII16/ASCII8 (`valor & (mascara+1)`) pegava
+     bancos validos (17h em R-Type), travando o INIT.
+  2. MegaROM SEM "AB" no inicio mas COM "AB" nas duas ultimas paginas de 8KB (da imagem ja' completada) comeca
+     nessas paginas (`memmap_attach_megarom`; `ResetMSX` do fMSX: "Some MegaROMs default to last pages on reset").
+  R-Type agora bate 100% pixel a pixel com o fMSX.
+
+### Adicionado
+- `tests/media/`: 19 ROMs de jogo do acervo do usuario, **provisorias** (saem na versao final, que nao leva midia
+  nenhuma): a comparacao com o fMSX original passou a ter 26 casos, todos aprovados.
+- `compare.py`: correspondencia de cores um-para-um, metrica de detalhe, `CARTS.SHA` para os dois emuladores.
+- Teste `memmap_slots` secao 27 (MegaROM de 48 bancos: espelho, mascara, AB no fim e no inicio).
+
 ## [1.36.1] - 2026-10-13 - "Salamander: Texto de SCREEN 0 como no fMSX" (Konami)
 
 ### Corrigido
