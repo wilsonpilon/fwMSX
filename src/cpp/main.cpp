@@ -82,6 +82,7 @@
 #include "msxdisk/entry.h"
 #include "diskfmt/cpp/cli.h"
 #include "repl/repl.h"
+#include "asm/cpp/cli.h"
 #include "term/term_app.h"
 #include "tui/tui_app.h"
 #include "machine/cli.h"
@@ -206,6 +207,10 @@ int main(int argc, char* argv[]) {
 #endif
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return repl::RunReplCommand(tokens, argv[0]);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--asm") {
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return fwasm::RunAsmCommand(tokens);
     }
     if (argc > 1 && std::string(argv[1]) == "--disknew") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);

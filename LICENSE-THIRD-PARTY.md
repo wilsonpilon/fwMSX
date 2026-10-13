@@ -231,6 +231,14 @@ parte do binario compilado do fwMSX/msxdisk.
   estudo, fora do build. Nao ha codigo dele no fwMSX. Sera retirado do repositorio quando o fwMSX
   estiver pronto.
 
+## asMSX (`resource/asMSX/`, `resource/asmsx.md`, provisorio)
+
+- **asMSX** 1.2.0: licenca GPLv3 (`resource/asMSX/LICENSE.md`). O fonte e o manual ficam em `resource/` so' como
+  material de estudo, fora do build. O montador do fwMSX (`src/asm/`) foi escrito do zero a partir do manual e do
+  comportamento observado do `asmsx.exe` como caixa-preta (`tools/asmdiff/`, usado so' para gerar os casos de
+  teste); nao ha codigo do asMSX no fwMSX. O `asmsx.exe` (oraculo) nao e' versionado. Sera retirado do
+  repositorio quando o fwMSX estiver pronto.
+
 ## Politica de distribuicao de midias de terceiros (2026-10-06)
 
 Hoje o repositorio e' pessoal. ROMs, discos, fitas e outras midias de terceiros (fMSX,

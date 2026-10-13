@@ -8,6 +8,7 @@
 
 #include <replxx.hxx>
 
+#include "../asm/cpp/cli.h"
 #include "../diskfmt/cpp/cli.h"
 #include "../msxdisk/entry.h"
 #include "../romdb/cli.h"
@@ -59,6 +60,8 @@ std::unique_ptr<ReplSession> BuildSession(const std::string &argv0) {
     // As ferramentas que ja' existiam como opcoes soltas viram comandos do console.
     session->AddTool("newdisk", [](const std::vector<std::string> &a) { return diskfmt::RunDiskNewCommand(a); },
                      "cria um disquete novo e formatado: newdisk <arq.dsk> <ss525|ds525|ss35|ds35>");
+    session->AddTool("asm", [](const std::vector<std::string> &a) { return fwasm::RunAsmCommand(a); },
+                     "montador Z80 (o fwmsx --asm): asm [-z] [-s] [-vv] [-o <base>] <arq.asm>");
     session->AddTool("romdb", [argv0](const std::vector<std::string> &a) { return romdb::RunRomDbCommand(a, argv0); },
                      "banco de ROMs (o fwmsx --romdb)");
     session->AddTool("cas", [argv0](const std::vector<std::string> &a) { return tape::RunCasToolCommand(a, argv0); },

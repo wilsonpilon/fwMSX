@@ -1,7 +1,7 @@
 # OUTLINE -- fwMSX: onde paramos e o que fazer depois
 
 > Leia este arquivo primeiro. Ele foi escrito para retomar o trabalho em outro computador,
-> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-08**.
+> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-13**.
 
 ## 1. O que e' o projeto
 
@@ -15,9 +15,18 @@ chamado **MSX-PoorManOS**. Ainda sem data.
 Este repositorio e' **pessoal**. Midias de terceiros (ROMs, discos, fitas) podem ser versionadas por
 enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver `LICENSE-THIRD-PARTY.md`).
 
-## 2. Onde estamos (2026-10-08, dia 2 desta leva de sessoes)
+## 2. Onde estamos (2026-10-13)
 
-- **1.35.0 "Vampire Killer" (em andamento, nao comitada)**: TUI de menus (`fwMSXc.exe --tui`, `src/tui/`):
+- **1.36.0 "Salamander" (Konami; publicada nesta rodada)**: montador Z80 `fwasm` (`fwmsx --asm`, comando `asm` do
+  console; `src/asm/{core,cpp,fortran}`), reescrita clean-room do asMSX 1.2.0 em C + Fortran + C++. Saidas `.z80`/
+  `.sym`/`.txt`; ~6.200 casos de teste gerados pelo `asmsx.exe` real (`tools/asmdiff/`, golden em `tests/asm/golden/`),
+  `ctest` 23/23 em Windows e Linux. Nesta rodada fecharam os 7 casos que faltavam (`.filename`, `.start`, `org -1`,
+  `im` com rotulo adiante). **Falta (proximas patches 1.36.x)**: formatos `rom`/`megarom`/`basic`/`msxdos`/`cas`/
+  `wav`, `select`/`subpage`/`search`, `debug`/`break`, e o modulo **Assembly** (sintese de pulsos/WAV/CAS -- a regra
+  das 4 linguagens ainda nao esta' cumprida aqui). Obs.: `resource/asMSX/` (fonte GPLv3 do original) e `resource/
+  asmsx.exe` ficam so' como referencia/oraculo; o codigo do fwasm NAO deriva dele. Ver `doc/asm-spec.md`.
+  Sem teste do usuario ainda: a TUI/terminal (1.34/1.35) num terminal de verdade.
+- **1.35.0 "Vampire Killer" (publicada)**: TUI de menus (`fwMSXc.exe --tui`, `src/tui/`):
   os comandos do console em menus, controlando o emulador em janela pela ponte. Modelo testavel sem terminal
   (`tuitest`). Falta: teste do usuario num terminal de verdade; mnemonicos Alt+letra; depurador e montador
   (PaleoBASIC/msxIDE) como menu/comandos; eventos assincronos. Ver `doc/tui-spec.md`.

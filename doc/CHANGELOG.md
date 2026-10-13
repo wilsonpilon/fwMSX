@@ -7,6 +7,23 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.36.0] - 2026-10-13 - "Salamander" (Konami)
+
+### Adicionado
+- **Montador Z80 `fwasm`** (`fwmsx --asm [-z] [-s] [-vv] [-o <caminho>] <arquivo.asm>`; no console, o comando `asm`):
+  reescrita clean-room do asMSX 1.2.0 a partir do manual, em C (`src/asm/core/z80_enc.*`, codificador das
+  instrucoes), Fortran (`src/asm/fortran/asm_math.f90`, funcoes das expressoes) e C++ (`src/asm/cpp/`: lexer,
+  expressoes, pre-processador com `.include`/macros/`REPT`, montador em varias passadas, CLI). Saidas `.z80`,
+  `.sym` e `.txt`; diretivas `org`, `page`, `phase`/`dephase`, `zilog`, `bios`/`biosvars`, `db`/`dw`/`ds`/`byte`/
+  `word`, `incbin`, `print*`, `filename` e `start`. Ver `doc/asm-spec.md`.
+- Teste `asmtest` (CTest `asm`, suite 23): ~6.200 casos comparados com saidas geradas pelo `asmsx.exe` de
+  verdade (`tools/asmdiff/`, o oraculo, so' como caixa-preta; o fonte do asMSX ficou em `resource/asMSX/` apenas
+  como referencia de estudo).
+
+### Falta (proximas patches do montador)
+- Formatos de saida `rom`/`megarom`/`basic`/`msxdos`/`cas`/`wav`, `select`/`subpage`/`search`, `debug`/`break`,
+  e o modulo em Assembly (sintese de pulsos/WAV/CAS).
+
 ## [1.35.0] - 2026-10-09 - "Vampire Killer" (Konami)
 
 ### Adicionado

@@ -776,6 +776,26 @@ barra invertida dos caminhos do Windows e' literal). Numeros: `123`, `0x7B`, `$7
 
 Ver [control-spec.md](control-spec.md).
 
+## Montador Z80 (`fwmsx --asm`)
+
+O fwMSX inclui um montador compativel com o asMSX 1.2.0 (reescrito do zero a partir do manual, em C, C++ e
+Fortran). Uso:
+
+    fwmsx --asm [-z] [-s] [-vv] [-o <caminho>] <arquivo.asm>
+
+| Opcao | Efeito |
+|-------|--------|
+| `-z` | sintaxe Zilog padrao, sem precisar da diretiva `.zilog` |
+| `-s` | modo silencioso (sem mensagens de progresso) |
+| `-vv` | mensagens detalhadas |
+| `-o base` | nome-base (sem extensao) das saidas; `-o pasta/` grava na pasta com o nome do fonte |
+| `-r` | aceito e ignorado (obsoleto: includes sao relativos ao fonte) |
+
+Os arquivos de saida (`.z80`, `.sym`, `.txt`, e os de formato conforme as diretivas do fonte) ficam ao lado do
+fonte, ou onde o `-o` indicar. O codigo de saida e' o do asMSX (0 = ok; erros e avisos vao para o stderr no
+formato `arquivo.asm, line N: mensagem`). No console (`fwMSXc.exe --cli`) o mesmo montador e' o comando `asm`.
+Detalhes e estado do suporte as diretivas: `doc/asm-spec.md`.
+
 ## Banco de ROMs (`--romdb`)
 
 O banco guarda as ROMs que voce tem no disco (pelo SHA-1), com nome, tipo de hardware, mapper e

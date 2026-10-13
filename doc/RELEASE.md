@@ -17,6 +17,30 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.36.0 -- "Salamander" (Konami) (2026-10-13)
+
+**Fase:** primeiro bloco do montador Z80 integrado (`fwmsx --asm`), reescrita clean-room do asMSX 1.2.0 -- passo
+rumo ao MSX-PoorManOS. Esta versao entrega o nucleo (instrucoes, expressoes, pre-processador, saidas `.z80`/`.sym`/
+`.txt`); os formatos de ROM/BASIC/fita ficam para as proximas patches.
+
+### O que foi feito
+- C: `src/asm/core/z80_enc.*` (todas as instrucoes Z80, inclusive as nao documentadas IXH/IXL); Fortran:
+  `asm_math.f90`; C++: lexer, expressoes (precedencia e erros do asMSX), pre-processador (`include`, macros,
+  repeticao), montador de ate 4 passadas + passada final, CLI. Assembly (NASM): ainda previsto (sintese de pulsos).
+- `fwmsx --asm`, comando `asm` do console, secao no MANUAL.
+- Oraculo de teste: `tools/asmdiff/` (geradores Python) roda o `asmsx.exe` real e grava os casos em
+  `tests/asm/golden/*.golden` (expr, instr, misc, lang); `asmtest` repete todos.
+- Fechamento da rodada (7 casos que faltavam): `.filename` (as saidas passam a `<nome>.<ext>`), `.start`
+  (valida a expressao; sem efeito ate existir ROM/BASIC), `org -1` (o asMSX grava um byte antes do endereco 0 e a
+  saida o inclui; abaixo disso e' lixo de heap la' -- aqui continua "memory overflow") e `im <rotulo adiante>`
+  (um valor ruim de simbolo ainda nao definido nao aborta mais a passada de simbolos).
+
+### Validacao
+`ctest` 23/23 (Windows e Linux). `asmtest`: todos os casos dos 4 arquivos golden (5 ignorados por dependerem de
+opcoes de CLI que o teste nao simula).
+
+---
+
 ## v1.35.0 -- "Vampire Killer" (Konami) (2026-10-09)
 
 **Fase:** a TUI de menus que o usuario tinha em mente desde o inicio: colocar em menus os comandos da CLI

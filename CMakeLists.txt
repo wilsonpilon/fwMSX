@@ -368,6 +368,17 @@ set(REPL_CORE_SOURCES
 )
 set(REPL_LIB_SOURCES ${REPL_CORE_SOURCES} src/repl/repl.cpp)
 
+# --- Montador fwasm (reimplementacao do asMSX: C + C++ + Fortran [+ Assembly]) -- ver doc/asm-spec.md.
+set(FWASM_LIB_SOURCES
+        src/asm/core/z80_enc.c
+        src/asm/fortran/asm_math.f90
+        src/asm/cpp/lexer.cpp
+        src/asm/cpp/expr.cpp
+        src/asm/cpp/tables.cpp
+        src/asm/cpp/preproc.cpp
+        src/asm/cpp/assembler.cpp
+)
+
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
 set(DISKFMT_LIB_SOURCES
@@ -504,6 +515,16 @@ if (MINGW)
 endif ()
 
 add_test(NAME machine_frames COMMAND machinetest)
+
+# asmtest: o montador contra os golden gerados pelo asMSX de verdade (tools/asmdiff).
+add_executable(asmtest tests/asm/asm_test.cpp ${FWASM_LIB_SOURCES})
+target_include_directories(asmtest PRIVATE src/asm)
+target_compile_definitions(asmtest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(asmtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/asmtest)
+if (MINGW)
+    target_link_options(asmtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME asm COMMAND asmtest)
 
 # tuitest: o modelo da TUI de menus (menus, assistentes, navegador de arquivos, linha de comando).
 add_executable(tuitest tests/z80/tui_test.cpp ${TUI_MODEL_SOURCES})
@@ -731,6 +752,7 @@ add_executable(fwMSX
         ${DISKFMT_LIB_SOURCES}
         ${CONTROL_LIB_SOURCES}
         ${REPL_LIB_SOURCES}
+        ${FWASM_LIB_SOURCES} src/asm/cpp/cli.cpp
         ${TERM_LIB_SOURCES}
         ${TUI_LIB_SOURCES}
         ${ROMDB_LIB_SOURCES}

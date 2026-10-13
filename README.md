@@ -97,7 +97,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.32.0 ponte de controle externa (comandos de texto por TCP em localhost);
 1.33.0 console `fwMSXc.exe --cli` (inicia o emulador e manda comandos a ele);
 1.34.0 modo terminal `fwMSXc.exe --term` (a maquina rodando dentro do terminal);
-**1.35.0 TUI de menus `fwMSXc.exe --tui` (menus que controlam o emulador em janela)**. Detalhes em
+1.35.0 TUI de menus `fwMSXc.exe --tui` (menus que controlam o emulador em janela);
+**1.36.0 montador Z80 `fwmsx --asm` (compativel com o asMSX 1.2.0)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
