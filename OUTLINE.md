@@ -17,6 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-13)
 
+- **1.37.1 "Knightmare: Splash e icone" (publicada)**: splash de abertura (3 s, `--splash`/`--no-splash`, menu Interface; terminal so'
+  com `--splash`; `--cmd` nunca; `emu start` sem splash), icone do aplicativo (recurso do Windows + janela do Linux + `.desktop`) e
+  `fwmsx.cfg` (tema/letra/moldura/splash gravados). MANUAL com o depurador bem explicado. `ctest` 24/24. Falta: `--cmd` (a politica
+  ja' o trata), conferir o desenho do splash num terminal de verdade, depurador sofisticado (ver 1.37.0 abaixo). Ver `doc/splash-spec.md`.
 - **1.37.0 "Knightmare" (publicada)**: **depurador basico + eventos assincronos**. Breakpoints/watchpoints, `stepi`/`next`/
   `until`/`go`/`stop`/`jump`, `dis`/`mem`/`stack`/`reg`/`slots`; na ponte de controle, no console (`[evento]`, `wait`), no menu
   Depurador da TUI e no modo terminal; parametros `--break`/`--watch`/`--debug`; eventos `! break ...` por conexao

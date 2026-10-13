@@ -101,7 +101,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.36.0 montador Z80 `fwmsx --asm` (compativel com o asMSX 1.2.0);
 1.36.1 texto de SCREEN 0 como no fMSX (comparacao pixel a pixel com o fMSX original);
 1.36.2 MegaROM com AB no fim (R-Type);
-**1.37.0 depurador basico + eventos assincronos (console, TUI, ponte, parametros)**. Detalhes em
+1.37.0 depurador basico + eventos assincronos (console, TUI, ponte, parametros);
+**1.37.1 splash de abertura, icone do aplicativo e configuracoes salvas**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

@@ -186,12 +186,37 @@ int main() {
         if (out.size() == 4) {
             check(Contains(out[0], "emulador iniciado e conectado"), "emu start: " + out[0]);
             check(spawned.size() >= 6 && spawned[0] == "C:/x/fwMSX.exe" && spawned[1] == "--msx" && spawned[2] == "--ctl-port" &&
-                      spawned[4] == "--msx2p" && spawned[5] == "--cart" && spawned.back() == "msxdos2",
-                  "emu start: --msx --ctl-port <porta> + as opcoes do usuario");
+                      spawned[4] == "--msx2p" && spawned[5] == "--cart" && spawned[spawned.size() - 2] == "msxdos2" &&
+                      spawned.back() == "--no-splash",
+                  "emu start: --msx --ctl-port <porta> + as opcoes do usuario + --no-splash (a janela aberta pelo console nao mostra o splash)");
             check(Contains(out[1], "ja' ha' um emulador conectado"), "emu start com um emulador ja' conectado = erro");
             check(Contains(out[2], "fwMSX 1."), "depois do emu start os comandos chegam ao emulador");
         }
         second.Stop();
+
+        {
+            // Quem pede --splash o recebe: o console nao acrescenta --no-splash.
+            control::Server third;
+            std::vector<std::string> spawned2;
+            repl::ReplSession s2("C:/x/fwMSX.exe");
+            s2.SetSpawner([&](const std::string &exe, const std::vector<std::string> &args, std::string &err) {
+                spawned2 = args;
+                spawned2.insert(spawned2.begin(), exe);
+                for (size_t i = 0; i + 1 < args.size(); ++i) {
+                    if (args[i] == "--ctl-port") return third.Start(std::atoi(args[i + 1].c_str()), err);
+                }
+                err = "sem --ctl-port";
+                return false;
+            });
+            RunScript(s2, {"emu start --splash", "emu detach"}, {&third}, cmd);
+            bool has_splash = false, has_no_splash = false;
+            for (const std::string &a : spawned2) {
+                has_splash = has_splash || a == "--splash";
+                has_no_splash = has_no_splash || a == "--no-splash";
+            }
+            check(has_splash && !has_no_splash, "emu start --splash: o console nao acrescenta --no-splash");
+            third.Stop();
+        }
 
         repl::ReplSession fail("x");
         fail.SetSpawner([](const std::string &, const std::vector<std::string> &, std::string &err) {

@@ -205,4 +205,6 @@ imgui.ini
 
 # Arquivos de SRAM (.sav) gravados ao lado das ROMs (ex.: resource/fMSX/FMPAC.sav)
 *.sav
-
+/dist/splashtest.exe
+/dist/splashtest
+/dist/fwmsx.cfg

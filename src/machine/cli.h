@@ -36,6 +36,8 @@ namespace machine {
 //                           janela e fecha sozinha apos n quadros
 //   --shot <arq.ppm>        sem janela: roda --frames quadros e salva a tela
 //   --wait <n>              quadros a esperar depois das teclas (padrao 60)
+//   --splash / --no-splash  mostra / nao mostra a imagem de abertura (so' a janela mostra por padrao, se a
+//                           configuracao deixar; o modo terminal so' com --splash; ver doc/splash-spec.md)
 //   --break <end>           breakpoint de execucao (0x4010, $4010 ou 4010h); pode repetir. A maquina para
 //                           ANTES da instrucao nesse PC (ver doc/debug-spec.md)
 //   --watch <end>[:tam[:r|w|rw]]  watchpoint de memoria (padrao: escrita, 1 byte); pode repetir

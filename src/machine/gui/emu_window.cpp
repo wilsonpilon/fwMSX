@@ -17,7 +17,13 @@
 #include <GLFW/glfw3.h>
 #include "../screenshot.h"
 #include "../../audio/audio_output.h"
+#include "../../common/settings.h"
 #include "../../common/version.h"
+#include "../../splash/png_reader.h"
+#include "../../splash/splash.h"
+#ifndef _WIN32
+#include "../../splash/app_icon_data.h" // no Windows o icone vem do recurso fwmsx.rc (GLFW_ICON)
+#endif
 #include "../../control/command.h"
 #include "../../control/server.h"
 #include "../../diskfmt/cpp/disk_creator.h"
@@ -276,6 +282,54 @@ std::string BiosFor(const std::string &current_bios, Model model) {
 
 } // namespace
 
+// Mostra a imagem de abertura ate' `seconds` (ou ate' uma tecla/clique, ou fechar a janela): ocupa a janela
+// inteira com a proporcao certa e some em fade nos ultimos 0,4 s. Roda ANTES da maquina comecar, entao nao
+// atrasa o boot. Devolve false se o usuario fechou a janela.
+static bool RunSplashPhase(GLFWwindow *window, const splash::Image &image, double seconds) {
+    GLuint tex = 0;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image.width, image.height, 0, GL_RGBA, GL_UNSIGNED_BYTE, image.rgba.data());
+
+    const double start = glfwGetTime();
+    bool open = true;
+    g_input = HostInput(); // teclas apertas antes nao contam
+    while (open && !glfwWindowShouldClose(window)) {
+        glfwPollEvents();
+        const double t = glfwGetTime() - start;
+        const bool skip = !g_input.events.empty() || glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS;
+        if (t >= seconds || skip) open = false;
+
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+        const ImVec2 disp = ImGui::GetIO().DisplaySize;
+        const float scale = std::min(disp.x / image.width, disp.y / image.height);
+        const ImVec2 size(image.width * scale, image.height * scale);
+        const ImVec2 p0((disp.x - size.x) * 0.5f, (disp.y - size.y) * 0.5f);
+        const double left = seconds - t;
+        const int alpha = left < 0.4 ? static_cast<int>(255.0 * std::max(0.0, left) / 0.4) : 255;
+        ImGui::GetBackgroundDrawList()->AddImage(static_cast<ImTextureID>(tex), p0, ImVec2(p0.x + size.x, p0.y + size.y), ImVec2(0, 0),
+                                                 ImVec2(1, 1), IM_COL32(255, 255, 255, alpha));
+        ImGui::Render();
+        int fb_w = 0, fb_h = 0;
+        glfwGetFramebufferSize(window, &fb_w, &fb_h);
+        glViewport(0, 0, fb_w, fb_h);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glfwSwapBuffers(window);
+    }
+    glDeleteTextures(1, &tex);
+    g_input = HostInput(); // a tecla que pulou o splash nao vai para o MSX
+    return !glfwWindowShouldClose(window);
+}
+
 int RunEmulatorWindow(const WindowOptions &options) {
     std::string error;
     std::unique_ptr<Machine> machine = Machine::Create(options.machine, error);
@@ -310,6 +364,20 @@ int RunEmulatorWindow(const WindowOptions &options) {
         return 1;
     }
     if (work_w > 0) glfwSetWindowPos(window, work_x + (work_w - start_w) / 2, work_y + 60); // espaco para a barra de titulo
+#ifndef _WIN32
+    {
+        // Icone da janela e da barra de tarefas (no Windows e' o recurso GLFW_ICON de fwmsx.rc).
+        std::vector<GLFWimage> icons;
+        for (const splash::AppIconImage &ic : splash::kAppIcons) {
+            GLFWimage img;
+            img.width = ic.size;
+            img.height = ic.size;
+            img.pixels = const_cast<unsigned char *>(ic.rgba);
+            icons.push_back(img);
+        }
+        glfwSetWindowIcon(window, static_cast<int>(icons.size()), icons.data());
+    }
+#endif
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
@@ -357,6 +425,26 @@ int RunEmulatorWindow(const WindowOptions &options) {
     bool muted = false;
     audio_out.SetGain(volume);
     std::vector<int16_t> live_samples;
+
+    // Configuracoes gravadas em fwmsx.cfg (tema, letra, moldura, splash) e a imagem de abertura.
+    const std::string settings_path = settings::PathFor(options.exe_dir);
+    settings::Settings cfg = settings::Load(settings_path);
+    if (splash::ShouldShow(splash::Mode::Window, options.splash_flag, cfg.splash)) {
+        const std::string splash_file = splash::FindSplashFile(options.exe_dir);
+        splash::Image splash_image;
+        std::string splash_error;
+        if (!splash_file.empty() && splash::LoadPngFile(splash_file, splash_image, splash_error)) {
+            if (!RunSplashPhase(window, splash_image, 3.0)) {
+                ImGui_ImplOpenGL3_Shutdown();
+                ImGui_ImplGlfw_Shutdown();
+                ImGui::DestroyContext();
+                glfwDestroyWindow(window);
+                glfwTerminate();
+                return 0;
+            }
+            glBindTexture(GL_TEXTURE_2D, texture); // volta a textura do MSX
+        }
+    }
 
     bool paused = false;
     bool integer_scale = true;
@@ -500,9 +588,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     };
 
     // Interface (menu Configuracoes -> Interface): tema, tamanho da letra e moldura da tela.
-    int ui_theme = 0;      // 0 = escuro, 1 = claro
-    int ui_font = 1;       // 0 = normal, 1 = grande (padrao), 2 = muito grande
-    bool ui_frame = true; // borda e sombra em volta da tela do MSX
+    int ui_theme = cfg.theme;  // 0 = escuro, 1 = claro
+    int ui_font = cfg.font;    // 0 = normal, 1 = grande (padrao), 2 = muito grande
+    bool ui_frame = cfg.frame; // borda e sombra em volta da tela do MSX
+    bool ui_splash = cfg.splash; // mostra o splash ao iniciar (so' na janela; --splash/--no-splash mandam na execucao)
     int applied_theme = 0;
     int applied_font = 0;
     static const float kFontScales[3] = {1.0f, 1.25f, 1.5f};
@@ -1064,6 +1153,8 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     if (ImGui::MenuItem("Muito grande", nullptr, ui_font == 2)) ui_font = 2;
                     ImGui::Separator();
                     ImGui::MenuItem("Borda e sombra da tela", nullptr, &ui_frame);
+                    ImGui::Separator();
+                    ImGui::MenuItem("Mostrar splash ao iniciar", nullptr, &ui_splash);
                     ImGui::EndMenu();
                 }
                 ImGui::Separator();
@@ -1444,6 +1535,16 @@ int RunEmulatorWindow(const WindowOptions &options) {
             dl->AddText(pos, toast_warn ? IM_COL32(255, 190, 90, 255) : IM_COL32(255, 255, 255, 255), toast_text.c_str());
         }
 
+        {
+            // Tema, letra, moldura e splash ficam gravados em fwmsx.cfg assim que mudam.
+            if (cfg.splash != ui_splash || cfg.theme != ui_theme || cfg.font != ui_font || cfg.frame != ui_frame) {
+                cfg.splash = ui_splash;
+                cfg.theme = ui_theme;
+                cfg.font = ui_font;
+                cfg.frame = ui_frame;
+                settings::Save(settings_path, cfg);
+            }
+        }
         ImGui::Render();
         int display_w = 0, display_h = 0;
         glfwGetFramebufferSize(window, &display_w, &display_h);

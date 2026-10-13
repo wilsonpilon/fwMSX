@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=fwMSX
+GenericName=Emulador de MSX
+Comment=Emulador de MSX1, MSX2 e MSX2+ (MSX Emulator & Integration Suite)
+Exec=fwMSX
+Icon=fwmsx
+Terminal=false
+Categories=Game;Emulator;
+StartupWMClass=fwMSX

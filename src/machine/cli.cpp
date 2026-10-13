@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../control/command.h"
+#include "../splash/splash.h"
 #include "../vdp/cpp/ppm_writer.h"
 #include "../vdp/core/vdp_state.h"
 #include "../fm/cpp/fm_device.h"
@@ -161,7 +162,10 @@ bool ApplySlotSpec(const std::string &spec, machine::SlotLayout &layout, std::st
 
 } // namespace
 
-int RunMachineCommand(const std::vector<std::string> &args, const std::string &argv0) {
+int RunMachineCommand(const std::vector<std::string> &raw_args, const std::string &argv0) {
+    // --splash / --no-splash (doc/splash-spec.md): saem da lista antes da analise das demais opcoes.
+    std::vector<std::string> args = raw_args;
+    const splash::Flag splash_flag = splash::ExtractFlag(args);
     MachineConfig config;
     config.fmpac_rom_path = "auto"; // FM-PAC ligado por padrao (--no-fmpac desliga)
     int frames = 0;
@@ -555,6 +559,11 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     }
 
     if (use_term) {
+        // Modo terminal: o splash so' aparece com --splash (ele mostra a imagem em meios blocos coloridos).
+        if (splash::ShouldShow(splash::Mode::Terminal, splash_flag, false)) {
+            std::error_code sec;
+            splash::ShowTerminalSplash(fs::absolute(fs::path(argv0), sec).parent_path().string(), 2.5);
+        }
         term::TermOptions topts;
         topts.machine = config;
         topts.audio = !mute;
@@ -570,6 +579,7 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
     options.autoquit_frames = frames;
     options.audio = !mute;
     options.ctl_port = ctl_port;
+    options.splash_flag = splash_flag;
     {
         std::error_code ec;
         options.exe_dir = fs::absolute(fs::path(argv0), ec).parent_path().string();

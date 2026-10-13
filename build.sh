@@ -111,6 +111,10 @@ mkdir -p "$stage_dir"
 
 cp "$exe" "$stage_dir/"
 cp "$msxdisk_exe" "$stage_dir/"
+# Imagem de abertura (ao lado do executavel) e icone + atalho do menu de aplicativos (doc/splash-spec.md).
+cp "$dist_dir/fwMSX-splash.png" "$stage_dir/"
+cp "$root/packaging/linux/fwmsx.png" "$stage_dir/"
+cp "$root/packaging/linux/fwmsx.desktop" "$stage_dir/"
 cp "$root/README.md" "$stage_dir/"
 cp "$root/LICENSE" "$stage_dir/"
 cp "$root/LICENSE-THIRD-PARTY.md" "$stage_dir/"

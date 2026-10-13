@@ -6,6 +6,9 @@
 
 cmake_minimum_required(VERSION 3.20)
 project(fwMSX C CXX ASM_NASM Fortran)
+if (WIN32)
+    enable_language(RC) # icone do aplicativo (src/splash/fwmsx.rc.in)
+endif ()
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -433,6 +436,13 @@ set(CAS_PACK_SOURCES
 # so' entram no executavel fwMSX.
 # Depurador (C + Fortran + Assembly + C++) -- ver doc/debug-spec.md. Faz parte da maquina: toda alvo que
 # compila machine.cpp ja' leva estes arquivos.
+# Splash, leitor de PNG e configuracoes gravadas em arquivo (doc/splash-spec.md).
+set(SPLASH_LIB_SOURCES
+        src/splash/png_reader.cpp
+        src/splash/splash.cpp
+        src/common/settings.cpp
+)
+
 set(MACHINE_LIB_SOURCES
         src/machine/machine.cpp
         src/debug/cpp/debugger.cpp
@@ -767,6 +777,7 @@ add_executable(fwMSX
         ${MEMMAP_LIB_SOURCES}
         ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES}
         ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${AUDIO_LIB_SOURCES} ${TAPE_LIB_SOURCES} src/machine/cli.cpp ${MACHINE_WINDOW_SOURCES}
+        ${SPLASH_LIB_SOURCES}
         src/z80/debug/z80_debug_shell.cpp
         src/tape/cli/cas_tool.cpp
         src/tapedb/store/tapedb.cpp
@@ -775,6 +786,20 @@ add_executable(fwMSX
 )
 
 target_link_libraries(fwMSX PRIVATE miniz)
+
+# splashtest: politica do splash, leitor de PNG, meios blocos do terminal e configuracoes em arquivo.
+add_executable(splashtest tests/z80/splash_test.cpp ${SPLASH_LIB_SOURCES})
+target_link_libraries(splashtest PRIVATE miniz)
+target_compile_definitions(splashtest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+if (MINGW)
+    target_link_options(splashtest PRIVATE -static -static-libgcc -static-libstdc++)
+endif ()
+add_test(NAME splash COMMAND splashtest)
+if (WIN32)
+    # O .rc e' gerado na pasta de build com o caminho absoluto do .ico (o windres resolve caminhos a partir de la').
+    configure_file(src/splash/fwmsx.rc.in ${CMAKE_BINARY_DIR}/fwmsx.rc @ONLY)
+    target_sources(fwMSX PRIVATE ${CMAKE_BINARY_DIR}/fwmsx.rc)
+endif ()
 target_include_directories(fwMSX PRIVATE
         src/cpp
         src/c

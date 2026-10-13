@@ -7,6 +7,7 @@
 // funcao, escolhidos no CMakeLists.txt.
 #pragma once
 
+#include "../../splash/splash.h"
 #include "../machine.h"
 
 namespace machine::gui {
@@ -26,6 +27,8 @@ struct WindowOptions {
     std::string exe_dir;
     // Pasta de ROMs e do banco (menu ROMs). Vazio = roms/ ao lado do executavel.
     std::string rom_root;
+    // --splash / --no-splash: a imagem de abertura (doc/splash-spec.md). Default = o que a configuracao disser.
+    splash::Flag splash_flag = splash::Flag::Default;
 };
 
 // Abre a janela e roda a maquina em tempo real ate' ser fechada. Devolve o

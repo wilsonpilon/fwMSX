@@ -1,0 +1,5 @@
+// Icone do aplicativo no Windows: aparece no Explorer, na barra de tarefas e no canto da janela.
+// O "1" (numerico) e' o icone que o Explorer mostra para o arquivo; "GLFW_ICON" e' o nome que o GLFW procura
+// para a janela e a barra de tarefas.
+1 ICON "@CMAKE_SOURCE_DIR@/images/fwMSX-03.ico"
+GLFW_ICON ICON "@CMAKE_SOURCE_DIR@/images/fwMSX-03.ico"

@@ -778,34 +778,186 @@ Ver [control-spec.md](control-spec.md).
 
 ## Depurador (`break`, `stepi`, `go`...)
 
-O emulador tem um depurador basico, parecido com o do fMSX, acessivel pela **ponte de controle**, pelo **console**
-(`--cli`), pelo menu **Depurador** da **TUI** (`--tui`) e pela linha de comando do **modo terminal** (F11). Ao parar
-(breakpoint, watchpoint ou passo) a maquina congela; o titulo da janela, a barra da TUI e o `status` avisam.
+O fwMSX tem um depurador do EMULADOR (a maquina inteira: slots, VDP, interrupcoes), no estilo do depurador do fMSX:
+pontos de parada, passo a passo, desmontador, memoria e registradores. Ele funciona por **quatro caminhos**, todos com os
+MESMOS comandos:
 
-Exemplo no console:
+| Caminho | Como usar |
+|---|---|
+| **Console** (`fwMSXc.exe --cli`) | digite os comandos no prompt; os avisos aparecem como `[evento] ...` |
+| **TUI de menus** (`fwMSXc.exe --tui`) | menu **Depurador** (ou a linha de comando do rodape); avisos no historico |
+| **Modo terminal** (`fwMSXc.exe --term`) | F11 abre a linha de comando; respostas longas vao para o log |
+| **Ponte de controle** (`--ctl-port`) | qualquer programa manda os comandos por TCP (ver [Ponte de controle](#ponte-de-controle-externa---ctl-port)) |
 
-```
-fwmsx> emu start --msx --cart jogo.rom --break 0x4010
-fwmsx:51607> wait                      # espera o breakpoint
-[evento] break id=1 pc=4010 hits=1
-fwmsx:51607> dis                       # desmonta a partir do PC; '>' = PC, '*' = breakpoint
-fwmsx:51607> reg                       # registradores e flags
-fwmsx:51607> next                      # passo sobre (CALL roda inteiro)
-fwmsx:51607> watch 0xC000 2 w          # para quando algo escrever em C000-C001
-fwmsx:51607> go
-```
+### Passo a passo (um primeiro uso)
+
+1. **Abra o emulador com a ponte e conecte o console.** No console:
+
+   ```
+   fwMSXc.exe --cli
+   fwmsx> emu start --msx --cart jogo.rom --break 0x4010
+   emulador iniciado e conectado (porta 51607)
+   ```
+
+   `--break 0x4010` ja' deixa um breakpoint armado (ver os parametros abaixo). O console assina os eventos sozinho.
+
+2. **Espere a parada.** Quando o MSX executar a instrucao em `4010`, a maquina para ANTES dela e o console avisa:
+
+   ```
+   fwmsx:51607> wait
+   [evento] break id=1 pc=4010 hits=1
+   ```
+
+   (Sem `wait`, o aviso aparece sozinho no proximo prompt.) Na janela, o titulo passa a dizer `(PARADO: depurador)`;
+   na TUI, a barra mostra `PARADO (depurador)`; o comando `status` mostra `stopped=1`.
+
+3. **Olhe o que esta' acontecendo.**
+
+   ```
+   fwmsx:51607> reg                      # todos os registradores, os sombra, I/R, IM/EI e as flags (SZ-H-PNC)
+   fwmsx:51607> dis                      # desmonta a partir do PC; '>' marca o PC e '*' um breakpoint
+   fwmsx:51607> dis 0x4000 12            # 12 linhas a partir de 4000
+   fwmsx:51607> mem 0xC000 64            # hexdump (16 bytes por linha, com ASCII)
+   fwmsx:51607> stack 8                  # 8 palavras a partir de SP
+   fwmsx:51607> slots                    # de qual slot:subslot vem cada pagina de 16 KB agora
+   ```
+
+4. **Ande.**
+
+   ```
+   fwmsx:51607> stepi                    # UMA instrucao; responde "pc=4012  LD B,A"
+   fwmsx:51607> stepi 20                 # vinte instrucoes
+   fwmsx:51607> next                     # passo SOBRE: um CALL (ou RST, LDIR...) roda inteiro
+   fwmsx:51607> until 0x4100             # roda ate' o endereco (ate' 20 quadros; se nao chegar, segue rodando)
+   fwmsx:51607> go                       # continua; para no proximo breakpoint/watchpoint
+   fwmsx:51607> stop                     # para na proxima fronteira de instrucao
+   ```
+
+5. **Pare quando a memoria for mexida (watchpoint).** Descubra quem escreve no placar, por exemplo:
+
+   ```
+   fwmsx:51607> watch 0xE000 2 w         # escrita em E000-E001 (r = leitura, rw = as duas)
+   fwmsx:51607> go
+   fwmsx:51607> wait
+   [evento] watch id=2 addr=E000 rw=w value=05 pc=4A21 next=4A24
+   ```
+
+   O evento diz QUEM escreveu (`pc=4A21`, o endereco da instrucao), o valor e onde a execucao vai continuar. A maquina para
+   DEPOIS da instrucao (a escrita ja' aconteceu); o breakpoint, ao contrario, para ANTES.
+
+6. **Mude coisas.** `reg hl 0x1234` e `reg a 0x80` mudam registradores; `poke 0xC000 0x41` grava memoria (a ROM nao e'
+   alterada); `jump 0x4000` muda o PC; `go 0x4000` muda o PC e continua.
+
+7. **Limpe.** `breaks` e `watches` listam; `unbreak 0x4010` / `unwatch 0xE000` removem um; `unbreak all` / `unwatch all`
+   removem todos.
+
+### Referencia dos comandos
+
+Enderecos e numeros aceitam `0x4010`, `$4010`, `4010h` ou decimal. O que o comando faz com a maquina parada ou rodando:
+todos funcionam nos dois estados (inspecionar rodando le a memoria "ao vivo").
 
 | Comando | Faz |
 |---|---|
-| `break <end>`, `unbreak <end\|all>`, `breaks` | breakpoints de execucao |
-| `watch <end> [tam] [r\|w\|rw]`, `unwatch <end\|all>`, `watches` | watchpoints de memoria |
-| `stepi [n]`, `next`, `until <end>`, `go [end]`, `stop`, `jump <end>` | passo, passo sobre, executar ate, continuar, parar, mudar o PC |
-| `dis [end] [n]`, `mem <end> [n]`, `stack [n]`, `slots` | desmontar, hexdump, pilha, mapa de slots |
-| `reg`, `reg <nome> <valor>` | registradores e flags / alterar |
+| `break <end>` | breakpoint de execucao: para ANTES da instrucao em `end`; responde o `id` |
+| `unbreak <end>` / `unbreak all` / `breaks` | remove / remove todos / lista (`#id  endereco  hits=N`) |
+| `watch <end> [tam] [r\|w\|rw]` | watchpoint de memoria; padrao: 1 byte, escrita; `tam` de 1 a FFFF |
+| `unwatch <end>` / `unwatch all` / `watches` | remove / remove todos / lista |
+| `stepi [n]` | executa `n` instrucoes (1 a 1000000) e fica parado; responde `pc=XXXX  <proxima instrucao>` |
+| `next` | passo sobre: `CALL`, `CALL cc`, `RST`, `LDIR`/`LDDR`/`CPIR`/`CPDR`/`INIR`/`INDR`/`OTIR`/`OTDR` e `HALT` rodam por inteiro; o resto e' um `stepi` |
+| `until <end>` | roda ate' `end` e para la' (espera ate' 20 quadros; se nao chegar responde `running` e o evento `! until` avisa) |
+| `go [end]` | volta a rodar, opcionalmente a partir de `end`; responde `running` na hora |
+| `stop` | para a maquina |
+| `jump <end>` | muda o PC (sem rodar) |
+| `dis [end] [n]` | desmonta `n` linhas (padrao 8) a partir de `end` (padrao: PC) |
+| `mem <end> [n]` | hexdump de `n` bytes (padrao 64, ate' 1024) |
+| `stack [n]` | `n` palavras (padrao 8) a partir de SP |
+| `reg` / `reg <nome> <valor>` | mostra tudo / muda um registrador: `af bc de hl ix iy sp pc af' bc' de' hl'` e `a f b c d e h l i r` |
+| `slots` | mapa de paginas: slot e subslot de cada pagina de 16 KB e se e' RAM |
+| `events on` / `events off` | assina / cancela os avisos nesta conexao (o console e a TUI assinam sozinhos) |
+| `status` | `... stopped=0\|1 ...` mostra se o depurador parou a maquina |
 
-Parametros do `--msx`: `--break <end>` (pode repetir), `--watch <end>[:tam[:r|w|rw]]` (pode repetir) e `--debug`
-(comeca parado no PC 0000). Os eventos (`! break ...`, `! watch ...`) chegam sozinhos a quem mandou `events on`
-(o console e a TUI fazem isso ao conectar). Detalhes e o que ainda falta: [debug-spec.md](debug-spec.md).
+### Parametros do `--msx` (e de `emu start ...`)
+
+| Opcao | Efeito |
+|---|---|
+| `--break <end>` | breakpoint inicial; pode repetir (`--break 0x0038 --break 0x4010`) |
+| `--watch <end>[:tam[:r\|w\|rw]]` | watchpoint inicial; pode repetir (`--watch 0xC000:16:rw`) |
+| `--debug` | comeca PARADA no PC 0000, antes da primeira instrucao: use `stepi`/`go` para andar |
+
+Valem tambem depois de trocar o cartucho pela janela. Sem janela (`--frames N`), se a maquina parou o programa imprime
+`depurador: parado em PC=XXXX (motivo)` e os avisos pendentes.
+
+### Os avisos (eventos)
+
+Linhas que o emulador manda SEM ninguem pedir, para quem assinou (`events on`):
+
+```
+! break id=1 pc=0038 hits=1                       <- um breakpoint foi atingido
+! watch id=2 addr=C100 rw=w value=77 pc=C012 next=C015
+! until pc=C003                                   <- o `until`/`next` chegou (so' quando nao deu para esperar na hora)
+```
+
+`stepi`, `next` e `until` ja' respondem na hora e nao geram aviso. No console eles aparecem como `[evento] ...`, na TUI no
+historico, no modo terminal no log e na janela no `stderr`. Quem escreve outro programa (editor, IDE) le essas linhas pelo
+socket da ponte de controle.
+
+### Dicas
+
+- **Parar no vetor de interrupcao** (`break 0x0038`) e' um bom jeito de "congelar" um jogo no inicio de um quadro.
+- **Quem mexe nesta variavel?** use `watch` com `w`; **quem LE?** `r`; os dois: `rw` (cuidado: `rw` numa regiao que a
+  BIOS toca o tempo todo para a cada instante).
+- Os breakpoints criados por comando se perdem se a janela recriar a maquina (trocar o cartucho pelo menu); os de
+  `--break`/`--watch` ficam.
+- Um watchpoint desliga o caminho rapido de `LDIR`/`LDDR`: a emulacao fica um pouco mais lenta enquanto ele existir.
+- O que ainda NAO existe (condicoes, simbolos, trace, parada em E/S e interrupcoes, painel na TUI) esta' no roteiro de
+  [debug-spec.md](debug-spec.md), secao 7.
+
+Detalhes tecnicos: [debug-spec.md](debug-spec.md).
+
+## Abertura (splash), icone e configuracoes salvas
+
+### A imagem de abertura (splash)
+
+Ao abrir a janela do emulador, o fwMSX mostra por **3 segundos** a imagem de abertura (`fwMSX-splash.png`, ao lado do
+executavel) antes de ligar o MSX; ela some em fade. Qualquer tecla ou clique pula; fechar a janela encerra o programa. A
+maquina so' comeca depois, entao o boot nao e' atrasado nem perde teclas.
+
+| Onde / como | O splash aparece? |
+|---|---|
+| Janela (`fwMSX.exe`, duplo clique, `--msx`) | **sim**, se a opcao estiver ligada (padrao: ligada) |
+| `--no-splash` | **nao**, nesta execucao (vence `--splash`) |
+| `--splash` | **sim**, nesta execucao, mesmo com a opcao desligada |
+| `--cli`, `--tui` e `--term` | **nao** por padrao; **sim** so' com `--splash` (a imagem e' desenhada no terminal em meios blocos com cor de 24 bits, por 2,5 s, e so' se a saida for um terminal de verdade) |
+| `emu start` (console e TUI) | **nao**: a janela aberta por eles nao mostra o splash, a menos que voce passe `--splash` (`emu start --splash`) |
+| `--cmd` (um comando e sai; ainda por vir) | **nunca**, de modo algum, nem com `--splash` |
+
+Para desligar de vez: menu **Ferramentas > Interface > Mostrar splash ao iniciar** (desmarcar). A escolha fica gravada.
+Se o arquivo `fwMSX-splash.png` nao for achado, o programa simplesmente abre sem splash.
+
+### Icone do aplicativo
+
+O fwMSX tem icone proprio: no **Windows** ele esta' dentro do `fwMSX.exe` (e do `fwMSXc.exe`), entao aparece no Explorer,
+na barra de tarefas, no Alt+Tab e no canto da janela. No **Linux**, a janela e a barra de tarefas usam o mesmo icone; para o
+gerenciador de arquivos e o menu de aplicativos, instale o atalho que vai no pacote:
+
+```
+cp fwmsx.png ~/.local/share/icons/            # o icone
+cp fwmsx.desktop ~/.local/share/applications/ # o atalho (ajuste Exec= para o caminho do fwMSX, se precisar)
+```
+
+### Configuracoes salvas (`fwmsx.cfg`)
+
+O tema, o tamanho da letra, a moldura da tela e o splash ficam gravados em `fwmsx.cfg`, um arquivo de texto ao lado do
+executavel (criado so' quando algo muda no menu **Ferramentas > Interface**). Pode editar a mao:
+
+```
+splash=1     # 1 = mostra o splash ao iniciar, 0 = nao
+theme=0      # 0 = escuro, 1 = claro
+font=1       # 0 = normal, 1 = grande, 2 = muito grande
+frame=1      # 1 = borda e sombra em volta da tela do MSX
+```
+
+Detalhes: [splash-spec.md](splash-spec.md).
 
 ## Montador Z80 (`fwmsx --asm`)
 

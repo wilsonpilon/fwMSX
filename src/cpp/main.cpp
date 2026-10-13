@@ -83,6 +83,7 @@
 #include "diskfmt/cpp/cli.h"
 #include "repl/repl.h"
 #include "asm/cpp/cli.h"
+#include "splash/splash.h"
 #include "term/term_app.h"
 #include "tui/tui_app.h"
 #include "machine/cli.h"
@@ -192,7 +193,8 @@ int main(int argc, char* argv[]) {
             return 2;
         }
 #endif
-        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        std::vector<std::string> tokens(argv + 2, argv + argc);
+        splash::HandleTerminalArgs(tokens, argv[0]); // splash so' com --splash
         return tui::RunTui(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--cli") {
@@ -205,7 +207,8 @@ int main(int argc, char* argv[]) {
             return 2;
         }
 #endif
-        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        std::vector<std::string> tokens(argv + 2, argv + argc);
+        splash::HandleTerminalArgs(tokens, argv[0]); // splash so' com --splash
         return repl::RunReplCommand(tokens, argv[0]);
     }
     if (argc > 1 && std::string(argv[1]) == "--asm") {

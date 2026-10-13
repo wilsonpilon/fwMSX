@@ -7,6 +7,22 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.1] - 2026-10-13 - "Knightmare: Splash e icone" (Konami)
+
+### Adicionado
+- **Splash de abertura** (`images/fwMSX-02.png`, reduzido a 1376x768 em `dist/fwMSX-splash.png`): a janela do emulador mostra a
+  imagem por 3 s antes de ligar o MSX (fade no fim; tecla ou clique pula). Desligavel em **Ferramentas > Interface > Mostrar
+  splash ao iniciar** (gravado) e por linha de comando: `--no-splash` (nao mostra) e `--splash` (mostra). `--cli`, `--tui` e
+  `--term` NAO mostram, salvo `--splash` (imagem em meios blocos coloridos no terminal); `emu start` abre a janela sem splash;
+  `--cmd` (por vir) nunca mostra. Ver `doc/splash-spec.md`.
+- **Icone do aplicativo** (`images/fwMSX-03.ico`): embutido no `fwMSX.exe`/`fwMSXc.exe` (Explorer, barra de tarefas, Alt+Tab, canto da
+  janela) e, no Linux, `glfwSetWindowIcon` + `fwmsx.png`/`fwmsx.desktop` no pacote.
+- **`fwmsx.cfg`**: tema, tamanho da letra, moldura e splash agora ficam gravados (antes voltavam ao padrao a cada abertura).
+- Leitor de PNG (`src/splash/png_reader`), politica do splash testavel, ferramenta `tools/assets/make_assets.py`; teste
+  `splashtest` (CTest `splash`, suite 24).
+- **MANUAL**: o depurador ganhou um passo a passo completo, a referencia dos comandos, os parametros e os avisos; secao nova sobre o
+  splash, o icone e as configuracoes.
+
 ## [1.37.0] - 2026-10-13 - "Knightmare" (Konami)
 
 ### Adicionado

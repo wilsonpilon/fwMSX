@@ -78,6 +78,9 @@ New-Item -ItemType Directory -Path $stageDir | Out-Null
 Copy-Item $exe $stageDir
 Copy-Item $consoleExe $stageDir
 Copy-Item $msxdiskExe $stageDir
+# Imagem de abertura (ao lado do executavel; doc\splash-spec.md). O icone vai dentro do .exe (src\splashwmsx.rc.in).
+$splashPng = Join-Path $distDir "fwMSX-splash.png"
+if (Test-Path $splashPng) { Copy-Item $splashPng $stageDir }
 Copy-Item (Join-Path $root "README.md") $stageDir
 Copy-Item (Join-Path $root "LICENSE") $stageDir
 Copy-Item (Join-Path $root "LICENSE-THIRD-PARTY.md") $stageDir

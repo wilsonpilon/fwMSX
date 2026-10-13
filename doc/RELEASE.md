@@ -17,6 +17,25 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.1 -- "Knightmare: Splash e icone" (Konami) (2026-10-13)
+
+**Fase:** desvio pedido pelo usuario (identidade visual do aplicativo): splash de abertura e icone proprio; mais a documentacao
+do depurador no manual.
+
+### O que foi feito
+- `src/splash/` (leitor de PNG, politica, meios blocos para o terminal, icone RGBA), `src/common/settings` (`fwmsx.cfg`),
+  `RunSplashPhase` na janela, `--splash`/`--no-splash`, item no menu Interface, `emu start` sem splash.
+- Icone: recurso do Windows (`fwmsx.rc.in`, gerado com o caminho absoluto), `glfwSetWindowIcon` no Linux, `fwmsx.png`/`fwmsx.desktop`.
+- Pacotes: `fwMSX-splash.png` ao lado do executavel (Windows e Linux) e icone/atalho no tar.gz.
+- MANUAL: depurador (passo a passo + referencia) e splash/icone/configuracoes.
+
+### Validacao
+`ctest` 24/24 (Windows e Linux). A janela leva ~3,9 s a mais com splash; `--no-splash` e `splash=0` pulam; `--splash` forca. O
+Windows associa ao `fwMSX.exe` o icone do fwMSX. Nao verificado a olho: o desenho do splash na janela e no terminal (so' por
+teste de unidade e pelo tempo).
+
+---
+
 ## v1.37.0 -- "Knightmare" (Konami) (2026-10-13)
 
 **Fase:** o depurador basico do emulador e os eventos assincronos da ponte de controle (primeiro passo rumo a integracao

@@ -73,7 +73,13 @@ void ReplSession::Emu(const std::vector<std::string> &t, std::ostream &out) {
             return;
         }
         std::vector<std::string> args = {"--msx", "--ctl-port", std::to_string(port)};
-        for (size_t i = 2; i < t.size(); ++i) args.push_back(t[i]);
+        bool wants_splash = false;
+        for (size_t i = 2; i < t.size(); ++i) {
+            args.push_back(t[i]);
+            if (t[i] == "--splash" || t[i] == "--no-splash") wants_splash = true;
+        }
+        // Aberto pelo console/TUI o emulador nao mostra o splash, a menos que o usuario peca (--splash).
+        if (!wants_splash) args.push_back("--no-splash");
         std::string error;
         if (!spawner_(exe_path_, args, error)) {
             out << "erro: " << error << "\n";
