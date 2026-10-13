@@ -431,8 +431,14 @@ set(CAS_PACK_SOURCES
 # quadros, sem janela (e' o que os testes usam). A CLI (cli.cpp) e a janela
 # (MACHINE_WINDOW_SOURCES: GLFW + ImGui, ou o stub se FWMSX_MSXDISK_GUI=OFF)
 # so' entram no executavel fwMSX.
+# Depurador (C + Fortran + Assembly + C++) -- ver doc/debug-spec.md. Faz parte da maquina: toda alvo que
+# compila machine.cpp ja' leva estes arquivos.
 set(MACHINE_LIB_SOURCES
         src/machine/machine.cpp
+        src/debug/cpp/debugger.cpp
+        src/debug/c/dbg_flow.c
+        src/debug/fortran/dbg_fmt.f90
+        src/debug/asm/dbg_range.asm
 )
 
 enable_testing()

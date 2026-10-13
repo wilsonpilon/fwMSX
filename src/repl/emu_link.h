@@ -6,6 +6,7 @@
 // para um emulador iniciado por aqui ou por qualquer outro meio (`emu attach <porta>`).
 #pragma once
 
+#include <deque>
 #include <string>
 #include <vector>
 
@@ -27,12 +28,22 @@ public:
 
     // Manda UMA linha e devolve a linha de resposta ("ok ..." / "err ..."). false + `error` se a
     // conexao caiu (o emulador foi fechado, por exemplo); a ligacao e' encerrada nesse caso.
+    // Respostas de varias linhas ("ok +N" + N linhas) voltam em `reply` como "ok " + as linhas separadas por '\n'.
+    // Linhas de evento ("! ...") que chegarem no meio vao para a fila de eventos.
     bool Send(const std::string &line, std::string &reply, std::string &error);
+
+    // Eventos assincronos do emulador (breakpoint atingido...), sem o "! " do inicio. Espera ate' `wait_ms`
+    // por dados novos (0 = so' o que ja' chegou) e devolve true se ha' algum evento em `out`.
+    bool PollEvents(std::vector<std::string> &out, int wait_ms);
 
 private:
     long long socket_ = -1;
     int port_ = 0;
     std::string pending_;
+    std::deque<std::string> events_;
+
+    // Tira uma linha completa de pending_ (false se ainda nao ha'); separa os eventos.
+    bool TakeLine(std::string &line);
 };
 
 // Uma porta TCP livre em 127.0.0.1 (0 se nao conseguir). Existe uma pequena janela de corrida entre

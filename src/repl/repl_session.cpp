@@ -26,6 +26,7 @@ void ReplSession::Help(std::ostream &out) {
            "  emu start [opcoes do --msx]   inicia o emulador (janela) e conecta; ex.: emu start --msx2p --cart jogo.rom\n"
            "  emu attach <porta>            conecta num emulador ja' aberto com --ctl-port\n"
            "  emu detach | emu stop | emu status\n"
+           "  wait [segundos]               espera um evento do emulador (breakpoint atingido, etc.)\n"
            "  exit | quit                   sai do console (o emulador continua aberto)\n";
     for (const auto &[name, entry] : tools_) out << "  " << name << "  -- " << entry.help << "\n";
     out << "Qualquer outro comando vai para o emulador conectado (peek, poke, type, cart, disk, state, ...).\n";
@@ -33,6 +34,13 @@ void ReplSession::Help(std::ostream &out) {
         std::string reply, error;
         if (link_.Send("help", reply, error)) out << "Emulador: " << reply << "\n";
     }
+}
+
+bool ReplSession::PrintEvents(std::ostream &out, int wait_ms) {
+    std::vector<std::string> events;
+    if (!link_.PollEvents(events, wait_ms)) return false;
+    for (const std::string &e : events) out << "[evento] " << e << "\n";
+    return true;
 }
 
 void ReplSession::Forward(const std::string &line, std::ostream &out) {
@@ -142,6 +150,18 @@ bool ReplSession::Execute(const std::string &line, std::ostream &out) {
         Emu(t, out);
         return true;
     }
+    if (t[0] == "wait") {
+        // wait [segundos]: espera um evento do emulador (ex.: depois de `go`, o breakpoint atingido).
+        if (!link_.connected()) {
+            out << "erro: sem emulador conectado\n";
+            return true;
+        }
+        int seconds = 10;
+        if (t.size() > 1) seconds = std::atoi(t[1].c_str());
+        if (seconds < 1) seconds = 1;
+        if (!PrintEvents(out, seconds * 1000)) out << "(nenhum evento em " << seconds << " s)\n";
+        return true;
+    }
     const auto tool = tools_.find(t[0]);
     if (tool != tools_.end()) {
         const int rc = tool->second.tool(std::vector<std::string>(t.begin() + 1, t.end()));
@@ -149,6 +169,7 @@ bool ReplSession::Execute(const std::string &line, std::ostream &out) {
         return true;
     }
     Forward(line, out);
+    PrintEvents(out, 0); // um evento que ja' chegou (ex.: o watch disparado pelo proprio comando)
     return true;
 }
 

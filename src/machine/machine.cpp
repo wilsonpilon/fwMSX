@@ -554,7 +554,12 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
     m->tape_->SetMode(config.tape_mode);
     if (!config.tape_path.empty() && !m->InsertTape(config.tape_path, error)) return nullptr;
 
-    m->cpu_ = std::make_unique<z80::Z80Cpu>(m->startup_.Bus());
+    // O Z80 enxerga a memoria pelo DebugBus (entrega os acessos aos watchpoints; sem watchpoints e' transparente).
+    m->debug_bus_ = std::make_unique<dbg::DebugBus>(m->startup_.Bus(), m->debugger_);
+    m->cpu_ = std::make_unique<z80::Z80Cpu>(*m->debug_bus_);
+    for (const uint16_t b : config.debug_breaks) m->debugger_.AddBreak(b);
+    for (const DebugWatchSpec &w : config.debug_watches) m->debugger_.AddWatch(w.addr, w.len, w.on_read, w.on_write);
+    if (config.debug_start_stopped) m->debugger_.Stop("start");
     return m;
 }
 
@@ -902,11 +907,33 @@ bool Machine::LoadState(const std::string &path, std::string &error) {
 }
 
 void Machine::RunFrame() {
+    if (debugger_.stopped()) return; // parado pelo depurador: o quadro nao anda
     int budget = kFrameCycles;
     while (budget > 0) {
+        if (debugger_.armed() && debugger_.CheckPc(cpu_->pc())) return; // para ANTES da instrucao em PC
+        budget -= StepInstruction();
+        if (debugger_.TakeWatchHit(cpu_->pc())) return;
+    }
+    ++frame_count_;
+}
+
+bool Machine::RunUntilStop(long max_cycles) {
+    long budget = max_cycles;
+    while (budget > 0) {
+        if (debugger_.stopped()) return true;
+        if (debugger_.armed() && debugger_.CheckPc(cpu_->pc())) return true;
+        budget -= StepInstruction();
+        if (debugger_.TakeWatchHit(cpu_->pc())) return true;
+    }
+    return debugger_.stopped();
+}
+
+int Machine::StepInstruction() {
+    debugger_.set_inst_pc(cpu_->pc());
+    int used = 0;
+    {
         const int leftover = cpu_->run(1);
-        const int used = 1 - leftover;
-        budget -= used;
+        used = 1 - leftover;
 
         // Mesmo escalonamento do VDP da sessao de depuracao (DriveVdp): avanca
         // um meio-scanline sempre que o periodo pendente se esgota e entrega a
@@ -933,7 +960,7 @@ void Machine::RunFrame() {
         tape_->Advance(used);
         psg_set_cassette_in(&startup_.psg_device->state(), tape_->CassetteInLevel());
     }
-    ++frame_count_;
+    return used;
 }
 
 void Machine::EnableLiveAudio(bool on) {

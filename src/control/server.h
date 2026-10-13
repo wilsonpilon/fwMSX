@@ -1,7 +1,9 @@
 // fwMSX -- ponte de controle externo: servidor TCP em 127.0.0.1 (C++). Codigo ORIGINAL do fwMSX
 // (BSD-3-Clause). Ver doc/control-spec.md.
 //
-// Protocolo: uma linha de texto por comando, uma linha de resposta ("ok ..." ou "err ..."). As
+// Protocolo: uma linha de texto por comando, uma linha de resposta ("ok ..." ou "err ..."; "ok +N" seguido de N
+// linhas nas respostas de varias linhas). Alem disso, o cliente que mandou "events on" recebe, a qualquer
+// momento, linhas "! evento chave=valor ..." (breakpoint atingido, etc.) -- doc/debug-spec.md. As
 // threads do servidor SO' leem/escrevem no socket e enfileiram os comandos; quem os EXECUTA e' a
 // thread do emulador, chamando Poll() entre quadros -- nenhum codigo do emulador roda fora dela.
 #pragma once
@@ -11,6 +13,7 @@
 #include <deque>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <string>
 #include <thread>
 #include <vector>
@@ -37,7 +40,13 @@ public:
     // Executa, com `commander`, os comandos que chegaram desde a ultima chamada e devolve as
     // respostas aos clientes. Chamar da thread do emulador, uma vez por quadro.
     // Devolve quantos comandos executou.
-    int Poll(Commander &commander);
+    // `local_events`, se dado, tambem recebe uma copia dos eventos do depurador (para quem hospeda a maquina
+    // e quer mostra-los, como o modo terminal).
+    int Poll(Commander &commander, std::vector<std::string> *local_events = nullptr);
+
+    // Manda uma linha de evento ("! ...") a todos os clientes inscritos (events on). Da' para chamar da
+    // thread do emulador; Poll() ja' faz isso com os eventos do depurador.
+    void PushEvent(const std::string &line);
 
 private:
     struct Request {
@@ -60,6 +69,9 @@ private:
     std::deque<std::shared_ptr<Request>> queue_;
 
     std::mutex clients_mutex_;
+    std::set<intptr_t> subscribers_; // sockets que pediram "events on" (protegido por clients_mutex_)
+    std::mutex write_mutex_;         // uma escrita por vez no mesmo socket (resposta x evento)
+    bool SendText(intptr_t socket, const std::string &text);
     std::vector<std::thread> client_threads_;
     std::vector<intptr_t> client_sockets_;
 };

@@ -36,6 +36,7 @@ fwmsx> newdisk novo.dsk ds35
 | `emu detach` | desconecta (o emulador continua aberto) |
 | `emu stop` | manda `quit` ao emulador e desconecta |
 | `emu status` | estado do emulador conectado |
+| `wait [segundos]` | espera um evento do emulador (breakpoint atingido...); ex.: depois de `go` |
 | `help` / `exit` / `quit` | ajuda / sai (o emulador continua aberto) |
 
 **Ferramentas** (as opcoes soltas que ja' existiam, agora como comandos; funcionam sem emulador):
@@ -84,6 +85,7 @@ src/repl/
 - Comandos de **depuracao** (breakpoints, desmontar, passo de instrucao) e **montador**: a ideia e'
   trazer para o console as funcoes do depurador e do montador do PaleoBASIC/msxIDE (chamando o asMSX
   ou reescrevendo em C++) -- rodadas proprias.
-- **Eventos assincronos** do emulador para o console (`! breakpoint ...`).
+- Eventos assincronos (1.37.0): o console assina `events on` ao conectar; eventos aparecem como `[evento] break id=1 ...`
+  antes do proximo prompt, apos cada comando e com `wait`. Falta imprimir NA HORA, com o usuario digitando (replxx).
 - `fwmsx --cmd "..."` (um comando e sai) para scripts, e arquivo de script (`source`).
 - A **TUI** (FTXUI) com as mesmas opcoes da GUI, sobre o mesmo `Commander`.

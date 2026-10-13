@@ -13,6 +13,8 @@
 #include <string>
 #include <vector>
 
+#include "../debug/cpp/debug_bus.h"
+#include "../debug/cpp/debugger.h"
 #include "../fdc/cpp/disk_image.h"
 #include "../fdc/cpp/disk_format.h"
 #include "../fdc/cpp/fdc_device.h"
@@ -78,8 +80,22 @@ struct SlotLayout {
     SlotItem cell[4][4]; // [primario][secundario]
 };
 
+// Watchpoint pedido na linha de comando (--watch); ver dbg::Debugger::AddWatch.
+struct DebugWatchSpec {
+    uint16_t addr = 0;
+    uint16_t len = 1;
+    bool on_read = false;
+    bool on_write = true;
+};
+
 struct MachineConfig {
     Model model = Model::MSX1;
+    // Depurador (ver doc/debug-spec.md): breakpoints/watchpoints iniciais e "comecar parado" (--break,
+    // --watch, --debug). Valem para toda maquina criada com esta configuracao (inclusive depois de trocar
+    // o cartucho pela janela).
+    std::vector<uint16_t> debug_breaks;
+    std::vector<DebugWatchSpec> debug_watches;
+    bool debug_start_stopped = false;
     // BIOS principal (MSX.ROM, ou MSX2.ROM no MSX2).
     std::string bios_path;
     // Sub-ROM do MSX2 (MSX2EXT.ROM, 16KB, no slot 3:1). Vazio = ao lado da BIOS.
@@ -170,6 +186,15 @@ public:
     // Executa um quadro (kFrameCycles ciclos), avancando VDP e PSG e
     // entregando a interrupcao de VBlank ao Z80.
     void RunFrame();
+
+    // Depurador (ver doc/debug-spec.md). RunFrame() nao faz nada enquanto o depurador estiver parado.
+    dbg::Debugger &debugger() { return debugger_; }
+    // Executa UMA instrucao do Z80 e avanca VDP/PSG/SCC/FM/fita pelos ciclos gastos; devolve os ciclos.
+    // Nao testa breakpoints (quem chama decide); watchpoints sao vistos por debugger().TakeWatchHit().
+    int StepInstruction();
+    // Executa instrucoes (testando breakpoints e watchpoints) ate o depurador parar ou ate `max_cycles`
+    // ciclos. true se parou. Usado pelos comandos sincronos (next, until).
+    bool RunUntilStop(long max_cycles);
 
     // Reset de maquina: CPU, VDP, PPI (teclas pressionadas continuam) e PSG.
     void Reset();
@@ -284,6 +309,8 @@ private:
     Machine() = default;
 
     z80::debug::Z80DebugShellStartup startup_;
+    dbg::Debugger debugger_;
+    std::unique_ptr<dbg::DebugBus> debug_bus_;
     std::unique_ptr<z80::Z80Cpu> cpu_;
     int vdp_pending_cycles_ = 0;
     uint64_t frame_count_ = 0;

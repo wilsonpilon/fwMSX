@@ -1,6 +1,7 @@
 // fwMSX -- servidor TCP da ponte de controle. Ver server.h e doc/control-spec.md.
 #include "server.h"
 
+#include <cctype>
 #include <chrono>
 
 #ifdef _WIN32
@@ -120,6 +121,27 @@ void Server::ClientLoop(intptr_t socket) {
             pending.erase(0, nl + 1);
             if (!line.empty() && line.back() == '\r') line.pop_back();
 
+            // "events on|off" e' por conexao: o servidor resolve aqui, sem passar pela thread do emulador.
+            {
+                std::string l;
+                for (const char ch : line) {
+                    if (ch != '\t') l += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+                }
+                while (!l.empty() && l.back() == ' ') l.pop_back();
+                if (l == "events on" || l == "events off") {
+                    {
+                        std::lock_guard<std::mutex> lock(clients_mutex_);
+                        if (l == "events on") subscribers_.insert(socket);
+                        else subscribers_.erase(socket);
+                    }
+                    if (!SendText(socket, "ok\n")) {
+                        CloseClient(socket);
+                        return;
+                    }
+                    continue;
+                }
+            }
+
             auto req = std::make_shared<Request>();
             req->line = line;
             {
@@ -138,7 +160,7 @@ void Server::ClientLoop(intptr_t socket) {
                 }
             }
             reply += '\n';
-            if (send(s, reply.data(), static_cast<int>(reply.size()), 0) <= 0) {
+            if (!SendText(socket, reply)) {
                 CloseClient(socket);
                 return;
             }
@@ -153,13 +175,14 @@ void Server::CloseClient(intptr_t socket) {
     for (size_t i = 0; i < client_sockets_.size(); ++i) {
         if (client_sockets_[i] == socket) {
             client_sockets_.erase(client_sockets_.begin() + static_cast<std::ptrdiff_t>(i));
+            subscribers_.erase(socket);
             sock_close(static_cast<sock_t>(socket));
             return;
         }
     }
 }
 
-int Server::Poll(Commander &commander) {
+int Server::Poll(Commander &commander, std::vector<std::string> *local_events) {
     std::deque<std::shared_ptr<Request>> work;
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -174,7 +197,32 @@ int Server::Poll(Commander &commander) {
         }
         cv_.notify_all();
     }
+    // Eventos assincronos do depurador (breakpoint atingido, watchpoint...) vao aos clientes inscritos.
+    for (const std::string &ev : commander.TakeEvents()) {
+        PushEvent(ev);
+        if (local_events) local_events->push_back(ev);
+    }
     return static_cast<int>(work.size());
+}
+
+bool Server::SendText(intptr_t socket, const std::string &text) {
+    std::lock_guard<std::mutex> lock(write_mutex_);
+    size_t sent = 0;
+    while (sent < text.size()) {
+        const int n = send(static_cast<sock_t>(socket), text.data() + sent, static_cast<int>(text.size() - sent), 0);
+        if (n <= 0) return false;
+        sent += static_cast<size_t>(n);
+    }
+    return true;
+}
+
+void Server::PushEvent(const std::string &line) {
+    std::vector<intptr_t> targets;
+    {
+        std::lock_guard<std::mutex> lock(clients_mutex_);
+        targets.assign(subscribers_.begin(), subscribers_.end());
+    }
+    for (const intptr_t s : targets) SendText(s, line + "\n");
 }
 
 } // namespace control

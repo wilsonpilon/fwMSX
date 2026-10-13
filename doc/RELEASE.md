@@ -17,6 +17,26 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.0 -- "Knightmare" (Konami) (2026-10-13)
+
+**Fase:** o depurador basico do emulador e os eventos assincronos da ponte de controle (primeiro passo rumo a integracao
+com msxIDE/PaleoBASIC e a um depurador sofisticado -- openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS).
+
+### O que foi feito
+- `src/debug/`: `Debugger` (breakpoints, watchpoints, parada, fila de eventos), `DebugBus` (decorador do barramento do Z80),
+  `dbg_flow.c` (classificacao de instrucao), `dbg_fmt.f90` (flags), `dbg_range.asm` (teste de faixa, NASM dual-ABI).
+- `Machine::RunFrame()` agora usa `StepInstruction()`; para antes do breakpoint e depois do watchpoint; `RunUntilStop()`.
+- `Commander`: `break unbreak breaks watch unwatch watches stepi next until go stop jump dis mem stack reg slots events`.
+- Servidor: `events on|off` por conexao, `PushEvent()`, respostas `ok +N`. Cliente (`EmuLink`): `ok +N`, fila de eventos,
+  `PollEvents()`. Console: `[evento]`, `wait`. TUI: menu Depurador, eventos no historico. Modo terminal e janela: eventos.
+- Parametros `--break`, `--watch`, `--debug`.
+
+### Validacao
+`ctest` 23/23 (Windows e Linux). Fumaca real: janela com `--debug --break`, console por pipe (`stepi`, `go`, `wait`
+recebendo `[evento] break ...`) e TUI (`--attach --run --dump`).
+
+---
+
 ## v1.36.2 -- "Salamander: MegaROM com AB no fim" (Konami) (2026-10-13)
 
 **Fase:** primeiro bug de jogo achado pela comparacao com o fMSX usando o acervo do file-hunter: o R-Type nao iniciava.

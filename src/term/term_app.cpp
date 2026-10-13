@@ -54,6 +54,7 @@ struct Snapshot {
     int scr_mode = 0;
     uint64_t frame = 0;
     bool paused = false;
+    bool stopped = false; // parado pelo depurador
     double fps = 0.0;
     bool valid = false;
 };
@@ -133,6 +134,14 @@ public:
     void PressKey(const std::string &key, bool shift) {
         std::lock_guard<std::mutex> lock(keys_mutex_);
         pending_keys_.push_back({key, shift});
+    }
+
+    // Eventos do depurador ("! break ...") ainda nao mostrados; esvazia a fila.
+    std::vector<std::string> TakeEvents() {
+        std::lock_guard<std::mutex> lock(events_mutex_);
+        std::vector<std::string> out;
+        out.swap(events_);
+        return out;
     }
 
     Snapshot Snap() {
@@ -246,6 +255,7 @@ private:
         s.scr_mode = vs.scr_mode;
         s.frame = machine_->frame_count();
         s.paused = paused_;
+        s.stopped = machine_->debugger().stopped();
         s.fps = fps;
         s.valid = true;
         if (vs.scr_mode == 0 || vs.scr_mode == 1 || vs.scr_mode == 13) {
@@ -285,7 +295,16 @@ private:
         std::vector<int16_t> live;
         while (running_) {
             DrainJobs();
-            if (server_.port() != 0) server_.Poll(commander_);
+            {
+                // Eventos do depurador: vao para os clientes TCP inscritos e para o log do proprio terminal.
+                std::vector<std::string> evs;
+                if (server_.port() != 0) server_.Poll(commander_, &evs);
+                else evs = commander_.TakeEvents();
+                if (!evs.empty()) {
+                    std::lock_guard<std::mutex> lock(events_mutex_);
+                    for (std::string &e : evs) events_.push_back(std::move(e));
+                }
+            }
             const auto now = clock::now();
             acc += std::chrono::duration<double>(now - last).count();
             last = now;
@@ -329,6 +348,8 @@ private:
     audio::AudioOutput audio_;
     bool audio_ok_ = false;
     std::string ctl_message_;
+    std::mutex events_mutex_;
+    std::vector<std::string> events_;
     std::vector<std::string> port_files_;
 
     std::atomic<bool> running_{false};
@@ -568,6 +589,19 @@ int RunTerm(const TermOptions &options) {
     };
     auto run_and_report = [&](const std::string &line) {
         const std::string reply = run_line(line);
+        if (reply.rfind("ok +", 0) == 0) {
+            // Resposta de varias linhas (dis, mem, reg...): vai para o log, o aviso so' conta quantas.
+            const size_t nl = reply.find('\n');
+            std::istringstream body(nl == std::string::npos ? std::string() : reply.substr(nl + 1));
+            std::string l;
+            int n = 0;
+            while (std::getline(body, l)) {
+                add_log(l);
+                ++n;
+            }
+            set_toast("ok (" + std::to_string(n) + " linhas no log)");
+            return std::string("ok");
+        }
         const std::string shown = reply.rfind("ok ", 0) == 0 ? reply.substr(3) : (reply == "ok" ? "ok" : (reply.rfind("err ", 0) == 0 ? "erro: " + reply.substr(4) : reply));
         set_toast(shown);
         return shown;
@@ -611,6 +645,10 @@ int RunTerm(const TermOptions &options) {
 
     auto renderer = Renderer([&] {
         const Snapshot snap = runner.Snap();
+        for (const std::string &ev : runner.TakeEvents()) {
+            add_log("[evento] " + (ev.rfind("! ", 0) == 0 ? ev.substr(2) : ev));
+            set_toast(ev.rfind("! ", 0) == 0 ? ev.substr(2) : ev);
+        }
         Elements rows;
         rows.push_back(text(" fwMSX TERM  F10 Menu  F11 Comando  F6/F7 Estado  F8/F9 Slot  F12 Captura  Ctrl+C = STOP ") | inverted);
         Element view = std::make_shared<MsxView>(snap, four_three);
@@ -618,7 +656,7 @@ int RunTerm(const TermOptions &options) {
 
         std::string status = " " + std::string(FWMSX_COMPANY) + ": " + FWMSX_CODENAME + " | SCREEN " + std::to_string(snap.scr_mode) + " | " +
                              std::to_string(static_cast<int>(snap.fps + 0.5)) + " fps | quadro " + std::to_string(snap.frame) + " | slot " +
-                             std::to_string(slot) + (snap.paused ? " | PAUSADO" : "") + (runner.audio_ok() ? "" : " | mudo");
+                             std::to_string(slot) + (snap.paused ? " | PAUSADO" : "") + (snap.stopped ? " | PARADO (depurador)" : "") + (runner.audio_ok() ? "" : " | mudo");
         if (runner.ctl_port() != 0) status += " | controle: porta " + std::to_string(runner.ctl_port());
         if (!toast.empty() && std::chrono::steady_clock::now() < toast_until) status += " | " + toast;
         rows.push_back(text(status) | inverted);

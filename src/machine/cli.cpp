@@ -6,6 +6,7 @@
 #include <iostream>
 #include <vector>
 
+#include "../control/command.h"
 #include "../vdp/cpp/ppm_writer.h"
 #include "../vdp/core/vdp_state.h"
 #include "../fm/cpp/fm_device.h"
@@ -333,6 +334,46 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
             const std::string *v = need("um arquivo .wav");
             if (!v) return 2;
             wav_path = *v;
+        } else if (a == "--break") {
+            // Breakpoint de execucao (doc/debug-spec.md); pode repetir. A maquina para ANTES da instrucao nesse PC.
+            const std::string *v = need("um endereco (ex.: 0x4010, $4010 ou 4010h)");
+            if (!v) return 2;
+            uint32_t addr = 0;
+            if (!control::Commander::ParseNumber(*v, addr) || addr > 0xFFFF) {
+                std::cerr << "fwmsx --msx: --break precisa de um endereco de 0 a FFFF (recebeu '" << *v << "')" << std::endl;
+                return 2;
+            }
+            config.debug_breaks.push_back(static_cast<uint16_t>(addr));
+        } else if (a == "--watch") {
+            // Watchpoint: endereco[:tamanho[:r|w|rw]] -- para quando a memoria e' lida/escrita (padrao: escrita, 1 byte).
+            const std::string *v = need("endereco[:tamanho[:r|w|rw]]");
+            if (!v) return 2;
+            machine::DebugWatchSpec w;
+            std::vector<std::string> parts;
+            for (size_t b = 0, e; b <= v->size(); b = e + 1) {
+                e = v->find(':', b);
+                if (e == std::string::npos) e = v->size();
+                parts.push_back(v->substr(b, e - b));
+            }
+            uint32_t addr = 0, len = 1;
+            bool good = !parts.empty() && control::Commander::ParseNumber(parts[0], addr) && addr <= 0xFFFF;
+            if (good && parts.size() > 1 && !parts[1].empty()) good = control::Commander::ParseNumber(parts[1], len) && len >= 1 && len <= 0xFFFF;
+            if (good && parts.size() > 2) {
+                if (parts[2] == "r") { w.on_read = true; w.on_write = false; }
+                else if (parts[2] == "w") { w.on_read = false; w.on_write = true; }
+                else if (parts[2] == "rw") { w.on_read = true; w.on_write = true; }
+                else good = false;
+            }
+            if (!good || parts.size() > 3) {
+                std::cerr << "fwmsx --msx: --watch: use endereco[:tamanho[:r|w|rw]] (recebeu '" << *v << "')" << std::endl;
+                return 2;
+            }
+            w.addr = static_cast<uint16_t>(addr);
+            w.len = static_cast<uint16_t>(len);
+            config.debug_watches.push_back(w);
+        } else if (a == "--debug") {
+            // Comeca PARADO no PC 0000: use a ponte de controle/console/TUI (stepi, go, ...) para andar.
+            config.debug_start_stopped = true;
         } else if (a == "--vdplog") {
             vdplog = true;
         } else if (a == "--mute") {
@@ -450,6 +491,12 @@ int RunMachineCommand(const std::vector<std::string> &args, const std::string &a
                 return 1;
             }
             std::cout << "audio salvo em " << wav_path << " (" << wav_samples.size() << " amostras)" << std::endl;
+        }
+        if (m->debugger().stopped()) {
+            char pcbuf[8];
+            std::snprintf(pcbuf, sizeof(pcbuf), "%04X", m->cpu().pc());
+            std::cout << "depurador: parado em PC=" << pcbuf << " (" << m->debugger().last_stop() << ")" << std::endl;
+            for (const std::string &ev : m->debugger().TakeEvents()) std::cout << ev << std::endl;
         }
         std::string save_error;
         if (!m->SaveSram(save_error)) std::cerr << "fwmsx --msx: " << save_error << std::endl;

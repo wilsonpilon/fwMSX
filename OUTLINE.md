@@ -17,6 +17,13 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-13)
 
+- **1.37.0 "Knightmare" (publicada)**: **depurador basico + eventos assincronos**. Breakpoints/watchpoints, `stepi`/`next`/
+  `until`/`go`/`stop`/`jump`, `dis`/`mem`/`stack`/`reg`/`slots`; na ponte de controle, no console (`[evento]`, `wait`), no menu
+  Depurador da TUI e no modo terminal; parametros `--break`/`--watch`/`--debug`; eventos `! break ...` por conexao
+  (`events on`) e respostas `ok +N`. Codigo em C+Fortran+Assembly+C++ (`src/debug/`). **Proximo (pedido do usuario)**: o
+  depurador sofisticado, por partes, misturando openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS
+  (condicoes, simbolos do fwasm, trace, E/S e interrupcoes, painel na TUI, apelidos estilo DEBUG). Ver `doc/debug-spec.md`
+  (secao 7). `ctest` 23/23 em Windows e Linux.
 - **1.36.2 "Salamander: MegaROM com AB no fim" (publicada)**: R-Type (384KB, "AB" no fim) agora inicia: MegaROM de bancos
   nao potencia de 2 e' completada para 2^n bancos (espelho do fim, mascara 2^n-1) e o endereco inicial segue a regra
   do fMSX ("default to last pages on reset"). Comparacao com o fMSX original: **26/26 casos aprovados** (19 jogos

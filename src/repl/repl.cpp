@@ -95,6 +95,7 @@ int RunReplCommand(const std::vector<std::string> &args, const std::string &argv
 
     std::cout << "fwMSX - console. 'help' lista os comandos; 'emu start' abre o emulador; 'exit' sai." << std::endl;
     while (true) {
+        session.PrintEvents(std::cout); // eventos que chegaram enquanto se digitava (breakpoint atingido...)
         const char *raw = rx.input(session.Prompt());
         if (raw == nullptr) {
             std::cout << std::endl;

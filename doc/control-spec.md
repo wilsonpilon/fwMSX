@@ -44,6 +44,34 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `screenshot <arq>` | grava a tela (PNG na janela) |
 | `quit` | fecha o emulador |
 
+Depurador (1.37.0, ver [debug-spec.md](debug-spec.md)): `break`, `unbreak`, `breaks`, `watch`, `unwatch`, `watches`,
+`stepi`, `next`, `until`, `go`, `stop`, `jump`, `dis`, `mem`, `stack`, `reg`, `slots` e `events`.
+
+### Respostas de varias linhas
+
+Os comandos que listam coisas (`dis`, `mem`, `reg`, `stack`, `slots`, `breaks`, `watches`) respondem
+`ok +N` e, nas N linhas seguintes, o texto. Os comandos antigos nunca emitem `+N`, entao clientes que so'
+conhecem os comandos antigos continuam funcionando.
+
+```
+> dis 0 2
+< ok +2
+<  0000  F3           DI
+<  0001  C3 D7 02     JP 02D7h
+```
+
+### Eventos assincronos
+
+O cliente que manda `events on` (por conexao; `events off` cancela) recebe, a qualquer momento, linhas
+`! evento chave=valor ...` -- hoje os do depurador (`! break`, `! watch`, `! until`). Nunca no meio de uma
+resposta. O console (`--cli`) e a TUI assinam sozinhos ao conectar.
+
+```
+> go
+< ok running
+< ! break id=1 pc=0038 hits=1        <- chegou sem ninguem pedir
+```
+
 ## 3. Como ligar
 
 ```
@@ -86,8 +114,8 @@ src/control/
 
 ## 6. O que falta
 
-- **Eventos assincronos** (`! breakpoint ...`, `! frame ...`): so' pergunta e resposta por enquanto.
-- Comandos de depuracao (breakpoints, desmontar, passo a passo de instrucao), VDP/PSG, joystick,
+- **Mais eventos** (`! frame ...`, E/S, interrupcoes): hoje so' os do depurador (1.37.0); ver `doc/debug-spec.md`.
+- Depurador avancado (condicoes, simbolos, trace -- `doc/debug-spec.md`, secao 7), VDP/PSG, joystick,
   `fwmsx --cmd "..."` na linha de comando (sem janela) e a **TUI** que consome o mesmo
   `Commander`.
 - Autenticacao por token (hoje basta ser localhost).

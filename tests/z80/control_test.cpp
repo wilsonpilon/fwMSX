@@ -271,6 +271,208 @@ void TestServer(const std::string &bios) {
     check(server.port() == 0, "servidor: Stop()");
 }
 
+
+// ---- depurador (doc/debug-spec.md) -----------------------------------------------------------------
+void TestDebugger(const std::string &bios) {
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine para o teste do depurador");
+        return;
+    }
+    control::Commander cmd(host);
+    machine::Machine &m = host.machine();
+    Frames(host, cmd, 250);
+
+    // multilinha: "ok +N" e as N linhas
+    const control::Result d0 = cmd.Execute("dis 0 3");
+    check(d0.ok && d0.Line().rfind("ok +3\n", 0) == 0, "dis: resposta de varias linhas = 'ok +3' + 3 linhas");
+
+    // breakpoint no vetor de interrupcao (todo quadro passa por 0038h)
+    check(cmd.Execute("break 0x0038").ok, "break 0038");
+    check(Contains(cmd.Execute("breaks").text, "0038"), "breaks lista o ponto");
+    const size_t stop_mark = m.debugger().EventCount();
+    (void)stop_mark;
+    Frames(host, cmd, 3);
+    check(m.debugger().stopped() && m.cpu().state().pc.w == 0x0038, "RunFrame para ANTES da instrucao no breakpoint (PC=0038)");
+    check(Contains(cmd.Execute("status").text, "stopped=1"), "status mostra stopped=1");
+    const uint64_t fc = m.frame_count();
+    Frames(host, cmd, 5);
+    check(m.frame_count() == fc, "parado: o quadro nao anda");
+    const std::vector<std::string> ev = cmd.TakeEvents();
+    check(!ev.empty() && ev[0].rfind("! break id=1 pc=0038", 0) == 0, "evento '! break id=1 pc=0038' na fila");
+    check(cmd.TakeEvents().empty(), "TakeEvents esvazia a fila");
+
+    const control::Result dis = cmd.Execute("dis");
+    check(dis.ok && Contains(dis.text, "*0038"), "dis: '*' marca o breakpoint no PC");
+
+    // passo de instrucao
+    const control::Result st = cmd.Execute("stepi 2");
+    check(st.ok && Contains(st.text, "pc=") && m.cpu().state().pc.w != 0x0038 && m.debugger().stopped(), "stepi 2: anda e continua parado -> " + st.text);
+    check(cmd.TakeEvents().empty(), "stepi nao gera evento (a resposta ja' diz tudo)");
+
+    // go: volta a rodar e para de novo no mesmo breakpoint no proximo quadro
+    check(Contains(cmd.Execute("go").text, "running") && !m.debugger().stopped(), "go: roda");
+    Frames(host, cmd, 3);
+    check(m.debugger().stopped() && m.cpu().state().pc.w == 0x0038, "go: para de novo em 0038 (primeira instrucao pulada sem testar o PC)");
+    cmd.TakeEvents();
+    check(cmd.Execute("unbreak 0x0038").ok && Contains(cmd.Execute("breaks").text, "sem breakpoints"), "unbreak");
+
+    // next sobre um CALL: programa curto na RAM
+    //   C000: CALL C008   C003: NOP   C004: JR $
+    //   C008: LD A,55h    C00A: RET
+    const uint8_t prog[] = {0xCD, 0x08, 0xC0, 0x00, 0x18, 0xFE, 0x00, 0x00, 0x3E, 0x55, 0xC9};
+    for (size_t i = 0; i < sizeof(prog); ++i) m.WriteMemory(static_cast<uint16_t>(0xC000 + i), prog[i]);
+    check(cmd.Execute("jump 0xC000").ok, "jump C000");
+    const control::Result nx = cmd.Execute("next");
+    check(nx.ok && Contains(nx.text, "pc=C003"), "next: executa o CALL inteiro e para em C003 -> " + nx.text);
+    check(m.cpu().state().af.b.hi == 0x55, "next: a subrotina rodou (A=55)");
+    check(cmd.TakeEvents().empty(), "next sincrono nao gera evento");
+
+    // until
+    check(cmd.Execute("jump 0xC000").ok, "jump C000 de novo");
+    const control::Result un = cmd.Execute("until 0xC00A");
+    check(un.ok && Contains(un.text, "pc=C00A"), "until C00A -> " + un.text);
+
+    // watchpoint de escrita:  C010: LD A,77h   C012: LD (C100),A   C015: JR $
+    const uint8_t prog2[] = {0x3E, 0x77, 0x32, 0x00, 0xC1, 0x18, 0xFE};
+    for (size_t i = 0; i < sizeof(prog2); ++i) m.WriteMemory(static_cast<uint16_t>(0xC010 + i), prog2[i]);
+    check(cmd.Execute("watch 0xC100 1 w").ok && Contains(cmd.Execute("watches").text, "C100"), "watch C100 w");
+    cmd.Execute("jump 0xC010");
+    cmd.Execute("go");
+    Frames(host, cmd, 2);
+    check(m.debugger().stopped(), "watch: a escrita em C100 para a maquina");
+    const std::vector<std::string> wev = cmd.TakeEvents();
+    check(!wev.empty() && Contains(wev[0], "! watch") && Contains(wev[0], "addr=C100") && Contains(wev[0], "value=77") &&
+              Contains(wev[0], "pc=C012"),
+          "evento do watch: addr, valor e PC de quem escreveu -> " + (wev.empty() ? std::string("(nenhum)") : wev[0]));
+    check(m.ReadMemory(0xC100) == 0x77, "a escrita aconteceu (so' parou depois da instrucao)");
+    check(cmd.Execute("unwatch all").ok, "unwatch all");
+
+    // registradores e memoria
+    check(cmd.Execute("reg").text.find('\n') != std::string::npos && Contains(cmd.Execute("reg").text, "F="), "reg: tudo, com flags");
+    check(cmd.Execute("reg hl 0x1234").ok && m.cpu().state().hl.w == 0x1234, "reg hl 1234");
+    check(cmd.Execute("reg a 0x80").ok && m.cpu().state().af.b.hi == 0x80, "reg a 80");
+    check(!cmd.Execute("reg zz 1").ok, "reg: nome desconhecido e' erro");
+    const control::Result mem = cmd.Execute("mem 0xC010 16");
+    check(mem.ok && Contains(mem.text, "C010: 3E 77 32 00 C1"), "mem: hexdump -> " + mem.text);
+    check(cmd.Execute("stack 4").ok && cmd.Execute("slots").ok && Contains(cmd.Execute("slots").text, "pagina 3"), "stack e slots respondem");
+    check(!cmd.Execute("break zzz").ok && !cmd.Execute("until").ok && !cmd.Execute("watch 1 0").ok, "argumentos invalidos viram erro");
+    check(cmd.Execute("events on").ok && !cmd.Execute("events talvez").ok, "events: sintaxe");
+    check(Contains(cmd.Execute("stop").text, "pc="), "stop");
+
+    // comecar parado (--debug) e breakpoints/watchpoints vindos da configuracao (--break, --watch)
+    machine::MachineConfig dc;
+    dc.bios_path = bios;
+    dc.debug_start_stopped = true;
+    dc.debug_breaks = {0x0038};
+    machine::DebugWatchSpec ws;
+    ws.addr = 0xE000;
+    dc.debug_watches.push_back(ws);
+    TestHost dhost(dc);
+    check(dhost.ok() && dhost.machine().debugger().stopped() && dhost.machine().debugger().breaks().size() == 1 &&
+              dhost.machine().debugger().watches().size() == 1,
+          "config: --debug comeca parado e --break/--watch ja' vem armados");
+    control::Commander dcmd(dhost);
+    check(Contains(dcmd.Execute("stepi").text, "pc=") && dhost.machine().cpu().state().pc.w != 0, "config: stepi sai do PC 0000");
+}
+
+// Cliente TCP que se inscreve nos eventos e le linhas soltas ("! ...").
+bool ReadLine(sock_t s, std::string &line) {
+    line.clear();
+    char c;
+    while (recv(s, &c, 1, 0) == 1) {
+        if (c == '\n') return true;
+        if (c != '\r') line += c;
+    }
+    return false;
+}
+
+void TestEvents(const std::string &bios) {
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine para o teste de eventos");
+        return;
+    }
+    control::Commander cmd(host);
+    Frames(host, cmd, 250);
+    control::Server server;
+    std::string error;
+    if (!server.Start(0, error)) {
+        check(false, "servidor para o teste de eventos: " + error);
+        return;
+    }
+
+    std::string reply_events, reply_dis, reply_break, event_line, reply_after;
+    std::atomic<bool> subscribed{false};
+    std::atomic<bool> go_on{false};
+    std::atomic<bool> run_frames{false}; // o "emulador" so' anda quadros depois do go (sem corrida com o dis)
+    std::thread client([&] {
+#ifdef _WIN32
+        WSADATA wsa;
+        WSAStartup(MAKEWORD(2, 2), &wsa);
+#endif
+        sock_t s = socket(AF_INET, SOCK_STREAM, 0);
+        sockaddr_in addr{};
+        addr.sin_family = AF_INET;
+        addr.sin_port = htons(static_cast<uint16_t>(server.port()));
+        addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        if (s == SOCK_INVALID || connect(s, reinterpret_cast<sockaddr *>(&addr), sizeof(addr)) != 0) return;
+        {
+            // um teste que falha nao pode travar: 8 s sem resposta e' falha
+#ifdef _WIN32
+            DWORD ms = 8000;
+            setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char *>(&ms), sizeof(ms));
+#else
+            timeval tv{8, 0};
+            setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+#endif
+        }
+        reply_events = Roundtrip(s, "events on");
+        subscribed = true;
+        reply_break = Roundtrip(s, "break 0x0038");
+        // resposta de varias linhas: "ok +2" e 2 linhas
+        const std::string out = "dis 0 2\n";
+        send(s, out.data(), static_cast<int>(out.size()), 0);
+        std::string head, l1, l2;
+        ReadLine(s, head);
+        ReadLine(s, l1);
+        ReadLine(s, l2);
+        reply_dis = head + "|" + l1 + "|" + l2;
+        // agora o emulador roda e o breakpoint dispara sozinho: chega "! break ..." sem ninguem pedir
+        run_frames = true;
+        const std::string go = "go\n";
+        send(s, go.data(), static_cast<int>(go.size()), 0);
+        std::string a, b;
+        ReadLine(s, a);
+        ReadLine(s, b);
+        // a ordem entre a resposta do go e o evento nao e' fixa
+        event_line = a.rfind("! ", 0) == 0 ? a : b;
+        reply_after = a.rfind("! ", 0) == 0 ? b : a;
+        sock_close(s);
+        go_on = true;
+    });
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!go_on && std::chrono::steady_clock::now() < deadline) {
+        server.Poll(cmd);
+        // o "emulador" anda quadros como a janela faz
+        if (run_frames && !host.machine().debugger().stopped()) Frames(host, cmd, 1);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    client.join();
+    server.Stop();
+
+    check(reply_events == "ok", "TCP: events on -> ok");
+    check(reply_break.rfind("ok id=", 0) == 0, "TCP: break -> " + reply_break);
+    check(reply_dis.rfind("ok +2|", 0) == 0 && Contains(reply_dis, "|"), "TCP: dis responde 'ok +2' e 2 linhas -> " + reply_dis);
+    check(event_line.rfind("! break id=1 pc=0038", 0) == 0, "TCP: evento assincrono '! break ...' chegou -> " + event_line);
+    check(reply_after == "ok running", "TCP: go -> ok running (" + reply_after + ")");
+}
+
 } // namespace
 
 int main() {
@@ -285,6 +487,8 @@ int main() {
     }
     TestCommander(bios);
     TestServer(bios);
+    TestDebugger(bios);
+    TestEvents(bios);
 #else
     std::printf("[SKIP] FWMSX_SOURCE_DIR nao definido\n");
 #endif

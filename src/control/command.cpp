@@ -6,6 +6,10 @@
 #include <cstdlib>
 
 #include "../common/version.h"
+#include "../debug/c/dbg_flow.h"
+#include "../z80/debug/z80_disasm.h"
+
+extern "C" void dbg_format_flags(int f, char *buf); // src/debug/fortran/dbg_fmt.f90
 
 namespace control {
 
@@ -36,7 +40,31 @@ int DriveIndex(const std::string &s) {
 const char *kHelp =
     "comandos: help version status reset pause resume step [n] type <texto> peek <end> [n] "
     "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind> "
-    "state <save|load> <arq> screenshot <arq> quit";
+    "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
+    "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
+    "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> (ver doc/debug-spec.md)";
+
+std::string DisasmLine(machine::Machine &m, uint16_t addr, uint16_t *length = nullptr) {
+    const z80::debug::DisasmResult d = z80::debug::Disassemble([&](uint16_t a) { return m.ReadMemory(a); }, addr);
+    if (length) *length = d.length;
+    std::string bytes;
+    for (uint16_t i = 0; i < 4; ++i) {
+        bytes += i < d.length ? Hex(m.ReadMemory(static_cast<uint16_t>(addr + i)), 2) + " " : "   ";
+    }
+    return Hex(addr, 4) + "  " + bytes + " " + d.text;
+}
+
+// "pc=4010  LD A,(HL)" -- a proxima instrucao, usada nas respostas dos passos.
+std::string PcLine(machine::Machine &m) {
+    const uint16_t pc = m.cpu().state().pc.w;
+    uint16_t len = 0;
+    const z80::debug::DisasmResult d = z80::debug::Disassemble([&](uint16_t a) { return m.ReadMemory(a); }, pc);
+    (void)len;
+    return "pc=" + Hex(pc, 4) + "  " + d.text;
+}
+
+// Maximo de ciclos que um comando sincrono (next, until) espera antes de devolver "running": 20 quadros.
+constexpr long kSyncCycles = 20L * machine::Machine::kFrameCycles;
 
 } // namespace
 
@@ -119,6 +147,7 @@ Result Commander::Execute(const std::string &line) {
 
     if (cmd == "status") {
         std::string s = "frame=" + std::to_string(m.frame_count()) + " paused=" + (host_.paused() ? "1" : "0") +
+                        " stopped=" + (m.debugger().stopped() ? "1" : "0") +
                         " screen=" + std::to_string(m.vdp_state().scr_mode) + " pc=" + Hex(m.cpu().state().pc.w, 4) +
                         " typing=" + (typing() ? "1" : "0") + " cart=" + (m.cart_info().empty() ? "-" : "\"" + m.cart_info() + "\"");
         for (int d = 0; d < 2; ++d) {
@@ -269,8 +298,263 @@ Result Commander::Execute(const std::string &line) {
         return Ok();
     }
 
+    // ---- depurador (doc/debug-spec.md) --------------------------------------------------------------
+    dbg::Debugger &dbgr = m.debugger();
+    auto need_addr = [&](size_t idx, uint16_t &out) {
+        uint32_t v = 0;
+        if (t.size() <= idx || !ParseNumber(t[idx], v) || v > 0xFFFF) return false;
+        out = static_cast<uint16_t>(v);
+        return true;
+    };
+
+    if (cmd == "events") {
+        // A assinatura e' feita pelo servidor TCP (por conexao); aqui so' valida a sintaxe.
+        if (t.size() != 2 || (Lower(t[1]) != "on" && Lower(t[1]) != "off")) return Err("events: use events <on|off>");
+        return Ok();
+    }
+
+    if (cmd == "break") {
+        uint16_t a = 0;
+        if (!need_addr(1, a)) return Err("break: use break <endereco 0-FFFF>");
+        const int id = dbgr.AddBreak(a);
+        return Ok("id=" + std::to_string(id) + " addr=" + Hex(a, 4));
+    }
+    if (cmd == "unbreak") {
+        if (t.size() == 2 && Lower(t[1]) == "all") {
+            dbgr.ClearBreaks();
+            return Ok();
+        }
+        uint16_t a = 0;
+        if (!need_addr(1, a)) return Err("unbreak: use unbreak <endereco|all>");
+        return dbgr.RemoveBreak(a) ? Ok() : Err("nao ha breakpoint em " + Hex(a, 4));
+    }
+    if (cmd == "breaks") {
+        if (dbgr.breaks().empty()) return Ok("sem breakpoints");
+        std::string out;
+        for (const dbg::Breakpoint &b : dbgr.breaks()) {
+            if (!out.empty()) out += '\n';
+            out += "#" + std::to_string(b.id) + "  " + Hex(b.addr, 4) + "  hits=" + std::to_string(b.hits);
+        }
+        return Ok(out);
+    }
+
+    if (cmd == "watch") {
+        uint16_t a = 0;
+        if (!need_addr(1, a)) return Err("watch: use watch <endereco> [tamanho] [r|w|rw]");
+        uint32_t len = 1;
+        bool rd = false, wr = true;
+        for (size_t i = 2; i < t.size(); ++i) {
+            const std::string o = Lower(t[i]);
+            if (o == "r") { rd = true; wr = false; }
+            else if (o == "w") { rd = false; wr = true; }
+            else if (o == "rw" || o == "wr") { rd = true; wr = true; }
+            else if (!ParseNumber(t[i], len) || len == 0 || len > 0xFFFF) return Err("watch: tamanho entre 1 e FFFF, ou r|w|rw");
+        }
+        const int id = dbgr.AddWatch(a, static_cast<uint16_t>(len), rd, wr);
+        return Ok("id=" + std::to_string(id) + " addr=" + Hex(a, 4) + " len=" + std::to_string(len) + " " + (rd && wr ? "rw" : rd ? "r" : "w"));
+    }
+    if (cmd == "unwatch") {
+        if (t.size() == 2 && Lower(t[1]) == "all") {
+            dbgr.ClearWatches();
+            return Ok();
+        }
+        uint16_t a = 0;
+        if (!need_addr(1, a)) return Err("unwatch: use unwatch <endereco|all>");
+        return dbgr.RemoveWatch(a) ? Ok() : Err("nao ha watchpoint em " + Hex(a, 4));
+    }
+    if (cmd == "watches") {
+        if (dbgr.watches().empty()) return Ok("sem watchpoints");
+        std::string out;
+        for (const dbg::Watchpoint &w : dbgr.watches()) {
+            if (!out.empty()) out += '\n';
+            out += "#" + std::to_string(w.id) + "  " + Hex(w.addr, 4) + "  len=" + std::to_string(w.len) + "  " +
+                   (w.on_read && w.on_write ? "rw" : w.on_read ? "r" : "w") + "  hits=" + std::to_string(w.hits);
+        }
+        return Ok(out);
+    }
+
+    // Os comandos que andam a maquina "na hora" (stepi, next, until) ja' devolvem o resultado na resposta:
+    // o evento correspondente, se houve, e' descartado para o cliente nao ver duas vezes.
+    if (cmd == "stepi") {
+        uint32_t n = 1;
+        if (t.size() > 1 && (!ParseNumber(t[1], n) || n == 0 || n > 1000000)) return Err("stepi: use um numero de instrucoes entre 1 e 1000000");
+        const size_t mark = dbgr.EventCount();
+        if (!dbgr.stopped()) dbgr.Stop("manual");
+        std::string extra;
+        for (uint32_t i = 0; i < n; ++i) {
+            m.StepInstruction();
+            if (dbgr.TakeWatchHit(m.cpu().state().pc.w)) {
+                extra = "  (watch disparou)";
+                break;
+            }
+        }
+        dbgr.TruncateEvents(mark);
+        return Ok(PcLine(m) + extra);
+    }
+
+    if (cmd == "next" || cmd == "until") {
+        uint16_t target = 0;
+        const uint16_t pc = m.cpu().state().pc.w;
+        if (cmd == "until") {
+            if (!need_addr(1, target)) return Err("until: use until <endereco>");
+        } else {
+            uint16_t len = 0;
+            const z80::debug::DisasmResult d = z80::debug::Disassemble([&](uint16_t a) { return m.ReadMemory(a); }, pc);
+            len = d.length;
+            const uint8_t bytes[2] = {m.ReadMemory(pc), m.ReadMemory(static_cast<uint16_t>(pc + 1))};
+            const int kind = dbg_flow_kind(bytes);
+            target = static_cast<uint16_t>(pc + (kind == DBG_FLOW_HALT ? 1 : len));
+            if (kind == DBG_FLOW_PLAIN) {
+                // Instrucao comum: um passo simples, como stepi 1.
+                const size_t mark = dbgr.EventCount();
+                if (!dbgr.stopped()) dbgr.Stop("manual");
+                m.StepInstruction();
+                dbgr.TakeWatchHit(m.cpu().state().pc.w);
+                dbgr.TruncateEvents(mark);
+                return Ok(PcLine(m));
+            }
+        }
+        const size_t mark = dbgr.EventCount();
+        dbgr.SetUntil(target);
+        dbgr.Resume();
+        if (m.RunUntilStop(kSyncCycles)) {
+            dbgr.TruncateEvents(mark);
+            return Ok(PcLine(m) + "  (" + dbgr.last_stop() + ")");
+        }
+        return Ok("running"); // nao chegou em 20 quadros: segue rodando e o evento avisa quando parar
+    }
+
+    if (cmd == "go") {
+        if (t.size() > 1) {
+            uint16_t a = 0;
+            if (!need_addr(1, a)) return Err("go: use go [endereco]");
+            m.cpu().set_pc(a);
+        }
+        dbgr.Resume();
+        return Ok("running");
+    }
+    if (cmd == "stop") {
+        if (!dbgr.stopped()) dbgr.Stop("manual");
+        return Ok(PcLine(m));
+    }
+    if (cmd == "jump") {
+        uint16_t a = 0;
+        if (!need_addr(1, a)) return Err("jump: use jump <endereco>");
+        m.cpu().set_pc(a);
+        return Ok(PcLine(m));
+    }
+
+    if (cmd == "dis") {
+        uint16_t a = m.cpu().state().pc.w;
+        uint32_t n = 8;
+        if (t.size() > 1 && !need_addr(1, a)) return Err("dis: use dis [endereco] [linhas]");
+        if (t.size() > 2 && (!ParseNumber(t[2], n) || n == 0 || n > 256)) return Err("dis: linhas entre 1 e 256");
+        std::string out;
+        for (uint32_t i = 0; i < n; ++i) {
+            uint16_t len = 1;
+            const std::string line = DisasmLine(m, a, &len);
+            char mark = a == m.cpu().state().pc.w ? '>' : ' ';
+            for (const dbg::Breakpoint &b : dbgr.breaks()) {
+                if (b.addr == a) mark = '*';
+            }
+            if (!out.empty()) out += '\n';
+            out += mark + line;
+            a = static_cast<uint16_t>(a + len);
+        }
+        return Ok(out);
+    }
+
+    if (cmd == "mem") {
+        uint16_t a = 0;
+        uint32_t n = 64;
+        if (!need_addr(1, a)) return Err("mem: use mem <endereco> [bytes]");
+        if (t.size() > 2 && (!ParseNumber(t[2], n) || n == 0 || n > 1024)) return Err("mem: bytes entre 1 e 1024");
+        std::string out;
+        for (uint32_t row = 0; row < n; row += 16) {
+            std::string hex, asc;
+            for (uint32_t i = 0; i < 16; ++i) {
+                if (row + i < n) {
+                    const uint8_t v = m.ReadMemory(static_cast<uint16_t>(a + row + i));
+                    hex += Hex(v, 2) + " ";
+                    asc += (v >= 32 && v < 127) ? static_cast<char>(v) : '.';
+                } else {
+                    hex += "   ";
+                }
+            }
+            if (!out.empty()) out += '\n';
+            out += Hex(static_cast<uint16_t>(a + row), 4) + ": " + hex + "|" + asc + "|";
+        }
+        return Ok(out);
+    }
+
+    if (cmd == "stack") {
+        uint32_t n = 8;
+        if (t.size() > 1 && (!ParseNumber(t[1], n) || n == 0 || n > 128)) return Err("stack: palavras entre 1 e 128");
+        const uint16_t sp = m.cpu().state().sp.w;
+        std::string out;
+        for (uint32_t i = 0; i < n; ++i) {
+            const uint16_t a = static_cast<uint16_t>(sp + 2 * i);
+            const unsigned v = m.ReadMemory(a) | (m.ReadMemory(static_cast<uint16_t>(a + 1)) << 8);
+            if (!out.empty()) out += '\n';
+            out += "SP+" + Hex(2 * i, 2) + "  " + Hex(a, 4) + ": " + Hex(v, 4);
+        }
+        return Ok(out);
+    }
+
+    if (cmd == "reg") {
+        Z80State &s = m.cpu().state();
+        if (t.size() == 1) {
+            char flags[9];
+            dbg_format_flags(s.af.b.lo, flags);
+            const char *im = (s.iff & Z80_IFF_IM2) ? "2" : (s.iff & Z80_IFF_IM1) ? "1" : "0";
+            return Ok("AF=" + Hex(s.af.w, 4) + " BC=" + Hex(s.bc.w, 4) + " DE=" + Hex(s.de.w, 4) + " HL=" + Hex(s.hl.w, 4) +
+                      "  IX=" + Hex(s.ix.w, 4) + " IY=" + Hex(s.iy.w, 4) + " SP=" + Hex(s.sp.w, 4) + " PC=" + Hex(s.pc.w, 4) + "\n" +
+                      "AF'=" + Hex(s.af_alt.w, 4) + " BC'=" + Hex(s.bc_alt.w, 4) + " DE'=" + Hex(s.de_alt.w, 4) + " HL'=" + Hex(s.hl_alt.w, 4) +
+                      "  I=" + Hex(s.i, 2) + " R=" + Hex(s.r, 2) + "  IM" + im + " " + ((s.iff & Z80_IFF_1) ? "EI" : "DI") +
+                      ((s.iff & Z80_IFF_HALT) ? " HALT" : "") + "\n" + "F=" + flags);
+        }
+        uint32_t v = 0;
+        if (t.size() != 3 || !ParseNumber(t[2], v)) return Err("reg: use reg  (mostra tudo)  ou  reg <nome> <valor>");
+        const std::string r = Lower(t[1]);
+        struct Reg16 { const char *name; Z80Pair *p; };
+        const Reg16 r16[] = {{"af", &s.af}, {"bc", &s.bc}, {"de", &s.de}, {"hl", &s.hl}, {"ix", &s.ix}, {"iy", &s.iy},
+                             {"sp", &s.sp}, {"pc", &s.pc}, {"af'", &s.af_alt}, {"bc'", &s.bc_alt}, {"de'", &s.de_alt}, {"hl'", &s.hl_alt}};
+        for (const Reg16 &x : r16) {
+            if (r == x.name) {
+                if (v > 0xFFFF) return Err("reg: valor de 16 bits (0-FFFF)");
+                x.p->w = static_cast<uint16_t>(v);
+                return Ok();
+            }
+        }
+        struct Reg8 { const char *name; uint8_t *p; };
+        const Reg8 r8[] = {{"a", &s.af.b.hi}, {"f", &s.af.b.lo}, {"b", &s.bc.b.hi}, {"c", &s.bc.b.lo}, {"d", &s.de.b.hi}, {"e", &s.de.b.lo},
+                           {"h", &s.hl.b.hi}, {"l", &s.hl.b.lo}, {"i", &s.i}, {"r", &s.r}};
+        for (const Reg8 &x : r8) {
+            if (r == x.name) {
+                if (v > 0xFF) return Err("reg: valor de 8 bits (0-FF)");
+                *x.p = static_cast<uint8_t>(v);
+                return Ok();
+            }
+        }
+        return Err("reg: registrador desconhecido '" + t[1] + "'");
+    }
+
+    if (cmd == "slots") {
+        const auto view = m.memory().CurrentView();
+        std::string out;
+        for (size_t p = 0; p < view.size(); ++p) {
+            if (!out.empty()) out += '\n';
+            out += "pagina " + std::to_string(p) + " (" + Hex(static_cast<unsigned>(p * 0x4000), 4) + "-" +
+                   Hex(static_cast<unsigned>(p * 0x4000 + 0x3FFF), 4) + "): slot " + std::to_string(view[p].primary) + "-" +
+                   std::to_string(view[p].secondary) + (view[p].writable ? " (RAM)" : " (ROM/vazio)");
+        }
+        return Ok(out);
+    }
+
     return Err("comando desconhecido '" + t[0] + "' (use help)");
 }
+
+std::vector<std::string> Commander::TakeEvents() { return host_.machine().debugger().TakeEvents(); }
 
 void Commander::Tick() {
     machine::Machine &m = host_.machine();

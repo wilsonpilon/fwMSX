@@ -766,7 +766,7 @@ barra invertida dos caminhos do Windows e' literal). Numeros: `123`, `0x7B`, `$7
 | `pause`, `resume`, `step [n]` | pausa, retoma, avanca n quadros (so' pausado) |
 | `type <texto>` | digita no teclado do MSX; `\n` = Enter (use aspas) |
 | `peek <end> [n]`, `poke <end> <v>...` | le/grava memoria como o Z80 enxerga (ROM nao e' alterada) |
-| `regs` | registradores do Z80 |
+| `regs` | registradores do Z80 (o depurador tem o `reg`, completo) |
 | `cart <arq\|-> [mapper]` | troca o cartucho (reinicia); `-` retira; mapper: auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2 |
 | `disk <A\|B> <arq>`, `eject <A\|B>` | insere / ejeta disco |
 | `tape <arq>`, `tape eject`, `tape rewind` | fita |
@@ -775,6 +775,37 @@ barra invertida dos caminhos do Windows e' literal). Numeros: `123`, `0x7B`, `$7
 | `quit` | fecha o emulador |
 
 Ver [control-spec.md](control-spec.md).
+
+## Depurador (`break`, `stepi`, `go`...)
+
+O emulador tem um depurador basico, parecido com o do fMSX, acessivel pela **ponte de controle**, pelo **console**
+(`--cli`), pelo menu **Depurador** da **TUI** (`--tui`) e pela linha de comando do **modo terminal** (F11). Ao parar
+(breakpoint, watchpoint ou passo) a maquina congela; o titulo da janela, a barra da TUI e o `status` avisam.
+
+Exemplo no console:
+
+```
+fwmsx> emu start --msx --cart jogo.rom --break 0x4010
+fwmsx:51607> wait                      # espera o breakpoint
+[evento] break id=1 pc=4010 hits=1
+fwmsx:51607> dis                       # desmonta a partir do PC; '>' = PC, '*' = breakpoint
+fwmsx:51607> reg                       # registradores e flags
+fwmsx:51607> next                      # passo sobre (CALL roda inteiro)
+fwmsx:51607> watch 0xC000 2 w          # para quando algo escrever em C000-C001
+fwmsx:51607> go
+```
+
+| Comando | Faz |
+|---|---|
+| `break <end>`, `unbreak <end\|all>`, `breaks` | breakpoints de execucao |
+| `watch <end> [tam] [r\|w\|rw]`, `unwatch <end\|all>`, `watches` | watchpoints de memoria |
+| `stepi [n]`, `next`, `until <end>`, `go [end]`, `stop`, `jump <end>` | passo, passo sobre, executar ate, continuar, parar, mudar o PC |
+| `dis [end] [n]`, `mem <end> [n]`, `stack [n]`, `slots` | desmontar, hexdump, pilha, mapa de slots |
+| `reg`, `reg <nome> <valor>` | registradores e flags / alterar |
+
+Parametros do `--msx`: `--break <end>` (pode repetir), `--watch <end>[:tam[:r|w|rw]]` (pode repetir) e `--debug`
+(comeca parado no PC 0000). Os eventos (`! break ...`, `! watch ...`) chegam sozinhos a quem mandou `events on`
+(o console e a TUI fazem isso ao conectar). Detalhes e o que ainda falta: [debug-spec.md](debug-spec.md).
 
 ## Montador Z80 (`fwmsx --asm`)
 

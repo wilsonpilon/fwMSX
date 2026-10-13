@@ -2,6 +2,7 @@
 #include "emu_link.h"
 
 #include <chrono>
+#include <cstdlib>
 #include <thread>
 
 #ifdef _WIN32
@@ -22,6 +23,7 @@ static void sock_init() {
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <sys/select.h>
 #include <signal.h>
 #include <spawn.h>
 #include <sys/socket.h>
@@ -67,6 +69,10 @@ bool EmuLink::Connect(int port, int timeout_ms, std::string &error) {
             socket_ = static_cast<long long>(s);
             port_ = port;
             pending_.clear();
+            events_.clear();
+            // Assina os eventos do depurador ("! break ..."); um emulador antigo responde err e tudo segue igual.
+            std::string r, e;
+            Send("events on", r, e);
             return true;
         }
         sock_close(s);
@@ -83,6 +89,56 @@ void EmuLink::Close() {
     socket_ = -1;
     port_ = 0;
     pending_.clear();
+    events_.clear();
+}
+
+bool EmuLink::TakeLine(std::string &line) {
+    const size_t nl = pending_.find('\n');
+    if (nl == std::string::npos) return false;
+    line = pending_.substr(0, nl);
+    pending_.erase(0, nl + 1);
+    if (!line.empty() && line.back() == '\r') line.pop_back();
+    return true;
+}
+
+bool EmuLink::PollEvents(std::vector<std::string> &out, int wait_ms) {
+    if (socket_ >= 0) {
+        const sock_t s = static_cast<sock_t>(socket_);
+        // Le o que ja' chegou (e, se pedido, espera um pouco por mais).
+        int timeout = wait_ms;
+        while (true) {
+            fd_set set;
+            FD_ZERO(&set);
+            FD_SET(s, &set);
+            timeval tv{timeout / 1000, (timeout % 1000) * 1000};
+#ifdef _WIN32
+            const int ready = select(0, &set, nullptr, nullptr, &tv);
+#else
+            const int ready = select(s + 1, &set, nullptr, nullptr, &tv);
+#endif
+            if (ready <= 0) break;
+            char buf[2048];
+            const int n = recv(s, buf, sizeof(buf), 0);
+            if (n <= 0) {
+                Close();
+                break;
+            }
+            pending_.append(buf, static_cast<size_t>(n));
+            std::string line;
+            while (TakeLine(line)) {
+                if (line.rfind("! ", 0) == 0) events_.push_back(line.substr(2));
+            }
+            if (!events_.empty()) break;
+            timeout = 0;
+            if (wait_ms == 0) break;
+        }
+    }
+    const bool any = !events_.empty();
+    while (!events_.empty()) {
+        out.push_back(events_.front());
+        events_.pop_front();
+    }
+    return any;
 }
 
 bool EmuLink::Send(const std::string &line, std::string &reply, std::string &error) {
@@ -97,13 +153,33 @@ bool EmuLink::Send(const std::string &line, std::string &reply, std::string &err
         error = "a conexao com o emulador caiu";
         return false;
     }
+    int more = -1; // linhas que faltam de uma resposta "ok +N"
+    std::string multi;
     while (true) {
-        const size_t nl = pending_.find('\n');
-        if (nl != std::string::npos) {
-            reply = pending_.substr(0, nl);
-            pending_.erase(0, nl + 1);
-            if (!reply.empty() && reply.back() == '\r') reply.pop_back();
-            return true;
+        std::string line;
+        while (TakeLine(line)) {
+            if (more < 0 && line.rfind("! ", 0) == 0) {
+                events_.push_back(line.substr(2)); // evento assincrono no meio do caminho
+                continue;
+            }
+            if (more < 0) {
+                if (line.rfind("ok +", 0) == 0) {
+                    more = std::atoi(line.c_str() + 4);
+                    multi.clear();
+                    if (more <= 0) {
+                        reply = "ok";
+                        return true;
+                    }
+                    continue;
+                }
+                reply = line;
+                return true;
+            }
+            multi += (multi.empty() ? "" : "\n") + line;
+            if (--more == 0) {
+                reply = "ok " + multi;
+                return true;
+            }
         }
         char buf[2048];
         const int n = recv(s, buf, sizeof(buf), 0);

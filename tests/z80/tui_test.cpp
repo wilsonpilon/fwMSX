@@ -79,9 +79,9 @@ int main() {
         const auto menus = r.model.BuildMenus();
         std::vector<std::string> titles;
         for (const auto &m : menus) titles.push_back(m.title);
-        check(titles == std::vector<std::string>({"Emulador", "Arquivo", "Maquina", "Midia", "Ferramentas", "Ajuda"}), "barra de menus: 6 menus");
+        check(titles == std::vector<std::string>({"Emulador", "Arquivo", "Maquina", "Midia", "Ferramentas", "Depurador", "Ajuda"}), "barra de menus: 7 menus");
         const auto spans = r.model.TitleSpans();
-        check(spans.size() == 6 && spans[0].first == 0 && spans[1].first == spans[0].second, "TitleSpans: titulos contiguos");
+        check(spans.size() == 7 && spans[0].first == 0 && spans[1].first == spans[0].second, "TitleSpans: titulos contiguos");
     }
 
     // ---- F10, setas e comandos diretos ----
@@ -94,7 +94,7 @@ int main() {
         check(r.model.open_menu() == 1, "seta direita vai para o menu Arquivo");
         r.K(Key::Left);
         r.K(Key::Left);
-        check(r.model.open_menu() == 5, "seta esquerda no primeiro menu volta ao ultimo (Ajuda)");
+        check(r.model.open_menu() == 6, "seta esquerda no primeiro menu volta ao ultimo (Ajuda)");
         r.K(Key::Escape);
         check(r.model.mode() == TuiModel::Mode::Normal, "Esc fecha o menu");
 
@@ -112,6 +112,10 @@ int main() {
         check(r.sent.back() == "resume", "com o emulador pausado o item vira Retomar -> 'resume'");
         r.Pick(3, 1); // Midia > Retirar cartucho
         check(r.sent.back() == "cart -", "Midia > Retirar cartucho -> 'cart -'");
+        r.PickL(5, "Passo sobre (next)");
+        check(r.sent.back() == "next", "Depurador > Passo sobre -> 'next'");
+        r.PickL(5, "Continuar (go)");
+        check(r.sent.back() == "go", "Depurador > Continuar -> 'go'");
     }
 
     // ---- itens separadores sao pulados ----

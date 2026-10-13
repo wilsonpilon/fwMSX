@@ -17,7 +17,7 @@ espera (ver `doc/repl-spec.md`).
 ## 2. A tela
 
 ```
- Emulador  Arquivo  Maquina  Midia  Ferramentas  Ajuda            F10 menus  F1 ajuda   <- barra de menus
+ Emulador  Arquivo  Maquina  Midia  Ferramentas Depurador Ajuda           F10 menus  F1 ajuda   <- barra de menus
  (historico: o que voce mandou, as respostas do emulador e a saida das ferramentas)
  Emulador conectado :51607 | SCREEN 0 | quadro 4210 | PAUSADO | slot 1                   <- status
  > peek 0xC000 16_                                                                       <- linha de comando
@@ -36,6 +36,7 @@ historico.
 | **Emulador** | Iniciar MSX1 / MSX2 / MSX2+ - Iniciar com opcoes... - Conectar a um emulador aberto... - Desconectar - Encerrar - Estado |
 | **Arquivo** | Salvar / Carregar estado (slot N) - Slot anterior / proximo - Salvar estado em arquivo... - Carregar estado de arquivo... - Capturar tela (PNG)... - Sair da TUI |
 | **Maquina** | Reiniciar - Pausar/Retomar - Avancar 1 / 10 quadros - Registradores - Ler memoria... - Gravar memoria... - Digitar texto no MSX... |
+| **Depurador** | Registradores - Desmontar (PC / em...) - Passo - Passo sobre - Executar ate... - Continuar - Parar - Ir para... - Breakpoint/Watchpoint em... / Remover / Listar - Memoria (hexdump)... - Pilha - Mudar registrador... - Mapa de slots (ver [debug-spec.md](debug-spec.md)) |
 | **Midia** | Inserir / Retirar cartucho (com mapper) - Inserir / Ejetar disco A: e B: - Novo disco em branco... - Novo disco e inserir em A:... - Inserir / Ejetar / Rebobinar fita |
 | **Ferramentas** | Banco de ROMs (buscar, mostrar, verificar SHA-1, identificar, estatisticas, baixar fMSX, comando livre) - Fita: listar / comando livre - Banco de fitas (listar, buscar, estatisticas) - Utilitario de discos (msxdisk) |
 | **Ajuda** | Teclas e uso - Comandos do console - Versao |
@@ -95,5 +96,6 @@ src/repl/                   ReplSession / EmuLink / BuildSession(): a mesma sess
 - Teclas de atalho por letra nos menus (Alt+letra) e menus com mnemonicos.
 - Configuracao de slots/disco/video pela TUI (hoje so' pelas opcoes de `emu start`).
 - Mostrar a lista de resultados de `romdb`/`fitadb` como tabela navegavel (hoje e' texto no historico).
-- Depurador e montador (do PaleoBASIC/msxIDE) como menu e comandos.
-- Eventos assincronos do emulador (breakpoints) aparecendo no historico.
+- Montador (do PaleoBASIC/msxIDE) como menu. O depurador basico (1.37.0) ja' tem menu; falta um PAINEL com registradores,
+  desmontagem e pilha atualizados a cada parada.
+- Eventos do depurador (1.37.0) aparecem no historico e a barra mostra `PARADO (depurador)`; o status e' lido a cada 0,4 s.

@@ -535,7 +535,13 @@ int RunEmulatorWindow(const WindowOptions &options) {
     };
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
-        if (ctl_server.port() != 0) ctl_server.Poll(ctl_commander);
+        {
+            // Eventos do depurador (breakpoint atingido...): vao aos clientes TCP inscritos e ao stderr.
+            std::vector<std::string> dbg_events;
+            if (ctl_server.port() != 0) ctl_server.Poll(ctl_commander, &dbg_events);
+            else dbg_events = ctl_commander.TakeEvents();
+            for (const std::string &ev : dbg_events) std::fprintf(stderr, "%s\n", ev.c_str());
+        }
 
         if (g_input.slot_delta != 0) {
             state_slot = ((state_slot - 1 + g_input.slot_delta) % kStateSlots + kStateSlots) % kStateSlots + 1;
@@ -645,11 +651,12 @@ int RunEmulatorWindow(const WindowOptions &options) {
             fps = fps_frames / (now - fps_window_start);
             fps_window_start = now;
             fps_frames = 0;
-            char title[96];
+            char title[160];
             char ctl_note[32] = "";
             if (ctl_server.port() != 0) std::snprintf(ctl_note, sizeof(ctl_note), " - controle: porta %d", ctl_server.port());
-            std::snprintf(title, sizeof(title), "fwMSX - SCREEN %d - %.1f fps%s%s%s", machine->vdp_state().scr_mode, fps,
-                          paused ? " (pausado)" : "", audio_ok ? "" : " (mudo)", ctl_note);
+            std::snprintf(title, sizeof(title), "fwMSX - SCREEN %d - %.1f fps%s%s%s%s", machine->vdp_state().scr_mode, fps,
+                          paused ? " (pausado)" : "", machine->debugger().stopped() ? " (PARADO: depurador)" : "",
+                          audio_ok ? "" : " (mudo)", ctl_note);
             glfwSetWindowTitle(window, title);
         }
 

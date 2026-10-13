@@ -36,6 +36,10 @@ namespace machine {
 //                           janela e fecha sozinha apos n quadros
 //   --shot <arq.ppm>        sem janela: roda --frames quadros e salva a tela
 //   --wait <n>              quadros a esperar depois das teclas (padrao 60)
+//   --break <end>           breakpoint de execucao (0x4010, $4010 ou 4010h); pode repetir. A maquina para
+//                           ANTES da instrucao nesse PC (ver doc/debug-spec.md)
+//   --watch <end>[:tam[:r|w|rw]]  watchpoint de memoria (padrao: escrita, 1 byte); pode repetir
+//   --debug                 comeca PARADA no PC 0000 (com --ctl-port, o console/TUI andam a maquina)
 //   --vdplog                sem janela: imprime as mudancas dos registradores do VDP
 //                           a cada quadro (depuracao de modos de tela)
 //   --keys <texto>          sem janela: digita o texto (letras, numeros, espaco e

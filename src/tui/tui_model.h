@@ -25,6 +25,7 @@ struct EmuStatus {
     bool connected = false;
     int port = 0;
     bool paused = false;
+    bool stopped = false; // parado pelo depurador (breakpoint, watchpoint, passo)
     uint64_t frame = 0;
     int screen = 0;
 };

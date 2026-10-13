@@ -87,4 +87,6 @@ src/machine/screenshot.*  captura PNG, compartilhada com a janela
   verdade (TAB, setas, F-keys por terminal) depende de teste seu.
 - Mouse (cliques no menu), redimensionar com graficos mais finos (braille), ajuste de proporcao.
 - Configuracao de slots/disco pelo modo terminal (hoje so' pelas opcoes de linha de comando ou comandos).
-- Ferramentas integradas (depurador, montador, banco de ROMs) dentro do modo terminal.
+- Ferramentas integradas (montador, banco de ROMs) dentro do modo terminal. O depurador basico (1.37.0) funciona pela linha
+  de comando (F11): `break`, `stepi`, `dis`...; as respostas de varias linhas vao para o log, os eventos viram `[evento] ...`
+  no log e no aviso, e a barra mostra `PARADO (depurador)`.

@@ -23,8 +23,16 @@ struct Result {
     bool ok = true;
     std::string text; // sem quebra de linha; vazio = so' "ok"
 
-    // Linha pronta para o fio: "ok [texto]" ou "err texto".
-    std::string Line() const { return (ok ? "ok" : "err") + (text.empty() ? std::string() : " " + text); }
+    // Resposta pronta para o fio. Uma linha: "ok [texto]" ou "err texto". Com varias linhas de texto (dis,
+    // mem, reg...): "ok +N" seguido das N linhas -- o cliente le N linhas a mais (doc/control-spec.md).
+    std::string Line() const {
+        if (ok && text.find('\n') != std::string::npos) {
+            size_t n = 1;
+            for (const char c : text) n += c == '\n';
+            return "ok +" + std::to_string(n) + "\n" + text;
+        }
+        return (ok ? "ok" : "err") + (text.empty() ? std::string() : " " + text);
+    }
 };
 
 // O que o Commander precisa do dono da maquina (a janela, a TUI ou um teste). A maquina pode ser
@@ -60,6 +68,10 @@ public:
     static bool ParseNumber(const std::string &text, uint32_t &value);
 
     bool typing() const { return !typing_.empty() || key_phase_ != 0; }
+
+    // Eventos assincronos do depurador ("! break pc=4010 ..."), na ordem em que aconteceram; esvazia a fila.
+    // Quem hospeda a maquina (servidor TCP, TUI, modo terminal) chama depois de cada quadro/comando.
+    std::vector<std::string> TakeEvents();
 
 private:
     struct TypedKey {

@@ -65,6 +65,7 @@ void ParseStatus(const std::string &reply, EmuStatus &st) {
     };
     st.frame = static_cast<uint64_t>(num("frame"));
     st.paused = num("paused") != 0;
+    st.stopped = num("stopped") != 0;
     st.screen = static_cast<int>(num("screen"));
 }
 
@@ -110,7 +111,7 @@ private:
             bool have = false;
             {
                 std::unique_lock<std::mutex> lock(jobs_mu_);
-                cv_.wait_for(lock, std::chrono::seconds(1), [&] { return !jobs_.empty() || !running_; });
+                cv_.wait_for(lock, std::chrono::milliseconds(400), [&] { return !jobs_.empty() || !running_; });
                 if (!running_) break;
                 if (!jobs_.empty()) {
                     line = jobs_.front();
@@ -152,8 +153,14 @@ private:
             if (session_->link().Send("status", reply, error)) ParseStatus(reply, st);
             else st.connected = false;
         }
+        // Eventos assincronos do emulador (breakpoint atingido...) vao para o historico.
+        std::ostringstream events;
+        session_->PrintEvents(events, 0);
         std::lock_guard<std::mutex> lock(mu_);
         model_.SetStatus(st);
+        std::istringstream in(events.str());
+        std::string l;
+        while (std::getline(in, l)) model_.AddLog(l);
     }
 
     std::unique_ptr<repl::ReplSession> session_;
@@ -269,7 +276,7 @@ Element BuildView(App &app, const Dimensions &size) {
     std::string status;
     if (st.connected) {
         status = " Emulador conectado :" + std::to_string(st.port) + " | SCREEN " + std::to_string(st.screen) + " | quadro " +
-                 std::to_string(st.frame) + (st.paused ? " | PAUSADO" : "") + " | slot " + std::to_string(m.slot());
+                 std::to_string(st.frame) + (st.paused ? " | PAUSADO" : "") + (st.stopped ? " | PARADO (depurador)" : "") + " | slot " + std::to_string(m.slot());
     } else {
         status = " Emulador: nao conectado (menu Emulador > Iniciar)";
     }

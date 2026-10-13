@@ -7,6 +7,29 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.0] - 2026-10-13 - "Knightmare" (Konami)
+
+### Adicionado
+- **Depurador basico do emulador** (`doc/debug-spec.md`): breakpoints de execucao e watchpoints de memoria
+  (leitura/escrita/faixa), passo (`stepi`), passo sobre (`next`: CALL/RST/LDIR.../HALT), `until`, `go`, `stop`,
+  `jump`, `dis`, `mem`, `stack`, `reg` (com flags e alteracao), `slots`. Pela ponte de controle, pelo console
+  (`--cli`), pelo menu **Depurador** da TUI e pela linha de comando do modo terminal. Estilo do depurador do fMSX.
+- **Eventos assincronos**: `events on` assina, por conexao, linhas `! break id=1 pc=0038 hits=1`, `! watch ...`,
+  `! until ...` enviadas pelo emulador sem o cliente perguntar. O console mostra `[evento] ...` (e tem `wait`), a TUI poe
+  no historico (barra `PARADO (depurador)`), o modo terminal no log, a janela no stderr.
+- **Respostas de varias linhas** na ponte: `ok +N` e N linhas (comandos antigos inalterados).
+- **Parametros do `--msx`**: `--break <end>`, `--watch <end>[:tam[:r|w|rw]]`, `--debug` (comeca parado no PC 0000).
+- `status` ganhou `stopped=0|1`; titulo da janela mostra `PARADO: depurador`.
+- Codigo em C (`dbg_flow`), Fortran (`dbg_fmt`), Assembly (`dbg_range`, NASM Win64/SysV) e C++ (`Debugger`,
+  `DebugBus`); `Machine::StepInstruction()`/`RunUntilStop()`. Testes: `controltest` (depurador e eventos por TCP) e `tuitest`.
+
+### Mudou
+- A TUI ganhou o menu **Depurador** (7 menus); o status do emulador e' lido a cada 0,4 s (era 1 s).
+- Parado pelo depurador, `RunFrame()` nao anda o quadro.
+
+### Falta
+- Depurador sofisticado (condicoes, simbolos do `fwasm`, trace, E/S e interrupcoes, painel na TUI): `doc/debug-spec.md`, secao 7.
+
 ## [1.36.2] - 2026-10-13 - "Salamander: MegaROM com AB no fim" (Konami)
 
 ### Corrigido

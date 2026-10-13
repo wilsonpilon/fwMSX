@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-13, apos a 1.36.2)
+fwMSX -- como retomar (atualizado em 2026-10-13, apos a 1.37.0)
 
 == Em OUTRO computador (o caminho que importa) ==
 1. git clone / git pull de origin main (traz tudo: codigo, docs, ROMs de teste, dist/).
@@ -11,12 +11,16 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
 (sessao anterior: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
 == Estado ao encerrar (2026-10-13) ==
-- Ultima versao publicada: 1.36.2 "Salamander: MegaROM com AB no fim" (Konami). main == origin/main; tags 1.36.0, 1.36.1 e
-  1.36.2, branches v1.36.x correspondentes, releases do GitHub com zip + tar.gz.
+- Ultima versao publicada: 1.37.0 "Knightmare" (Konami). main == origin/main; tags 1.36.0 a 1.37.0, branches v1.36.x/v1.37.0,
+  releases do GitHub com zip + tar.gz.
 - ctest 23/23 em Windows (build.ps1) e Linux/WSL (build.sh).
 - 1.36.0: montador Z80 fwasm (fwmsx --asm, comando asm do console); C + Fortran + C++. Saidas .z80/.sym/.txt.
 - 1.36.1: texto de 40 colunas/TEXT80 comeca no pixel 9 (como o fMSX).
 - 1.36.2: R-Type inicia (MegaROM de bancos nao potencia de 2 completada para 2^n; AB no fim = comeca nas ultimas paginas).
+- 1.37.0: DEPURADOR BASICO + eventos assincronos (doc/debug-spec.md): break/watch/stepi/next/until/go/stop/jump/dis/mem/stack/reg/slots
+  na ponte, console, TUI (menu Depurador) e modo terminal; eventos "! break ..." por conexao (events on); --break/--watch/--debug.
+  PROXIMO pedido do usuario: depurador sofisticado, por partes (openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do
+  MS-DOS) -- ver debug-spec.md secao 7.
 - tests/media/: 19 ROMs de jogo PROVISORIAS do acervo D:\msx\archive\download.file-hunter.com - 24-06-2026\Games (o usuario
   liberou o uso; saem na versao final, que nao leva midia nenhuma nem as ROMs do fMSX -- havera um baixador de ROMs do site
   do fMSX e um navegador do file-hunter, planejados mas nao iniciados). Comparacao com o fMSX: 26/26 casos.

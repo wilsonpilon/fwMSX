@@ -37,6 +37,10 @@ public:
     std::string Prompt() const;
 
     bool connected() const { return link_.connected(); }
+
+    // Mostra os eventos do emulador (breakpoint atingido...) que chegaram, como "[evento] break id=1 ...".
+    // Espera ate' `wait_ms` por um evento. Devolve true se mostrou algum.
+    bool PrintEvents(std::ostream &out, int wait_ms = 0);
     EmuLink &link() { return link_; }
 
     // Quebra a linha em palavras (aspas duplas agrupam; a barra invertida e' literal -- caminhos do
