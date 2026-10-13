@@ -1,3 +1,39 @@
-claude
---resume
-c546951f-98eb-4b3c-95a6-f671032ac979
+fwMSX -- como retomar (atualizado em 2026-10-13, apos a 1.36.1)
+
+== Em OUTRO computador (o caminho que importa) ==
+1. git clone / git pull de origin main (traz tudo: codigo, docs, ROMs de teste, dist/).
+2. Abrir o Claude Code na pasta do repositorio: ele le o CLAUDE.md sozinho (regras fixas de release).
+3. Pedir: "leia o OUTLINE.md e me diga onde paramos". O OUTLINE.md (secao 2) e' o "onde paramos" oficial.
+   `claude --resume` NAO funciona em outra maquina (so' na mesma onde a sessao rodou).
+
+== Na MESMA maquina ==
+claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: montador, comparacao com o fMSX, 1.36.x)
+(sessao anterior: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
+
+== Estado ao encerrar (2026-10-13) ==
+- Ultima versao publicada: 1.36.1 "Salamander: Texto de SCREEN 0 como no fMSX" (Konami). main == origin/main; tags 1.36.0 e
+  1.36.1, branches v1.36.0 e v1.36.1, releases do GitHub criados (zip + tar.gz).
+- ctest 23/23 em Windows (build.ps1) e Linux/WSL (build.sh).
+- 1.36.0: montador Z80 fwasm (fwmsx --asm, comando asm do console); C + Fortran + C++. Saidas .z80/.sym/.txt.
+- 1.36.1: texto de 40 colunas/TEXT80 comeca no pixel 9 (como o fMSX).
+- Ferramenta nova (fora do ctest): tools/fmsxgo_ref/compare.py compara quadros do fwMSX com o fMSX ORIGINAL
+  (resource/fMSX compilado sem janela por tools/fmsx_ref/Headless.c; --ref fmsxgo usa o port em Go como 2a opiniao).
+  7/7 casos a 100% pixel a pixel. Precisa de gcc (MSYS2 UCRT64) no PATH, Go so' para --ref fmsxgo, e das ROMs de jogo
+  de E:\fmsxgo\media (se nao existirem no outro PC, os casos de jogo sao ignorados). Ver doc/fmsx-compare-spec.md.
+  Armadilha: o fMSX grava CMOS.ROM e le na partida seguinte (o compare.py apaga entre os casos).
+
+== Proximos passos sugeridos ==
+1. Montador: formatos rom/megarom/basic/msxdos/cas/wav, select/subpage/search, debug/break e o modulo em ASSEMBLY (a regra
+   das 4 linguagens por fase ainda nao esta' cumprida no fwasm). Ver doc/asm-spec.md.
+2. Comparacao com o fMSX: casos com disco (MSX-DOS), teclas digitadas (inclusive TEXT80, ainda sem caso), SCREEN 5-8 de
+   jogo, audio; ROMs pendentes (Parodius, Mega Chase, F-1 Spirit 3D) nao estao no acervo local.
+3. Pendencias antigas (OUTLINE secao 7): GameMaster2, MSX-MUSIC com BIOS propria, CALL VOICECOPY, depurador como comandos,
+   eventos assincronos, teste do usuario da TUI/terminal (1.34/1.35) num terminal de verdade.
+
+== Lembretes de workflow (CLAUDE.md tem o resto) ==
+- Bumpar src/common/version.h ANTES do primeiro build de qualquer rodada nova.
+- Build Windows E Linux, ctest 100% nos dois; docs vivos no mesmo commit; git add com caminhos explicitos;
+  git tag X.Y.Z + git branch vX.Y.Z; push de main + tag + branch; release do GitHub com zip e tar.gz.
+- Fora do git de proposito: resource/menu.alf (fonte binaria sem relacao), tools/asmdiff/__pycache__, binarios de teste
+  soltos em dist/ e resource/asmsx.exe (oraculo do montador; *.exe e' ignorado -- copie de outro lugar se precisar
+  regerar os golden com tools/asmdiff).
