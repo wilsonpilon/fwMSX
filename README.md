@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.35.0 "Vampire Killer", Konami)
+## Estado atual (v1.37.3 "Knightmare: Depurador na TUI", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -50,7 +50,15 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 - **Save-state**: menu **Arquivo > Salvar estado.../Carregar estado...** (`.sst`; atalhos **F6** salva / **F7** carrega / **F8-F9** trocam de slot, 9 slots; avisa se a BIOS/cartucho mudou; **F12** captura a tela em PNG) -- grava/restaura
   Z80, VDP, PSG, SCC, OPLL, PPI, controladora de disco e RAM/RAM de mapper. Aplica sobre a maquina
   ja' rodando (nao recarrega BIOS/cartucho/disco/fita). Ver [savestate-spec.md](doc/savestate-spec.md).
-- **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- confirmados na tela.
+- **Janela**: menus do fMSX, zoom, proporcao, tela cheia e filtros de video -- confirmados na tela; **splash** de abertura e icone proprio
+  (desligaveis; ver [splash-spec.md](doc/splash-spec.md)); tema, letra e moldura ficam gravados em `fwmsx.cfg`.
+- **Depurador**: breakpoints, watchpoints, passo/passo sobre/ate', desmontagem, memoria, pilha e registradores, com avisos assincronos
+  (`! break ...`); **Z80 Debugger visual** na janela (F10, com a fonte do proprio MSX) e na TUI. Ver [debug-spec.md](doc/debug-spec.md).
+- **Controle externo e interfaces**: ponte de controle por TCP (`--ctl-port`), console (`fwMSXc.exe --cli`), TUI de menus (`--tui`) e modo
+  terminal (`--term`). Ver [control-spec.md](doc/control-spec.md).
+- **Montador Z80** (`fwmsx --asm`, compativel com o asMSX 1.2.0; saidas `.z80`/`.sym`/`.txt` -- formatos de ROM ainda por vir). Ver [asm-spec.md](doc/asm-spec.md).
+- **Compatibilidade com o fMSX**: comparacao quadro a quadro com o fMSX original (`tools/fmsxgo_ref/compare.py`): 26 casos, todos aprovados
+  (BIOS dos 3 modelos e jogos). Ver [fmsx-compare-spec.md](doc/fmsx-compare-spec.md).
 
 **Limites (detalhes em [RELEASE.md](doc/RELEASE.md) e [SPEC.md](doc/SPEC.md), secao 5.0):**
 
@@ -60,8 +68,8 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   adivinha o preenchimento de alinhamento; um arquivo ASCII multi-bloco de verdade (256 bytes por bloco)
   aparece fragmentado na lista; "Selecao" (#28 do TZX) nao tem como mostrar um menu de verdade numa
   ferramenta batch -- escolhe sempre a 1a opcao. Ver [tape-spec.md](doc/tape-spec.md), secoes 5, 9, 10 e 11.
-- **Jogos**: Lode Runner + SCC nao sobe; Parodius (Smooth Scroll) mostra tela fragmentada; Mega Chase
-  so' validado ate o titulo; F-1 Spirit 3D: troca de disco pela janela nao testada.
+- **Jogos**: Lode Runner + SCC, Parodius, R-Type e outros 20 jogos batem com o fMSX na comparacao de quadros; Mega Chase so' foi validado
+  ate o titulo e F-1 Spirit 3D (troca de disco pela janela) nao foi testado.
 - **Ausentes**: GameMaster2, `CALL VOICECOPY` e opcao de linha de comando para o layout de slots.
   Save-state nao valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo.
 - **BIOS**: so' em 0:0. Outras BIOS (ex.: Gradiente Expert 1.1) montam no layout, mas nao foram testadas.
@@ -103,7 +111,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.36.2 MegaROM com AB no fim (R-Type);
 1.37.0 depurador basico + eventos assincronos (console, TUI, ponte, parametros);
 1.37.1 splash de abertura, icone do aplicativo e configuracoes salvas;
-**1.37.2 Z80 Debugger na janela (F10, fonte do MSX)**. Detalhes em
+1.37.2 Z80 Debugger na janela (F10, fonte do MSX);
+**1.37.3 Z80 Debugger na TUI (comando `dbgui`)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

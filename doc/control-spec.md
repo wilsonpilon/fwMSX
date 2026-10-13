@@ -45,7 +45,8 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `quit` | fecha o emulador |
 
 Depurador (1.37.0, ver [debug-spec.md](debug-spec.md)): `break`, `unbreak`, `breaks`, `watch`, `unwatch`, `watches`,
-`stepi`, `next`, `until`, `go`, `stop`, `jump`, `dis`, `mem`, `stack`, `reg`, `slots` e `events`.
+`stepi`, `next`, `until`, `go`, `stop`, `jump`, `dis`, `mem`, `stack`, `reg`, `slots`, `events` e `dbgui` (o painel Z80 Debugger como texto,
+[debug-spec.md](debug-spec.md), secao 6c).
 
 ### Respostas de varias linhas
 

@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.3 -- "Knightmare: Depurador na TUI" (Konami) (2026-10-13)
+
+**Fase:** o painel Z80 Debugger tambem na TUI, a pedido do usuario; fecha o dia com a documentacao e o README atualizados.
+
+### O que foi feito
+- `control::Commander`: `dbgui open|show|key|char` (guarda um `dbgui::DebugView`, o modelo da janela); a TUI so' envia teclas e desenha o texto.
+- `TuiModel`: modo `Debugger`, `OpenPanel`/`SetPanel`/`KeyDebugger`; `tui_app`: o painel (`PanelDialog`, adaptado a altura do terminal), a saida de
+  `dbgui` roteada para o painel e a abertura automatica em eventos de parada.
+- Documentacao: MANUAL (depurador na TUI), debug-spec 6c, control-spec, tui-spec, README (estado atual, o que funciona hoje, limites corrigidos).
+
+### Validacao
+`ctest` 24/24 (Windows e Linux); `controltest` e `tuitest` ganharam os casos do painel. Fumaca real: emulador em janela com `--debug --break 0x0038`,
+TUI com `--attach --run go --dump`: o evento de breakpoint abriu o painel sozinho (registradores, `*>0038`, cursor, ajuda) num terminal de 80x24.
+
+---
+
 ## v1.37.2 -- "Knightmare: Depurador na janela" (Konami) (2026-10-13)
 
 **Fase:** o depurador visual da janela (Z80 Debugger do fMSX), pedido do usuario, em cima do depurador basico da 1.37.0.

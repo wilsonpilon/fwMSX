@@ -132,6 +132,28 @@ IM EI flags), uma linha em branco e o corpo -- `ENDERECO: bytes instrucao` na de
   sozinho); C e R retomam; se a maquina volta a rodar por outro caminho (menu, console) o painel fecha.
 - **Q encerra o emulador** (como no fMSX), sem confirmacao.
 
+## 6c. O painel na TUI e o comando `dbgui` (1.37.3)
+
+A TUI e' um cliente da ponte de controle e nao tem a maquina, entao o painel e' calculado no EMULADOR: o `control::Commander` guarda um
+`dbgui::DebugView` (o mesmo modelo da janela) e o comando `dbgui` o aciona e devolve o painel como texto:
+
+| Comando | Faz |
+|---|---|
+| `dbgui open` | abre o painel (para a maquina, cursor no PC) e o desenha |
+| `dbgui show` | so' desenha |
+| `dbgui key <enter\|up\|down\|left\|right\|g\|d\|m\|s\|j\|r\|c\|q\|b\|esc\|bs>` | uma tecla de comando |
+| `dbgui char <c>` | um digito hexa para a pergunta do G |
+
+Resposta: `ok +33`, uma linha `action=none\|close\|quit prompt=0\|1 mode=disasm\|memory\|stack` e as 32 linhas do painel, cada uma com uma letra de
+estilo na frente (T titulo, R registradores, C cursor, P pergunta, D ajuda, N normal; caracteres nao imprimiveis saem como `.`). `q` encerra o
+emulador (`Host::quit`); `esc` deixa a maquina parada (parada "manual"); `c` e `r` a retomam.
+
+Na TUI: `TuiModel::Mode::Debugger`, `OpenPanel()` (manda `dbgui open`), `SetPanel()` (guarda as linhas e sai do modo se vier `action=close|quit` ou um
+erro) e `KeyDebugger()` (Enter, setas, PageUp/PageDown, letras, Backspace, Esc/F10; so' digitos hexa na pergunta). O `WorkerLoop` manda a saida de
+`dbgui ...` para o painel (nao para o historico) e, ao chegar um evento `break`/`watch`/`until`, abre o painel sozinho. O desenho (`PanelDialog`) mostra
+o painel inteiro ou, num terminal baixo, o cabecalho, o rodape (se couber) e uma janela do corpo que contem o cursor. Testes: `controltest`
+(`dbgui`: abrir, ENTER, pergunta, vistas, esc/c/q) e `tuitest` (teclas, pergunta, fechar, erro).
+
 ## 7. O que falta (o depurador sofisticado, por partes)
 
 Ideias a misturar, do que o usuario citou:

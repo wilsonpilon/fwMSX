@@ -582,6 +582,55 @@ void TestDebugView(const std::string &bios) {
     check(v.Press(dbgui::Key::Escape, m) == dbgui::Action::Close, "Esc fecha o painel");
 }
 
+// ---- comando dbgui: o painel Z80 Debugger como texto (para a TUI e qualquer cliente) -------------------
+void TestDbgUiCommand(const std::string &bios) {
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine para o teste do comando dbgui");
+        return;
+    }
+    control::Commander cmd(host);
+    machine::Machine &m = host.machine();
+    Frames(host, cmd, 250);
+
+    const control::Result open = cmd.Execute("dbgui open");
+    const std::string line = open.Line();
+    check(open.ok && line.rfind("ok +33\n", 0) == 0, "dbgui open: 'ok +33' (a linha de estado e 32 linhas do painel)");
+    check(m.debugger().stopped(), "dbgui open para a maquina");
+    check(Contains(open.text, "action=none prompt=0 mode=disasm"), "dbgui open: action=none prompt=0 mode=disasm");
+    check(Contains(open.text, "TZ80 Debugger - Disassembly") || Contains(open.text, "T Z80 Debugger"), "a primeira linha do painel e' o titulo (estilo T)");
+    check(Contains(open.text, "\nR AF=") || Contains(open.text, "\nR") , "as linhas de registradores vem com o estilo R");
+    check(Contains(open.text, "\nC"), "a linha do cursor vem com o estilo C");
+
+    const uint16_t pc0 = m.cpu().state().pc.w;
+    const control::Result st = cmd.Execute("dbgui key enter");
+    check(st.ok && m.cpu().state().pc.w != pc0 && m.debugger().stopped(), "dbgui key enter: executa uma instrucao");
+    check(Contains(cmd.Execute("dbgui key g").text, "prompt=1"), "dbgui key g: abre a pergunta (prompt=1)");
+    cmd.Execute("dbgui char c");
+    cmd.Execute("dbgui char 2");
+    cmd.Execute("dbgui char 0");
+    cmd.Execute("dbgui char 0");
+    check(Contains(cmd.Execute("dbgui show").text, "C200_"), "dbgui char: os digitos aparecem na pergunta (C200_)");
+    const control::Result go = cmd.Execute("dbgui key enter");
+    check(Contains(go.text, "prompt=0") && Contains(go.text, "C200:"), "ENTER confirma a pergunta e o painel mostra C200");
+    check(Contains(cmd.Execute("dbgui key m").text, "mode=memory") && Contains(cmd.Execute("dbgui key s").text, "mode=stack") &&
+              Contains(cmd.Execute("dbgui key d").text, "mode=disasm"),
+          "dbgui key m / s / d: troca de vista");
+    check(!cmd.Execute("dbgui key zzz").ok && !cmd.Execute("dbgui nada").ok && !cmd.Execute("dbgui char ab").ok, "dbgui: argumentos invalidos viram erro");
+
+    const control::Result esc = cmd.Execute("dbgui key esc");
+    check(Contains(esc.text, "action=close") && m.debugger().stopped() && m.debugger().last_stop() == "manual",
+          "esc: action=close e a maquina continua parada ('manual': nada reabre sozinho)");
+    cmd.Execute("dbgui open");
+    const control::Result cont = cmd.Execute("dbgui key c");
+    check(Contains(cont.text, "action=close") && !m.debugger().stopped(), "c: action=close e a maquina volta a rodar");
+    cmd.Execute("dbgui open");
+    host.quit_ = false;
+    check(Contains(cmd.Execute("dbgui key q").text, "action=quit") && host.quit_, "q: action=quit e o emulador e' encerrado");
+}
+
 // Cliente TCP que se inscreve nos eventos e le linhas soltas ("! ...").
 bool ReadLine(sock_t s, std::string &line) {
     line.clear();
@@ -693,6 +742,7 @@ int main() {
     TestServer(bios);
     TestDebugger(bios);
     TestDebugView(bios);
+    TestDbgUiCommand(bios);
     TestEvents(bios);
 #else
     std::printf("[SKIP] FWMSX_SOURCE_DIR nao definido\n");

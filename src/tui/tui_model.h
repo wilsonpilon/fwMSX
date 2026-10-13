@@ -32,7 +32,7 @@ struct EmuStatus {
 
 class TuiModel {
 public:
-    enum class Mode { Normal, Menu, Prompt, Browser, Help };
+    enum class Mode { Normal, Menu, Prompt, Browser, Help, Debugger };
 
     struct MenuItem {
         std::string label;
@@ -63,6 +63,13 @@ public:
 
     // ---- estado vindo de fora ----
     void SetStatus(const EmuStatus &status) { status_ = status; }
+    // Painel Z80 Debugger (mesmo modelo da janela, desenhado no emulador e pedido pelo comando `dbgui`): abre o painel
+    // (manda `dbgui open`) e recebe a resposta -- a linha "action=... prompt=... mode=..." e as linhas do painel, cada uma
+    // com a letra de estilo na frente (T titulo, R registradores, C cursor, P pergunta, D ajuda, N normal).
+    void OpenPanel();
+    void SetPanel(const std::string &reply);
+    bool panel_prompt() const { return panel_prompt_; }
+    const std::vector<std::string> &panel() const { return panel_; }
     void AddLog(const std::string &line);
     void SetSize(int cols, int rows) {
         cols_ = cols;
@@ -109,6 +116,7 @@ private:
     void KeyMenu(const Key &key);
     void KeyPrompt(const Key &key);
     void KeyBrowser(const Key &key);
+    void KeyDebugger(const Key &key);
     void Complete();
 
     std::function<void(const std::string &)> submit_;
@@ -118,6 +126,9 @@ private:
     int slot_ = 1;
     int cols_ = 80;
     int rows_ = 24;
+
+    std::vector<std::string> panel_;  // linhas do painel Z80 Debugger (com a letra de estilo na frente)
+    bool panel_prompt_ = false;       // o painel esta' perguntando um endereco (G)
 
     std::vector<std::string> log_;
     int log_scroll_ = 0;

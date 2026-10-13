@@ -784,9 +784,10 @@ MESMOS comandos (e a janela tem ainda o painel visual, abaixo):
 
 | Caminho | Como usar |
 |---|---|
+| **TUI** (`fwMSXc.exe --tui`) | menu Depurador > Painel Z80 Debugger (ver [O painel Z80 Debugger na TUI](#o-painel-z80-debugger-na-tui)); abre sozinho ao parar |
 | **Janela** (`fwMSX.exe`) | **F10** abre o painel Z80 Debugger (ver [O Z80 Debugger na janela](#o-z80-debugger-na-janela-f10)) |
 | **Console** (`fwMSXc.exe --cli`) | digite os comandos no prompt; os avisos aparecem como `[evento] ...` |
-| **TUI de menus** (`fwMSXc.exe --tui`) | menu **Depurador** (ou a linha de comando do rodape); avisos no historico |
+| **TUI de menus** (`fwMSXc.exe --tui`) | menu **Depurador** (inclusive o painel visual) ou a linha de comando do rodape; avisos no historico |
 | **Modo terminal** (`fwMSXc.exe --term`) | F11 abre a linha de comando; respostas longas vao para o log |
 | **Ponte de controle** (`--ctl-port`) | qualquer programa manda os comandos por TCP (ver [Ponte de controle](#ponte-de-controle-externa---ctl-port)) |
 
@@ -838,6 +839,25 @@ Dicas: use **G** e **M** para ver uma variavel (`G`, `C200`, `ENTER`); **B** num
 no painel, **ENTER** repetido (a tecla repete) anda varias instrucoes. Os comandos de console da secao anterior (`watch`,
 `until`, `reg`...) continuam valendo ao mesmo tempo. Se a BIOS carregada nao tiver a fonte esperada, o painel aparece com a
 fonte comum da interface.
+
+### O painel Z80 Debugger na TUI
+
+A TUI (`fwMSXc.exe --tui`) tem o MESMO painel da janela, desenhado como caixa de texto no terminal. Menu **Depurador > Painel Z80
+Debugger**. Ele tambem abre SOZINHO quando o emulador conectado para num breakpoint, watchpoint ou "rodar ate'" (o aviso
+`[evento] ...` aparece no historico e o painel abre por cima). O painel e' calculado no proprio emulador (o mesmo codigo da janela;
+comando `dbgui`), entao o comportamento e' identico: registradores nas primeiras linhas, `ENDERECO: bytes instrucao`, `>` no PC, `*` num
+breakpoint, a linha do cursor em destaque.
+
+As teclas sao as da janela: **ENTER** passo, **Cima/Baixo**, **Esquerda/Direita** (ou PageUp/PageDown) pagina, **G** vai ao endereco (digite os
+digitos hexa e ENTER; Backspace apaga), **D** desmontagem, **M** dump (8 bytes), **S** pilha, **J** pula para o cursor, **R** roda ate' o cursor,
+**C** continua, **B** breakpoint no cursor, **Q** encerra o emulador, **Esc** ou **F10** fecham o painel (a maquina continua parada).
+Num terminal baixo o painel mostra o cabecalho, o rodape (se couber) e a parte do corpo que contem o cursor; num terminal de 30 linhas ou
+mais aparece inteiro. As letras estranhas do dump (os caracteres especiais do MSX) saem como `.` no terminal -- a janela mostra os
+graficos do MSX de verdade.
+
+Quem escreve outro programa pode usar o comando `dbgui` pela ponte de controle: `dbgui open`, `dbgui key <enter|up|down|left|right|g|d|m|s|j|r|c|q|b|esc|bs>`,
+`dbgui char <hexa>` e `dbgui show`; a resposta e' `ok +33`, a linha `action=none|close|quit prompt=0|1 mode=disasm|memory|stack` e as 32 linhas
+do painel, cada uma com uma letra de estilo na frente (T titulo, R registradores, C cursor, P pergunta, D ajuda, N normal).
 
 ### Passo a passo (um primeiro uso)
 

@@ -42,7 +42,7 @@ const char *kHelp =
     "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
-    "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> (ver doc/debug-spec.md)";
+    "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md)";
 
 std::string DisasmLine(machine::Machine &m, uint16_t addr, uint16_t *length = nullptr) {
     const z80::debug::DisasmResult d = z80::debug::Disassemble([&](uint16_t a) { return m.ReadMemory(a); }, addr);
@@ -306,6 +306,57 @@ Result Commander::Execute(const std::string &line) {
         out = static_cast<uint16_t>(v);
         return true;
     };
+
+    // dbgui open|show|key <tecla>|char <c>: o painel Z80 Debugger (src/debug/cpp/debug_view) como TEXTO, para a TUI e
+    // para qualquer cliente. A resposta tem a linha "action=none|close|quit prompt=0|1 mode=..." e as 32 linhas do painel,
+    // cada uma precedida de uma letra de estilo: T titulo, R registradores, C cursor, P pergunta, D ajuda, N normal.
+    if (cmd == "dbgui") {
+        const std::string sub = t.size() > 1 ? Lower(t[1]) : std::string("show");
+        dbgui::Action act = dbgui::Action::None;
+        if (sub == "open") {
+            dbgview_.Enter(m);
+        } else if (sub == "show") {
+            // so' desenha
+        } else if (sub == "char") {
+            if (t.size() != 3 || t[2].size() != 1) return Err("dbgui char: use dbgui char <um caractere>");
+            dbgview_.TypeChar(t[2][0]);
+        } else if (sub == "key") {
+            static const struct {
+                const char *name;
+                dbgui::Key key;
+            } kKeys[] = {{"enter", dbgui::Key::Enter}, {"up", dbgui::Key::Up},       {"down", dbgui::Key::Down},   {"left", dbgui::Key::Left},
+                         {"right", dbgui::Key::Right}, {"g", dbgui::Key::Go},         {"d", dbgui::Key::Disasm},    {"m", dbgui::Key::Memory},
+                         {"s", dbgui::Key::Stack},     {"j", dbgui::Key::Jump},       {"r", dbgui::Key::RunTo},     {"c", dbgui::Key::Continue},
+                         {"q", dbgui::Key::Quit},      {"b", dbgui::Key::Break},      {"esc", dbgui::Key::Escape},  {"bs", dbgui::Key::Backspace}};
+            bool found = false;
+            for (const auto &k : kKeys) {
+                if (t.size() == 3 && Lower(t[2]) == k.name) {
+                    act = dbgview_.Press(k.key, m);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return Err("dbgui key: enter up down left right g d m s j r c q b esc bs");
+        } else {
+            return Err("dbgui: use dbgui open|show|key <tecla>|char <c>");
+        }
+        if (act == dbgui::Action::QuitEmulator) host_.quit();
+        // Esc/Close deixa a maquina PARADA (C e R ja' a retomaram): marca como parada "manual" para nada reabrir sozinho.
+        if (act == dbgui::Action::Close && m.debugger().stopped()) m.debugger().Stop("manual");
+        dbgui::Grid grid;
+        dbgview_.Render(m, grid);
+        const char *mode = dbgview_.mode() == dbgui::ViewMode::Memory ? "memory" : dbgview_.mode() == dbgui::ViewMode::Stack ? "stack" : "disasm";
+        std::string out = std::string("action=") + (act == dbgui::Action::Close ? "close" : act == dbgui::Action::QuitEmulator ? "quit" : "none") +
+                          " prompt=" + (dbgview_.prompt_active() ? "1" : "0") + " mode=" + mode;
+        for (int y = 0; y < dbgui::kRows; ++y) {
+            const uint8_t st = grid.at(5, y).style;
+            const char tag = st == dbgui::kTitle ? 'T' : st == dbgui::kReg ? 'R' : st == dbgui::kCursor ? 'C' : st == dbgui::kPrompt ? 'P' : st == dbgui::kDim ? 'D' : 'N';
+            out += '\n';
+            out += tag;
+            out += dbgui::GridRowText(grid, y);
+        }
+        return Ok(out);
+    }
 
     if (cmd == "events") {
         // A assinatura e' feita pelo servidor TCP (por conexao); aqui so' valida a sintaxe.

@@ -17,6 +17,13 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-13)
 
+- **1.37.3 "Knightmare: Depurador na TUI" (publicada; fecha o dia 2026-10-13)**: o painel Z80 Debugger tambem na TUI (menu Depurador; abre
+  sozinho em breakpoint/watchpoint/until), via o comando novo `dbgui` da ponte (o mesmo modelo da janela, calculado no emulador). README,
+  MANUAL e specs atualizados ao estado de hoje. **Resumo do dia**: 1.36.0 montador; 1.36.1 texto SCREEN 0 como o fMSX; 1.36.2 R-Type (MegaROM
+  com AB no fim); 1.37.0 depurador basico + eventos; 1.37.1 splash/icone/fwmsx.cfg; 1.37.2 Z80 Debugger na janela; 1.37.3 na TUI. Comparacao com o
+  fMSX original: 26/26 casos. **Pendente para a proxima sessao**: conferir a olho o painel NA JANELA (F10, teclado real) e o splash; depurador
+  sofisticado (condicoes, simbolos, trace, E/S; `doc/debug-spec.md` secao 7); `--cmd`; baixador de ROMs do site do fMSX e navegador do file-hunter;
+  montador (formatos de ROM e modulo em Assembly); casos de disco/teclas/audio na comparacao com o fMSX.
 - **1.37.2 "Knightmare: Depurador na janela" (publicada)**: o **Z80 Debugger visual** da janela (F10 / menu Depurador; abre sozinho em
   breakpoint, watchpoint, `until` e `--debug`). Layout pedido: registradores no topo, `ENDERECO: bytes instrucao`, ENTER passo, setas,
   G/D/M/S/J/R/C/B/Q, dump de 8 bytes com os caracteres do MSX, tudo na FONTE DO PROPRIO MSX (CGTABL da BIOS). Modelo testavel em

@@ -7,6 +7,16 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.3] - 2026-10-13 - "Knightmare: Depurador na TUI" (Konami)
+
+### Adicionado
+- **Painel Z80 Debugger na TUI** (`--tui`): o mesmo painel da janela (registradores no topo, `ENDERECO: bytes instrucao`, ENTER/setas/G/D/M/S/J/R/C/B/Q),
+  como caixa de texto no terminal. Menu **Depurador > Painel Z80 Debugger**; abre sozinho quando o emulador para num breakpoint, watchpoint ou
+  "rodar ate'". Num terminal baixo mostra o cabecalho, o rodape (se couber) e a parte do corpo com o cursor.
+- **Comando `dbgui`** (ponte de controle): `open`, `show`, `key <tecla>`, `char <c>` -- o painel como texto (`ok +33`, linha de estado e 32 linhas com
+  letra de estilo), calculado no emulador pelo mesmo modelo da janela; qualquer cliente pode usar.
+- MANUAL: secao "O painel Z80 Debugger na TUI"; `doc/debug-spec.md`, secao 6c; README atualizado ao estado de hoje.
+
 ## [1.37.2] - 2026-10-13 - "Knightmare: Depurador na janela" (Konami)
 
 ### Adicionado

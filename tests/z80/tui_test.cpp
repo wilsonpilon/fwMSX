@@ -118,6 +118,64 @@ int main() {
         check(r.sent.back() == "go", "Depurador > Continuar -> 'go'");
     }
 
+    // ---- painel Z80 Debugger ----
+    {
+        Rig r(dir);
+        r.PickL(5, "Painel Z80 Debugger (F10 na janela)");
+        check(r.model.mode() == TuiModel::Mode::Debugger && r.sent.back() == "dbgui open", "Depurador > Painel Z80 Debugger: abre o painel e manda 'dbgui open'");
+        r.model.SetPanel("action=none prompt=0 mode=disasm\nTZ80 Debugger - Disassembly\nR AF=0042 BC=00FF\nC>C100: 3E 05  LD A,05h\nN C102: C3 00 40  JP 4000h");
+        check(r.model.panel().size() == 4 && r.model.panel()[2][0] == 'C' && !r.model.panel_prompt(), "SetPanel: guarda as linhas com a letra de estilo");
+        r.K(Key::Enter);
+        check(r.sent.back() == "dbgui key enter", "ENTER no painel -> 'dbgui key enter'");
+        r.K(Key::Up);
+        check(r.sent.back() == "dbgui key up", "Cima -> 'dbgui key up'");
+        r.K(Key::Down);
+        check(r.sent.back() == "dbgui key down", "Baixo -> 'dbgui key down'");
+        r.K(Key::Left);
+        check(r.sent.back() == "dbgui key left", "Esquerda -> 'dbgui key left' (pagina para cima)");
+        r.K(Key::PageDown);
+        check(r.sent.back() == "dbgui key right", "PageDown tambem pagina para baixo");
+        for (const char *k : {"g", "D", "m", "S", "j", "R", "c", "b"}) {
+            r.Type(k);
+            std::string expect = std::string("dbgui key ") + static_cast<char>(std::tolower(k[0]));
+            check(r.sent.back() == expect, std::string("tecla '") + k + "' -> '" + expect + "'");
+        }
+        r.Type("x");
+        const size_t before = r.sent.size();
+        r.Type("z");
+        check(r.sent.size() == before, "teclas que o painel nao conhece nao mandam nada");
+        r.K(Key::F1);
+        check(r.model.mode() == TuiModel::Mode::Debugger, "F1 nao abre a ajuda dentro do painel");
+
+        // a pergunta do G: so' digitos hexa viram 'dbgui char'
+        r.model.SetPanel("action=none prompt=1 mode=disasm\nTZ80 Debugger\nPIr para o endereco: _");
+        check(r.model.panel_prompt(), "prompt=1: o painel esta' perguntando");
+        r.Type("c");
+        check(r.sent.back() == "dbgui char c", "na pergunta, 'c' e' um digito hexa -> 'dbgui char c'");
+        r.Type("q");
+        check(r.sent.back() == "dbgui char c", "na pergunta, 'q' nao e' digito: ignorado (nao encerra)");
+        r.K(Key::Backspace);
+        check(r.sent.back() == "dbgui key bs", "Backspace -> 'dbgui key bs'");
+        r.K(Key::Enter);
+        check(r.sent.back() == "dbgui key enter", "ENTER na pergunta confirma");
+
+        // Esc e F10 fecham (pedem esc ao emulador); a resposta action=close sai do modo
+        r.model.SetPanel("action=none prompt=0 mode=disasm\nTZ80 Debugger");
+        r.K(Key::Escape);
+        check(r.sent.back() == "dbgui key esc" && r.model.mode() == TuiModel::Mode::Debugger, "Esc pede 'dbgui key esc' (o painel fecha quando o emulador responde)");
+        r.K(Key::F10);
+        check(r.sent.back() == "dbgui key esc", "F10 no painel tambem fecha");
+        r.model.SetPanel("action=close prompt=0 mode=disasm\nTZ80 Debugger");
+        check(r.model.mode() == TuiModel::Mode::Normal && r.model.panel().empty(), "action=close: sai do modo painel");
+        r.model.OpenPanel();
+        r.model.SetPanel("action=quit prompt=0 mode=disasm\nTZ80 Debugger");
+        check(r.model.mode() == TuiModel::Mode::Normal && !r.model.log().empty() && r.model.log().back().find("encerrado") != std::string::npos,
+              "action=quit: sai do painel e avisa no historico");
+        r.model.OpenPanel();
+        r.model.SetPanel("erro: sem emulador conectado (use 'emu start' ou 'emu attach <porta>')");
+        check(r.model.mode() == TuiModel::Mode::Normal && r.model.log().back().rfind("erro", 0) == 0, "erro (sem emulador): sai do painel e mostra a mensagem no historico");
+    }
+
     // ---- itens separadores sao pulados ----
     {
         Rig r(dir);

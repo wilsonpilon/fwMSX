@@ -208,7 +208,9 @@ std::vector<TuiModel::MenuDef> TuiModel::BuildMenus() const {
 
     // Depurador (doc/debug-spec.md): os mesmos comandos do console e da ponte de controle.
     m.push_back({"Depurador",
-                 {{"Registradores (reg)", cmd("reg")},
+                 {{"Painel Z80 Debugger (F10 na janela)", [self] { self->OpenPanel(); }},
+                  sep(),
+                  {"Registradores (reg)", cmd("reg")},
                   {"Desmontar a partir do PC", cmd("dis")},
                   {"Desmontar em...", wiz("Desmontar", {{"Endereco (ex.: 0x4000)", "0x4000", false, {}}, {"Linhas", "12", false, {}}},
                                           [](const std::vector<std::string> &v) { return "dis " + v[0] + " " + v[1]; })},
@@ -540,9 +542,74 @@ void TuiModel::KeyNormal(const Key &key) {
     }
 }
 
+void TuiModel::OpenPanel() {
+    mode_ = Mode::Debugger;
+    panel_.clear();
+    panel_prompt_ = false;
+    Submit("dbgui open");
+}
+
+void TuiModel::SetPanel(const std::string &reply) {
+    std::vector<std::string> lines;
+    size_t pos = 0;
+    while (pos <= reply.size()) {
+        const size_t nl = reply.find('\n', pos);
+        lines.push_back(reply.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos));
+        if (nl == std::string::npos) break;
+        pos = nl + 1;
+    }
+    if (lines.empty() || lines[0].rfind("action=", 0) != 0) {
+        // Nao e' um painel (erro: sem emulador, comando recusado...): sai do painel e mostra no historico.
+        mode_ = Mode::Normal;
+        panel_.clear();
+        for (const std::string &l : lines) AddLog(l);
+        return;
+    }
+    panel_prompt_ = lines[0].find("prompt=1") != std::string::npos;
+    panel_.assign(lines.begin() + 1, lines.end());
+    if (lines[0].find("action=close") != std::string::npos) {
+        mode_ = Mode::Normal;
+        panel_.clear();
+    } else if (lines[0].find("action=quit") != std::string::npos) {
+        mode_ = Mode::Normal;
+        panel_.clear();
+        AddLog("emulador encerrado pelo Z80 Debugger (Q)");
+    }
+}
+
+void TuiModel::KeyDebugger(const Key &key) {
+    auto send = [this](const std::string &k) { Submit("dbgui key " + k); };
+    switch (key.type) {
+    case Key::Enter: send("enter"); return;
+    case Key::Up: send("up"); return;
+    case Key::Down: send("down"); return;
+    case Key::Left:
+    case Key::PageUp: send("left"); return;
+    case Key::Right:
+    case Key::PageDown: send("right"); return;
+    case Key::Backspace: send("bs"); return;
+    case Key::Escape:
+    case Key::F10: send("esc"); return;
+    case Key::Char: break;
+    default: return;
+    }
+    if (key.text.size() != 1) return;
+    const char c = key.text[0];
+    if (panel_prompt_) {
+        if (std::isxdigit(static_cast<unsigned char>(c))) Submit(std::string("dbgui char ") + c);
+        return;
+    }
+    const char lower = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    if (std::string("gdmsjrcqb").find(lower) != std::string::npos) send(std::string(1, lower));
+}
+
 void TuiModel::HandleKey(const Key &key) {
     if (mode_ == Mode::Help) {
         mode_ = Mode::Normal;
+        return;
+    }
+    if (mode_ == Mode::Debugger) {
+        KeyDebugger(key); // o painel e' dele: F10 e Esc fecham, F1 nao abre a ajuda
         return;
     }
     if (key.type == Key::F1) {
@@ -565,6 +632,7 @@ void TuiModel::HandleKey(const Key &key) {
     case Mode::Prompt: KeyPrompt(key); break;
     case Mode::Browser: KeyBrowser(key); break;
     case Mode::Help: break;
+    case Mode::Debugger: break;
     }
 }
 
@@ -573,6 +641,7 @@ void TuiModel::Click(int x, int y) {
         mode_ = Mode::Normal;
         return;
     }
+    if (mode_ == Mode::Debugger) return;
     const std::vector<std::pair<int, int>> spans = TitleSpans();
     if (y == 0) {
         for (size_t i = 0; i < spans.size(); ++i) {

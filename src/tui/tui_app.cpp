@@ -131,11 +131,23 @@ private:
                 const std::string text = captured.str() + out.str();
                 {
                     std::lock_guard<std::mutex> lock(mu_);
-                    std::istringstream in(text);
-                    std::string l;
-                    while (std::getline(in, l)) {
-                        if (!l.empty() && l.back() == '\r') l.pop_back();
-                        model_.AddLog(l);
+                    if (line.rfind("dbgui ", 0) == 0) {
+                        // Painel Z80 Debugger: a resposta inteira (acao + linhas) vai para o painel.
+                        std::string panel;
+                        std::istringstream in(text);
+                        std::string l;
+                        while (std::getline(in, l)) {
+                            if (!l.empty() && l.back() == '\r') l.pop_back();
+                            panel += (panel.empty() ? "" : "\n") + l;
+                        }
+                        model_.SetPanel(panel);
+                    } else {
+                        std::istringstream in(text);
+                        std::string l;
+                        while (std::getline(in, l)) {
+                            if (!l.empty() && l.back() == '\r') l.pop_back();
+                            model_.AddLog(l);
+                        }
                     }
                 }
                 busy_ = false;
@@ -160,7 +172,14 @@ private:
         model_.SetStatus(st);
         std::istringstream in(events.str());
         std::string l;
-        while (std::getline(in, l)) model_.AddLog(l);
+        bool stop_event = false;
+        while (std::getline(in, l)) {
+            model_.AddLog(l);
+            stop_event = stop_event || l.find("break id=") != std::string::npos || l.find("watch id=") != std::string::npos ||
+                         l.find("until pc=") != std::string::npos;
+        }
+        // O emulador parou num breakpoint/watchpoint/until: abre o painel Z80 Debugger (como a janela faz).
+        if (stop_event && model_.mode() == TuiModel::Mode::Normal) model_.OpenPanel();
     }
 
     std::unique_ptr<repl::ReplSession> session_;
@@ -244,6 +263,55 @@ Element BrowserDialog(const TuiModel &m) {
     return Dialog(m.prompt_title() + ": " + m.prompt_step().label, std::move(lines));
 }
 
+// Painel Z80 Debugger: as linhas vem do emulador com uma letra de estilo na frente (T titulo, R registradores,
+// C cursor, P pergunta, D ajuda, N normal).
+// `max_rows`: linhas de terminal disponiveis para a caixa. O painel inteiro tem 32 linhas; num terminal menor mostra
+// o cabecalho (registradores), o rodape (se couber) e uma janela do corpo que contem a linha do cursor.
+Element PanelDialog(const TuiModel &m, int max_rows) {
+    const auto &p = m.panel();
+    std::string title = "Z80 Debugger";
+    Elements lines;
+    std::vector<size_t> shown;
+    constexpr size_t kHeaderEnd = 6, kFooterBegin = 28; // p[0] = titulo; p[1..5] = registradores; p[6..27] = corpo; p[28..31] = rodape
+    const int room = std::max(4, max_rows - 2); // menos as bordas da caixa
+    if (p.size() != 32 || static_cast<int>(p.size()) - 1 <= room) {
+        for (size_t i = 0; i < p.size(); ++i) shown.push_back(i);
+    } else {
+        for (size_t i = 0; i < kHeaderEnd; ++i) shown.push_back(i);
+        bool footer = room >= static_cast<int>(kHeaderEnd) - 1 + 8 + 4; // so' mostra a ajuda se sobrar espaco para o corpo
+        const int body_room = std::max(1, room - (static_cast<int>(kHeaderEnd) - 1) - (footer ? 4 : 0));
+        int cur = 0; // indice do cursor dentro do corpo
+        for (size_t i = kHeaderEnd; i < kFooterBegin; ++i) {
+            if (!p[i].empty() && p[i][0] == 'C') cur = static_cast<int>(i - kHeaderEnd);
+        }
+        const int body_n = static_cast<int>(kFooterBegin - kHeaderEnd);
+        const int start = std::max(0, std::min(cur - body_room / 2, body_n - body_room));
+        for (int k = 0; k < std::min(body_room, body_n); ++k) shown.push_back(kHeaderEnd + static_cast<size_t>(start + k));
+        if (footer) {
+            for (size_t i = kFooterBegin; i < p.size(); ++i) shown.push_back(i);
+        }
+    }
+    for (const size_t i : shown) {
+        if (p[i].empty()) continue;
+        const char tag = p[i][0];
+        std::string t = p[i].substr(1);
+        while (!t.empty() && t.back() == ' ') t.pop_back();
+        if (i == 0) {
+            while (!t.empty() && t.front() == ' ') t.erase(t.begin());
+            if (!t.empty()) title = t;
+            continue;
+        }
+        Element e = text(" " + (t.empty() ? std::string(" ") : t));
+        if (tag == 'R') e = e | color(Color::Yellow);
+        else if (tag == 'C') e = e | inverted | color(Color::Cyan);
+        else if (tag == 'P') e = e | inverted | color(Color::Yellow);
+        else if (tag == 'D') e = e | dim;
+        lines.push_back(e);
+    }
+    if (p.empty()) lines.push_back(text(" aguardando o emulador...") | dim);
+    return Dialog(title, std::move(lines));
+}
+
 Element HelpDialog() {
     Elements lines;
     for (const std::string &l : TuiModel::HelpLines()) lines.push_back(text(" " + l));
@@ -295,6 +363,7 @@ Element BuildView(App &app, const Dimensions &size) {
     case TuiModel::Mode::Prompt: return dbox({base, PromptDialog(m)});
     case TuiModel::Mode::Browser: return dbox({base, BrowserDialog(m)});
     case TuiModel::Mode::Help: return dbox({base, HelpDialog()});
+    case TuiModel::Mode::Debugger: return dbox({base, PanelDialog(m, size.dimy - 2)});
     default: return base;
     }
 }

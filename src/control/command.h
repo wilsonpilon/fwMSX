@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "../debug/cpp/debug_view.h"
 #include "../machine/machine.h"
 
 namespace control {
@@ -80,6 +81,8 @@ private:
     };
 
     Host &host_;
+    // Painel "Z80 Debugger" por texto (comando `dbgui`): o MESMO modelo da janela, para a TUI e qualquer cliente.
+    dbgui::DebugView dbgview_;
     std::deque<TypedKey> typing_;
     TypedKey current_{};
     int key_phase_ = 0; // 0 = ocioso, 1 = tecla pressionada, 2 = solta (intervalo)
