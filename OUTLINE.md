@@ -26,6 +26,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   das 4 linguagens ainda nao esta' cumprida aqui). Obs.: `resource/asMSX/` (fonte GPLv3 do original) e `resource/
   asmsx.exe` ficam so' como referencia/oraculo; o codigo do fwasm NAO deriva dele. Ver `doc/asm-spec.md`.
   Sem teste do usuario ainda: a TUI/terminal (1.34/1.35) num terminal de verdade.
+- **Comparacao com o fmsxgo (ferramenta, 2026-10-13, apos a 1.36.0; sem versao nova)**: `tools/fmsxgo_ref/compare.py`
+  roda a mesma ROM no fmsxgo (referencia, port do fMSX em Go) e no fwMSX e compara a tela (alinhada, por forma e
+  exato). Resultado: **7/7 casos com 100% de forma** (BIOS MSX1/2/2+, King's Valley, F1 Spirit, Lode Runner SCC,
+  Firebird); so' difere a paleta do MSX1 (o fwMSX usa a do fMSX original). Proximos: mais casos (disco, teclas,
+  SCREEN 5-8), audio, e as ROMs pendentes (Parodius, Mega Chase). Ver `doc/fmsxgo-compare-spec.md`.
 - **1.35.0 "Vampire Killer" (publicada)**: TUI de menus (`fwMSXc.exe --tui`, `src/tui/`):
   os comandos do console em menus, controlando o emulador em janela pela ponte. Modelo testavel sem terminal
   (`tuitest`). Falta: teste do usuario num terminal de verdade; mnemonicos Alt+letra; depurador e montador
