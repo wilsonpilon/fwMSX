@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.2 -- "Knightmare: Depurador na janela" (Konami) (2026-10-13)
+
+**Fase:** o depurador visual da janela (Z80 Debugger do fMSX), pedido do usuario, em cima do depurador basico da 1.37.0.
+
+### O que foi feito
+- `DebugView` (modelo, teclas, 3 vistas, pergunta de endereco), `Grid`/`Font`/`RenderRgba` (a fonte do MSX tirada da BIOS por CGTABL,
+  6x8 pixels por caractere) e a ligacao na janela (F10, menu Depurador, abertura automatica, captura do teclado, textura em escala inteira).
+- Layout pedido: registradores nas primeiras linhas; `ENDERECO: bytes instrucao`; dump com 8 bytes e os caracteres do MSX.
+
+### Validacao
+`ctest` 24/24 (Windows e Linux); `controltest` ganhou ~45 verificacoes do painel. Conferido a olho: as vistas de desmontagem e de dump
+desenhadas com a fonte da BIOS (PNG gerado pelo teste com `FWMSX_DBGVIEW_PPM`). Fumaca real: a janela com `--debug` sobe com a maquina
+parada pelo depurador e responde ao console (`stepi`, `go`, `status`); ao dar `go` o painel fecha sozinho. Nao conferido a olho: o painel NA JANELA (o teclado/F10 real).
+
+---
+
 ## v1.37.1 -- "Knightmare: Splash e icone" (Konami) (2026-10-13)
 
 **Fase:** desvio pedido pelo usuario (identidade visual do aplicativo): splash de abertura e icone proprio; mais a documentacao

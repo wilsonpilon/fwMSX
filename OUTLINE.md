@@ -17,6 +17,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-13)
 
+- **1.37.2 "Knightmare: Depurador na janela" (publicada)**: o **Z80 Debugger visual** da janela (F10 / menu Depurador; abre sozinho em
+  breakpoint, watchpoint, `until` e `--debug`). Layout pedido: registradores no topo, `ENDERECO: bytes instrucao`, ENTER passo, setas,
+  G/D/M/S/J/R/C/B/Q, dump de 8 bytes com os caracteres do MSX, tudo na FONTE DO PROPRIO MSX (CGTABL da BIOS). Modelo testavel em
+  `src/debug/cpp/debug_view`. Falta: conferir o painel na janela com o teclado real (so' testei o modelo e a subida da janela), painel
+  tambem na TUI, depurador sofisticado (`doc/debug-spec.md`, secao 7).
 - **1.37.1 "Knightmare: Splash e icone" (publicada)**: splash de abertura (3 s, `--splash`/`--no-splash`, menu Interface; terminal so'
   com `--splash`; `--cmd` nunca; `emu start` sem splash), icone do aplicativo (recurso do Windows + janela do Linux + `.desktop`) e
   `fwmsx.cfg` (tema/letra/moldura/splash gravados). MANUAL com o depurador bem explicado. `ctest` 24/24. Falta: `--cmd` (a politica

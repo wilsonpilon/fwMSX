@@ -30,6 +30,7 @@ static void sock_close(sock_t s) { close(s); }
 
 #include "../../src/control/command.h"
 #include "../../src/control/server.h"
+#include "../../src/debug/cpp/debug_view.h"
 #include "../../src/machine/machine.h"
 #include "../../src/vdp/core/vdp_state.h"
 
@@ -378,6 +379,209 @@ void TestDebugger(const std::string &bios) {
     check(Contains(dcmd.Execute("stepi").text, "pc=") && dhost.machine().cpu().state().pc.w != 0, "config: stepi sai do PC 0000");
 }
 
+
+// ---- Z80 Debugger da janela (modelo, sem OpenGL) ------------------------------------------------------
+std::string Hex4(unsigned v) {
+    char b[8];
+    std::snprintf(b, sizeof(b), "%04X", v & 0xFFFF);
+    return b;
+}
+
+// Linha do corpo cujo marcador de PC ('>', coluna 1) esta' acesa; -1 se nao ha'.
+int PcRow(const dbgui::Grid &g) {
+    for (int y = dbgui::kHeaderRows; y < dbgui::kHeaderRows + dbgui::kBodyRows; ++y) {
+        if (g.at(1, y).ch == '>') return y;
+    }
+    return -1;
+}
+
+void TestDebugView(const std::string &bios) {
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine para o teste do Z80 Debugger");
+        return;
+    }
+    control::Commander cmd(host);
+    machine::Machine &m = host.machine();
+    Frames(host, cmd, 250);
+
+    // programa de teste na RAM:  C100: LD A,05h   C102: JP 4000h   C105: NOP
+    const uint8_t prog[] = {0x3E, 0x05, 0xC3, 0x00, 0x40, 0x00};
+    for (size_t i = 0; i < sizeof(prog); ++i) m.WriteMemory(static_cast<uint16_t>(0xC100 + i), prog[i]);
+    check(dbgui::PreviousInstruction(m, 0xC105) == 0xC102 && dbgui::PreviousInstruction(m, 0xC102) == 0xC100,
+          "PreviousInstruction: acha o inicio da instrucao anterior (JP de 3 bytes e LD de 2)");
+    check(dbgui::InstructionLength(m, 0xC100) == 2 && dbgui::InstructionLength(m, 0xC102) == 3, "InstructionLength");
+
+    // a fonte do MSX vem da BIOS (CGTABL)
+    dbgui::Font font;
+    check(dbgui::LoadFontFromMachine(m, font) && font.valid, "fonte do MSX lida da BIOS (CGTABL)");
+    bool a_ok = false;
+    for (int r = 0; r < 8; ++r) a_ok = a_ok || font.glyph[0x41][r] != 0;
+    check(a_ok, "a letra 'A' da fonte tem pixels");
+
+    dbgui::DebugView v;
+    v.Enter(m);
+    check(m.debugger().stopped() && v.mode() == dbgui::ViewMode::Disasm && v.cursor() == m.cpu().state().pc.w, "Enter: para a maquina, vista de desmontagem, cursor no PC");
+
+    // desenho padrao: endereco, bytes em hexa, instrucao; registradores nas primeiras linhas
+    dbgui::Grid g;
+    v.Render(m, g);
+    check(dbgui::GridRowText(g, 0).find("Z80 Debugger") != std::string::npos, "titulo 'Z80 Debugger'");
+    check(dbgui::GridRowText(g, 1).find("AF=") != std::string::npos && dbgui::GridRowText(g, 2).find("PC=" + Hex4(m.cpu().state().pc.w)) != std::string::npos &&
+              dbgui::GridRowText(g, 3).find("AF'=") != std::string::npos && dbgui::GridRowText(g, 4).find("F=") != std::string::npos,
+          "registradores nas linhas 1 a 4 (AF BC DE HL / IX IY SP PC / sombra / I R IM flags)");
+    const int pcrow = PcRow(g);
+    check(pcrow >= dbgui::kHeaderRows, "o PC tem o marcador '>' no corpo");
+    const std::string pcline = pcrow >= 0 ? dbgui::GridRowText(g, pcrow) : std::string();
+    check(pcline.find(Hex4(m.cpu().state().pc.w) + ": ") != std::string::npos, "linha: 'ENDERECO: bytes instrucao' -> " + pcline);
+    check(g.at(5, pcrow).style == dbgui::kCursor, "a linha do cursor usa o estilo de cursor");
+    check(dbgui::GridRowText(g, dbgui::kRows - 3).find("ENTER") != std::string::npos, "o rodape lista as teclas");
+
+    // ENTER executa a proxima instrucao
+    const uint16_t pc0 = m.cpu().state().pc.w;
+    v.Press(dbgui::Key::Enter, m);
+    check(m.cpu().state().pc.w != pc0 && v.cursor() == m.cpu().state().pc.w && m.debugger().stopped(), "ENTER: executa uma instrucao, o cursor segue o PC e continua parado");
+
+    // Down / Up
+    const uint16_t c1 = v.cursor();
+    v.Press(dbgui::Key::Down, m);
+    check(v.cursor() == static_cast<uint16_t>(c1 + dbgui::InstructionLength(m, c1)), "Down: instrucao seguinte");
+    v.Press(dbgui::Key::Up, m);
+    check(v.cursor() == c1, "Up: volta para a instrucao anterior");
+    const uint16_t c2 = v.cursor();
+    v.Press(dbgui::Key::Right, m);
+    check(v.cursor() != c2, "Right: rola uma pagina para baixo");
+    v.Press(dbgui::Key::Left, m);
+    dbgui::Grid g2;
+    v.Render(m, g2);
+    bool cursor_visible = false;
+    for (int y = dbgui::kHeaderRows; y < dbgui::kHeaderRows + dbgui::kBodyRows; ++y) cursor_visible = cursor_visible || g2.at(5, y).style == dbgui::kCursor;
+    check(cursor_visible, "o cursor continua visivel depois de paginar");
+
+    // G: vai para o endereco digitado
+    v.Press(dbgui::Key::Go, m);
+    check(v.prompt_active(), "G abre a pergunta de endereco");
+    for (const char c : std::string("c1x00")) v.TypeChar(c); // 'x' e' ignorado: so' digitos hexa
+    dbgui::Grid gp;
+    v.Render(m, gp);
+    check(dbgui::GridRowText(gp, dbgui::kRows - dbgui::kFooterRows).find("C100_") != std::string::npos, "a pergunta mostra o que foi digitado (C100)");
+    v.Press(dbgui::Key::Enter, m);
+    check(!v.prompt_active() && v.cursor() == 0xC100, "ENTER na pergunta confirma: cursor em C100");
+    dbgui::Grid g3;
+    v.Render(m, g3);
+    bool has_ld = false, has_jp = false;
+    for (int y = dbgui::kHeaderRows; y < dbgui::kHeaderRows + dbgui::kBodyRows; ++y) {
+        const std::string t = dbgui::GridRowText(g3, y);
+        has_ld = has_ld || t.find("C100: 3E 05") != std::string::npos;
+        has_jp = has_jp || t.find("C102: C3 00 40") != std::string::npos;
+    }
+    check(has_ld && has_jp, "a desmontagem mostra os bytes de LD A,05h e de JP 4000h");
+    v.Press(dbgui::Key::Go, m);
+    v.Press(dbgui::Key::Escape, m);
+    check(!v.prompt_active(), "Esc cancela a pergunta");
+
+    // B: breakpoint no cursor
+    v.Press(dbgui::Key::Break, m);
+    check(m.debugger().breaks().size() == 1 && m.debugger().breaks()[0].addr == 0xC100, "B poe um breakpoint no cursor");
+    dbgui::Grid gb;
+    v.Render(m, gb);
+    bool star = false;
+    for (int y = dbgui::kHeaderRows; y < dbgui::kHeaderRows + dbgui::kBodyRows; ++y) star = star || gb.at(0, y).ch == '*';
+    check(star, "o breakpoint aparece como '*'");
+    v.Press(dbgui::Key::Break, m);
+    check(m.debugger().breaks().empty(), "B de novo tira o breakpoint");
+
+    // J: pula para o cursor
+    v.Press(dbgui::Key::Jump, m);
+    check(m.cpu().state().pc.w == 0xC100, "J: o PC passa a ser o cursor");
+
+    // M: dump de memoria, 8 bytes por linha com os caracteres do MSX
+    for (int i = 0; i < 8; ++i) m.WriteMemory(static_cast<uint16_t>(0xC200 + i), static_cast<uint8_t>(0x41 + i));
+    v.Press(dbgui::Key::Go, m);
+    v.Press(dbgui::Key::Memory, m); // ignorado: a pergunta esta' aberta
+    check(v.mode() == dbgui::ViewMode::Disasm, "com a pergunta aberta as outras teclas nao fazem nada");
+    v.Press(dbgui::Key::Escape, m);
+    v.Press(dbgui::Key::Memory, m);
+    check(v.mode() == dbgui::ViewMode::Memory, "M: vista de dump de memoria");
+    v.Press(dbgui::Key::Go, m);
+    for (const char c : std::string("C200")) v.TypeChar(c);
+    v.Press(dbgui::Key::Enter, m);
+    dbgui::Grid gm;
+    v.Render(m, gm);
+    int mrow = -1;
+    for (int y = dbgui::kHeaderRows; y < dbgui::kHeaderRows + dbgui::kBodyRows; ++y) {
+        if (dbgui::GridRowText(gm, y).find("C200: 41 42 43 44 45 46 47 48") != std::string::npos) mrow = y;
+    }
+    check(mrow >= 0, "dump: 'C200: 41 42 43 44 45 46 47 48' (8 bytes por linha)");
+    bool chars_ok = mrow >= 0;
+    for (int k = 0; k < 8 && mrow >= 0; ++k) chars_ok = chars_ok && gm.at(32 + k, mrow).ch == 0x41 + k;
+    check(chars_ok, "dump: os mesmos 8 bytes como caracteres do MSX (codigos 41h-48h)");
+    check(dbgui::GridRowText(gm, 0).find("Memory") != std::string::npos, "o titulo muda para a vista de memoria");
+    v.Press(dbgui::Key::Down, m);
+    check(v.cursor() == 0xC208, "dump: Down anda uma linha (8 bytes)");
+
+    // S: pilha
+    v.Press(dbgui::Key::Stack, m);
+    dbgui::Grid gs;
+    v.Render(m, gs);
+    bool sp_row = false;
+    for (int y = dbgui::kHeaderRows; y < dbgui::kHeaderRows + dbgui::kBodyRows; ++y) sp_row = sp_row || dbgui::GridRowText(gs, y).find("SP+00") != std::string::npos;
+    check(v.mode() == dbgui::ViewMode::Stack && sp_row, "S: vista da pilha, com a linha SP+00");
+
+    // D volta a vista padrao
+    v.Press(dbgui::Key::Disasm, m);
+    check(v.mode() == dbgui::ViewMode::Disasm, "D: volta a vista de desmontagem");
+
+    // pixels com a fonte do MSX
+    std::vector<uint32_t> px;
+    int pw = 0, ph = 0;
+    check(dbgui::RenderRgba(gs, font, px, pw, ph) && pw == dbgui::kCols * 6 && ph == dbgui::kRows * 8, "RenderRgba: tela de texto do MSX (6x8 por caractere)");
+    bool two_colors = false;
+    for (size_t i = 1; i < px.size() && !two_colors; ++i) two_colors = px[i] != px[0];
+    check(two_colors, "RenderRgba: ha' texto desenhado (mais de uma cor)");
+    dbgui::Font none;
+    check(!dbgui::RenderRgba(gs, none, px, pw, ph), "RenderRgba: sem fonte valida devolve false (a janela usa texto comum)");
+
+    // FWMSX_DBGVIEW_PPM=<pasta>: grava as tres vistas como PPM (para olhar com os proprios olhos, com a fonte do MSX)
+    if (const char *dir = std::getenv("FWMSX_DBGVIEW_PPM")) {
+        const dbgui::ViewMode modes[] = {dbgui::ViewMode::Disasm, dbgui::ViewMode::Memory, dbgui::ViewMode::Stack};
+        const char *names[] = {"disasm", "memory", "stack"};
+        v.Press(dbgui::Key::Disasm, m);
+        for (int k = 0; k < 3; ++k) {
+            if (k == 1) v.Press(dbgui::Key::Memory, m);
+            if (k == 2) v.Press(dbgui::Key::Stack, m);
+            (void)modes;
+            dbgui::Grid gd;
+            v.Render(m, gd);
+            std::vector<uint32_t> dpx;
+            int dw = 0, dh = 0;
+            if (dbgui::RenderRgba(gd, font, dpx, dw, dh)) {
+                std::ofstream o(std::string(dir) + "/dbgview_" + names[k] + ".ppm", std::ios::binary);
+                o << "P6\n" << dw << " " << dh << "\n255\n";
+                for (const uint32_t p : dpx) {
+                    const char rgb[3] = {static_cast<char>(p & 0xFF), static_cast<char>((p >> 8) & 0xFF), static_cast<char>((p >> 16) & 0xFF)};
+                    o.write(rgb, 3);
+                }
+            }
+        }
+        v.Press(dbgui::Key::Disasm, m);
+    }
+
+    // R, C e Q
+    m.debugger().Stop("manual");
+    v.Press(dbgui::Key::Go, m);
+    for (const char c : std::string("C105")) v.TypeChar(c);
+    v.Press(dbgui::Key::Enter, m);
+    check(v.Press(dbgui::Key::RunTo, m) == dbgui::Action::Close && !m.debugger().stopped() && m.debugger().until_active(),
+          "R: roda ate' o cursor (fecha o painel, a maquina volta a rodar com o ponto de parada de uso unico)");
+    m.debugger().Stop("manual");
+    check(v.Press(dbgui::Key::Continue, m) == dbgui::Action::Close && !m.debugger().stopped(), "C: continua a execucao (fecha o painel)");
+    check(v.Press(dbgui::Key::Quit, m) == dbgui::Action::QuitEmulator, "Q: encerra o emulador");
+    check(v.Press(dbgui::Key::Escape, m) == dbgui::Action::Close, "Esc fecha o painel");
+}
+
 // Cliente TCP que se inscreve nos eventos e le linhas soltas ("! ...").
 bool ReadLine(sock_t s, std::string &line) {
     line.clear();
@@ -488,6 +692,7 @@ int main() {
     TestCommander(bios);
     TestServer(bios);
     TestDebugger(bios);
+    TestDebugView(bios);
     TestEvents(bios);
 #else
     std::printf("[SKIP] FWMSX_SOURCE_DIR nao definido\n");

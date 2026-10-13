@@ -780,14 +780,64 @@ Ver [control-spec.md](control-spec.md).
 
 O fwMSX tem um depurador do EMULADOR (a maquina inteira: slots, VDP, interrupcoes), no estilo do depurador do fMSX:
 pontos de parada, passo a passo, desmontador, memoria e registradores. Ele funciona por **quatro caminhos**, todos com os
-MESMOS comandos:
+MESMOS comandos (e a janela tem ainda o painel visual, abaixo):
 
 | Caminho | Como usar |
 |---|---|
+| **Janela** (`fwMSX.exe`) | **F10** abre o painel Z80 Debugger (ver [O Z80 Debugger na janela](#o-z80-debugger-na-janela-f10)) |
 | **Console** (`fwMSXc.exe --cli`) | digite os comandos no prompt; os avisos aparecem como `[evento] ...` |
 | **TUI de menus** (`fwMSXc.exe --tui`) | menu **Depurador** (ou a linha de comando do rodape); avisos no historico |
 | **Modo terminal** (`fwMSXc.exe --term`) | F11 abre a linha de comando; respostas longas vao para o log |
 | **Ponte de controle** (`--ctl-port`) | qualquer programa manda os comandos por TCP (ver [Ponte de controle](#ponte-de-controle-externa---ctl-port)) |
+
+### O Z80 Debugger na janela (F10)
+
+Na janela do emulador existe um depurador visual, no estilo do depurador do fMSX: um painel que mostra o que o Z80 esta'
+fazendo e deixa andar instrucao por instrucao. Ele usa a **fonte do proprio MSX** (a tabela de caracteres da BIOS), como a tela
+de texto do MSX, entao os bytes de um dump aparecem com os graficos e simbolos especiais do MSX.
+
+**Como entrar:** tecla **F10** (ou o menu **Depurador > Entrar no Z80 Debugger**). A maquina para e o painel abre sobre a
+imagem. Ele tambem abre SOZINHO quando a execucao para num breakpoint, num watchpoint, num "rodar ate'" ou quando o emulador
+foi aberto com `--debug`. **F10** de novo (ou **Esc**) fecha o painel deixando a maquina parada; o menu **Depurador >
+Continuar a execucao** (ou a tecla **C**) a retoma. Com o painel aberto o teclado e' do depurador: nada chega ao MSX.
+
+O que o painel mostra (nesta ordem, de cima para baixo):
+
+```
+Z80 Debugger - Disassembly
+AF=0042 BC=00FF DE=00A3 HL=0105         <- registradores nas primeiras linhas
+IX=0000 IY=0000 SP=F092 PC=C100
+AF'=0000 BC'=0000 DE'=0000 HL'=0000
+I=00 R=12 IM1 EI     F=-Z----N-           <- I, R, modo de interrupcao, EI/DI e as flags
+                                          <- uma linha em branco separa os registradores
+*>C100: 3E 05       LD A,05h              <- ENDERECO: bytes em hexa  instrucao com os parametros
+  C102: C3 00 40    JP 4000h
+  C105: 00          NOP
+  ...
+```
+
+`>` marca o PC (a proxima instrucao a executar) e `*` um breakpoint; a linha com a barra clara e' o **cursor**.
+
+| Tecla | Faz |
+|---|---|
+| **ENTER** | executa a proxima instrucao (o cursor acompanha o PC) |
+| **Cima** / **Baixo** | instrucao anterior / instrucao abaixo (move o cursor) |
+| **Esquerda** / **Direita** | uma pagina para cima / para baixo |
+| **G** | vai para um endereco: digite ate' 4 digitos hexa e ENTER (Esc cancela, Backspace apaga) |
+| **D** | vista de desmontagem (a padrao, descrita acima) |
+| **M** | dump de memoria: `ENDERECO: 8 bytes em hexa` e, ao lado, os mesmos 8 bytes como caracteres do MSX; os registradores continuam em cima |
+| **S** | pilha: palavras a partir de SP (`SP+00`, `SP+02`...); `>` marca SP |
+| **J** | pula: o PC passa a ser a posicao do cursor |
+| **R** | roda ate' o cursor: a maquina volta a rodar e o painel reabre sozinho quando chegar la' |
+| **C** | continua a execucao (fecha o painel) |
+| **B** | liga/desliga um breakpoint no cursor (o mesmo da linha de comando) |
+| **Q** | encerra o emulador |
+| **Esc** | fecha o painel (a maquina continua parada); na pergunta do G, cancela |
+
+Dicas: use **G** e **M** para ver uma variavel (`G`, `C200`, `ENTER`); **B** numa instrucao + **C** deixa a maquina rodar ate' ali;
+no painel, **ENTER** repetido (a tecla repete) anda varias instrucoes. Os comandos de console da secao anterior (`watch`,
+`until`, `reg`...) continuam valendo ao mesmo tempo. Se a BIOS carregada nao tiver a fonte esperada, o painel aparece com a
+fonte comum da interface.
 
 ### Passo a passo (um primeiro uso)
 

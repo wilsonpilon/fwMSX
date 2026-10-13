@@ -18,6 +18,7 @@
 #include "../screenshot.h"
 #include "../../audio/audio_output.h"
 #include "../../common/settings.h"
+#include "../../debug/cpp/debug_view.h"
 #include "../../common/version.h"
 #include "../../splash/png_reader.h"
 #include "../../splash/splash.h"
@@ -165,6 +166,8 @@ struct HostInput {
     bool quick_load = false;  // F7: carrega o estado do slot atual
     int slot_delta = 0;       // F8 = -1, F9 = +1: troca o slot atual
     bool screenshot = false;  // F12: grava a tela num PNG
+    bool toggle_debugger = false; // F10: entra/sai do Z80 Debugger
+    bool dbg_capture = false;     // o Z80 Debugger esta' aberto: o teclado e' dele, nao do MSX
 };
 HostInput g_input;
 
@@ -174,6 +177,12 @@ void KeyCallback(GLFWwindow *, int key, int, int action, int) {
         if (action == GLFW_PRESS) g_input.toggle_fullscreen = true;
         return;
     }
+    // F10: entra/sai do Z80 Debugger (o mesmo que [CTRL]+[F10] do fMSX). Com o painel aberto, o teclado e' dele.
+    if (key == GLFW_KEY_F10) {
+        if (action == GLFW_PRESS) g_input.toggle_debugger = true;
+        return;
+    }
+    if (g_input.dbg_capture) return;
     // F1-F5 sao teclas do MSX; os atalhos do emulador usam F6 em diante, que o MSX nao tem.
     if (key >= GLFW_KEY_F6 && key <= GLFW_KEY_F9) {
         if (action == GLFW_PRESS) {
@@ -622,6 +631,30 @@ int RunEmulatorWindow(const WindowOptions &options) {
         const int ch = static_cast<int>(std::lround(h * kZooms[zoom_index] + ImGui::GetFrameHeight()));
         glfwSetWindowSize(window, cw, ch);
     };
+    // ---- Z80 Debugger (painel sobre a janela, no estilo do fMSX; modelo em src/debug/cpp/debug_view) ----
+    dbgui::DebugView dbg_view;
+    dbgui::Grid dbg_grid;
+    dbgui::Font dbg_font;
+    std::vector<uint32_t> dbg_pixels;
+    GLuint dbg_tex = 0;
+    bool dbg_open = false;
+    auto open_debugger = [&]() {
+        machine->ReleaseAllKeys(); // nenhuma tecla fica "presa" no MSX enquanto o painel esta' aberto
+        g_input.events.clear();
+        g_input.joy_keys = 0;
+        g_input.joy_latched = 0;
+        g_input.dbg_capture = true;
+        dbg_view.Enter(*machine); // para a maquina e poe o cursor no PC
+        dbgui::LoadFontFromMachine(*machine, dbg_font); // a fonte do proprio MSX (a tabela de caracteres da BIOS)
+        dbg_open = true;
+    };
+    // `keep_stopped`: fecha o painel mas deixa a maquina parada (Esc / F10); sem ele a maquina ja' esta' rodando.
+    auto close_debugger = [&](bool keep_stopped) {
+        g_input.dbg_capture = false;
+        dbg_open = false;
+        if (keep_stopped && machine->debugger().stopped()) machine->debugger().Stop("manual"); // nao reabre sozinho
+    };
+
     while (!glfwWindowShouldClose(window)) {
         glfwPollEvents();
         {
@@ -769,6 +802,92 @@ int RunEmulatorWindow(const WindowOptions &options) {
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+
+        // ---- Z80 Debugger: F10, parada por breakpoint/watchpoint/--debug, teclas e desenho do painel ----
+        if (g_input.toggle_debugger) {
+            g_input.toggle_debugger = false;
+            if (dbg_open) close_debugger(true);
+            else open_debugger();
+        }
+        if (!dbg_open && machine->debugger().stopped()) {
+            const std::string &why = machine->debugger().last_stop();
+            if (why == "break" || why == "watch" || why == "until" || why == "start") open_debugger();
+        }
+        if (dbg_open && !machine->debugger().stopped()) close_debugger(false); // a maquina voltou a rodar (ou foi recriada)
+        if (dbg_open) {
+            ImGuiIO &dio = ImGui::GetIO();
+            dbgui::Action act = dbgui::Action::None;
+            if (dbg_view.prompt_active()) {
+                // Pergunta do G: digitos hexadecimais, Enter confirma, Esc cancela, Backspace apaga.
+                for (int i = 0; i < dio.InputQueueCharacters.Size; ++i) {
+                    if (dio.InputQueueCharacters[i] < 128) dbg_view.TypeChar(static_cast<char>(dio.InputQueueCharacters[i]));
+                }
+                if (ImGui::IsKeyPressed(ImGuiKey_Enter, false) || ImGui::IsKeyPressed(ImGuiKey_KeypadEnter, false)) act = dbg_view.Press(dbgui::Key::Enter, *machine);
+                else if (ImGui::IsKeyPressed(ImGuiKey_Escape, false)) act = dbg_view.Press(dbgui::Key::Escape, *machine);
+                else if (ImGui::IsKeyPressed(ImGuiKey_Backspace, true)) act = dbg_view.Press(dbgui::Key::Backspace, *machine);
+            } else {
+                static const struct {
+                    ImGuiKey imgui;
+                    dbgui::Key key;
+                    bool repeat;
+                } kDbgKeys[] = {
+                    {ImGuiKey_Enter, dbgui::Key::Enter, true},       {ImGuiKey_KeypadEnter, dbgui::Key::Enter, true},
+                    {ImGuiKey_UpArrow, dbgui::Key::Up, true},        {ImGuiKey_DownArrow, dbgui::Key::Down, true},
+                    {ImGuiKey_LeftArrow, dbgui::Key::Left, true},    {ImGuiKey_RightArrow, dbgui::Key::Right, true},
+                    {ImGuiKey_G, dbgui::Key::Go, false},             {ImGuiKey_D, dbgui::Key::Disasm, false},
+                    {ImGuiKey_M, dbgui::Key::Memory, false},         {ImGuiKey_S, dbgui::Key::Stack, false},
+                    {ImGuiKey_J, dbgui::Key::Jump, false},           {ImGuiKey_R, dbgui::Key::RunTo, false},
+                    {ImGuiKey_C, dbgui::Key::Continue, false},       {ImGuiKey_Q, dbgui::Key::Quit, false},
+                    {ImGuiKey_B, dbgui::Key::Break, false},          {ImGuiKey_Escape, dbgui::Key::Escape, false},
+                };
+                for (const auto &k : kDbgKeys) {
+                    if (ImGui::IsKeyPressed(k.imgui, k.repeat)) {
+                        act = dbg_view.Press(k.key, *machine);
+                        break;
+                    }
+                }
+            }
+            if (act == dbgui::Action::QuitEmulator) {
+                glfwSetWindowShouldClose(window, GLFW_TRUE);
+            } else if (act == dbgui::Action::Close) {
+                // C e R deixam a maquina rodando (ja' foi retomada); Esc a deixa parada.
+                close_debugger(machine->debugger().stopped());
+            }
+        }
+        if (dbg_open) {
+            dbg_view.Render(*machine, dbg_grid);
+            const ImVec2 disp = ImGui::GetIO().DisplaySize;
+            ImDrawList *fg = ImGui::GetForegroundDrawList();
+            fg->AddRectFilled(ImVec2(0, 0), disp, IM_COL32(0, 0, 0, 150)); // escurece o MSX atras
+            int dw = 0, dh = 0;
+            if (dbgui::RenderRgba(dbg_grid, dbg_font, dbg_pixels, dw, dh)) {
+                if (dbg_tex == 0) {
+                    glGenTextures(1, &dbg_tex);
+                    glBindTexture(GL_TEXTURE_2D, dbg_tex);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+                    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+                }
+                glBindTexture(GL_TEXTURE_2D, dbg_tex);
+                glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, dw, dh, 0, GL_RGBA, GL_UNSIGNED_BYTE, dbg_pixels.data());
+                glBindTexture(GL_TEXTURE_2D, texture); // volta a textura do MSX
+                const float sc = std::max(1.0f, std::floor(std::min((disp.x - 24.0f) / dw, (disp.y - 24.0f) / dh)));
+                const ImVec2 sz(dw * sc, dh * sc);
+                const ImVec2 p0((disp.x - sz.x) * 0.5f, (disp.y - sz.y) * 0.5f);
+                fg->AddRectFilled(ImVec2(p0.x - 6, p0.y - 6), ImVec2(p0.x + sz.x + 6, p0.y + sz.y + 6), IM_COL32(20, 20, 60, 255), 4.0f);
+                fg->AddImage(static_cast<ImTextureID>(dbg_tex), p0, ImVec2(p0.x + sz.x, p0.y + sz.y));
+                fg->AddRect(ImVec2(p0.x - 6, p0.y - 6), ImVec2(p0.x + sz.x + 6, p0.y + sz.y + 6), IM_COL32(110, 110, 255, 255), 4.0f, 0, 2.0f);
+            } else {
+                // Sem a fonte do MSX (BIOS estranha): o mesmo conteudo como texto comum, com a fonte da interface.
+                const float lh = ImGui::GetTextLineHeightWithSpacing();
+                const float w = disp.x * 0.7f;
+                const ImVec2 p0((disp.x - w) * 0.5f, 20.0f);
+                fg->AddRectFilled(ImVec2(p0.x - 8, p0.y - 8), ImVec2(p0.x + w + 8, p0.y + dbgui::kRows * lh + 8), IM_COL32(20, 20, 60, 255), 4.0f);
+                for (int y = 0; y < dbgui::kRows; ++y) fg->AddText(ImVec2(p0.x, p0.y + y * lh), IM_COL32(230, 230, 230, 255), dbgui::GridRowText(dbg_grid, y).c_str());
+            }
+        }
 
         {
             const ImGuiIO &io_now = ImGui::GetIO();
@@ -1135,6 +1254,17 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 for (int port = 0; port < 2; ++port) {
                     ImGui::Text("Gamepad -> porta %c: %s", 'A' + port, pad_names[port].empty() ? "(nenhum)" : pad_names[port].c_str());
                 }
+                ImGui::EndMenu();
+            }
+            if (ImGui::BeginMenu("Depurador")) {
+                if (ImGui::MenuItem("Entrar no Z80 Debugger", "F10", dbg_open)) g_input.toggle_debugger = true;
+                if (ImGui::MenuItem("Continuar a execucao", nullptr, false, machine->debugger().stopped())) {
+                    if (dbg_open) close_debugger(false);
+                    machine->debugger().Resume();
+                }
+                ImGui::Separator();
+                ImGui::TextDisabled("No painel: ENTER passo, setas, G, D, M, S, J, R, C, B, Q");
+                ImGui::TextDisabled("Mais comandos: console (--cli) e doc/debug-spec.md");
                 ImGui::EndMenu();
             }
             if (ImGui::BeginMenu("ROMs")) {

@@ -110,6 +110,28 @@ console + TUI): sessao completa com `--ctl-port`.
 - **Eventos por conexao, resolvidos no servidor**: `events on` nao passa pela thread do emulador.
 - **Sem condicoes, sem simbolos, sem trace** nesta primeira parte (de proposito: "apenas para ter algo").
 
+## 6b. Depurador na janela (Z80 Debugger, 1.37.2)
+
+Painel visual no estilo do fMSX (`resource/fMSX/Z80/ConDebug.c`), aberto por **F10** ou pelo menu Depurador, ou sozinho quando a
+maquina para por breakpoint/watchpoint/`until`/`--debug`. Teclas: ENTER (passo), Cima/Baixo, Esquerda/Direita (pagina), G, D, M, S,
+J, R, C, B (extra: breakpoint no cursor), Q e Esc. Layout: titulo, 4 linhas de registradores (AF BC DE HL / IX IY SP PC / sombra / I R
+IM EI flags), uma linha em branco e o corpo -- `ENDERECO: bytes instrucao` na desmontagem, `ENDERECO: 8 bytes + os 8 caracteres` no dump,
+`SP+xx ENDERECO: palavra` na pilha -- e 4 linhas de rodape (mensagem/pergunta e a ajuda).
+
+- **Fonte do MSX**: `LoadFontFromMachine` copia a tabela de caracteres da BIOS (CGTABL, o endereco esta' em 0004h-0005h da ROM
+  principal); `RenderRgba` desenha a grade de 44 x 32 caracteres em 264 x 256 pixels (6 x 8 por celula, so' os 6 bits de cima de
+  cada linha da fonte, como o texto do MSX) numa textura mostrada em escala inteira sobre a janela. Sem fonte valida, a janela
+  mostra o mesmo texto com a fonte da interface (`GridRowText`).
+- **Modelo sem OpenGL** (`src/debug/cpp/debug_view.{h,cpp}`): `DebugView` recebe teclas ja' traduzidas (`Key`), age na `Machine`
+  (`StepInstruction`, `Debugger::SetUntil/Resume/AddBreak`) e desenha numa `Grid`; por isso e' testado em `controltest` (teclas,
+  paginas, pergunta do G, dump com 8 bytes e caracteres, pilha, J/R/C/Q/B, fonte e pixels). Ligacao com o ImGui em
+  `emu_window.cpp` (`IsKeyPressed` + `InputQueueCharacters` para a pergunta; desenho pela lista de desenho de primeiro plano).
+- **Teclado**: com o painel aberto, `g_input.dbg_capture` faz o `KeyCallback` descartar tudo (exceto F10 e F11), as teclas do MSX
+  sao soltas ao abrir, e nada chega ao MSX nem ao joystick.
+- **Entrada e saida**: abrir para a maquina; fechar com Esc/F10 a deixa PARADA (marca a parada como "manual", senao reabriria
+  sozinho); C e R retomam; se a maquina volta a rodar por outro caminho (menu, console) o painel fecha.
+- **Q encerra o emulador** (como no fMSX), sem confirmacao.
+
 ## 7. O que falta (o depurador sofisticado, por partes)
 
 Ideias a misturar, do que o usuario citou:
@@ -120,8 +142,8 @@ Ideias a misturar, do que o usuario citou:
   `.sym`/mapa, `dis` e `break` aceitarem rotulos), montagem em linha de instrucoes, edicao de memoria em tela cheia.
 - **DEBUG do MS-DOS**: comandos curtos (`a` montar, `s` procurar, `f` preencher, `m` mover, `c` comparar, `t`/`p`
   passo/proc, `g` go, `r` registradores) como apelidos dos comandos atuais.
-- Painel do depurador na TUI (registradores + desmontagem + pilha atualizados a cada parada) e atalhos de teclado
-  (F5/F9/F10/F11 como nos depuradores classicos).
+- Painel do depurador tambem na TUI (registradores + desmontagem + pilha atualizados a cada parada) e atalhos de teclado
+  (F5/F9/F10/F11 como nos depuradores classicos); na janela o painel ja' existe (secao 6b).
 - Breakpoint que sobrevive a troca de cartucho pela janela ja' sobrevive quando vem de `--break`; os criados pelos
   comandos se perdem (a maquina e' recriada) -- guardar na configuracao.
 - `fwmsx --cmd "..."` e scripts (`source`) para automatizar sessoes.

@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-13, apos a 1.37.1)
+fwMSX -- como retomar (atualizado em 2026-10-13, apos a 1.37.2)
 
 == Em OUTRO computador (o caminho que importa) ==
 1. git clone / git pull de origin main (traz tudo: codigo, docs, ROMs de teste, dist/).
@@ -11,12 +11,15 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
 (sessao anterior: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
 == Estado ao encerrar (2026-10-13) ==
-- Ultima versao publicada: 1.37.1 "Knightmare: Splash e icone" (Konami). main == origin/main; tags 1.36.0 a 1.37.1, branches v1.36.x/v1.37.x,
+- Ultima versao publicada: 1.37.2 "Knightmare: Depurador na janela" (Konami). main == origin/main; tags 1.36.0 a 1.37.2, branches v1.36.x/v1.37.x,
   releases do GitHub com zip + tar.gz.
 - ctest 23/23 em Windows (build.ps1) e Linux/WSL (build.sh).
 - 1.36.0: montador Z80 fwasm (fwmsx --asm, comando asm do console); C + Fortran + C++. Saidas .z80/.sym/.txt.
 - 1.36.1: texto de 40 colunas/TEXT80 comeca no pixel 9 (como o fMSX).
 - 1.36.2: R-Type inicia (MegaROM de bancos nao potencia de 2 completada para 2^n; AB no fim = comeca nas ultimas paginas).
+- 1.37.2: Z80 DEBUGGER VISUAL NA JANELA (F10/menu Depurador; abre sozinho em break/watch/until/--debug): registradores no topo, ENDERECO: bytes
+  instrucao, ENTER/setas/G/D/M/S/J/R/C/B/Q, dump de 8 bytes com os caracteres do MSX, tudo com a FONTE DA BIOS (CGTABL). Modelo em
+  src/debug/cpp/debug_view (testado em controltest). AINDA NAO conferido a olho com o teclado real na janela.
 - 1.37.1: splash de abertura (3 s; --splash/--no-splash; menu Ferramentas>Interface; terminal so' com --splash; --cmd NUNCA, ainda nao existe),
   icone do aplicativo (recurso do Windows + janela Linux + .desktop) e fwmsx.cfg (tema/letra/moldura/splash). Assets: tools/assets/make_assets.py.
   Ver doc/splash-spec.md. MANUAL com o depurador passo a passo.

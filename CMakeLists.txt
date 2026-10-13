@@ -446,6 +446,7 @@ set(SPLASH_LIB_SOURCES
 set(MACHINE_LIB_SOURCES
         src/machine/machine.cpp
         src/debug/cpp/debugger.cpp
+        src/debug/cpp/debug_view.cpp
         src/debug/c/dbg_flow.c
         src/debug/fortran/dbg_fmt.f90
         src/debug/asm/dbg_range.asm

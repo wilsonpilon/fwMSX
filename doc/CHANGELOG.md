@@ -7,6 +7,20 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.2] - 2026-10-13 - "Knightmare: Depurador na janela" (Konami)
+
+### Adicionado
+- **Z80 Debugger na janela do emulador** (F10, ou menu Depurador), no estilo do depurador do fMSX: painel com os registradores nas
+  primeiras linhas, uma linha em branco e `ENDERECO: bytes em hexa  instrucao com os parametros`; ENTER executa a proxima instrucao,
+  Cima/Baixo, Esquerda/Direita (pagina), G (ir ao endereco), D (desmontagem), M (dump: 8 bytes em hexa e os mesmos 8 como caracteres do
+  MSX), S (pilha), J (pular para o cursor), R (rodar ate' o cursor), C (continuar), B (breakpoint no cursor), Q (encerrar o emulador).
+  Desenhado com a FONTE DO PROPRIO MSX (a tabela de caracteres da BIOS). Abre sozinho em breakpoint/watchpoint/`until`/`--debug`.
+- `src/debug/cpp/debug_view` (modelo e desenho, sem OpenGL, testado em `controltest`); `LoadFontFromMachine`, `RenderRgba`.
+- MANUAL: secao "O Z80 Debugger na janela (F10)" com o layout e a tabela de teclas; `doc/debug-spec.md`, secao 6b.
+
+### Mudou
+- F10 passou a ser do depurador (nao e' tecla do MSX); com o painel aberto o teclado e' dele.
+
 ## [1.37.1] - 2026-10-13 - "Knightmare: Splash e icone" (Konami)
 
 ### Adicionado
