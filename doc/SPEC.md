@@ -199,7 +199,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 
 **Funcionando (v1.36.0, publicada em `main`):**
 
-- [x] **Comparacao de quadros com o fmsxgo** (ferramenta, `tools/fmsxgo_ref/`): 7 casos, 100% de forma contra o port do fMSX; ver `doc/fmsxgo-compare-spec.md`.
+- [x] **Comparacao de quadros com o fMSX original** (ferramenta, `tools/fmsxgo_ref/` + `tools/fmsx_ref/`): 7 casos; jogos e BIOS MSX1/MSX2 100% pixel a pixel; 2 diferencas abertas (boot do MSX2+, texto SCREEN 0 deslocado 1 px). Ver `doc/fmsx-compare-spec.md`.
 - [x] **Montador Z80 `fwasm`** (1.36.0): `fwmsx --asm` / comando `asm` do console -- reescrita clean-room do asMSX 1.2.0 (C + Fortran + C++), saidas `.z80`/`.sym`/`.txt`, testado contra ~6.200 casos gerados pelo `asmsx.exe` real (`ctest` `asm`). Falta: ROM/MegaROM/BASIC/MSX-DOS/CAS/WAV, `select`/`subpage`/`search`, e o modulo Assembly. Ver `doc/asm-spec.md`.
 - [x] MSX1, MSX2 e MSX2+: BIOS real ate o prompt do MSX BASIC (1.0, 2.1 e 3.0); MSX-DOS 1.8 do disco (pela memoria ou pelas portas, DDX 3.0/CDX-2) ate `A>`; MSX-DOS 2.30 de verdade via `--cart MSXDOS2.ROM msxdos2` (`dir`/`cd` em subdiretorios).
 - [x] Z80 completo; mapa de slots e subslots; mappers Konami, ASCII, Gen8, Gen16 e MSX-DOS 2; SRAM ASCII8/ASCII16 e FM-PAC (`.sav`); save-state (menu Arquivo, `.sst`).

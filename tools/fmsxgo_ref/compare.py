@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
-"""Compara quadros do fwMSX com os do fmsxgo (port em Go do fMSX) para uma lista de casos.
+"""Compara quadros do fwMSX com os de um emulador de referencia, para uma lista de casos.
+
+Referencias (--ref):
+  fmsx    (padrao) o fMSX ORIGINAL de resource/fMSX, compilado sem janela (tools/fmsx_ref/Headless.c no lugar do
+          Unix.c; o nucleo nao e' alterado). Precisa de gcc no PATH.
+  fmsxgo  o port em Go (E:/fmsxgo, ainda em desenvolvimento -- so' como segunda opiniao). Precisa de Go.
 
 Uso (a partir da raiz do repo):
-    python tools/fmsxgo_ref/compare.py [--fmsxgo E:/fmsxgo] [--fw dist/fwMSXc.exe] [--png saida/] [--min 0.98] [caso ...]
+    python tools/fmsxgo_ref/compare.py [--ref fmsx|fmsxgo] [--fw dist/fwMSXc.exe] [--png saida/] [--cores]
+                                       [--min 0.98] [--fmsxgo E:/fmsxgo] [caso ...]
 
-O gerador de referencia (main.go) e' compilado uma vez para um diretorio temporario; o fmsxgo entra por
-"replace" no go.mod e NAO e' alterado. Duas metricas por caso, na janela comum depois de alinhar os quadros (as bordas dos dois emuladores diferem):
-  exato  = fracao de pixels identicos (sensivel a diferenca de paleta/cor);
+Duas metricas por caso, na janela comum depois de alinhar os quadros (as bordas dos emuladores podem diferir):
+  exato  = fracao de pixels identicos;
   forma  = fracao de pixels iguais depois de mapear cada cor da referencia para a cor mais comum do fwMSX naquela
            regiao (ignora paletas diferentes e olha so' a estrutura da imagem).
 Um caso passa se algum dos seus pontos (quadros) atingir --min na metrica "forma"; sai com codigo 1 se algum caso falhar.
@@ -28,6 +33,36 @@ CASES = [
     ("lode_runner_scc", 0, "Lode_Runner_+_Konami_SCC.rom", (500, 600, 700)),
     ("firebird_msx2", 1, "Firebird - Hi no Tori Hououhen - Konami (1987) [a1] [RC-747] [GoodMSX] [989].rom", (500, 600, 800)),
 ]
+
+
+FMSX_SRC = os.path.join(ROOT, "resource", "fMSX")
+FMSX_HEADLESS = os.path.join(ROOT, "tools", "fmsx_ref", "Headless.c")
+# fonte do nucleo original (resource/fMSX, sem alteracao) + a camada de plataforma sem janela (Headless.c)
+FMSX_FILES = ["fMSX/fMSX.c", "fMSX/MSX.c", "fMSX/V9938.c", "fMSX/I8251.c", "fMSX/Patch.c", "Z80/Z80.c",
+              "EMULib/I8255.c", "EMULib/AY8910.c", "EMULib/YM2413.c", "EMULib/SCC.c", "EMULib/WD1793.c",
+              "EMULib/FDIDisk.c", "EMULib/SHA1.c", "EMULib/MCF.c", "EMULib/Hunt.c", "EMULib/Floppy.c"]
+
+
+def build_fmsx(tmp):
+    """Compila o fMSX original sem janela (precisa de gcc); devolve o executavel ou None."""
+    exe = os.path.join(tmp, "fmsx_ref.exe" if os.name == "nt" else "fmsx_ref")
+    base = ["gcc", "-c", "-O2", "-w", "-DFMSX", "-DLSB_FIRST", "-DDEBUG", "-I", FMSX_SRC + "/fMSX", "-I", FMSX_SRC + "/EMULib",
+            "-I", FMSX_SRC + "/Z80"]
+    objs = []
+    for f in FMSX_FILES + [FMSX_HEADLESS]:
+        src = f if os.path.isabs(f) else os.path.join(FMSX_SRC, f)
+        o = os.path.join(tmp, os.path.basename(f) + ".o")
+        extra = ["-Dmain=fmsx_main"] if f.endswith("fMSX/fMSX.c") else ["-DUNIX"] if f.endswith("Floppy.c") else []
+        r = subprocess.run(base + extra + [src, "-o", o], capture_output=True, text=True)
+        if r.returncode:
+            print("falha ao compilar %s:\n%s" % (f, r.stderr[:2000]))
+            return None
+        objs.append(o)
+    r = subprocess.run(["gcc", "-o", exe] + objs + ["-lz"], capture_output=True, text=True)
+    if r.returncode:
+        print("falha ao ligar o fMSX:\n" + r.stderr[:2000])
+        return None
+    return exe
 
 
 def read_ppm(path):
@@ -129,6 +164,8 @@ def side_by_side(path, ref, fw, off):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--fmsxgo", default="E:/fmsxgo")
+    ap.add_argument("--ref", choices=("fmsx", "fmsxgo"), default="fmsx",
+                    help="referencia: fmsx (o fMSX original, compilado sem janela; padrao) ou fmsxgo (port em Go)")
     ap.add_argument("--fw", default=os.path.join(ROOT, "dist", "fwMSXc.exe"))
     ap.add_argument("--png", help="pasta para gravar referencia | fwMSX | diferenca lado a lado")
     ap.add_argument("--min", type=float, default=0.98, help="piso da metrica 'forma' (padrao 0.98)")
@@ -138,24 +175,31 @@ def main():
 
     tmp = tempfile.mkdtemp(prefix="fmsxref_")
     try:
-        ref_exe = os.path.join(tmp, "fmsxref.exe" if os.name == "nt" else "fmsxref")
-        # copia o gerador para o tmp para o "replace" apontar para o --fmsxgo escolhido
-        src = os.path.join(tmp, "src")
-        shutil.copytree(HERE, src, ignore=shutil.ignore_patterns("*.py", "__pycache__"))
-        gm = os.path.join(src, "go.mod")
-        txt = open(gm).read().replace("E:/fmsxgo", a.fmsxgo.replace("\\", "/"))
-        open(gm, "w").write(txt)
-        r = subprocess.run(["go", "build", "-o", ref_exe, "."], cwd=src, capture_output=True, text=True)
-        if r.returncode:
-            print("falha ao compilar o gerador de referencia:\n" + r.stderr)
-            return 2
-
         roms = os.path.join(tmp, "roms")
         os.makedirs(roms)
         for n in ("MSX.ROM", "MSX2.ROM", "MSX2P.ROM"):
             shutil.copy(os.path.join(ROOT, "dist", "roms", "bios", n), roms)
-        for n in ("MSX2EXT.ROM", "MSX2PEXT.ROM"):  # sem DISK.ROM: o fwMSX tambem sobe sem interface de disco
-            shutil.copy(os.path.join(a.fmsxgo, "third-party", "fMSX", "ROMs", n), roms)
+        if a.ref == "fmsx":
+            # fMSX original: as sub-ROMs do proprio fMSX; sem DISK.ROM/FMPAC.ROM (o fwMSX sobe sem disco)
+            for n in ("MSX2EXT.ROM", "MSX2PEXT.ROM"):
+                shutil.copy(os.path.join(FMSX_SRC, n), roms)
+            ref_exe = build_fmsx(tmp)
+            if not ref_exe:
+                return 2
+        else:
+            ref_exe = os.path.join(tmp, "fmsxref.exe" if os.name == "nt" else "fmsxref")
+            # copia o gerador para o tmp para o "replace" apontar para o --fmsxgo escolhido
+            src = os.path.join(tmp, "src")
+            shutil.copytree(HERE, src, ignore=shutil.ignore_patterns("*.py", "__pycache__"))
+            gm = os.path.join(src, "go.mod")
+            txt = open(gm).read().replace("E:/fmsxgo", a.fmsxgo.replace("\\", "/"))
+            open(gm, "w").write(txt)
+            r = subprocess.run(["go", "build", "-o", ref_exe, "."], cwd=src, capture_output=True, text=True)
+            if r.returncode:
+                print("falha ao compilar o gerador de referencia:\n" + r.stderr)
+                return 2
+            for n in ("MSX2EXT.ROM", "MSX2PEXT.ROM"):  # sem DISK.ROM: o fwMSX tambem sobe sem interface de disco
+                shutil.copy(os.path.join(a.fmsxgo, "third-party", "fMSX", "ROMs", n), roms)
 
         if a.png:
             os.makedirs(a.png, exist_ok=True)
@@ -172,11 +216,17 @@ def main():
             for frames in points:
                 label = f"{name}@{frames}"
                 ref_ppm, fw_ppm = os.path.join(tmp, label + "_ref.ppm"), os.path.join(tmp, label + "_fw.ppm")
-                cmd = [ref_exe, "-model", str(model), "-roms", roms, "-frames", str(frames), "-out", ref_ppm]
-                if cart:
-                    cmd += ["-cart", cart]
-                if subprocess.run(cmd, capture_output=True).returncode:
-                    print(f"{label:<22} falha no fmsxgo")
+                if a.ref == "fmsx":
+                    cmd = [ref_exe, ["-msx1", "-msx2", "-msx2+"][model], "-home", roms, "-verbose", "0",
+                           "-frames", str(frames), "-out", ref_ppm]
+                    if cart:
+                        cmd += [cart]
+                else:
+                    cmd = [ref_exe, "-model", str(model), "-roms", roms, "-frames", str(frames), "-out", ref_ppm]
+                    if cart:
+                        cmd += ["-cart", cart]
+                if subprocess.run(cmd, capture_output=True, cwd=tmp).returncode:
+                    print(f"{label:<22} falha na referencia ({a.ref})")
                     continue
                 bios = ["MSX.ROM", "MSX2.ROM", "MSX2P.ROM"][model]
                 cmd = [a.fw, "--msx"] + (["--msx2"] if model == 1 else ["--msx2p"] if model == 2 else []) +                       ["--bios", os.path.join(ROOT, "dist", "roms", "bios", bios), "--frames", str(frames),
