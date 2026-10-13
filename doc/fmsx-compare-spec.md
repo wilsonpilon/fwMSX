@@ -30,28 +30,27 @@ MSX2EXT/MSX2PEXT vem de `resource/fMSX`; as ROMs de jogo vem de `E:\fmsxgo\media
 - Cada caso tem varios pontos (quadros): os emuladores nao ficam sincronizados ao quadro (fades, aberturas), entao o
   caso passa se ALGUM ponto bater; todos sao listados.
 
-## Resultado contra o fMSX original (2026-10-13, fwMSX 1.36.0)
+## Resultado contra o fMSX original (2026-10-13, fwMSX 1.36.1)
 
 | caso | modelo | exato | forma | observacao |
 |------|--------|-------|-------|------------|
-| bios_msx1 | MSX1 | 100% | 100% | deslocamento de 1 pixel (ver abaixo) |
+| bios_msx1 | MSX1 | 100% | 100% | (1.36.0: deslocado 1 pixel) |
 | bios_msx2 | MSX2 | 100% | 100% | idem |
 | bios_msx2p | MSX2+ | 100% | 100% | |
 | kings_valley | MSX1 | 100% | 100% | |
 | f1_spirit | MSX1 | 100% | 100% | (99,88% aos 700 quadros) |
-| lode_runner_scc | MSX1 | 100% | 100% | deslocamento de 1 pixel (tela de texto, SCREEN 0) |
+| lode_runner_scc | MSX1 | 100% | 100% | idem (tela de texto, SCREEN 0) |
 | firebird_msx2 | MSX2 | 100% (500 e 800 quadros) | 100% | aos 600 o fade esta' uma etapa adiante (sincronia) |
 
 A **paleta e' identica** (a diferenca de cor que o fmsxgo mostrava era do fmsxgo, nao do fwMSX), e a BIOS dos tres
 modelos sobe ate o prompt exatamente igual ao fMSX.
 
-### Diferenca real achada (aberta)
+### Diferenca real achada e corrigida (1.36.1)
 
-**Texto de SCREEN 0 (40 colunas) deslocado 1 pixel a esquerda** no fwMSX: o conteudo vai de x=28 a 212 contra
-29 a 213 no fMSX (borda e altura iguais). Causa: o fMSX desenha o texto a partir do pixel 9 da area de 256
-(`RefreshLine0`: `P+=9`, 9 pixels de borda a esquerda e 7 a direita), e o fwMSX centraliza os 240 pixels (8 e 8;
-`Machine::RenderFrame`, `src/machine/machine.cpp`, calculo de `pad`). Nao foi alterado: o 8/8 e' o centrado, o 9/7
-e' o do fMSX; decidir se vale seguir o fMSX.
+**Texto de SCREEN 0 (40 colunas) 1 pixel a esquerda** no fwMSX 1.36.0: conteudo de x=28 a 212 contra 29 a 213 no
+fMSX. O fMSX desenha o texto a partir do pixel 9 da area de 256 (`RefreshLine0`: `P+=9`; TEXT80: `P+=18` na tela
+larga), e o fwMSX centralizava (8/8). Corrigido em `Machine::RenderFrame` (`+1` no MSX1, `+2` na tela de 512 do
+MSX2/MSX2+; texto 240 e TEXT80). O TEXT80 segue sem caso de comparacao.
 
 ### Licao do harness (armadilha)
 
@@ -62,7 +61,7 @@ do MSX2+ e' 100%.
 
 ## O que falta
 
-- Decidir sobre o deslocamento de 1 pixel do texto de SCREEN 0 (seguir o 9/7 do fMSX ou manter o 8/8).
+- Caso de TEXT80 (precisa injetar teclas no `Headless.c`).
 - Jogos citados no OUTLINE como pendentes (Parodius, Mega Chase, F-1 Spirit 3D) nao estao no acervo local
   (`dist/roms` so' tem BIOS/sistema); entram na lista quando houver a ROM.
 - Casos com disco (MSX-DOS), teclas digitadas e SCREEN 5-8 de jogo (o `Headless.c` ainda nao injeta teclas).

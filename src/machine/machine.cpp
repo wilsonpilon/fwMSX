@@ -1084,7 +1084,10 @@ FrameSize Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
         // MSX1: 256 pixels de tela + 8 de borda de cada lado; telas mais estreitas
         // (TEXT 40) ficam centralizadas dentro da area de 256.
         const int side = (kFrameWidth - 256) / 2;
-        const int pad = side + (256 - width) / 2;
+        // Texto de 40 colunas (240): o fMSX comeca no pixel 9 da area de 256 (RefreshLine0: P+=9, 9 de borda a
+        // esquerda e 7 a direita), nao centrado em 8/8 -- comparado pixel a pixel com o fMSX original.
+        const int text_shift = width == 240 ? 1 : 0;
+        const int pad = side + (256 - width) / 2 + text_shift;
         size.width = kFrameWidth;
         rgba.assign(static_cast<size_t>(size.width) * size.height, border_px);
         for (int y = 0; y < lines; ++y) {
@@ -1108,7 +1111,10 @@ FrameSize Machine::RenderFrame(std::vector<uint32_t> &rgba) const {
     rgba.assign(static_cast<size_t>(size.width) * size.height, border_px);
     const int factor = width <= 256 ? 2 : 1;
     const int out_width = width * factor;
-    const int pad = side + (512 - out_width) / 2;
+    // Texto (40 colunas, 240 dobrado a 480; TEXT80, 480): o fMSX comeca 1 pixel (de 256) depois do centro -- 2 aqui,
+    // na tela de 512 (RefreshLine0/RefreshLineTx80: P+=9 / P+=18).
+    const int text_shift = (width == 240 || width == 480) ? 2 : 0;
+    const int pad = side + (512 - out_width) / 2 + text_shift;
     for (int y = 0; y < lines; ++y) {
         // Efeito de rastreio (ver doc/vdp-spec.md, secao 2): aplica o estado que
         // esta linha tinha DE VERDADE durante a execucao do quadro (capturado

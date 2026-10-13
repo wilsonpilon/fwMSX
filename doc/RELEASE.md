@@ -17,6 +17,23 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.36.1 -- "Salamander: Texto de SCREEN 0 como no fMSX" (Konami) (2026-10-13)
+
+**Fase:** primeiro fruto da comparacao com o fMSX original: o texto de 40 colunas saia 1 pixel a esquerda.
+
+### O que foi feito
+- `Machine::RenderFrame` (`src/machine/machine.cpp`): texto de 40 colunas (240) comeca no pixel 9 da area de 256 (MSX1:
+  `+1`; MSX2/MSX2+, tela de 512: `+2`, tambem no TEXT80), como `RefreshLine0`/`RefreshLineTx80` do fMSX.
+- Ferramenta `tools/fmsx_ref/Headless.c` + `tools/fmsxgo_ref/compare.py`: o fMSX original compilado sem janela como
+  referencia (o fmsxgo, ainda em desenvolvimento, como segunda opiniao). Armadilha achada: o fMSX grava
+  `CMOS.ROM` e le na partida seguinte (o `compare.py` apaga entre os casos).
+
+### Validacao
+`ctest` 23/23 (Windows e Linux). Comparacao com o fMSX original: 7/7 casos a 100% pixel a pixel (antes, 3 deles
+tinham deslocamento de 1 pixel). TEXT80 sem caso de teste ainda.
+
+---
+
 ## v1.36.0 -- "Salamander" (Konami) (2026-10-13)
 
 **Fase:** primeiro bloco do montador Z80 integrado (`fwmsx --asm`), reescrita clean-room do asMSX 1.2.0 -- passo

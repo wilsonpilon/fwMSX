@@ -21,8 +21,8 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 36
-#define FWMSX_VERSION_PATCH 0
+#define FWMSX_VERSION_PATCH 1
 
 #define FWMSX_COMPANY   "Konami"
 #define FWMSX_CODENAME  "Salamander"
-#define FWMSX_SUBTITLE  ""  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_SUBTITLE  "Texto de SCREEN 0 como no fMSX"  // so' nas versoes X.Y.Z com Z > 0

@@ -7,6 +7,25 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.36.1] - 2026-10-13 - "Salamander: Texto de SCREEN 0 como no fMSX" (Konami)
+
+### Corrigido
+- O texto de SCREEN 0 (40 colunas) e o TEXT80 passam a comecar onde o fMSX os desenha: no pixel 9 da area de 256
+  (9 de borda a esquerda e 7 a direita; `RefreshLine0`/`RefreshLineTx80`), e nao centrados em 8/8. Achado pela
+  comparacao quadro a quadro com o fMSX original (`tools/fmsxgo_ref/compare.py`): o texto saia 1 pixel a esquerda.
+  `Machine::RenderFrame`, `src/machine/machine.cpp`.
+
+### Adicionado
+- **Comparacao de quadros com o fMSX original** (ferramenta de desenvolvimento, fora do `ctest`):
+  `tools/fmsx_ref/Headless.c` compila o nucleo ORIGINAL de `resource/fMSX` sem janela; `tools/fmsxgo_ref/
+  compare.py` roda a mesma ROM nele e no fwMSX, alinha os quadros e compara por pixel e por forma. 7 casos (BIOS
+  MSX1/MSX2/MSX2+, King's Valley, F1 Spirit, Lode Runner SCC, Firebird): **100% pixel a pixel** depois desta
+  correcao. O port em Go (fmsxgo) fica como segunda opiniao (`--ref fmsxgo`). Ver `doc/fmsx-compare-spec.md`.
+
+### Observacao
+- O TEXT80 foi ajustado pelo mesmo criterio do fMSX (`P+=18` na tela larga), mas ainda nao tem caso na comparacao
+  (o `Headless.c` nao injeta teclas).
+
 ## [1.36.0] - 2026-10-13 - "Salamander" (Konami)
 
 ### Adicionado

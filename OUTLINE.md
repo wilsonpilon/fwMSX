@@ -17,6 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-13)
 
+- **1.36.1 "Salamander: Texto de SCREEN 0 como no fMSX" (publicada)**: o texto de 40 colunas/TEXT80 passa a comecar
+  no pixel 9 da area de 256, como o fMSX (antes saia 1 pixel a esquerda). Com isso a comparacao com o fMSX original
+  (`tools/fmsxgo_ref/compare.py`, abaixo) fecha **7/7 casos a 100% pixel a pixel**. Proximos: casos com disco/teclas
+  (inclusive TEXT80, ainda sem caso), audio, ROMs pendentes (Parodius, Mega Chase). `ctest` 23/23 em Windows e Linux.
 - **1.36.0 "Salamander" (Konami; publicada nesta rodada)**: montador Z80 `fwasm` (`fwmsx --asm`, comando `asm` do
   console; `src/asm/{core,cpp,fortran}`), reescrita clean-room do asMSX 1.2.0 em C + Fortran + C++. Saidas `.z80`/
   `.sym`/`.txt`; ~6.200 casos de teste gerados pelo `asmsx.exe` real (`tools/asmdiff/`, golden em `tests/asm/golden/`),
@@ -26,12 +30,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   das 4 linguagens ainda nao esta' cumprida aqui). Obs.: `resource/asMSX/` (fonte GPLv3 do original) e `resource/
   asmsx.exe` ficam so' como referencia/oraculo; o codigo do fwasm NAO deriva dele. Ver `doc/asm-spec.md`.
   Sem teste do usuario ainda: a TUI/terminal (1.34/1.35) num terminal de verdade.
-- **Comparacao com o fMSX original (ferramenta, 2026-10-13, apos a 1.36.0; sem versao nova)**:
+- **Comparacao com o fMSX original (ferramenta, 2026-10-13; entrou na 1.36.1)**:
   `tools/fmsxgo_ref/compare.py` roda a mesma ROM no **fMSX original** (resource/fMSX compilado sem janela por
   `tools/fmsx_ref/Headless.c`; o fmsxgo, ainda em desenvolvimento, fica como segunda opiniao) e no fwMSX e compara
   a tela. Resultado: **7/7 casos 100% pixel a pixel** (BIOS MSX1/MSX2/MSX2+, King's Valley, F1 Spirit, Lode Runner
-  SCC, Firebird; paleta identica). Unica diferenca real: texto de SCREEN 0 **1 pixel a esquerda** no fwMSX (o fMSX
-  comeca o texto no pixel 9, o fwMSX centraliza em 8) -- nao alterado, decidir. Armadilha do harness: o fMSX grava
+  SCC, Firebird; paleta identica). Unica diferenca real que havia (texto de SCREEN 0 1 pixel a esquerda: o fMSX
+  comeca o texto no pixel 9, o fwMSX centralizava em 8) foi corrigida na 1.36.1. Armadilha do harness: o fMSX grava
   `CMOS.ROM` e le na partida seguinte (o compare.py apaga entre casos). Proximos: casos com disco/teclas, audio,
   ROMs pendentes (Parodius, Mega Chase). Ver `doc/fmsx-compare-spec.md`.
 - **1.35.0 "Vampire Killer" (publicada)**: TUI de menus (`fwMSXc.exe --tui`, `src/tui/`):
