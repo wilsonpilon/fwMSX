@@ -1,0 +1,388 @@
+// fwMSX -- MAN/HELP: paginas dos comandos do console, do emulador e do depurador. Texto sem acento (ASCII).
+#include "man_internal.h"
+
+namespace man {
+
+std::vector<Topic> CommandTopics() {
+    std::vector<Topic> v;
+    auto add = [&](const char *name, const char *aliases, const char *category, const char *usage, const char *summary, const char *page) {
+        v.push_back(Topic{name, aliases, category, usage, summary, page, true});
+    };
+
+    // ------------------------------------------------------------------ Console
+    add("help", "?", "Console", "help [comando]", "esta tabela; com um comando, o resumo dele",
+        R"MAN(DESCRICAO
+  Sem argumento mostra todos os comandos agrupados. Com um comando mostra o
+  uso e uma linha de resumo. Para o manual completo, com exemplos, use "man
+  <comando>".
+
+EXEMPLOS
+  help              a tabela de comandos
+  help peek         uso e resumo do peek
+  man peek          o manual do peek
+
+VER TAMBEM
+  man)MAN");
+
+    add("man", "manual", "Console", "man [topico]", "manual completo de um comando ou assunto do MSX",
+        R"MAN(DESCRICAO
+  Abre o manual de um topico. Os topicos sao os comandos do fwMSX e a
+  REFERENCIA do MSX: BIOS, variaveis do sistema, ganchos, comandos do BASIC,
+  cores, portas de E/S, slots... Sem argumento lista todos. Se o nome nao
+  existe, sugere os parecidos (aceita so' o comeco ou um pedaco: "man sysv"
+  acha sysvars).
+
+  Na TUI o manual abre numa janelinha: setas, PgUp/PgDn, Home/End rolam; Esc
+  ou Q fecha. No console (--cli) o texto e' paginado: espaco = proxima
+  pagina, Enter = proxima linha, Q = sai.
+
+EXEMPLOS
+  man               o indice de todos os topicos
+  man type          como digitar teclas no MSX
+  man bios          a tabela de entradas da BIOS (CHPUT, CHGET...)
+  man cores         os codigos de cor do MSX
+
+VER TAMBEM
+  help)MAN");
+
+    add("exit", "quit", "Console", "exit | quit", "sai do console (o emulador continua aberto)",
+        R"MAN(DESCRICAO
+  Encerra o console (--cli) ou a TUI. O emulador que foi aberto com "emu
+  start" CONTINUA rodando; para fecha-lo use "emu stop" antes de sair.
+
+  Na TUI, "clear" limpa o historico da tela.
+
+VER TAMBEM
+  emu)MAN");
+
+    add("clear", "cls", "Console", "clear", "limpa o historico da tela (so' na TUI)",
+        "DESCRICAO\n  Na TUI apaga o historico mostrado na tela. No console (--cli) use CTRL+L do terminal.\n\nVER TAMBEM\n  exit");
+
+    add("emu", "", "Console", "emu start|attach|detach|stop|status", "abre, conecta ou fecha o emulador (janela)",
+        R"MAN(DESCRICAO
+  O console e a TUI controlam o emulador por uma ponte local (127.0.0.1).
+  "emu" cuida da ligacao.
+
+  emu start [opcoes]   abre a JANELA do emulador e conecta. As opcoes sao as
+                       do --msx (ver o MANUAL): --msx2, --msx2p, --cart <arq>
+                       [mapper], --disk <arq.dsk>, --fita <arq>, --mute,
+                       --debug, --break <end>, --watch <end>, --bios <arq>...
+                       O splash NAO aparece, a menos que se peca --splash.
+  emu attach <porta>   conecta num emulador ja' aberto com --ctl-port <porta>.
+  emu detach           desconecta; o emulador continua aberto.
+  emu stop             fecha o emulador conectado.
+  emu status           mostra se ha' emulador conectado e em que porta.
+
+  Depois de "emu start" os comandos do emulador (peek, poke, type, cart,
+  disk, state, dbg...) passam a funcionar. O prompt mostra a porta:
+  fwmsx:60123>.
+
+EXEMPLOS
+  emu start                              MSX1 vazio (so' o BASIC)
+  emu start --msx2p --cart jogo.rom      MSX2+ com um cartucho
+  emu start --msx2 --disk jogo.dsk       MSX2 com um disquete
+  emu start --debug --break 0x4010       comeca PARADO, com um breakpoint
+
+VER TAMBEM
+  wait, type, status, quit)MAN");
+
+    add("wait", "", "Console", "wait [segundos]", "espera um evento do emulador (breakpoint, etc.)",
+        R"MAN(DESCRICAO
+  Fica ate' N segundos (padrao 10) esperando um evento assincrono do
+  emulador -- por exemplo o breakpoint atingido depois de "go". O evento
+  aparece como "[evento] break id=1 pc=4010 hits=1". Sem evento no tempo
+  dado, avisa e volta ao prompt. Precisa de emulador conectado.
+
+EXEMPLOS
+  break 0x4010
+  go
+  wait 30
+
+VER TAMBEM
+  go, break, watch, events)MAN");
+
+    // ------------------------------------------------------------------ Emulador
+    add("version", "", "Emulador", "version", "versao do fwMSX", R"MAN(DESCRICAO
+  Mostra o nome e o numero da versao do emulador conectado (X.Y.Z).)MAN");
+
+    add("status", "", "Emulador", "status", "estado: quadro, pausa, tela, PC, cartucho, discos",
+        R"MAN(DESCRICAO
+  Uma linha com o estado atual:
+    frame=N paused=0 stopped=0 screen=M pc=XXXX typing=0 cart=... diskA=...
+
+  frame    quadros emulados desde o reset
+  paused   1 = pausado por "pause"
+  stopped  1 = parado pelo depurador
+  screen   modo de tela do VDP (0 = SCREEN 0...)
+  pc       contador de programa do Z80
+  typing   1 = ainda digitando um "type"
+  cart, diskA, diskB, tape   o que esta' inserido ("-" = nada))MAN");
+
+    add("reset", "", "Emulador", "reset", "reinicia a maquina",
+        R"MAN(DESCRICAO
+  Reinicia o MSX (como apertar o botao de reset): a memoria e' zerada e a
+  BIOS recomeca em 0000h. O cartucho e os discos inseridos continuam.)MAN");
+
+    add("pause", "", "Emulador", "pause", "pausa a emulacao",
+        "DESCRICAO\n  Congela a emulacao (a janela continua respondendo). Com a maquina pausada \"step\" avanca quadro a quadro.\n\nVER TAMBEM\n  resume, step");
+    add("resume", "", "Emulador", "resume", "retoma a emulacao pausada",
+        "DESCRICAO\n  Volta a rodar depois de \"pause\".\n\nVER TAMBEM\n  pause, step");
+    add("step", "", "Emulador", "step [n]", "avanca n quadros (maquina pausada)",
+        R"MAN(DESCRICAO
+  Executa n quadros de video (1 a 3600, padrao 1) e fica pausado de novo.
+  So' funciona com a maquina pausada ("pause" antes). Um quadro e' 1/60 s
+  (NTSC) ou 1/50 s (PAL). Para passos de INSTRUCAO use "stepi" (depurador).
+
+EXEMPLOS
+  pause
+  step 60          avanca 1 segundo
+
+VER TAMBEM
+  pause, resume, stepi)MAN");
+
+    add("type", "", "Emulador", "type \"texto\" {tecla}...", "digita no teclado do MSX (texto e teclas)",
+        R"MAN(DESCRICAO
+  Digita no teclado do MSX. A pontuacao segue o teclado da BIOS carregada
+  (japones no MSX2+ do fMSX, internacional nas outras). O comando volta na
+  hora e a digitacao anda a cada quadro; "status" mostra typing=1 enquanto
+  durar.
+
+SINTAXE
+  "texto"      texto entre aspas: cada caractere vira uma tecla (com SHIFT
+               quando precisa). Dentro das aspas: \n = Enter, \\ = uma barra,
+               \" = aspas.
+  texto solto  igual, sem aspas; varios espacos viram um so'.
+  {tecla}      uma tecla pelo nome, FORA das aspas. Maiusculas tanto faz.
+  {a}+{b}      teclas apertadas JUNTAS: {ctrl}+{c} = Control-C (para um
+               programa BASIC), {ctrl}+{stop}. {ctrl+c} e' o mesmo.
+  {a}{b}       teclas EM SEQUENCIA (aperta e solta uma, depois a outra).
+  {enter*3}    repete 3 vezes (1 a 200).
+
+TECLAS
+  letras e numeros: {a}..{z} {0}..{9}
+  edicao:    {enter} {esc} {tab} {bs} {del} {ins} {home} {space}
+  controle:  {stop} {select} {ctrl} {shift} {graph} {caps} {code}
+  funcao:    {f1}..{f5}
+  setas:     {up} {down} {left} {right}
+  teclado numerico: {pad0}..{pad9} {pad*} {pad+} {pad/} {pad-} {pad,} {pad.}
+  apelidos:  {return} {escape} {backspace} {delete} {insert} {control}
+             {cls} (=home) {break} (=stop)
+
+EXEMPLOS
+  type "key off" {enter}
+  type "10 print \"ola\"\nrun\n"
+  type "list" {enter} {ctrl}+{stop}
+  type {f1}
+  type "color 15,4,4" {enter}
+
+OBSERVACOES
+  --keys (linha de comando do fwMSX) usa a mesma sintaxe, mas aspas e espacos ali sao texto comum.
+  Um caractere sem tecla no MSX ou um nome de tecla desconhecido da' erro e
+  nada e' digitado.)MAN");
+
+    add("peek", "", "Emulador", "peek <end> [n]", "le n bytes da memoria (1 a 4096)",
+        R"MAN(DESCRICAO
+  Le n bytes (padrao 1) como o Z80 enxerga AGORA, isto e', com os slots e
+  subslots selecionados no momento. Responde "ok 41 42 43 ...". Enderecos:
+  0x4010, $4010, 4010h ou decimal.
+
+EXEMPLOS
+  peek 0xFCAF            o modo de tela atual (SCRMOD)
+  peek $F3E9 3           cores: frente, fundo e borda (FORCLR, BAKCLR, BDRCLR)
+  peek 0 16              os 16 primeiros bytes da BIOS
+
+VER TAMBEM
+  poke, mem, sysvars, slots)MAN");
+
+    add("poke", "", "Emulador", "poke <end> <v>...", "grava bytes na memoria (a ROM nao muda)",
+        R"MAN(DESCRICAO
+  Grava um ou mais bytes a partir de <end>. Escrever em ROM nao altera nada
+  (e' como no MSX real).
+
+EXEMPLOS
+  poke 0xC000 0x41 0x42     grava "AB" na RAM
+  poke $F3E9 7              muda a cor da frente (depois um CLS no BASIC)
+
+VER TAMBEM
+  peek, mem, sysvars)MAN");
+
+    add("regs", "", "Emulador", "regs", "registradores do Z80 numa linha",
+        R"MAN(DESCRICAO
+  AF BC DE HL IX IY SP PC numa linha. Para todos (inclusive sombra, I, R e
+  flags) use "reg" do depurador.
+
+VER TAMBEM
+  reg, dis)MAN");
+
+    add("quit", "", "Emulador", "quit", "fecha o emulador conectado",
+        "DESCRICAO\n  Pede ao emulador para fechar a janela e encerrar (o mesmo que \"emu stop\" no console).\n\nVER TAMBEM\n  emu");
+
+    // ------------------------------------------------------------------ Midia e estado
+    add("cart", "", "Midia e estado", "cart <arq|-> [mapper]", "troca o cartucho (reinicia)",
+        R"MAN(DESCRICAO
+  Troca o cartucho do slot 1 e reinicia a maquina. "-" retira o cartucho.
+  Sem mapper o fwMSX consulta o banco de ROMs pelo SHA-1 (comando romdb) e,
+  se nao achar, usa ROM plana ate' 32 KB e deteccao acima.
+
+  Mappers: auto, gen8, gen16, konami5 (SCC), konami4, ascii8, ascii16,
+  msxdos2.
+
+EXEMPLOS
+  cart jogo.rom
+  cart "C:\jogos\nemesis.rom" konami4
+  cart -                    retira o cartucho
+
+VER TAMBEM
+  romdb, reset)MAN");
+
+    add("disk", "", "Midia e estado", "disk <A|B> <arq>", "insere um disquete (.dsk) na unidade",
+        R"MAN(DESCRICAO
+  Insere a imagem .dsk (crua) na unidade A: ou B:. Precisa de interface de
+  disco (emu start --disk...). Disco novo: "newdisk". Conteudo do disco:
+  "msxdisk".
+
+EXEMPLOS
+  disk A jogo.dsk
+  disk B dados.dsk
+
+VER TAMBEM
+  eject, newdisk, msxdisk)MAN");
+
+    add("eject", "", "Midia e estado", "eject <A|B>", "tira o disquete da unidade",
+        "DESCRICAO\n  Ejeta o disquete da unidade A: ou B:.\n\nVER TAMBEM\n  disk");
+
+    add("tape", "", "Midia e estado", "tape <arq|eject|rewind>", "insere, tira ou rebobina a fita",
+        R"MAN(DESCRICAO
+  tape <arq>     insere uma fita (.cas, .tsx ou .tzx, pela extensao)
+  tape eject     tira a fita
+  tape rewind    volta ao comeco
+
+EXEMPLOS
+  tape jogo.tsx
+  type "bload\"cas:\",r" {enter}
+
+VER TAMBEM
+  cas, fitadb)MAN");
+
+    add("state", "", "Midia e estado", "state save|load <arq>", "salva ou carrega o estado inteiro da maquina",
+        R"MAN(DESCRICAO
+  state save <arq>   grava um save-state (.sst): CPU, memoria, VDP, PSG...
+  state load <arq>   restaura. Responde "ok aviso: ..." se a BIOS ou o
+                     cartucho mudaram.
+  Na janela: F6 salva, F7 carrega, F8/F9 trocam o slot.
+
+EXEMPLOS
+  state save antes-do-chefe.sst
+  state load antes-do-chefe.sst)MAN");
+
+    add("screenshot", "", "Midia e estado", "screenshot <arq>", "grava a tela do MSX (PNG)",
+        "DESCRICAO\n  Grava a tela atual numa imagem (PNG na janela do emulador). Na janela, F12 faz o mesmo.\n\nEXEMPLO\n  screenshot tela.png");
+
+    // ------------------------------------------------------------------ Depurador
+    add("break", "", "Depurador", "break <end>", "breakpoint num endereco",
+        R"MAN(DESCRICAO
+  Para a maquina quando o PC chegar em <end>. Cada breakpoint tem um id. Ao
+  parar, o evento "! break id=1 pc=4010 hits=1" aparece (no console como
+  [evento]; na TUI abre o painel). Tambem pela linha de comando: emu start
+  --break 0x4010.
+
+EXEMPLOS
+  break 0x4010
+  go
+  wait 30
+
+VER TAMBEM
+  unbreak, breaks, go, watch)MAN");
+    add("unbreak", "", "Depurador", "unbreak <end|all>", "remove um breakpoint (ou todos)", "DESCRICAO\n  Remove o breakpoint de <end>; \"all\" remove todos.\n\nVER TAMBEM\n  break, breaks");
+    add("breaks", "", "Depurador", "breaks", "lista os breakpoints (id, endereco, paradas)", "DESCRICAO\n  Lista os breakpoints: id, endereco e quantas vezes pararam.\n\nVER TAMBEM\n  break, unbreak");
+    add("watch", "", "Depurador", "watch <end> [tam] [r|w|rw]", "watchpoint: para ao ler/escrever na memoria",
+        R"MAN(DESCRICAO
+  Para a maquina quando o Z80 LE (r), ESCREVE (w) ou faz os dois (rw) em
+  [end, end+tam). Padrao: escrita, 1 byte. Evento: "! watch id=2 addr=C100
+  rw=w value=77 pc=C012 next=C015".
+
+EXEMPLOS
+  watch 0xFC9E 2 w       quem mexe no JIFFY (contador de interrupcoes)?
+  watch 0xC000 16 rw
+
+VER TAMBEM
+  unwatch, watches, break)MAN");
+    add("unwatch", "", "Depurador", "unwatch <end|all>", "remove um watchpoint (ou todos)", "DESCRICAO\n  Remove o watchpoint de <end>; \"all\" remove todos.");
+    add("watches", "", "Depurador", "watches", "lista os watchpoints", "DESCRICAO\n  Lista os watchpoints: id, faixa, tipo e quantas vezes dispararam.");
+    add("stepi", "", "Depurador", "stepi [n]", "executa n instrucoes e fica parado",
+        R"MAN(DESCRICAO
+  Executa n instrucoes do Z80 (1 a 1000000, padrao 1) e fica parado.
+  Responde com o PC e a proxima
+  instrucao: "pc=0001  JP 02D7h".
+
+VER TAMBEM
+  next, until, go, dis)MAN");
+    add("next", "", "Depurador", "next", "passo SOBRE: CALL/RST/blocos/HALT rodam inteiros",
+        R"MAN(DESCRICAO
+  Como "stepi", mas CALL, CALL cc, RST,
+  LDIR/LDDR/CPIR/CPDR/INIR/INDR/OTIR/OTDR e HALT executam por inteiro (a
+  subrotina roda toda e para na instrucao seguinte). O resto e' um stepi.
+
+VER TAMBEM
+  stepi, until)MAN");
+    add("until", "", "Depurador", "until <end>", "roda ate' o endereco",
+        R"MAN(DESCRICAO
+  Roda ate o PC chegar em <end>. Espera ate 20 quadros; se nao chegar
+  responde "running" e o evento "! until pc=..." avisa depois (use "wait").
+
+VER TAMBEM
+  go, break, wait)MAN");
+    add("go", "", "Depurador", "go [end]", "volta a rodar (opcionalmente de <end>)",
+        "DESCRICAO\n  Retoma a execucao parada pelo depurador; com <end> o PC passa a ser <end> antes. Responde \"running\" na hora.\n\nVER TAMBEM\n  stop, break, wait");
+    add("stop", "", "Depurador", "stop", "para na proxima instrucao", "DESCRICAO\n  Para a maquina na proxima fronteira de instrucao. Use depois \"dis\", \"reg\", \"mem\" para olhar.\n\nVER TAMBEM\n  go, stepi");
+    add("jump", "", "Depurador", "jump <end>", "muda o PC", "DESCRICAO\n  Coloca <end> no PC (nada mais muda). Depois \"go\" ou \"stepi\".\n\nVER TAMBEM\n  go, reg");
+    add("dis", "", "Depurador", "dis [end] [n]", "desmonta n linhas (padrao 8) a partir de <end>/PC",
+        R"MAN(DESCRICAO
+  Desmonta n linhas (padrao 8) a partir de <end> (padrao: o PC). ">" marca o
+  PC, "*" um breakpoint.
+
+EXEMPLO
+  dis 0 3
+   0000  F3           DI
+   0001  C3 D7 02     JP 02D7h
+
+VER TAMBEM
+  mem, stepi)MAN");
+    add("mem", "", "Depurador", "mem <end> [n]", "hexdump com ASCII (16 bytes por linha)", "DESCRICAO\n  Hexdump de n bytes (ate 1024) a partir de <end>, 16 por linha, com a coluna ASCII.\n\nVER TAMBEM\n  peek, poke");
+    add("stack", "", "Depurador", "stack [n]", "n palavras a partir de SP", "DESCRICAO\n  Mostra n palavras (1 a 128, padrao 8) da pilha a partir de SP.\n\nVER TAMBEM\n  reg");
+    add("reg", "", "Depurador", "reg [nome valor]", "todos os registradores; ou altera um",
+        R"MAN(DESCRICAO
+  Sem argumento mostra todos os registradores e as flags. Com nome e valor
+  altera: af bc de hl ix iy sp pc af' bc' de' hl' a f b c d e h l i r
+
+EXEMPLO
+  reg hl 0xC000
+
+VER TAMBEM
+  regs, jump)MAN");
+    add("slots", "", "Depurador", "slots", "de que slot:subslot vem cada pagina de 16 KB",
+        R"MAN(DESCRICAO
+  Mostra, para as 4 paginas (0000h, 4000h, 8000h, C000h), o slot e subslot
+  selecionados agora e se a regiao e' RAM ou ROM/vazia.
+
+VER TAMBEM
+  slotsmsx)MAN");
+    add("events", "", "Depurador", "events on|off", "assina/cancela os eventos assincronos",
+        "DESCRICAO\n  Liga/desliga o envio de eventos (! break, ! watch, ! until) NESTA conexao. O console e a TUI ligam sozinhos.\n\nVER TAMBEM\n  wait, break");
+    add("dbgui", "", "Depurador", "dbgui open|show|key|char", "o painel Z80 Debugger como texto",
+        R"MAN(DESCRICAO
+  O painel visual do depurador (o mesmo da janela, tecla F10) devolvido como
+  texto -- e' o que a TUI usa.
+    dbgui open        abre (para a maquina, cursor no PC) e desenha
+    dbgui show        so' desenha
+    dbgui key <k>     enter up down left right g d m s j r c q b esc bs
+    dbgui char <c>    um digito hexa para a pergunta do G
+  Na TUI o painel abre sozinho quando um breakpoint dispara (Depurador >
+  Painel). Teclas do painel: ENTER passo, setas movem o cursor, B
+  breakpoint, M dump de memoria, G vai ao endereco, C continua, Q encerra o
+  emulador, Esc fecha.)MAN");
+
+    return v;
+}
+
+} // namespace man

@@ -744,8 +744,19 @@ fwmsx> newdisk novo.dsk ds35
 | `emu stop` / `emu status` | encerra o emulador / mostra o estado |
 | `newdisk <arq> <ss525\|ds525\|ss35\|ds35>` | disquete novo e formatado (`--disknew`) |
 | `romdb`, `cas`, `fitadb`, `msxdisk` | as ferramentas de mesmo nome (`--romdb`, `--cas`, `--fitadb`, `--msxdisk`) |
-| `help`, `exit` / `quit` | ajuda / sai (o emulador continua aberto) |
+| `help` / `help <comando>` | a tabela de comandos / uso e resumo de um comando |
+| `man` / `man <topico>` | o manual completo (ver abaixo) |
+| `exit` / `quit` | sai (o emulador continua aberto) |
 | *qualquer outro* | vai para o emulador conectado (comandos da tabela abaixo) |
+
+### Ajuda e manual (`help`, `man`)
+
+`help` lista os comandos agrupados (Console, Emulador, Midia e estado, Depurador, Ferramentas); `help peek` mostra o uso e um resumo; `man peek`
+abre o manual completo, com exemplos. O `man` tambem traz a **referencia do MSX**: `man bios` (rotinas da BIOS: CHPUT, CHGET, WRTVDP...),
+`man sysvars` (variaveis do sistema: FORCLR, JIFFY, SCRMOD...), `man hooks` (ganchos), `man basic`, `man cores`, `man screens`, `man vdpregs`,
+`man psgregs`, `man portas`, `man slotsmsx` e `man teclado`. `man` sozinho lista tudo; `man sysv` (nome parcial) sugere `sysvars`.
+No console o texto e' paginado (espaco = pagina, Enter = linha, `q` sai); na TUI abre uma janelinha (setas, PgUp/PgDn, Home/End, Esc ou `q`
+fecham). Detalhes e como acrescentar topicos: [man-spec.md](man-spec.md).
 
 As respostas aparecem sem o `ok`; os erros como `erro: ...`. O prompt mostra a porta
 (`fwmsx:51607> `). Se o emulador for fechado, o proximo comando avisa e o console volta ao prompt

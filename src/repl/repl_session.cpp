@@ -1,9 +1,11 @@
 // fwMSX -- sessao do console. Ver repl_session.h e doc/repl-spec.md.
 #include "repl_session.h"
 
+#include <algorithm>
 #include <cstdlib>
 
 #include "../control/command.h"
+#include "../man/cpp/man.h"
 
 namespace repl {
 
@@ -21,19 +23,47 @@ std::string ReplSession::Prompt() const {
     return link_.connected() ? "fwmsx:" + std::to_string(link_.port()) + "> " : "fwmsx> ";
 }
 
-void ReplSession::Help(std::ostream &out) {
-    out << "Comandos do console:\n"
-           "  emu start [opcoes do --msx]   inicia o emulador (janela) e conecta; ex.: emu start --msx2p --cart jogo.rom\n"
-           "  emu attach <porta>            conecta num emulador ja' aberto com --ctl-port\n"
-           "  emu detach | emu stop | emu status\n"
-           "  wait [segundos]               espera um evento do emulador (breakpoint atingido, etc.)\n"
-           "  exit | quit                   sai do console (o emulador continua aberto)\n";
-    for (const auto &[name, entry] : tools_) out << "  " << name << "  -- " << entry.help << "\n";
-    out << "Qualquer outro comando vai para o emulador conectado (peek, poke, type, cart, disk, state, ...).\n";
-    if (link_.connected()) {
-        std::string reply, error;
-        if (link_.Send("help", reply, error)) out << "Emulador: " << reply << "\n";
+// help            -> a tabela de comandos (agrupada, com separadores)
+// help <comando>  -> uso e resumo; o manual completo e' o `man <comando>`
+void ReplSession::Help(const std::vector<std::string> &t, std::ostream &out) {
+    if (t.size() > 1) {
+        const man::Topic *topic = man::Find(t[1]);
+        if (topic) out << man::HelpFor(*topic);
+        else out << man::NotFound(t[1]);
+        return;
     }
+    out << man::HelpTable(std::min(std::max(width_, 40), 100));
+    // ferramentas registradas por quem hospeda a sessao e que o man ainda nao conhece
+    bool header = false;
+    for (const auto &[name, entry] : tools_) {
+        if (man::Find(name)) continue;
+        if (!header) {
+            out << "Outras ferramentas:\n";
+            header = true;
+        }
+        out << "  " << name << "  -- " << entry.help << "\n";
+    }
+}
+
+// man             -> o indice de todos os topicos
+// man <topico>    -> o manual (numa janelinha/pager quando ha' visualizador)
+void ReplSession::Man(const std::vector<std::string> &t, std::ostream &out) {
+    const int width = std::min(std::max(width_, 40), 100);
+    std::string title, text;
+    if (t.size() < 2) {
+        title = "man";
+        text = man::Index(width);
+    } else {
+        const man::Topic *topic = man::Find(t[1]);
+        if (!topic) {
+            out << man::NotFound(t[1]);
+            return;
+        }
+        title = topic->name;
+        text = man::Render(*topic, width);
+    }
+    if (viewer_) viewer_(title, text);
+    else out << text;
 }
 
 bool ReplSession::PrintEvents(std::ostream &out, int wait_ms) {
@@ -149,7 +179,11 @@ bool ReplSession::Execute(const std::string &line, std::ostream &out) {
 
     if (t[0] == "exit" || t[0] == "quit") return false;
     if (t[0] == "help" || t[0] == "?") {
-        Help(out);
+        Help(t, out);
+        return true;
+    }
+    if (t[0] == "man" || t[0] == "manual") {
+        Man(t, out);
         return true;
     }
     if (t[0] == "emu") {

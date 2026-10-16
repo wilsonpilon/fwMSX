@@ -29,6 +29,12 @@ public:
     void AddTool(const std::string &name, Tool tool, const std::string &help);
     void SetSpawner(Spawner spawner) { spawner_ = std::move(spawner); }
 
+    // `man <topico>`: quem tem uma janelinha/pager recebe (titulo, texto) aqui; sem visualizador a pagina e'
+    // impressa em `out`. `width` = colunas disponiveis para o texto (o console usa a largura do terminal).
+    using Viewer = std::function<void(const std::string &title, const std::string &text)>;
+    void SetViewer(Viewer viewer) { viewer_ = std::move(viewer); }
+    void SetWidth(int width) { width_ = width; }
+
     // Executa uma linha, escrevendo o resultado em `out`. Devolve false quando o usuario pediu para
     // sair (exit/quit).
     bool Execute(const std::string &line, std::ostream &out);
@@ -55,10 +61,13 @@ private:
 
     void Emu(const std::vector<std::string> &t, std::ostream &out);
     void Forward(const std::string &line, std::ostream &out);
-    void Help(std::ostream &out);
+    void Help(const std::vector<std::string> &t, std::ostream &out);
+    void Man(const std::vector<std::string> &t, std::ostream &out);
 
     std::string exe_path_;
     Spawner spawner_;
+    Viewer viewer_;
+    int width_ = 78;
     EmuLink link_;
     std::map<std::string, ToolEntry> tools_;
 };

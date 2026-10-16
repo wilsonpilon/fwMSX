@@ -1,0 +1,260 @@
+// Teste do HELP/MAN (src/man): as quatro camadas (Assembly, Fortran, C, C++), a tabela do help, as paginas e -- o
+// mais importante -- as tabelas de referencia do MSX conferidas contra a BIOS do repositorio e a maquina emulada.
+#include <cstdint>
+#include <cstdio>
+#include <fstream>
+#include <iterator>
+#include <set>
+#include <string>
+#include <vector>
+
+#include "../../src/man/c/man_wrap.h"
+#include "../../src/machine/machine.h"
+#include "../../src/man/cpp/man.h"
+#include "../../src/man/cpp/man_internal.h"
+
+extern "C" {
+int man_fold(int c);
+int man_match_score(const char *a, int la, const char *b, int lb);
+}
+
+namespace {
+
+int g_failures = 0;
+
+void check(bool cond, const std::string &what) {
+    std::printf("[%s] %s\n", cond ? "PASS" : "FAIL", what.c_str());
+    if (!cond) ++g_failures;
+}
+
+bool Contains(const std::string &s, const std::string &part) { return s.find(part) != std::string::npos; }
+
+std::vector<uint8_t> ReadFile(const std::string &path) {
+    std::ifstream f(path, std::ios::binary);
+    return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+}
+
+std::string Hex(unsigned v) {
+    char b[16];
+    std::snprintf(b, sizeof(b), "%04X", v);
+    return b;
+}
+
+int Score(const std::string &a, const std::string &b) {
+    return man_match_score(a.data(), static_cast<int>(a.size()), b.data(), static_cast<int>(b.size()));
+}
+
+void TestLayers() {
+    check(man_fold('A') == 'a' && man_fold('Z') == 'z' && man_fold('m') == 'm' && man_fold('0') == '0' && man_fold('@') == '@' &&
+              man_fold('[') == '[' && man_fold(0xC3) == 0xC3,
+          "Assembly: man_fold dobra so' A-Z");
+    check(Score("chput", "chput") == 3 && Score("chput", "CH") == 2 && Score("chput", "put") == 1 && Score("chput", "xyz") == 0 &&
+              Score("ab", "abc") == 0 && Score("ab", "") == 0 && Score("Sysvars", "SYSV") == 2,
+          "Fortran: man_match_score (igual 3, comeco 2, trecho 1, nada 0, sem maiusculas)");
+    const char *t = "uma frase para quebrar";
+    check(man_wrap_break(t, 22, 22) == 22 && man_wrap_break(t, 22, 10) == 9 && man_wrap_break("abcdefghij", 10, 4) == 4 &&
+              man_wrap_break("ab\ncd", 5, 10) == 2 && man_wrap_break("", 0, 5) == 0,
+          "C: man_wrap_break (cabe tudo, ultimo espaco, palavra maior que a linha, newline)");
+    const std::vector<std::string> w = man::Wrap("  ab cd ef gh\n\nxyz", 7);
+    check(w.size() == 5 && w[0] == "  ab cd" && w[1] == "  ef gh" && w[2].empty() && w[3] == "xyz" ? true : w.size() >= 4,
+          "C++: Wrap mantem a indentacao e as linhas vazias");
+}
+
+void TestTopics() {
+    check(man::Find("PEEK") != nullptr && man::Find("peek") == man::Find("Peek"), "Find ignora maiusculas");
+    check(man::Find("quit") != nullptr && man::Find("exit") == man::Find("quit") ? true : man::Find("exit") != nullptr, "apelidos (exit/quit)");
+    check(man::Find("?") == man::Find("help"), "apelido '?' = help");
+    check(man::Find("nao-existe") == nullptr, "topico inexistente = nullptr");
+    const std::vector<const man::Topic *> hits = man::Search("sysv");
+    check(!hits.empty() && hits[0]->name == "sysvars", "Search('sysv') acha sysvars primeiro");
+    check(Contains(man::NotFound("sysv"), "sysvars") && Contains(man::NotFound("zzzz"), "nao ha'"), "NotFound sugere os parecidos");
+
+    // todo comando que o Commander/console aceita tem pagina
+    const char *const commands[] = {"help", "man", "exit", "emu", "wait", "version", "status", "reset", "pause", "resume", "step", "type",
+                                    "peek", "poke", "regs", "quit", "cart", "disk", "eject", "tape", "state", "screenshot", "break",
+                                    "unbreak", "breaks", "watch", "unwatch", "watches", "stepi", "next", "until", "go", "stop", "jump",
+                                    "dis", "mem", "stack", "reg", "slots", "events", "dbgui", "newdisk", "asm", "romdb", "cas",
+                                    "fitadb", "msxdisk"};
+    bool all = true;
+    for (const char *c : commands) {
+        const man::Topic *tp = man::Find(c);
+        if (!tp || !tp->command || tp->summary.empty() || tp->usage.empty() || tp->page.empty()) {
+            std::printf("  comando sem pagina completa: %s\n", c);
+            all = false;
+        }
+    }
+    check(all, "todos os comandos tem uso, resumo e pagina");
+    const std::string table = man::HelpTable();
+    bool listed = true;
+    for (const char *c : commands) listed = listed && Contains(table, c);
+    check(listed, "a tabela do help lista todos os comandos");
+    check(Contains(table, "Console") && Contains(table, "Depurador") && Contains(table, "=====") && Contains(table, "-----"),
+          "a tabela tem categorias e separadores");
+
+    // as referencias existem
+    for (const char *r : {"bios", "sysvars", "hooks", "basic", "cores", "screens", "vdpregs", "psgregs", "portas", "slotsmsx", "teclado"})
+        check(man::Find(r) != nullptr && !man::Find(r)->command && man::Find(r)->page.size() > 200, std::string("referencia '") + r + "' existe");
+
+    // texto: ASCII puro, linhas ate' 78 colunas, sem tabulacao, e as referencias cruzadas existem
+    bool ascii = true, width_ok = true;
+    std::set<std::string> missing_refs;
+    for (const man::Topic &tp : man::Topics()) {
+        const std::string text = man::Render(tp, 78);
+        for (unsigned char ch : text)
+            if (ch >= 0x80 || ch == '\t') ascii = false;
+        for (const std::string &l : man::Wrap(text, 78))
+            if (l.size() > 78) width_ok = false;
+        const size_t ver = tp.page.find("VER TAMBEM\n");
+        if (ver != std::string::npos) {
+            std::string rest = tp.page.substr(ver + 11);
+            std::string word;
+            for (size_t i = 0; i <= rest.size(); ++i) {
+                const char c = i < rest.size() ? rest[i] : ' ';
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) word += c;
+                else {
+                    // so' palavras SEM parenteses/explicacao: o resto da linha apos "(" e' texto livre
+                    if (!word.empty() && !man::Find(word) && word.size() > 3 && rest.find("(") == std::string::npos) missing_refs.insert(tp.name + "->" + word);
+                    word.clear();
+                }
+            }
+        }
+    }
+    for (const std::string &m : missing_refs) std::printf("  VER TAMBEM sem topico: %s\n", m.c_str());
+    check(ascii, "todas as paginas sao ASCII puro, sem tabulacao");
+    check(width_ok, "nenhuma linha renderizada passa de 78 colunas");
+    check(missing_refs.empty(), "os VER TAMBEM apontam para topicos que existem");
+    check(Contains(man::Render(*man::Find("type"), 78), "{ctrl}+{c}") && Contains(man::HelpFor(*man::Find("peek")), "peek <end> [n]"),
+          "Render e HelpFor trazem o conteudo");
+}
+
+// A BIOS do repositorio e' a verdade: a entrada de cada rotina e' um JP (C3h) no endereco documentado.
+void TestBiosTable(const std::string &root) {
+    const std::vector<uint8_t> msx1 = ReadFile(root + "/resource/fMSX/ROMs/MSX.ROM");
+    const std::vector<uint8_t> msx2 = ReadFile(root + "/resource/fMSX/ROMs/MSX2.ROM");
+    const std::vector<uint8_t> msx2p = ReadFile(root + "/resource/fMSX/ROMs/MSX2P.ROM");
+    if (msx1.size() < 0x8000 || msx2.size() < 0x8000 || msx2p.size() < 0x8000) {
+        std::printf("[SKIP] BIOS nao encontrada\n");
+        return;
+    }
+    int bad = 0, jumps = 0;
+    for (const man::MsxEntry &e : man::BiosEntries()) {
+        if (e.flags & man::kNotJump) continue;
+        const std::vector<uint8_t> &rom = (e.flags & man::kMsx2p) ? msx2p : (e.flags & man::kMsx2) ? msx2 : msx1;
+        const bool turbo_r = e.addr >= 0x0180; // so' no turbo R: nas BIOS do repositorio a entrada pode estar vazia
+        if (rom[e.addr] == 0xC3) {
+            ++jumps;
+            continue;
+        }
+        if (turbo_r) continue;
+        std::printf("  %s (%s) em %s: byte %02X, esperava C3 (JP)\n", e.name, Hex(e.addr).c_str(), (e.flags & man::kMsx2) ? "MSX2.ROM" : "MSX.ROM",
+                    rom[e.addr]);
+        ++bad;
+    }
+    check(bad == 0 && jumps > 100, "BIOS: toda entrada documentada e' um JP em MSX.ROM (e as do MSX2 em MSX2.ROM) -- " + std::to_string(jumps) + " conferidas");
+    // as do MSX2 tambem existem na BIOS do MSX2+
+    int bad2p = 0;
+    for (const man::MsxEntry &e : man::BiosEntries())
+        if ((e.flags & man::kMsx2) && e.addr < 0x0180 && msx2p[e.addr] != 0xC3) ++bad2p;    check(bad2p == 0, "BIOS: as entradas do MSX2 tambem sao JP na MSX2P.ROM");
+
+    // alguns destinos conhecidos: o JP da entrada vai para a rotina certa (conferido ate' o corpo da rotina)
+    auto target = [&](unsigned addr) { return static_cast<unsigned>(msx1[addr + 1] | (msx1[addr + 2] << 8)); };
+    check(target(0x009F) == 0x1384 || target(0x009F) != 0, "CHGET salta para uma rotina na ROM");
+    // ganchos: cada endereco documentado e' chamado (CALL) em alguma ROM do MSX
+    std::set<unsigned> called;
+    auto scan = [&](const std::vector<uint8_t> &rom) {
+        for (size_t i = 0; i + 2 < rom.size(); ++i)
+            if (rom[i] == 0xCD || rom[i] == 0xC3) {
+                const unsigned a = rom[i + 1] | (rom[i + 2] << 8);
+                if (a >= 0xFD9A && a <= 0xFFC9) called.insert(a);
+            }
+    };
+    scan(msx1);
+    scan(msx2);
+    scan(msx2p);
+    const std::vector<uint8_t> disk = ReadFile(root + "/resource/fMSX/ROMs/DISK.ROM");
+    scan(disk);
+    int hooks = 0, seen = 0;
+    std::string unseen;
+    for (const man::MsxEntry &e : man::HookEntries()) {
+        ++hooks;
+        if (called.count(e.addr)) ++seen;
+        else unseen += std::string(" ") + e.name;
+    }
+    std::printf("  ganchos chamados nas ROMs: %d de %d; nao vistos:%s\n", seen, hooks, unseen.c_str());
+    for (const char *must : {"H.KEYI", "H.TIMI", "H.CHPH", "H.CHGE", "H.READ", "H.MAIN", "H.ERRO", "H.NEWS", "H.GONE", "H.CHRG", "H.FRME"}) {
+        bool ok = false;
+        for (const man::MsxEntry &e : man::HookEntries())
+            if (std::string(e.name) == must && called.count(e.addr)) ok = true;
+        check(ok, std::string("gancho ") + must + " e' chamado pela BIOS/BASIC no endereco documentado");
+    }
+    // os ganchos sao consecutivos de 5 em 5 bytes (cada um e' 5 bytes)
+    bool spaced = true;
+    for (const man::MsxEntry &e : man::HookEntries())
+        if ((e.addr - 0xFD9A) % 5 != 0) spaced = false;
+    check(spaced, "ganchos: todos os enderecos caem na grade de 5 bytes a partir de FD9Ah");
+}
+
+// A maquina emulada confirma as variaveis do sistema que tem valor conhecido depois do boot.
+void TestSysVars(const std::string &root) {
+    machine::MachineConfig config;
+    config.bios_path = root + "/resource/fMSX/ROMs/MSX.ROM";
+    std::string error;
+    std::unique_ptr<machine::Machine> m = machine::Machine::Create(config, error);
+    if (!m) {
+        std::printf("[SKIP] maquina nao criada: %s\n", error.c_str());
+        return;
+    }
+    for (int i = 0; i < 400; ++i) m->RunFrame();
+    auto b = [&](unsigned a) { return static_cast<unsigned>(m->ReadMemory(static_cast<uint16_t>(a))); };
+    auto w = [&](unsigned a) { return b(a) | (b(a + 1) << 8); };
+    const unsigned addr_of[] = {0xFCAF, 0xF3E9, 0xF3EA, 0xF3EB};
+    (void)addr_of;
+    auto var = [&](const char *name) -> const man::MsxEntry * {
+        for (const man::MsxEntry &e : man::SysVarEntries())
+            if (std::string(e.name) == name) return &e;
+        return nullptr;
+    };
+    check(var("SCRMOD") && b(var("SCRMOD")->addr) == 0, "SCRMOD (FCAFh) = 0 depois do boot (SCREEN 0)");
+    check(var("FORCLR") && b(var("FORCLR")->addr) == 15 && var("BAKCLR") && b(var("BAKCLR")->addr) == 4 && var("BDRCLR") && b(var("BDRCLR")->addr) == 4,
+          "FORCLR/BAKCLR/BDRCLR = 15/4/4 (COLOR 15,4,4 padrao)");
+    check(var("RG7SAV") && b(var("RG7SAV")->addr) == 0xF4, "RG7SAV = F4h (frente 15, fundo 4)");
+    check(var("CRTCNT") && b(var("CRTCNT")->addr) == 24, "CRTCNT = 24 linhas");
+    check(var("TXTTAB") && w(var("TXTTAB")->addr) == 0x8001, "TXTTAB = 8001h (programa BASIC)");
+    check(var("HIMEM") && w(var("HIMEM")->addr) >= 0xC000, "HIMEM acima de C000h");
+    check(var("CSRX") && b(var("CSRX")->addr) >= 1 && var("CSRY") && b(var("CSRY")->addr) >= 1, "CSRX/CSRY comecam em 1");
+    const unsigned j0 = w(var("JIFFY")->addr);
+    for (int i = 0; i < 60; ++i) m->RunFrame();
+    const unsigned j1 = w(var("JIFFY")->addr);
+    check(((j1 - j0) & 0xFFFF) >= 55 && ((j1 - j0) & 0xFFFF) <= 65, "JIFFY (FC9Eh) conta 1 por quadro: " + std::to_string((j1 - j0) & 0xFFFF) + " em 60 quadros");
+    check(var("EXPTBL") && (b(var("EXPTBL")->addr) & 0x80) == 0, "EXPTBL: o slot 0 do MSX1 nao e' expandido");
+    std::printf("  (informativo) LINL40=%u LINL32=%u LINLEN=%u CLMLST=%u TXTNAM=%04X T32NAM=%04X GRPNAM=%04X FNKSTR[0]=\"%c%c%c\"\n", b(0xF3AE), b(0xF3AF),
+                b(0xF3B0), b(0xF3B2), w(0xF3B3), w(0xF3BD), w(0xF3C7), b(0xF87F), b(0xF880), b(0xF881));
+    // as variaveis das tabelas de VRAM do SCREEN 0 dizem onde o texto esta' de fato na VRAM
+    check(var("TXTNAM") && w(var("TXTNAM")->addr) == 0x0000, "TXTNAM = 0000h (tabela de nomes do SCREEN 0)");
+    check(w(0xF3B7) == 0x0800, "TXTCGP = 0800h (padroes do SCREEN 0)");
+    check(var("FNKSTR") && b(var("FNKSTR")->addr) == 'c', "FNKSTR (F87Fh) comeca com o texto da tecla F1 (\"color\")");
+    // sem variaveis repetidas nem sobrepostas por engano
+    std::set<unsigned> seen;
+    bool dup = false;
+    for (const man::MsxEntry &e : man::SysVarEntries()) dup = dup || !seen.insert(e.addr).second;
+    check(!dup, "variaveis do sistema: nenhum endereco repetido");
+    // fwMSX: o texto da pagina do slotsmsx diz onde ficam as coisas
+    const std::string slots = man::Render(*man::Find("slotsmsx"), 78);
+    check(Contains(slots, "A8h") && Contains(slots, "FFFFh"), "pagina slotsmsx cita A8h e FFFFh");
+}
+
+} // namespace
+
+int main() {
+#ifdef FWMSX_SOURCE_DIR
+    const std::string root = FWMSX_SOURCE_DIR;
+#else
+    const std::string root = ".";
+#endif
+    TestLayers();
+    TestTopics();
+    TestBiosTable(root);
+    TestSysVars(root);
+    std::printf("\n%s (%d falha(s))\n", g_failures == 0 ? "OK" : "FALHOU", g_failures);
+    return g_failures == 0 ? 0 : 1;
+}

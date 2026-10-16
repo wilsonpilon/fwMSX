@@ -90,6 +90,27 @@ int main() {
         check(s.Execute("peek 0 2", o) && Contains(o.str(), "erro: sem emulador conectado"), "comando sem emulador: erro explicando");
         o.str("");
         check(s.Execute("help", o) && Contains(o.str(), "emu start") && Contains(o.str(), "exit"), "help do console");
+        check(Contains(o.str(), "Depurador") && Contains(o.str(), "peek <end> [n]") && Contains(o.str(), "----"), "help: tabela agrupada com separadores");
+        o.str("");
+        check(s.Execute("help peek", o) && Contains(o.str(), "peek <end> [n]") && Contains(o.str(), "man peek") && !Contains(o.str(), "Depurador"),
+              "help <comando>: so' o uso e o resumo");
+        o.str("");
+        check(s.Execute("help pek", o) && Contains(o.str(), "nao ha'"), "help de comando inexistente");
+        o.str("");
+        check(s.Execute("man peek", o) && Contains(o.str(), "DESCRICAO") && Contains(o.str(), "EXEMPLOS"), "man <comando> imprime a pagina (sem visualizador)");
+        o.str("");
+        check(s.Execute("man sysv", o) && Contains(o.str(), "sysvars"), "man de nome parcial sugere o topico");
+        o.str("");
+        {
+            std::string seen_title, seen_text;
+            s.SetViewer([&](const std::string &t, const std::string &x) {
+                seen_title = t;
+                seen_text = x;
+            });
+            check(s.Execute("man bios", o) && o.str().empty() && seen_title == "bios" && Contains(seen_text, "CHPUT"), "man com visualizador entrega (titulo, texto) e nao imprime");
+            check(s.Execute("man", o) && seen_title == "man" && Contains(seen_text, "Referencia MSX"), "man sem argumento = indice");
+            s.SetViewer(nullptr);
+        }
         o.str("");
         check(s.Execute("emu foo", o) && Contains(o.str(), "erro: use emu"), "emu com subcomando invalido");
         o.str("");

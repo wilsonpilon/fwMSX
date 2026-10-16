@@ -17,6 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.38.0 "Road Fighter" (publicada)**: `help` agrupado, `help <comando>`, `man <topico>` (pager no console; janelinha na TUI) e a REFERENCIA do MSX
+  (`bios sysvars hooks basic cores screens vdpregs psgregs portas slotsmsx teclado`), conferida contra as BIOS e a maquina. Ver `doc/man-spec.md`.
+  **Pendente do man**: mais topicos (sub-ROM, BDOS, OPLL/SCC, erros do BASIC, tabela ASCII do MSX, comandos do VDP, mappers); o `--term`/F11 ainda tem a ajuda
+  antiga; TAB com os topicos; `man -k`. **Atencao de build**: o gfortran 16.2 so' compila no PowerShell (no Git Bash da' segfault no f951) e `iachar` o derruba (usar `ichar`).
 - **1.37.8 "Knightmare: Teclas no --keys" (publicada)**: `--keys` usa a mesma sintaxe de `{tecla}` do `type` (modo literal: aspas/espacos = texto).
   Pendente: conferir a olho Control-C/STOP dentro de um programa BASIC; `--cmd` (ainda nao existe).
 - **1.37.7 "Knightmare: Teclas no type" (publicada)**: `type "key off" {enter}`; `{ctrl}+{c}` junto x `{ctrl}{c}` em sequencia; `{tecla*N}`.

@@ -32,7 +32,7 @@ struct EmuStatus {
 
 class TuiModel {
 public:
-    enum class Mode { Normal, Menu, Prompt, Browser, Help, Debugger };
+    enum class Mode { Normal, Menu, Prompt, Browser, Help, Debugger, Man };
 
     struct MenuItem {
         std::string label;
@@ -69,6 +69,13 @@ public:
     void OpenPanel();
     void SetPanel(const std::string &reply);
     bool panel_prompt() const { return panel_prompt_; }
+    // Janelinha do `man <topico>`: abre com o texto pronto (ja' quebrado na largura do terminal); setas, PgUp/PgDn, Home/End rolam.
+    void OpenMan(const std::string &title, const std::string &text);
+    const std::string &man_title() const { return man_title_; }
+    const std::vector<std::string> &man_lines() const { return man_lines_; }
+    int man_scroll() const { return man_scroll_; }
+    int cols() const { return cols_; }
+    int rows() const { return rows_; }
     const std::vector<std::string> &panel() const { return panel_; }
     void AddLog(const std::string &line);
     void SetSize(int cols, int rows) {
@@ -117,6 +124,7 @@ private:
     void KeyPrompt(const Key &key);
     void KeyBrowser(const Key &key);
     void KeyDebugger(const Key &key);
+    void KeyMan(const Key &key);
     void Complete();
 
     std::function<void(const std::string &)> submit_;
@@ -129,6 +137,10 @@ private:
 
     std::vector<std::string> panel_;  // linhas do painel Z80 Debugger (com a letra de estilo na frente)
     bool panel_prompt_ = false;       // o painel esta' perguntando um endereco (G)
+
+    std::string man_title_;
+    std::vector<std::string> man_lines_;
+    int man_scroll_ = 0;              // primeira linha visivel do man
 
     std::vector<std::string> log_;
     int log_scroll_ = 0;

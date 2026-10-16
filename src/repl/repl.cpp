@@ -1,10 +1,21 @@
 // fwMSX -- console interativo (replxx). Ver repl.h e doc/repl-spec.md.
 #include "repl.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
+#include <sstream>
+
+#if defined(_WIN32)
+#include <conio.h>
+#include <windows.h>
+#else
+#include <sys/ioctl.h>
+#include <termios.h>
+#include <unistd.h>
+#endif
 
 #include <replxx.hxx>
 
@@ -35,7 +46,89 @@ std::string HistoryFilePath() {
 const std::vector<std::string> kCompletions = {
     "help", "exit", "quit", "emu start", "emu attach", "emu detach", "emu stop", "emu status", "newdisk", "romdb", "cas",
     "fitadb", "msxdisk", "version", "status", "reset", "pause", "resume", "step", "type", "peek", "poke", "regs", "cart",
-    "disk", "eject", "tape", "state save", "state load", "screenshot"};
+    "disk", "eject", "tape", "state save", "state load", "screenshot", "man", "break", "unbreak", "breaks", "watch", "unwatch",
+    "watches", "stepi", "next", "until", "go", "stop", "jump", "dis", "mem", "stack", "reg", "slots", "events", "dbgui", "wait", "asm"};
+
+// Tamanho do terminal em colunas x linhas; tty = false quando a saida foi redirecionada (sem paginar).
+struct TermSize {
+    int cols = 80;
+    int rows = 24;
+    bool tty = false;
+};
+
+TermSize QueryTerm() {
+    TermSize t;
+#if defined(_WIN32)
+    CONSOLE_SCREEN_BUFFER_INFO info;
+    if (GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info)) {
+        t.cols = info.srWindow.Right - info.srWindow.Left + 1;
+        t.rows = info.srWindow.Bottom - info.srWindow.Top + 1;
+        t.tty = true;
+    }
+#else
+    struct winsize ws;
+    if (isatty(STDOUT_FILENO) && ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+        t.cols = ws.ws_col;
+        t.rows = ws.ws_row;
+        t.tty = true;
+    }
+#endif
+    return t;
+}
+
+// Uma tecla, sem eco e sem esperar Enter. Setas e teclas de funcao devolvem 0 (ignoradas pelo pager).
+int ReadKey() {
+#if defined(_WIN32)
+    int c = _getch();
+    if (c == 0 || c == 0xE0) {
+        _getch();
+        return 0;
+    }
+    return c;
+#else
+    struct termios old_t, raw;
+    if (tcgetattr(STDIN_FILENO, &old_t) != 0) return std::getchar();
+    raw = old_t;
+    raw.c_lflag &= ~(ICANON | ECHO);
+    raw.c_cc[VMIN] = 1;
+    raw.c_cc[VTIME] = 0;
+    tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+    int c = std::getchar();
+    if (c == 27) { // sequencia de escape (setas...): engole o resto
+        raw.c_cc[VMIN] = 0;
+        raw.c_cc[VTIME] = 1;
+        tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+        while (std::getchar() != EOF) {
+        }
+        c = 27;
+    }
+    tcsetattr(STDIN_FILENO, TCSANOW, &old_t);
+    return c;
+#endif
+}
+
+// `man`: mostra o texto de pagina em pagina (espaco = pagina, Enter = linha, q/Esc = sai). Sem terminal, imprime tudo.
+void Page(const std::string &title, const std::string &text) {
+    (void)title;
+    const TermSize term = QueryTerm();
+    std::istringstream in(text);
+    std::string line;
+    const int page = std::max(4, term.rows - 1);
+    int shown = 0;
+    int budget = page;
+    while (std::getline(in, line)) {
+        std::cout << line << "\n";
+        if (!term.tty) continue;
+        if (++shown < budget) continue;
+        if (in.peek() == EOF) break;
+        std::cout << "-- mais (espaco = pagina, Enter = linha, q = sai) --" << std::flush;
+        const int k = ReadKey();
+        std::cout << "\r" << std::string(52, ' ') << "\r" << std::flush;
+        if (k == 'q' || k == 'Q' || k == 27 || k == 3) break;
+        budget = (k == '\r' || k == '\n') ? shown + 1 : shown + page;
+    }
+    std::cout << std::flush;
+}
 
 } // namespace
 
@@ -81,6 +174,7 @@ int RunReplCommand(const std::vector<std::string> &args, const std::string &argv
         if (args[i] == "--attach") session.Execute("emu attach " + args[i + 1], std::cout);
     }
 
+    session.SetViewer(Page);
     replxx::Replxx rx;
     const std::string history_path = HistoryFilePath();
     rx.history_load(history_path);
@@ -104,6 +198,7 @@ int RunReplCommand(const std::vector<std::string> &args, const std::string &argv
         const std::string line(raw);
         if (line.empty()) continue;
         rx.history_add(line);
+        session.SetWidth(QueryTerm().cols - 1); // help/man seguem a largura atual do terminal
         if (!session.Execute(line, std::cout)) break;
         std::cout.flush();
     }

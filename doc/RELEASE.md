@@ -17,6 +17,30 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.38.0 -- "Road Fighter" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- organizar o `help` e criar um `man <comando>` com janelinha de leitura, ja' pensando em abrigar a referencia
+do MSX (comandos do BASIC, enderecos importantes, ganchos, rotinas da BIOS, codigos de cor...).
+
+### O que foi feito
+- `src/man`: registro de topicos (`Topic`: nome, apelidos, categoria, uso, resumo, pagina), busca por nome parcial (Fortran + Assembly),
+  quebra de linhas com alinhamento de colunas (C + C++), `HelpTable`/`HelpFor`/`Index`/`Render`.
+- `ReplSession`: `help [x]`, `man [x]`, `SetViewer`, `SetWidth`. Console: pager (`Page()` em `repl.cpp`, tecla sem eco: `_getch` no Windows,
+  termios no POSIX; largura/altura do terminal). TUI: `Mode::Man` + `OpenMan` + `ManDialog`; o worker chama o visualizador no meio do
+  `Execute` sem segurar o mutex do modelo.
+- Paginas: 49 comandos (com sintaxe, exemplos, VER TAMBEM) e 11 topicos de referencia. BIOS/variaveis/ganchos saem de tabelas de dados.
+- **Conferencia contra a realidade** (`mantest`): entradas da BIOS = `JP` nas ROMs; ganchos = `CALL`/`JP` nas ROMs; variaveis = valores da
+  maquina depois do boot. Isso pegou 2 erros meus durante a escrita (RDBTST/WRBTST so' existem no MSX2+; uma expectativa de quebra de linha).
+- Revisao de fatos nas paginas (bits do R#9, bit 6 do mixer do PSG, SCREEN 10/11...) antes de publicar.
+
+### Validacao
+`ctest` 25/25 (Windows e Linux). Visto na tela: `help` (tabela agrupada), `man type`/`status`/`emu`/`portas`/`vdpregs`/`teclado` no console e a
+janelinha do `man type` na TUI (`--tui --run "man type" --dump`).
+Nao conferido: o pager em um terminal de verdade (teclas de pagina), a janelinha na TUI viva (so' o quadro `--dump`), as paginas que citam
+comportamento de hardware real alem do que as ROMs/maquina confirmam (ex.: bits do VDP, formatos de PLAY) -- escritas de memoria, revisadas, sem fonte externa aqui.
+
+---
+
 ## v1.37.8 -- "Knightmare: Teclas no --keys" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- `--keys` com a mesma sintaxe de teclas do `type`.

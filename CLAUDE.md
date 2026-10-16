@@ -90,7 +90,7 @@ utilitario chamado **MSX-PoorManOS**.
 - **`doc/CHANGELOG.md`** / **`doc/RELEASE.md`**: historico de versoes, um
   resumido (estilo Keep a Changelog) e um detalhado (decisoes, achados,
   build usado pra validar).
-- **`doc/*-spec.md`**: um design doc por subsistema (`vdp-spec.md`,
+- **`doc/*-spec.md`**: um design doc por subsistema (`vdp-spec.md`, `man-spec.md`,
   `memory-map-spec.md`, `savestate-spec.md`, `tape-spec.md`, `fdc-spec.md`,
   `romdb-spec.md`, `fm-spec.md`, `scc-spec.md`, `sram-spec.md`,
   `slots-spec.md`, `msx2-spec.md`, `msx2p-spec.md`, `ppi-spec.md`,

@@ -104,7 +104,13 @@ class App {
 public:
     App(std::unique_ptr<repl::ReplSession> session, std::string start_dir)
         : session_(std::move(session)),
-          model_([this](const std::string &line) { Enqueue(line); }, std::move(start_dir)) {}
+          model_([this](const std::string &line) { Enqueue(line); }, std::move(start_dir)) {
+        // `man <topico>` abre a janelinha de leitura (o worker chama isto no meio do Execute, sem segurar o mutex do modelo).
+        session_->SetViewer([this](const std::string &title, const std::string &text) {
+            std::lock_guard<std::mutex> lock(mu_);
+            model_.OpenMan(title, text);
+        });
+    }
 
     ~App() { StopWorker(); }
 
@@ -162,6 +168,10 @@ private:
                 busy_ = true;
                 std::string captured;
                 std::ostringstream out;
+                {
+                    std::lock_guard<std::mutex> lock(mu_);
+                    session_->SetWidth(std::max(30, std::min(100, model_.cols() - 6))); // help/man cabem na caixa
+                }
                 g_capture = &captured;
                 session_->Execute(line, out);
                 g_capture = nullptr;
@@ -308,6 +318,27 @@ Element BrowserDialog(const TuiModel &m) {
 // C cursor, P pergunta, D ajuda, N normal).
 // `max_rows`: linhas de terminal disponiveis para a caixa. O painel inteiro tem 32 linhas; num terminal menor mostra
 // o cabecalho (registradores), o rodape (se couber) e uma janela do corpo que contem a linha do cursor.
+// Janelinha do `man`: o texto rolavel, com o titulo do topico e a posicao no canto. O texto ja' vem quebrado na largura certa.
+Element ManDialog(const TuiModel &m, const Dimensions &dims) {
+    const auto &all = m.man_lines();
+    const int page = std::max(1, dims.dimy - 6);
+    const int first = std::min(m.man_scroll(), std::max(0, static_cast<int>(all.size()) - page));
+    Elements lines;
+    for (int i = first; i < std::min<int>(static_cast<int>(all.size()), first + page); ++i) {
+        const std::string &l = all[static_cast<size_t>(i)];
+        Element e = text(" " + (l.empty() ? std::string(" ") : l));
+        // titulos das secoes (MAIUSCULAS na primeira coluna) em destaque
+        if (!l.empty() && l[0] >= 'A' && l[0] <= 'Z' && l.find_first_of("abcdefghijklmnopqrstuvwxyz") == std::string::npos) e = e | bold | color(Color::Yellow);
+        lines.push_back(e);
+    }
+    const int shown_to = std::min<int>(static_cast<int>(all.size()), first + page);
+    const std::string pos = " " + std::to_string(all.empty() ? 0 : first + 1) + "-" + std::to_string(shown_to) + "/" + std::to_string(all.size()) + " ";
+    lines.push_back(filler());
+    lines.push_back(text(" setas/PgUp/PgDn/espaco rolam - Home/End - Q ou Esc fecham") | dim);
+    return window(text(" man " + m.man_title() + " " + pos) | bold, vbox(std::move(lines))) | size(WIDTH, GREATER_THAN, std::min(dims.dimx - 2, 40)) |
+           size(HEIGHT, EQUAL, std::max(5, dims.dimy - 3)) | clear_under;
+}
+
 Element PanelDialog(const TuiModel &m, int max_rows) {
     const auto &p = m.panel();
     std::string title = "Z80 Debugger";
@@ -405,6 +436,7 @@ Element BuildView(App &app, const Dimensions &size) {
     case TuiModel::Mode::Browser: return dbox({base, BrowserDialog(m)});
     case TuiModel::Mode::Help: return dbox({base, HelpDialog()});
     case TuiModel::Mode::Debugger: return dbox({base, PanelDialog(m, size.dimy - 2)});
+    case TuiModel::Mode::Man: return dbox({base, ManDialog(m, size)});
     default: return base;
     }
 }

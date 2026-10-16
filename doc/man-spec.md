@@ -1,0 +1,83 @@
+# HELP e MAN -- ajuda e manual dentro do fwMSX (1.38.0, "Road Fighter")
+
+`help` mostra os comandos de forma organizada; `help <comando>` da' o uso e um resumo; `man <topico>` abre o manual
+completo (com exemplos) -- dos comandos e da REFERENCIA do MSX (BIOS, variaveis do sistema, ganchos, BASIC, cores,
+portas, slots...). Vale no console (`--cli`) e na TUI (`--tui`).
+
+## 1. Uso
+
+```
+fwmsx> help                  # a tabela de comandos, agrupada por categoria, com separadores
+fwmsx> help peek             # peek <end> [n]  /  le n bytes da memoria  /  man peek = manual completo
+fwmsx> man                   # o indice de TODOS os topicos
+fwmsx> man type              # como digitar teclas ({enter}, {ctrl}+{c}...)
+fwmsx> man bios              # a tabela de entradas da BIOS (CHPUT, CHGET, WRTVDP...)
+fwmsx> man sysv              # nome parcial: "nao ha' topico 'sysv' -- parecidos: sysvars"
+```
+
+- **Console**: o `man` e' paginado pela altura do terminal -- espaco = proxima pagina, Enter = proxima linha, `q`/Esc sai. A
+  largura segue a do terminal (ate' 100 colunas). Se a saida for redirecionada, imprime tudo de uma vez.
+- **TUI**: o `man` abre uma janelinha. Setas rolam, PgUp/PgDn (ou espaco/`b`) rolam uma pagina, Home/End (ou `g`/`G`) vao ao
+  topo/fim, Esc ou `q` fecham. O titulo mostra a posicao (`1-18/47`). O texto e' quebrado na largura da caixa.
+- Os nomes nao diferenciam maiusculas e aceitam apelidos (`?` = help, `quit` = exit, `ganchos` = hooks, `colors` = cores...).
+
+## 2. Os topicos
+
+**Comandos** (categoria no `help`): Console (`help man exit clear emu wait`), Emulador (`version status reset pause resume
+step type peek poke regs quit`), Midia e estado (`cart disk eject tape state screenshot`), Depurador (`break unbreak breaks
+watch unwatch watches stepi next until go stop jump dis mem stack reg slots events dbgui`), Ferramentas (`newdisk asm romdb
+cas fitadb msxdisk`).
+
+**Referencia MSX** (so' no `man`):
+
+| Topico | Conteudo |
+|---|---|
+| `bios` | tabela de saltos da BIOS (0000h-0189h, e as do MSX2) com os registradores de cada rotina e um exemplo |
+| `sysvars` | variaveis do sistema (F3AEh-FD09h): cores, cursor, tabelas de VRAM, JIFFY, SCRMOD, EXPTBL... |
+| `hooks` | os ganchos (FD9Ah-FFC9h), como encadear e um exemplo (rotina a 60 Hz no H.TIMI) |
+| `basic` | resumo dos comandos do MSX-BASIC, por assunto |
+| `cores` | os 16 codigos de cor |
+| `screens` | os modos de tela (SCREEN 0 a 12) |
+| `vdpregs` | registradores do VDP (TMS9918, V9938, V9958) e o status |
+| `psgregs` | registradores do PSG AY-3-8910 |
+| `portas` | portas de E/S |
+| `slotsmsx` | slots, subslots e o formato do ENASLT |
+| `teclado` | a matriz do teclado (gerada das tabelas do proprio emulador) |
+
+## 3. Arquitetura (as 4 linguagens)
+
+| Camada | Arquivo | Faz |
+|---|---|---|
+| C++ | `src/man/cpp/man.{h,cpp}` | registro de topicos (`Topic`), `Find`, `Search`, `HelpTable`, `HelpFor`, `Index`, `Render`, `Wrap` |
+| C++ | `man_pages_cmd.cpp`, `man_pages_tools.cpp` | as paginas dos comandos (texto sem acento) |
+| C++ | `man_pages_msx.cpp`, `man_pages_msx_data.cpp` | as paginas de referencia; BIOS, variaveis e ganchos saem de TABELAS (`MsxEntry`) |
+| C | `src/man/c/man_wrap.c` | `man_wrap_break`: onde quebrar uma linha longa (ultimo espaco que cabe) |
+| Fortran | `src/man/fortran/man_match.f90` | `man_match_score`: casamento de nome (igual 3, comeco 2, trecho 1) -- usado pelo `Search` e pelo "parecidos" |
+| Assembly | `src/man/asm/man_fold.asm` | `man_fold`: dobra A-Z em a-z sem desvio (NASM, dual-ABI Win64/SysV); o Fortran e o C++ a usam |
+
+Integracao: `ReplSession` (console e TUI) trata `help [x]` e `man [x]`; `SetViewer()` recebe `(titulo, texto)` das paginas do man --
+o console passa o pager (`Page()` em `repl.cpp`) e a TUI abre `Mode::Man` (`TuiModel::OpenMan`, `ManDialog`). `SetWidth()` ajusta a
+largura (terminal, ou a da caixa da TUI). O man nao fala com o emulador: tudo vive no processo do console.
+
+A formatacao de uma linha de tabela mais larga que a tela mantem as colunas: a continuacao fica alinhada na ultima coluna
+(depois de uma folga de 3+ espacos antes da coluna 40); texto corrido so' mantem a indentacao.
+
+## 4. Testes (`mantest`, `repltest`, `tuitest`)
+
+- Camadas: `man_fold` (so' A-Z), `man_match_score` (3/2/1/0), `man_wrap_break`, `Wrap` (indentacao).
+- Todo comando tem uso, resumo e pagina; a tabela do help lista todos; as paginas sao ASCII puro, sem tabulacao, ate' 78 colunas;
+  os "VER TAMBEM" apontam para topicos que existem.
+- **As tabelas de referencia sao conferidas contra a BIOS do repositorio** (e nao escritas de cabeca): cada entrada documentada da BIOS e'
+  um `JP` (C3h) em `MSX.ROM` (as do MSX2 em `MSX2.ROM`, as do MSX2+ em `MSX2P.ROM`) -- 104 entradas; 110 dos 111 ganchos sao
+  chamados (CALL/JP) em alguma ROM (BIOS, BASIC ou DISK.ROM; `H.DEVN` nao e' chamado por nenhuma delas); 11 ganchos essenciais
+  (H.KEYI, H.TIMI, H.READ, H.MAIN, H.ERRO...) sao exigidos. Depois de bootar a maquina emulada: SCRMOD, FORCLR/BAKCLR/BDRCLR (15/4/4),
+  RG7SAV (F4h), CRTCNT (24), TXTTAB (8001h), HIMEM, TXTNAM/TXTCGP, CSRX/CSRY, FNKSTR ("color") e o JIFFY contando 1 por quadro.
+- `repltest`: `help`, `help <x>`, `man <x>` com e sem visualizador, nome parcial. `tuitest`: abrir, rolar, paginar, fechar a janelinha.
+
+## 5. O que falta
+
+- Mais topicos de referencia: comandos da SUB-ROM do MSX2, tabela de caracteres/ASCII do MSX, codigos de erro do BASIC, MSX-DOS 1/2
+  (chamadas do BDOS), MSX-MUSIC (OPLL), SCC, os comandos do VDP em detalhe, mappers de cartucho, mapa de memoria da VRAM por modo.
+- O modo janela (`--term`, F11) ainda tem a ajuda antiga; o `man` la' e' o proximo passo.
+- Completar o TAB do console com os nomes dos topicos (`man <TAB>`); busca por assunto (`man -k cor`).
+- Exemplos executaveis ("copiar e colar" para o `type`/`asm`).

@@ -7,6 +7,30 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.38.0] - 2026-10-16 - "Road Fighter" (Konami)
+
+### Adicionado
+- **`man <topico>`** (console e TUI): manual completo com exemplos. Console: pager pela altura do terminal (espaco/Enter/q); TUI: janelinha
+  rolavel (setas, PgUp/PgDn, Home/End, Esc/Q). Aceita nome parcial ("man sysv" sugere sysvars). Ver `doc/man-spec.md`.
+- **`help <comando>`**: uso e resumo do comando (o manual completo e' o `man`).
+- **Topicos de referencia do MSX** no `man`: `bios` (entradas 0000h-0189h e as do MSX2), `sysvars` (variaveis do sistema), `hooks` (ganchos
+  FD9Ah-FFC9h e como encadear), `basic`, `cores`, `screens`, `vdpregs`, `psgregs`, `portas`, `slotsmsx` e `teclado` (a matriz, gerada
+  das tabelas do proprio emulador). As tabelas foram CONFERIDAS contra as BIOS do repositorio (104 entradas = JP; 110 de 111 ganchos
+  chamados nas ROMs) e contra a maquina emulada depois do boot.
+- Modulo novo `src/man` nas quatro linguagens: C++ (registro e formatacao), C (`man_wrap_break`), Fortran (`man_match_score`) e Assembly
+  (`man_fold`, NASM dual-ABI). Teste proprio `mantest` (ctest 25 testes).
+- `clear` e todos os comandos do depurador no TAB do console.
+
+### Mudou
+- **`help`** deixou de ser uma linha so': agora e' uma tabela agrupada (Console, Emulador, Midia e estado, Depurador, Ferramentas), com
+  separadores e o resumo de cada comando alinhado; ferramentas registradas e nao conhecidas pelo man aparecem em "Outras ferramentas".
+- Janela de terminal, `help` e `man` seguem a largura do terminal (ate' 100 colunas).
+
+### Notas de build
+- O gfortran 16.2 do MSYS2 so' compila no ambiente do PowerShell/`build.ps1`; no Git Bash o PATH carrega DLLs erradas e o `f951` da' falha
+  de segmentacao. Alem disso `iachar` (e uma conversao `int(ichar(...), c_int)` dentro de uma chamada) derruba o `f951`: usar `ichar` e
+  variaveis intermediarias (ver `man_match.f90`).
+
 ## [1.37.8] - 2026-10-16 - "Knightmare: Teclas no --keys" (Konami)
 
 ### Adicionado

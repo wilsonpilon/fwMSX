@@ -102,6 +102,13 @@ O FTXUI escreve o quadro em `std::cout`. A saida de um comando e' capturada por 
 thread do worker (`thread_local g_capture`) grava no historico; as demais escrevem no terminal. Trocar o `rdbuf` global fazia os redesenhos
 virarem texto no historico.
 
+## 6d. A janelinha do man (1.38.0)
+
+`man <topico>` (e o item de menu que o chama) abre `Mode::Man`: `TuiModel::OpenMan(titulo, texto)` guarda as linhas, `KeyMan` rola (setas, PgUp/PgDn
+= rows-6 linhas, Home/End, espaco/`b`, `g`/`G`) e fecha (Esc, Enter, F10, `q`); o clique do mouse e' ignorado. `ManDialog` (tui_app.cpp) desenha a caixa com o
+titulo e a posicao (`1-18/47`); os titulos de secao (MAIUSCULAS) saem em amarelo. O texto vem pronto do `ReplSession`, quebrado na largura da caixa
+(`SetWidth(cols - 6)`). Testes: `tuitest` (rolar, paginar, nao rolar alem do fim, fechar).
+
 ## 7. O que falta
 
 - Teclas de atalho por letra nos menus (Alt+letra) e menus com mnemonicos.

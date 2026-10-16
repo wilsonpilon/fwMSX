@@ -37,7 +37,9 @@ fwmsx> newdisk novo.dsk ds35
 | `emu stop` | manda `quit` ao emulador e desconecta |
 | `emu status` | estado do emulador conectado |
 | `wait [segundos]` | espera um evento do emulador (breakpoint atingido...); ex.: depois de `go` |
-| `help` / `exit` / `quit` | ajuda / sai (o emulador continua aberto) |
+| `help` / `help <comando>` | a tabela de comandos agrupada / uso e resumo de um comando (`doc/man-spec.md`) |
+| `man` / `man <topico>` | o manual completo; `SetViewer()` recebe (titulo, texto) para paginar/abrir janelinha |
+| `exit` / `quit` | sai (o emulador continua aberto) |
 
 **Ferramentas** (as opcoes soltas que ja' existiam, agora como comandos; funcionam sem emulador):
 `newdisk` (= `--disknew`), `romdb`, `cas`, `fitadb`, `msxdisk`.

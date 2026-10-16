@@ -371,6 +371,39 @@ int main() {
         check(r.model.mode() == TuiModel::Mode::Normal, "clique fora fecha o menu");
     }
 
+    // ---- janelinha do man ----
+    {
+        Rig r(dir);
+        r.model.SetSize(80, 24);
+        std::string text;
+        for (int i = 1; i <= 60; ++i) text += "linha " + std::to_string(i) + "\n";
+        r.model.OpenMan("teste", text);
+        check(r.model.mode() == TuiModel::Mode::Man && r.model.man_title() == "teste" && r.model.man_lines().size() >= 60 && r.model.man_scroll() == 0,
+              "OpenMan abre a janelinha no topo");
+        r.K(Key::Down);
+        r.K(Key::Down);
+        check(r.model.man_scroll() == 2, "Seta para baixo rola");
+        r.K(Key::Up);
+        check(r.model.man_scroll() == 1, "Seta para cima volta");
+        r.K(Key::PageDown);
+        check(r.model.man_scroll() == 1 + 18, "PgDn rola uma pagina (rows-6 = 18)");
+        r.K(Key::End);
+        check(r.model.man_scroll() == static_cast<int>(r.model.man_lines().size()) - 18, "End vai ao fim");
+        r.K(Key::Down);
+        check(r.model.man_scroll() == static_cast<int>(r.model.man_lines().size()) - 18, "nao rola alem do fim");
+        r.K(Key::Home);
+        check(r.model.man_scroll() == 0, "Home volta ao topo");
+        r.Type(" ");
+        check(r.model.man_scroll() == 18, "espaco = pagina");
+        r.model.Click(5, 5);
+        check(r.model.mode() == TuiModel::Mode::Man, "clique nao fecha a janelinha");
+        r.Type("q");
+        check(r.model.mode() == TuiModel::Mode::Normal && r.sent.empty(), "Q fecha sem mandar nada ao emulador");
+        r.model.OpenMan("x", "a\nb\n");
+        r.K(Key::Escape);
+        check(r.model.mode() == TuiModel::Mode::Normal, "Esc fecha");
+    }
+
     fs::remove_all(dir);
     std::printf("\n%s (%d falha(s))\n", g_failures ? "FALHOU" : "OK", g_failures);
     return g_failures ? 1 : 0;

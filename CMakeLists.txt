@@ -363,11 +363,25 @@ set(TERM_LIB_SOURCES
 set(TUI_MODEL_SOURCES src/tui/tui_model.cpp)
 set(TUI_LIB_SOURCES src/tui/tui_app.cpp ${TUI_MODEL_SOURCES})
 
+# --- HELP <comando> e MAN <topico> (C++ + C + Fortran + Assembly) -- ver doc/man-spec.md.
+# As paginas de referencia leem as tabelas do PPI (matriz do teclado), por isso quem usa o man tambem leva o PPI.
+set(MAN_LIB_SOURCES
+        src/man/cpp/man.cpp
+        src/man/cpp/man_pages_cmd.cpp
+        src/man/cpp/man_pages_tools.cpp
+        src/man/cpp/man_pages_msx.cpp
+        src/man/cpp/man_pages_msx_data.cpp
+        src/man/c/man_wrap.c
+        src/man/fortran/man_match.f90
+        src/man/asm/man_fold.asm
+)
+
 # --- Console (REPL) -- cliente da ponte de controle; ver doc/repl-spec.md.
 # repl.cpp (replxx + as ferramentas) so' entra no fwMSX; o teste usa so' a sessao e a ligacao.
 set(REPL_CORE_SOURCES
         src/repl/emu_link.cpp
         src/repl/repl_session.cpp
+        ${MAN_LIB_SOURCES}
 )
 set(REPL_LIB_SOURCES ${REPL_CORE_SOURCES} src/repl/repl.cpp)
 
@@ -563,6 +577,16 @@ if (WIN32)
     target_link_libraries(repltest PRIVATE ws2_32)
 endif ()
 add_test(NAME repl COMMAND repltest)
+
+# mantest: o HELP/MAN (busca, tabelas) e as tabelas de referencia contra a BIOS e a maquina emulada.
+add_executable(mantest tests/z80/man_test.cpp ${MAN_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
+target_include_directories(mantest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
+target_compile_definitions(mantest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(mantest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/mantest)
+if (MINGW)
+    target_link_options(mantest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME man COMMAND mantest)
 
 # controltest: ponte de controle (despachante de comandos + servidor TCP) sobre uma Machine de verdade.
 add_executable(controltest tests/z80/control_test.cpp ${CONTROL_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})

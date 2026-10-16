@@ -603,7 +603,42 @@ void TuiModel::KeyDebugger(const Key &key) {
     if (std::string("gdmsjrcqb").find(lower) != std::string::npos) send(std::string(1, lower));
 }
 
+void TuiModel::OpenMan(const std::string &title, const std::string &text) {
+    man_title_ = title;
+    man_lines_ = SplitLines(text);
+    man_scroll_ = 0;
+    mode_ = Mode::Man;
+}
+
+void TuiModel::KeyMan(const Key &key) {
+    const int page = std::max(1, rows_ - 6); // a janelinha tem borda, titulo e rodape
+    const int last = std::max(0, static_cast<int>(man_lines_.size()) - page);
+    switch (key.type) {
+    case Key::Up: man_scroll_ = std::max(0, man_scroll_ - 1); break;
+    case Key::Down: man_scroll_ = std::min(last, man_scroll_ + 1); break;
+    case Key::PageUp: man_scroll_ = std::max(0, man_scroll_ - page); break;
+    case Key::PageDown: man_scroll_ = std::min(last, man_scroll_ + page); break;
+    case Key::Home: man_scroll_ = 0; break;
+    case Key::End: man_scroll_ = last; break;
+    case Key::Escape:
+    case Key::Enter:
+    case Key::F10: mode_ = Mode::Normal; break;
+    case Key::Char:
+        if (key.text == "q" || key.text == "Q") mode_ = Mode::Normal;
+        else if (key.text == " ") man_scroll_ = std::min(last, man_scroll_ + page);
+        else if (key.text == "b" || key.text == "B") man_scroll_ = std::max(0, man_scroll_ - page);
+        else if (key.text == "g") man_scroll_ = 0;
+        else if (key.text == "G") man_scroll_ = last;
+        break;
+    default: break;
+    }
+}
+
 void TuiModel::HandleKey(const Key &key) {
+    if (mode_ == Mode::Man) {
+        KeyMan(key);
+        return;
+    }
     if (mode_ == Mode::Help) {
         mode_ = Mode::Normal;
         return;
@@ -633,6 +668,7 @@ void TuiModel::HandleKey(const Key &key) {
     case Mode::Browser: KeyBrowser(key); break;
     case Mode::Help: break;
     case Mode::Debugger: break;
+    case Mode::Man: break;
     }
 }
 
@@ -641,7 +677,7 @@ void TuiModel::Click(int x, int y) {
         mode_ = Mode::Normal;
         return;
     }
-    if (mode_ == Mode::Debugger) return;
+    if (mode_ == Mode::Debugger || mode_ == Mode::Man) return;
     const std::vector<std::pair<int, int>> spans = TitleSpans();
     if (y == 0) {
         for (size_t i = 0; i < spans.size(); ++i) {
