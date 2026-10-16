@@ -198,6 +198,7 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
 **Funcionando (v1.39.1, publicada em `main`):**
+- [x] **Compatibilidade fwasm x asMSX v1.2.0**: medida 100% (6606 casos + 1 programa real), estimada ~95%; pendencias em `asm-spec.md`.
 - [x] **fwasm com programa real** (1.39.1): replayer PT3 de SapphiRe monta igual ao asMSX v1.2.0 e toca no emulador (`asme2etest`); corrigidos `ROTULO: .include` e `nome .equ valor`.
 
 - [x] **fwasm completo** (1.39.0): `.rom`, `.megarom` (+`.subpage`/`.select`), `.basic`, `.msxdos`, `.cas`, `.wav` (NASM), `.sinclair`, `.size`, `.search`, `.callbios`, `.calldos`, `.debug`, `.break`, `.start`; 382 casos novos conferidos byte a byte contra o asmsx.exe. Ver `doc/asm-spec.md`.

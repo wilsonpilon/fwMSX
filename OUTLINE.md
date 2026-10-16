@@ -17,6 +17,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **Compatibilidade do fwasm com o asMSX v1.2.0 (2026-10-16)**: medida 100% (6606 casos dourados + 1 programa real); estimada ~95% no geral. Pendencias (mais programas reais, CLI, `.sym`/`.txt`, fuzz, v0.19.2, BOM): `doc/asm-spec.md`.
 - **1.39.1 "Yie Ar Kung-Fu: Replayer PT3" (publicada)**: primeiro programa real no fwasm (replayer PT3 de SapphiRe, `tests/asm/real/pt3`): achou e corrigiu `ROTULO: .include` e `nome .equ valor`;
   `.rom`/`.sym` iguais ao asMSX v1.2.0 e a musica toca no emulador (`asme2etest`). Proximos: mais corpora reais, CLI/`.sym`/`.txt` por golden, fuzz diferencial, depois integrar o fwasm a TUI.
 - **1.39.0 "Yie Ar Kung-Fu" (publicada)**: **fwasm completo** -- `.rom`, `.megarom`+`.subpage`+`.select`, `.basic`, `.msxdos`, `.cas`, `.wav` (modulo NASM `wav_synth.asm`), `.sinclair`, `.size`, `.search`,

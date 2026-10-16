@@ -24,6 +24,24 @@ mesmos argumentos.
 montador, escrito em `src/man/cpp/man_pages_fwasm.cpp` a partir de `resource/asmsx.md`. Ao mudar uma diretiva, **atualizar `fwasm-directives`, `fwasm-formats`/`fwasm-megarom` e a lista em `fwasm`**
 (o `mantest` confere que as paginas existem, nao o texto de cada diretiva). As tabelas de BIOS saem de `bios_tables.inc`.
 
+## Compatibilidade com o asMSX v1.2.0 (marcada em 2026-10-16, v1.39.1)
+
+- **Medida: 100%** dos 6606 casos dourados (instrucoes 4170, expressoes 1590, misc 279, linguagem 185, formatos 382) -- codigo de saida, mensagens e arquivos de saida iguais ao
+  `resource/asmsx.exe` -- mais 1 programa real (replayer PT3, `.rom` e `.sym` iguais). Nos 5 casos "misc" ignorados o asMSX e' instavel.
+- **Estimada: cerca de 95%** da compatibilidade geral (o que o oraculo nao mede ainda: ver pendencias). E' uma estimativa, nao uma medida: so' 1 programa real foi comparado.
+- **Fora do escopo por decisao do usuario**: `.sinclair` (esta' implementado e testado, mas nao e' prioridade).
+
+### Pendencias de compatibilidade (para ver depois)
+1. **Mais programas reais** montados nos dois montadores e comparados (cada falha vira um achado, como o `.include` com rotulo e o `.equ` com ponto). Maior fonte de risco.
+2. **Opcoes do CLI** do `asmsx.exe` (`-z`, `-s`, `-vv`, `-r`, `-o pasta`) e nomes/locais dos arquivos de saida: nao comparados de forma sistematica.
+3. **Formato do `.sym` e do `.txt`** (listagem) em MegaROM, `phase` e macros.
+4. **Casos combinados**: macros dentro de `if`, `include` aninhado/relativo, `rept` com rotulos locais, erros no meio de macro (linha e mensagem).
+5. **Fuzz diferencial**: mutar os goldens existentes e comparar com o oraculo.
+6. **`.wav` num MSX de verdade** (hoje so' igual ao do asMSX byte a byte).
+7. **Divergencias conhecidas**: mensagens "Redefining output name..." do `-o`; `.org` abaixo do inicio da subpagina (o asMSX trava, o fwasm da' erro 36); codigo em 0000h antes de `.sinclair`.
+8. **asMSX v0.19.2** (o `asmsx.exe` da pasta `musica`) poe outro INIT no cabecalho com `.start ROTULO` adiante antes do `.rom`; hoje seguimos a v1.2.0. Decidir se vale uma opcao de compatibilidade.
+9. **BOM UTF-8** no inicio do fonte: o fwasm da' erro de sintaxe; conferir o que o asMSX faz e alinhar.
+
 ## Programas reais (1.39.1)
 
 `tests/asm/real/pt3/` guarda o replayer PT3 de SapphiRe (asMSX) com a musica AMAZONIA.PT3. O `asme2etest` o monta, confere `.rom`/`.sym` por CRC contra o asMSX v1.2.0 e roda na maquina emulada
