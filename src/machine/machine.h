@@ -218,6 +218,8 @@ public:
 
     bool KeyDown(const std::string &name);
     bool KeyUp(const std::string &name);
+    // true se "name" e' o nome de uma tecla da matriz (a, enter, f1, ctrl, pad5...), sem diferenciar maiusculas.
+    static bool IsKeyName(const std::string &name) { return ppi_key_lookup(name.c_str()) != PPI_KEY_NONE; }
     void ReleaseAllKeys();
 
     // Renderiza o quadro atual em `rgba` (4 bytes por pixel na ordem R,G,B,A --

@@ -75,10 +75,12 @@ public:
     std::vector<std::string> TakeEvents();
 
 private:
+    // Uma "digitacao": as teclas descem juntas (na ordem) e sobem juntas (na ordem inversa) -- {ctrl}+{c} e' uma so'.
     struct TypedKey {
-        std::string key;
-        bool shift;
+        std::vector<std::string> keys;
     };
+    // Interpreta o argumento do "type" (texto entre aspas ou solto, {tecla}, {a}+{b}); false + erro se invalido.
+    bool ParseTypeSpec(const std::string &spec, std::vector<TypedKey> &out, std::string &error);
 
     Host &host_;
     // Painel "Z80 Debugger" por texto (comando `dbgui`): o MESMO modelo da janela, para a TUI e qualquer cliente.

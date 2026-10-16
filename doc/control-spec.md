@@ -33,7 +33,7 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `reset` | reinicia a maquina |
 | `pause` / `resume` | pausa / retoma a emulacao |
 | `step [n]` | avanca n quadros (1-3600); so' com a maquina pausada |
-| `type <texto>` | digita no teclado do MSX; `\n` = ENTER (use aspas); retorna na hora, a digitacao anda a cada quadro |
+| `type <texto>` | digita no teclado do MSX; `\n` = ENTER (use aspas); teclas em `{}` fora das aspas ({enter} {esc} {f1} {ctrl}+{c} {ctrl}{c} {enter*3}, ver secao 2b); retorna na hora, a digitacao anda a cada quadro |
 | `peek <end> [n]` | le n bytes (1-4096) como o Z80 enxerga agora; `ok 41 42 ...` |
 | `poke <end> <v>...` | grava bytes (ROM nao e' alterada) |
 | `regs` | registradores do Z80 |
@@ -72,6 +72,20 @@ resposta. O console (`--cli`) e a TUI assinam sozinhos ao conectar.
 < ok running
 < ! break id=1 pc=0038 hits=1        <- chegou sem ninguem pedir
 ```
+
+## 2b. Sintaxe do `type` (1.37.7)
+
+O argumento e' lido da linha crua, em pedacos:
+
+- **"texto"**: cada caractere vira a tecla do layout da BIOS (shift quando precisa); `\n` = Enter, `\\` = barra, `\"` = aspas.
+- **texto solto** (sem aspas): igual; palavras separadas por espacos viram UM espaco.
+- **{tecla}**: uma digitacao (desce, 3 quadros, sobe). Nomes = a matriz do MSX (a-z, 0-9, enter, esc, tab, bs, del, ins, home, stop,
+  select, space, f1-f5, ctrl, shift, graph, caps, code, up/down/left/right, pad0-pad9...), sem diferenciar maiusculas; apelidos: return,
+  escape, backspace, delete, insert, control, cls (=home), break (=stop).
+- **{a}+{b}+{c}**: UMA digitacao com as teclas juntas (descem na ordem, sobem na inversa): `{ctrl}+{c}` = Control-C.
+  `{ctrl}{c}` sao duas digitacoes (Control apertado e solto, depois o C). `{ctrl+c}` e' atalho de `{ctrl}+{c}`.
+- **{tecla*N}**: repete N vezes (1-200); numa combinacao vale para a combinacao toda.
+- Erros: `tecla desconhecida`, `'{' sem '}'`, `aspas sem fechar`. Chaves DENTRO das aspas sao texto.
 
 ## 3. Como ligar
 

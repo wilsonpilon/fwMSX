@@ -17,6 +17,24 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.7 -- "Knightmare: Teclas no type" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- mandar caracteres de controle com o `type` (ex.: `KEY OFF` + Enter). Desenho dele: `{tecla}` fora das aspas,
+`{ctrl}+{c}` junto x `{ctrl}{c}` em sequencia.
+
+### O que foi feito
+- `Commander::ParseTypeSpec` le o argumento da linha CRUA (o tokenizador perde a diferenca entre texto entre aspas e `{tecla}`).
+  `TypedKey` agora e' uma LISTA de teclas (desce na ordem, sobe na inversa) em vez de tecla + shift. `Machine::IsKeyName` valida os nomes.
+- Apelidos (return, escape, backspace, delete, insert, control, cls, break); `{tecla*N}`; `{ctrl+c}`.
+- `type` sem argumento / tecla desconhecida / `{` sem `}` = erro claro; nada e' digitado pela metade (a fila so' recebe se tudo valida).
+
+### Validacao
+`controltest` com casos novos (BASIC executa `print 77` + `{enter}`; contagem de teclas de `{ctrl}+{c}` x `{ctrl}{c}`; erros). Conferido na TUI real com
+`tools/conperf`: `type "key off" {enter}` = 8 teclas. `ctest` 24/24 (Windows e Linux).
+Nao conferido a olho: o efeito de Control-C/STOP dentro de um programa BASIC em execucao (so' a contagem e a fila).
+
+---
+
 ## v1.37.6 -- "Knightmare: TUI sem sujeira" (Konami) (2026-10-16)
 
 **Fase:** relato do usuario -- na TUI, comandos com saida mostravam codigos ANSI e caracteres desalinhados.

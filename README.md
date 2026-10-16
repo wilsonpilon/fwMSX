@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.37.6 "Knightmare: TUI sem sujeira", Konami)
+## Estado atual (v1.37.7 "Knightmare: Teclas no type", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -132,7 +132,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.37.3 Z80 Debugger na TUI (comando `dbgui`);
 1.37.4 `type`/`--keys` seguem o teclado da BIOS (japones x internacional);
 1.37.5 TUI mais leve (redesenha so' quando muda);
-**1.37.6 TUI sem sujeira (saida dos comandos sem codigos ANSI)**. Detalhes em
+1.37.6 TUI sem sujeira (saida dos comandos sem codigos ANSI);
+**1.37.7 `type` com teclas: `type "key off" {enter}`, `{ctrl}+{c}`**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

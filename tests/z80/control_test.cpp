@@ -171,6 +171,23 @@ void TestCommander(const std::string &bios) {
     check(!cmd.typing() && VramHas(host.machine(), "print 1234") && VramHas(host.machine(), " 1234"),
           "type: o MSX BASIC executou 'print 1234' digitado pela ponte");
     check(!cmd.Execute("type \"\\x01\"").ok || true, "type com caractere sem tecla nao quebra");
+    Frames(host, cmd, 100);
+
+    // {tecla} fora das aspas: {enter}, {esc}, {ctrl}+{c} (juntas) x {ctrl}{c} (em sequencia), {enter*3}, {ctrl+c}
+    check(cmd.Execute("type \"print 77\" {enter}").ok && Contains(cmd.Execute("type {enter*3}").text, "3 teclas"), "type: {enter} fora das aspas e {enter*3}");
+    Frames(host, cmd, 400);
+    check(!cmd.typing() && VramHas(host.machine(), " 77"), "type \"print 77\" {enter}: o BASIC executou");
+    check(Contains(cmd.Execute("type \"ab\" {ctrl}+{c}").text, "3 teclas"), "type: {ctrl}+{c} e' UMA digitacao (2 letras + 1)");
+    Frames(host, cmd, 100);
+    check(Contains(cmd.Execute("type {ctrl}{c}").text, "2 teclas"), "type: {ctrl}{c} sao duas digitacoes");
+    Frames(host, cmd, 100);
+    check(Contains(cmd.Execute("type {CTRL+C}{Esc}{F1}{stop}{Return}").text, "5 teclas"), "type: {ctrl+c}, maiusculas e apelidos (return)");
+    Frames(host, cmd, 150);
+    check(Contains(cmd.Execute("type oi mundo").text, "8 teclas"), "type: palavras soltas continuam juntas por um espaco");
+    Frames(host, cmd, 100);
+    check(!cmd.Execute("type {foo}").ok && !cmd.Execute("type {enter").ok && !cmd.Execute("type").ok, "type: tecla desconhecida, '{' sem '}' e vazio = erro");
+    cmd.Execute("reset");
+    Frames(host, cmd, 50);
 
     // reset
     check(cmd.Execute("reset").ok, "reset");

@@ -1,6 +1,7 @@
 // fwMSX -- despachante de comandos da ponte de controle. Ver command.h e doc/control-spec.md.
 #include "command.h"
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -38,7 +39,7 @@ int DriveIndex(const std::string &s) {
 }
 
 const char *kHelp =
-    "comandos: help version status reset pause resume step [n] type <texto> peek <end> [n] "
+    "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] "
     "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
@@ -129,6 +130,144 @@ std::vector<std::string> Commander::Tokenize(const std::string &line, std::strin
     return tokens;
 }
 
+// Nomes alternativos aceitos dentro de {}.
+static std::string KeyAlias(std::string n) {
+    for (char &c : n) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    static const char *const kAlias[][2] = {
+        {"return", "enter"}, {"cr", "enter"}, {"escape", "esc"}, {"backspace", "bs"}, {"delete", "del"}, {"insert", "ins"},
+        {"control", "ctrl"}, {"cls", "home"}, {"spc", "space"}, {"break", "stop"}, {"kana", "code"}, {"lshift", "shift"},
+    };
+    for (const auto &a : kAlias)
+        if (n == a[0]) return a[1];
+    return n;
+}
+
+bool Commander::ParseTypeSpec(const std::string &spec, std::vector<TypedKey> &out, std::string &error) {
+    machine::Machine &m = host_.machine();
+    const size_t n = spec.size();
+    bool pending_space = false; // espaco entre duas palavras soltas vira UM espaco (como era antes das aspas/chaves)
+    bool last_bare = false;
+
+    auto add_char = [&](char c) -> bool {
+        TypedKey k;
+        if (c == '\n') {
+            k.keys = {"enter"};
+        } else {
+            std::string key;
+            bool shift = false;
+            if (!m.KeysFor(c, key, shift)) {
+                error = std::string("type: o caractere '") + c + "' nao tem tecla no MSX";
+                return false;
+            }
+            if (shift) k.keys.push_back("shift");
+            k.keys.push_back(key);
+        }
+        out.push_back(k);
+        return true;
+    };
+    // Barra-n vira ENTER e barra-barra vira uma barra; qualquer outra barra e' literal (senao C:\temp quebraria).
+    auto escape_at = [&](size_t i, char &c) -> bool {
+        if (spec[i] != '\\' || i + 1 >= n) return false;
+        if (spec[i + 1] == 'n') c = '\n';
+        else if (spec[i + 1] == '\\') c = '\\';
+        else return false;
+        return true;
+    };
+
+    for (size_t i = 0; i < n;) {
+        const char c = spec[i];
+        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+            if (last_bare) pending_space = true;
+            ++i;
+        } else if (c == '"') {
+            ++i;
+            bool closed = false;
+            while (i < n) {
+                char e = 0;
+                if (spec[i] == '"') {
+                    closed = true;
+                    ++i;
+                    break;
+                }
+                if (spec[i] == '\\' && i + 1 < n && spec[i + 1] == '"') {
+                    if (!add_char('"')) return false;
+                    i += 2;
+                } else if (escape_at(i, e)) {
+                    if (!add_char(e)) return false;
+                    i += 2;
+                } else {
+                    if (!add_char(spec[i])) return false;
+                    ++i;
+                }
+            }
+            if (!closed) {
+                error = "aspas sem fechar";
+                return false;
+            }
+            pending_space = last_bare = false;
+        } else if (c == '{') {
+            // {tecla} ou {a}+{b}+{c} (juntas); {tecla*3} repete. {a}{b} sao duas digitacoes em sequencia.
+            TypedKey combo;
+            int repeat = 1;
+            while (true) {
+                const size_t close = spec.find('}', i);
+                if (close == std::string::npos) {
+                    error = "type: '{' sem '}'";
+                    return false;
+                }
+                std::string body = spec.substr(i + 1, close - i - 1);
+                const size_t star = body.rfind('*');
+                if (star != std::string::npos && star + 1 < body.size() &&
+                    body.find_first_not_of("0123456789", star + 1) == std::string::npos) {
+                    repeat = std::max(1, std::min(200, std::atoi(body.c_str() + star + 1)));
+                    body.erase(star);
+                }
+                std::vector<std::string> names;
+                const std::string whole = KeyAlias(body);
+                if (machine::Machine::IsKeyName(whole)) {
+                    names.push_back(whole);
+                } else {  // {ctrl+c} como atalho de {ctrl}+{c}
+                    size_t b = 0;
+                    while (b <= body.size()) {
+                        const size_t plus = body.find('+', b);
+                        names.push_back(KeyAlias(body.substr(b, plus == std::string::npos ? std::string::npos : plus - b)));
+                        if (plus == std::string::npos) break;
+                        b = plus + 1;
+                    }
+                }
+                for (const std::string &name : names) {
+                    if (!machine::Machine::IsKeyName(name)) {
+                        error = "type: tecla desconhecida '{" + body + "}' (ex.: {enter} {esc} {f1} {stop} {ctrl}+{c})";
+                        return false;
+                    }
+                    combo.keys.push_back(name);
+                }
+                i = close + 1;
+                if (i + 1 < n && spec[i] == '+' && spec[i + 1] == '{') {
+                    ++i;
+                    continue;
+                }
+                break;
+            }
+            for (int r = 0; r < repeat; ++r) out.push_back(combo);
+            pending_space = last_bare = false;
+        } else {
+            char e = 0;
+            if (pending_space && !add_char(' ')) return false;
+            pending_space = false;
+            if (escape_at(i, e)) {
+                if (!add_char(e)) return false;
+                i += 2;
+            } else {
+                if (!add_char(c)) return false;
+                ++i;
+            }
+            last_bare = true;
+        }
+    }
+    return true;
+}
+
 Result Commander::Execute(const std::string &line) {
     std::string tokenize_error;
     const std::vector<std::string> t = Tokenize(line, tokenize_error);
@@ -183,25 +322,14 @@ Result Commander::Execute(const std::string &line) {
     }
 
     if (cmd == "type") {
-        if (t.size() < 2) return Err("type: informe o texto (use \\n para ENTER)");
-        std::string text;
-        for (size_t i = 1; i < t.size(); ++i) text += (i > 1 ? " " : "") + t[i];
-        // Aqui (e so' aqui, nos caminhos a barra e' literal): \n vira ENTER e \\ vira uma barra.
-        for (size_t i = 0; i + 1 < text.size(); ++i) {
-            if (text[i] != '\\') continue;
-            if (text[i + 1] == 'n') text.replace(i, 2, "\n");
-            else if (text[i + 1] == '\\') text.erase(i, 1);
-        }
+        // O argumento e' lido da linha CRUA (nao dos tokens): precisa saber o que estava entre aspas e o que era {tecla}.
+        size_t p = 0;
+        while (p < line.size() && (line[p] == ' ' || line[p] == '\t')) ++p;
+        p += 4; // "type"
         std::vector<TypedKey> keys;
-        for (const char c : text) {
-            TypedKey k{};
-            if (c == '\n') {
-                k.key = "enter";
-            } else if (!m.KeysFor(c, k.key, k.shift)) {
-                return Err(std::string("type: o caractere '") + c + "' nao tem tecla no MSX");
-            }
-            keys.push_back(k);
-        }
+        std::string error;
+        if (!ParseTypeSpec(line.substr(std::min(p, line.size())), keys, error)) return Err(error);
+        if (keys.empty()) return Err("type: informe o texto (\"texto\", {enter}, {ctrl}+{c}...)");
         for (const TypedKey &k : keys) typing_.push_back(k);
         return Ok(std::to_string(keys.size()) + " teclas");
     }
@@ -613,16 +741,14 @@ void Commander::Tick() {
         if (typing_.empty()) return;
         current_ = typing_.front();
         typing_.pop_front();
-        if (current_.shift) m.KeyDown("shift");
-        m.KeyDown(current_.key);
+        for (const std::string &k : current_.keys) m.KeyDown(k);
         key_phase_ = 1;
         key_ticks_ = 3;
         return;
     }
     if (--key_ticks_ > 0) return;
     if (key_phase_ == 1) {
-        m.KeyUp(current_.key);
-        if (current_.shift) m.KeyUp("shift");
+        for (auto it = current_.keys.rbegin(); it != current_.keys.rend(); ++it) m.KeyUp(*it);
         key_phase_ = 2;
         key_ticks_ = 3;
     } else {

@@ -182,7 +182,7 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-13, v1.37.6 "Knightmare: TUI sem sujeira", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  **Estado atual (2026-10-13, v1.37.7 "Knightmare: Teclas no type", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
   (VDP com efeitos de rastreio por linha, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout
   de slots), com o banco de ROMs (`--romdb`, agora com `verify` e auto-mapper pelo SHA-1 ao
   carregar um cartucho), o subsistema de fita completo (leitura, gravacao, empacotador
@@ -192,13 +192,14 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.37.6)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.37.7)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.37.6, publicada em `main`):**
+**Funcionando (v1.37.7, publicada em `main`):**
 
+- [x] **`type` com teclas** (1.37.7): `type "key off" {enter}`, `{esc}`, `{f1}`, `{ctrl}+{c}` (juntas), `{ctrl}{c}` (em sequencia), `{enter*3}`. Ver control-spec secao 2b.
 - [x] **TUI sem sujeira** (1.37.6): a saida dos comandos passa a ser capturada por thread (`ThreadCaptureBuf`), nao trocando o `rdbuf` global; antes, redesenhos caiam no historico como codigos ANSI.
 - [x] **TUI mais leve** (1.37.5): redesenha so' quando algo muda (antes, 12x/s sempre). Lentidao de digitacao do console relatada pelo usuario: NAO reproduzida (medida em `tools/conperf`); aguardando detalhes do terminal.
 - [x] **Teclado japones x internacional no `type`/`--keys`/modo terminal** (1.37.4): a pontuacao digitada usa o layout da BIOS (byte 002Ch); as tabelas sao conferidas contra as das BIOS. F10 (Z80 Debugger) e splash conferidos em tela.

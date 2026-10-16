@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.7] - 2026-10-16 - "Knightmare: Teclas no type" (Konami)
+
+### Adicionado
+- **`type` aceita teclas entre chaves, fora das aspas**: `type "key off" {enter}`, `{esc}`, `{f1}`, `{stop}`... `{ctrl}+{c}` aperta as teclas
+  JUNTAS (Control-C); `{ctrl}{c}` aperta o Control, solta, e depois o C; `{enter*3}` repete; `{ctrl+c}` = `{ctrl}+{c}`. Nomes = a matriz do MSX,
+  com apelidos (return, escape, backspace...). Funciona no console, na TUI e na porta de controle do emulador.
+  Texto entre aspas e palavras soltas continuam como antes. Detalhes em `doc/control-spec.md` secao 2b.
+
 ## [1.37.6] - 2026-10-16 - "Knightmare: TUI sem sujeira" (Konami)
 
 ### Corrigido
