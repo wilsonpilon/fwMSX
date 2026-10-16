@@ -7,6 +7,21 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.38.5] - 2026-10-16 - "Road Fighter: Nestor, SEE e fwasm" (Konami)
+
+### Adicionado
+- **Manual do nosso montador (`man fwasm`)**, em portugues, no lugar do manual do asMSX: 11 paginas -- `fwasm` (uso, saidas, estado, exemplo de cartucho de 16 KB TESTADO), `fwasm-syntax`, `fwasm-labels`,
+  `fwasm-numbers`, `fwasm-operators`, `fwasm-data`, `fwasm-directives` (cada diretiva com o ESTADO no fwasm: PRONTA / PARCIAL / FALTA), `fwasm-conditional`, `fwasm-macros`, e `fwasm-bios` / `fwasm-biosvars`
+  (124 rotinas e 144 variaveis, geradas das MESMAS tabelas que o montador usa, `bios_tables.inc`). Baseado no manual do asMSX 1.2.0 (BSD-3), ajustado ao que o fwasm de fato faz hoje (sem os formatos de saida rom/megarom/basic/msxdos/cas/wav ainda).
+- **NestorBASIC** (`man nestorbasic`, `man nb-23`, ou pelo wrapper `man nb_copyvramtovram`): a introducao e as 87 funcoes da biblioteca do Nestor Soriano (RAM mapeada, disco, VRAM, som, Moonblaster), em portugues, com
+  entrada/saida de cada funcao.
+- **SEE Tracker** (`man seetracker`, `man see-...`): 22 paginas sobre o Sound Effect Editor 3.10: uso do editor, teclas, formato do arquivo .SEE, motor de replay (bits do evento, registradores do PSG, slides), integracao com o BASIC.
+- **MSXBAS2ROM** (`man msxbas2rom`, tambem `msx-turbo-basic`): compilador de MSX-BASIC para ROM (54 paginas: instalacao, uso, comandos e funcoes estendidas, recursos, musica, depuracao...). Em ingles.
+- `tools/paleobasic/import_tools_help.py` (gera `src/man/cpp/man_pages_tools_help.cpp`).
+
+### Nao importado (por escolha)
+- Manual do asMSX do paleobasic (substituido pelo `fwasm`), N80/LK80/LIBSTOR (por enquanto), openMSX, e o grupo "Rumo a um tracker compativel" do SEE (plano de trabalho do editor do paleobasic).
+
 ## [1.38.4] - 2026-10-16 - "Road Fighter: MSX-DOS 2 e Z80" (Konami)
 
 ### Adicionado

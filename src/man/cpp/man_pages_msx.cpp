@@ -51,7 +51,7 @@ std::string BiosPage() {
         if (!(e.flags & kMsx2)) continue;
         Row(out, "  " + Hex4(e.addr) + "  " + Pad(e.name, 7), e.text);
     }
-    out += "\nVER TAMBEM\n  sysvars, hooks, slotsmsx, peek, dis";
+    out += "\nVER TAMBEM\n  sysvars, hooks, slotsmsx, peek, dis, fwasm-bios";
     return out;
 }
 
@@ -73,7 +73,7 @@ std::string SysVarsPage() {
         std::snprintf(size, sizeof(size), "%3u", e.size);
         Row(out, "  " + Hex4(e.addr) + "  " + Pad(e.name, 7) + size + "  ", e.text);
     }
-    out += "\nVER TAMBEM\n  hooks, bios, peek, poke";
+    out += "\nVER TAMBEM\n  hooks, bios, peek, poke, fwasm-biosvars (mais nomes e enderecos)";
     return out;
 }
 

@@ -121,6 +121,8 @@ const std::vector<Topic> &Topics() {
         absorb(HardwareTopics());
         absorb(BookTopics());
         absorb(ManualTopics());
+        absorb(ToolsHelpTopics());
+        absorb(FwasmTopics());
         return v;
     }();
     return all;

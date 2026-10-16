@@ -56,6 +56,12 @@ escrita para o paleobasic). Nomes: `rb-`, `th2-`, `bd-` + o titulo; categorias "
 MSX-Music...), `dos-*` (MSX-DOS 1) e `cpm`. Palavras que ja' tinham pagina (livro da Gradiente) ganham a versao em ingles como secao `==== MSX-BASIC ====` da mesma pagina (a fusao considera apelidos da
 mesma categoria). **Nao importado**: OpenMSX (o fwMSX nao usa) e os 8 capitulos do MSX2 Technical Handbook do MANUALS.CHM (o livro inteiro ja' vem de `import_books_help.py`).
 
+### 1f. NestorBASIC, SEE Tracker, MSXBAS2ROM e o manual do fwasm (1.38.5)
+
+`tools/paleobasic/import_tools_help.py` importa as ajudas do paleobasic de **NestorBASIC** (`nestorbasic`, `nb-<n>`; apelido pelo wrapper `.NB_*`), **SEE Tracker** (`seetracker`, `see-<titulo>`) e **MSXBAS2ROM**
+(`msxbas2rom`, `msxbas2rom-<arquivo>`; o "MSX Turbo Basic" do menu do paleobasic). O manual do **fwasm** e' escrito a mao (`man_pages_fwasm.cpp`), em portugues, a partir do manual do asMSX, com o ESTADO real
+de cada diretiva; as tabelas de BIOS vem de `src/asm/cpp/bios_tables.inc`. Nao importados: o manual do asMSX do paleobasic (substituido pelo do fwasm), N80/LK80/LIBSTOR (por enquanto) e o OpenMSX.
+
 ### Origem e direitos
 O material do MSX-BASIC e' de duas obras de terceiros (a de BIOS/hardware, acima, e' do MSXBIOS.CHM do RuMSX, que reune fontes publicas: MSX Assembly Page, manuais do blueMSX e
 do openMSX, livros da Aleph). O responsavel pela Aleph autorizou expressamente a distribuicao de material de MSX e ZX81 (informado pelo autor do projeto). Texto transcrito no

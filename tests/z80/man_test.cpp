@@ -140,6 +140,45 @@ void TestTopics() {
         check(no_marker, "nenhum resto da marcacao do paleobasic (@@@, [[[) nas paginas");
     }
 
+    // NestorBASIC, SEE Tracker, MSXBAS2ROM (paleobasic) e o manual do nosso montador (fwasm)
+    {
+        const man::Topic *nb = man::Find("nestorbasic");
+        check(nb && nb == man::Find("nb") && Contains(nb->page, "NESTORBASIC"), "man nestorbasic (introducao)");
+        const man::Topic *f = man::Find("nb-23");
+        check(f && f->category == "NestorBASIC: Acesso a VRAM" && Contains(f->page, "FUNCAO 23") && Contains(f->page, "ENTRADA"), "man nb-23: funcao 23 do NestorBASIC");
+        check(man::Find("nb_copyvramtovram") == f, "NestorBASIC: apelido pelo nome do wrapper");
+        int nbf = 0, see = 0, b2r = 0;
+        for (const man::Topic &tp : man::Topics()) {
+            if (tp.category.rfind("NestorBASIC: ", 0) == 0) ++nbf;
+            if (tp.category.rfind("SEE Tracker: ", 0) == 0) ++see;
+            if (tp.category.rfind("MSXBAS2ROM: ", 0) == 0) ++b2r;
+        }
+        check(nbf >= 85 && see == 23 && b2r == 54, "importados: NestorBASIC " + std::to_string(nbf) + ", SEE Tracker " + std::to_string(see) + ", MSXBAS2ROM " + std::to_string(b2r));
+        const man::Topic *st = man::Find("seetracker");
+        check(st && st == man::Find("see") && st->category.rfind("SEE Tracker: ", 0) == 0, "man seetracker / man see");
+        const man::Topic *bb = man::Find("msxbas2rom");
+        check(bb && bb == man::Find("msx-turbo-basic") && Contains(bb->page, "ROM"), "man msxbas2rom (e msx-turbo-basic)");
+        check(man::Find("turbo-basic") == man::Find("turbo-basic-compiler"), "turbo-basic continua sendo o Turbo-Basic Compiler do RuMSX");
+
+        // o manual do fwasm
+        const char *const pages[] = {"fwasm", "fwasm-syntax", "fwasm-labels", "fwasm-numbers", "fwasm-operators", "fwasm-data", "fwasm-directives",
+                                     "fwasm-conditional", "fwasm-macros", "fwasm-bios", "fwasm-biosvars"};
+        bool all = true;
+        for (const char *p : pages) {
+            const man::Topic *tp = man::Find(p);
+            if (!tp || tp->category != "Montador fwasm" || tp->page.size() < 300) {
+                std::printf("  pagina do fwasm ausente: %s\n", p);
+                all = false;
+            }
+        }
+        check(all, "as 11 paginas do manual do fwasm existem");
+        check(Contains(man::Find("fwasm-bios")->page, "CHPUT   00A2h") && Contains(man::Find("fwasm-bios")->page, "SUBROM"), "fwasm-bios: tabela gerada das tabelas do montador (CHPUT = 00A2h)");
+        check(Contains(man::Find("fwasm-biosvars")->page, "JIFFY") && Contains(man::Find("fwasm-biosvars")->page, "FC9Eh"), "fwasm-biosvars: JIFFY = FC9Eh");
+        check(Contains(man::Find("fwasm-directives")->page, "FALTA") && Contains(man::Find("fwasm-directives")->page, "PRONTA"), "fwasm-directives mostra o estado de cada diretiva");
+        check(man::Find("asm") && Contains(man::Find("asm")->page, "fwasm"), "man asm aponta para o manual do fwasm");
+        check(man::Find("asmsx") == man::Find("fwasm"), "asmsx e' apelido do manual do nosso montador");
+    }
+
     // MSX-DOS 2, MSX-DOS 1, Z80, R800, FM-PAC e referencias do BASIC (SOFTWARE.CHM / MANUALS.CHM do RuMSX, via paleobasic)
     {
         const man::Topic *cp = man::Find("dos2-copy");

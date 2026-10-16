@@ -17,6 +17,8 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.38.5 "Road Fighter: Nestor, SEE e fwasm" (publicada)**: `man fwasm` (manual do NOSSO montador, 11 paginas, com o estado de cada diretiva), NestorBASIC (87 funcoes), SEE Tracker e MSXBAS2ROM ("MSX Turbo Basic").
+  **Ao implementar uma diretiva do fwasm, atualizar `fwasm-directives`/`fwasm` em `man_pages_fwasm.cpp`.** Pendente: N80/LK80/LIBSTOR (adiado pelo usuario); ideia do usuario para o Basic Dignified (a descobrir).
 - **1.38.4 "Road Fighter: MSX-DOS 2 e Z80" (publicada)**: MSX-DOS 2 partido (40 comandos, 92 chamadas de funcao), MSX-DOS 1, CP/M, Z80, R800, FM-PAC, Turbo-Basic, 85 extensoes CALL e referencias do BASIC
   (SOFTWARE.CHM/MANUALS.CHM do RuMSX). Toda a pasta `help/` do paleobasic ja' esta' no man, exceto o openMSX (por escolha). Ideia do usuario para o Basic Dignified: a descobrir.
 - **1.38.3 "Road Fighter: Livros de referencia" (publicada)**: Red Book (973), MSX2 Technical Handbook (1356) e ajuda do Basic Dignified (21) no `man`, com VER TAMBEM a partir dos links.

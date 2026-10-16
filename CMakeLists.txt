@@ -375,6 +375,8 @@ set(MAN_LIB_SOURCES
         src/man/cpp/man_pages_msxbios.cpp
         src/man/cpp/man_pages_books.cpp
         src/man/cpp/man_pages_manuals.cpp
+        src/man/cpp/man_pages_tools_help.cpp
+        src/man/cpp/man_pages_fwasm.cpp
         src/man/c/man_wrap.c
         src/man/fortran/man_match.f90
         src/man/asm/man_fold.asm

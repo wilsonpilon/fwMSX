@@ -21,8 +21,8 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 38
-#define FWMSX_VERSION_PATCH 4
+#define FWMSX_VERSION_PATCH 5
 
 #define FWMSX_COMPANY   "Konami"
 #define FWMSX_CODENAME  "Road Fighter"
-#define FWMSX_SUBTITLE  "MSX-DOS 2 e Z80"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_SUBTITLE  "Nestor, SEE e fwasm"  // so' nas versoes X.Y.Z com Z > 0

@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-16, apos a 1.38.4)
+fwMSX -- como retomar (atualizado em 2026-10-16, apos a 1.38.5)
 
 == Em OUTRO computador (o caminho que importa) ==
 1. git clone / git pull de origin main (traz tudo: codigo, docs, ROMs de teste, dist/).
@@ -11,12 +11,13 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
 (sessao anterior: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
 == Estado ao encerrar (2026-10-13) ==
-- Ultima versao publicada: 1.38.4 "Road Fighter: MSX-DOS 2 e Z80" (Konami). main == origin/main; tags 1.36.0 a 1.38.4, branches v1.36.x/v1.37.x,
+- Ultima versao publicada: 1.38.5 "Road Fighter: Nestor, SEE e fwasm" (Konami). main == origin/main; tags 1.36.0 a 1.38.5, branches v1.36.x/v1.37.x,
   releases do GitHub com zip + tar.gz.
 - ctest 23/23 em Windows (build.ps1) e Linux/WSL (build.sh).
 - 1.36.0: montador Z80 fwasm (fwmsx --asm, comando asm do console); C + Fortran + C++. Saidas .z80/.sym/.txt.
 - 1.36.1: texto de 40 colunas/TEXT80 comeca no pixel 9 (como o fMSX).
 - 1.36.2: R-Type inicia (MegaROM de bancos nao potencia de 2 completada para 2^n; AB no fim = comeca nas ultimas paginas).
+- 1.38.5: man fwasm (manual do nosso montador; manter fwasm-directives em dia), NestorBASIC, SEE Tracker, MSXBAS2ROM (tools/paleobasic/import_tools_help.py).
 - 1.38.4: man com MSX-DOS 2 partido (dos2-<cmd>, dos2-fn-XXh), MSX-DOS 1, CP/M, Z80, R800, FM-PAC, Turbo-Basic, CALL de firmware e ref-* (tools/paleobasic/import_manuals_help.py).
 - 1.38.3: man com Red Book (973), MSX2 Technical Handbook (1356) e Basic Dignified (21) (tools/paleobasic/import_books_help.py -> man_pages_books.cpp); links -> VER TAMBEM.
 - 1.38.2: man com 554 topicos de BIOS/BDOS/RAM + 33 de hardware (paleobasic -> tools/paleobasic/import_bios_help.py -> man_pages_msxbios.cpp); man -l e man -k.

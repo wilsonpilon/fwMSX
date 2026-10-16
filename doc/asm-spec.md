@@ -18,6 +18,12 @@ mesmos argumentos.
 - `.include`/`.incbin` sao lidos relativos a pasta do fonte (`-r` e' aceito e ignorado, como no asMSX atual).
 - Decisao: o provedor de arquivos (`FileProvider`) isola o montador do disco, e o teste usa um provedor em memoria.
 
+## Manual dentro do fwMSX (1.38.5)
+
+`man fwasm` (e `fwasm-syntax`, `fwasm-labels`, `fwasm-numbers`, `fwasm-operators`, `fwasm-data`, `fwasm-directives`, `fwasm-conditional`, `fwasm-macros`, `fwasm-bios`, `fwasm-biosvars`) e' o manual deste
+montador, escrito em `src/man/cpp/man_pages_fwasm.cpp` a partir de `resource/asmsx.md`. Ao implementar uma diretiva que falta, **atualizar a tabela de estado em `fwasm-directives` e a lista em `fwasm`**
+(o `mantest` confere que as paginas existem, nao o estado de cada diretiva). As tabelas de BIOS saem de `bios_tables.inc`.
+
 ## Testes
 
 `asmtest` repete os casos de `tests/asm/golden/*.golden`, gerados pelo `asmsx.exe` de verdade por

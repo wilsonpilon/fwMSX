@@ -767,6 +767,8 @@ Basic Dignified, em portugues). Os links dos livros aparecem como "VER TAMBEM" n
 **MSX-DOS e processadores**: `man dos2-copy`, `man dos2-xcopy`... (um topico por comando do MSX-DOS 2; `man dos2-commands` e' a introducao), `man dos2-fn-09h` ou `man _strout` (uma por chamada de
 funcao do sistema), `man dos2-program-interface`, `man dos-dir` (MSX-DOS 1) e `man cpm`; `man z80-opcodes` / `man z80-mnemonics` (tabelas de instrucoes), `man r800-instructions`, `man fmpac-manual`,
 `man turbo-basic-compiler`. Extensoes de firmware do BASIC: `man call kanji`, `man call music`...; referencias: `man ref-color-table`, `man ref-error-codes`, `man ref-screen-modes`. Em ingles, como nos originais.
+**Montador e ferramentas**: `man fwasm` e' o manual do nosso montador Z80 (11 paginas: `fwasm-syntax`, `fwasm-labels`, `fwasm-numbers`, `fwasm-operators`, `fwasm-data`, `fwasm-directives` com o estado de cada diretiva,
+`fwasm-conditional`, `fwasm-macros`, `fwasm-bios`, `fwasm-biosvars`); `man nestorbasic` e `man nb-<n>` (NestorBASIC, 87 funcoes), `man seetracker` (SEE), `man msxbas2rom` (compilador de BASIC para ROM).
 No console o texto e' paginado (espaco = pagina, Enter = linha, `q` sai); na TUI abre uma janelinha (setas, PgUp/PgDn, Home/End, Esc ou `q`
 fecham). Detalhes e como acrescentar topicos: [man-spec.md](man-spec.md).
 

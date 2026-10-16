@@ -17,6 +17,28 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.38.5 -- "Road Fighter: Nestor, SEE e fwasm" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- trazer do paleobasic o manual do SEE Tracker, do NestorBASIC e do "MSX Turbo Basic"; no lugar do manual do asMSX, o manual do NOSSO montador (que e' baseado no asMSX); N80/LK80/LIBSTOR ficam para depois.
+
+### Interpretacoes e decisoes
+- **"MSX Turbo Basic" = MSXBAS2ROM** (item de menu "MSXBas2Rom..." do paleobasic: compilador de MSX-BASIC para ROM, 54 paginas md). O "Turbo-Basic Compiler" do RuMSX (7 KB) ja' estava no man desde a 1.38.4 (`turbo-basic-compiler`, apelido `turbo-basic`); o MSXBAS2ROM ganhou `msxbas2rom` e `msx-turbo-basic`. Se o usuario quis dizer outra coisa, e' trocar.
+- **Manual do fwasm**: escrito em portugues a partir de `resource/asmsx.md` (o manual em que o proprio fwasm foi baseado), mas descrevendo o estado REAL: o `asm-spec.md` e os 1590+ casos dourados dizem o que funciona (rotulos, equ, variaveis, `$`, db/dw/ds/dt/byte/word, org/page/phase, comentarios dos 5 estilos,
+  zilog, print*, if/ifdef/rept/macro, include/incbin, bios/biosvars, filename, todas as expressoes e instrucoes). Faltam os formatos de saida e select/subpage/search/callbios/calldos/size/debug/break; `.start` so' valida. A pagina `fwasm-directives` marca cada uma.
+- As tabelas `fwasm-bios` e `fwasm-biosvars` incluem `src/asm/cpp/bios_tables.inc` direto: nao ha' segunda copia que possa divergir do montador.
+- **Exemplo verificado ponta a ponta**: `hello.asm` (cabecalho "AB" + INIT + CHPUT) -> `asm` -> copiar o `.z80` para `.rom` -> `--msx --cart hello.rom` mostra "Ola do fwasm!" na tela (SCREEN 1). Esse e' o caminho para ROMs ate' o `.rom` existir no fwasm.
+- Correcoes durante a escrita, vistas nos casos dourados: estouro de `db`/`dw` e' AVISO ("Cropping to fit"), nao erro; `org` para tras e' permitido.
+
+### O que foi feito
+- `import_tools_help.py`: NestorBASIC (99 -> 88 paginas: introducao + 87 funcoes; os grupos sem texto saem; apelido pelo wrapper `.NB_*` do Basic Dignified), SEE Tracker (24 -> 23, sem o plano "Rumo a um tracker compativel"), MSXBAS2ROM (54, markdown -> texto).
+- `man_pages_fwasm.cpp`: o manual do fwasm; `asmsx` virou apelido de `fwasm`; `man asm` aponta para ele; `bios`/`sysvars` apontam para `fwasm-bios`/`fwasm-biosvars`.
+
+### Validacao
+`ctest` 25/25 (Windows e Linux). `mantest`: paginas do fwasm (11), tabelas geradas (CHPUT = 00A2h, JIFFY = FC9Eh), estado das diretivas, NestorBASIC (funcao 23 e apelido pelo wrapper), SEE (23), MSXBAS2ROM (54), `turbo-basic` nao mudou de dono.
+Nao conferido: a fidelidade dos textos importados; o estado de `.size` (tratado como FALTA) e dos apelidos menos usados das diretivas (`printdec`/`printstring`/`deft`).
+
+---
+
 ## v1.38.4 -- "Road Fighter: MSX-DOS 2 e Z80" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- estudar `MsxManualsHelpData.pbi` (MSX-DOS 2 e outros) e `MsxSoftwareHelpData.pbi` (help mais simples do MSX-BASIC, MSX-DOS, CP/M), acrescentar o que falta e ver o que

@@ -42,7 +42,7 @@ EXEMPLOS
   asm -z -o saida/ hello.asm
 
 VER TAMBEM
-  cart, dis)MAN");
+  fwasm, cart, dis)MAN");
 
     add("romdb", "romdb <comando> [opcoes]", "banco de ROMs: downloads, busca, verificacao",
         R"MAN(DESCRICAO
