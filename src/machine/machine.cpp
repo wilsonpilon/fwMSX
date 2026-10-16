@@ -1035,38 +1035,50 @@ void Machine::Reset() {
 
 // Teclas MSX (com SHIFT quando preciso, layout internacional) para um caractere
 // do --keys. Devolve false se o caractere nao tem tecla.
-bool Machine::KeysForChar(char c, std::string &key, bool &shift) {
+bool Machine::KeysForChar(char c, std::string &key, bool &shift) { return KeysForCharLayout(c, KeyboardLayout::International, key, shift); }
+
+bool Machine::KeysFor(char c, std::string &key, bool &shift) { return KeysForCharLayout(c, keyboard_layout(), key, shift); }
+
+bool Machine::KeysForCharLayout(char c, KeyboardLayout layout, std::string &key, bool &shift) {
     shift = false;
     if (c >= 'a' && c <= 'z') { key = std::string(1, c); return true; }
     if (c >= 'A' && c <= 'Z') { key = std::string(1, static_cast<char>(c - 'A' + 'a')); shift = true; return true; }
     if (c >= '0' && c <= '9') { key = std::string(1, c); return true; }
-    switch (c) {
-    case ' ': key = "space"; return true;
-    case '|': key = "enter"; return true; // ENTER (o '|' real nao e' digitavel aqui)
-    case '.': case ',': case '/': case '-': case '=': case ';': case '\'': case '[': case ']': case '`':
-        key = std::string(1, c);
-        return true;
-    // simbolos com SHIFT (MSX internacional)
-    case '!': key = "1"; shift = true; return true;
-    case '@': key = "2"; shift = true; return true;
-    case '#': key = "3"; shift = true; return true;
-    case '$': key = "4"; shift = true; return true;
-    case '%': key = "5"; shift = true; return true;
-    case '^': key = "6"; shift = true; return true;
-    case '&': key = "7"; shift = true; return true;
-    // Layout MSX: SHIFT+8 = '*', SHIFT+9 = '(', SHIFT+0 = ')', SHIFT+7 = aspa simples.
-    case '*': key = "8"; shift = true; return true;
-    case '(': key = "9"; shift = true; return true;
-    case ')': key = "0"; shift = true; return true;
-    case '_': key = "-"; shift = true; return true;
-    case '+': key = "="; shift = true; return true;
-    case ':': key = ";"; shift = true; return true;
-    case '"': key = "'"; shift = true; return true;
-    case '<': key = ","; shift = true; return true;
-    case '>': key = "."; shift = true; return true;
-    case '?': key = "/"; shift = true; return true;
-    default: return false;
+    if (c == ' ') { key = "space"; return true; }
+    if (c == '|') { key = "enter"; return true; } // ENTER (o '|' real nao e' digitavel aqui)
+    struct Entry {
+        char ch;
+        const char *key;
+        bool shift;
+    };
+    // Os nomes das teclas seguem a matriz INTERNACIONAL (ppi_key_name); no teclado japones as mesmas posicoes
+    // trazem outras letras. As tabelas conferem com as da BIOS (tests/z80/ppi_test.cpp, secao do teclado).
+    static const Entry kInternational[] = {
+        {'-', "-", false}, {'=', "=", false}, {'\\', "\\", false}, {'[', "[", false}, {']', "]", false}, {';', ";", false},
+        {'\'', "'", false}, {'`', "`", false}, {',', ",", false}, {'.', ".", false}, {'/', "/", false},
+        {'!', "1", true}, {'@', "2", true}, {'#', "3", true}, {'$', "4", true}, {'%', "5", true}, {'^', "6", true}, {'&', "7", true},
+        {'*', "8", true}, {'(', "9", true}, {')', "0", true},
+        {'_', "-", true}, {'+', "=", true}, {'{', "[", true}, {'}', "]", true}, {':', ";", true},
+        {'"', "'", true}, {'~', "`", true}, {'<', ",", true}, {'>', ".", true}, {'?', "/", true},
+    };
+    static const Entry kJapanese[] = {
+        {'-', "-", false}, {'^', "=", false}, {'\\', "\\", false}, {'@', "[", false}, {'[', "]", false}, {';', ";", false},
+        {':', "'", false}, {']', "`", false}, {',', ",", false}, {'.', ".", false}, {'/', "/", false},
+        {'!', "1", true}, {'"', "2", true}, {'#', "3", true}, {'$', "4", true}, {'%', "5", true}, {'&', "6", true}, {'\'', "7", true},
+        {'(', "8", true}, {')', "9", true},
+        {'=', "-", true}, {'~', "=", true}, {'`', "[", true}, {'{', "]", true}, {'+', ";", true},
+        {'*', "'", true}, {'}', "`", true}, {'<', ",", true}, {'>', ".", true}, {'?', "/", true}, {'_', "ro", true},
+    };
+    const Entry *table = layout == KeyboardLayout::Japanese ? kJapanese : kInternational;
+    const size_t count = layout == KeyboardLayout::Japanese ? sizeof(kJapanese) / sizeof(kJapanese[0]) : sizeof(kInternational) / sizeof(kInternational[0]);
+    for (size_t i = 0; i < count; ++i) {
+        if (table[i].ch == c) {
+            key = table[i].key;
+            shift = table[i].shift;
+            return true;
+        }
     }
+    return false;
 }
 
 bool Machine::KeyDown(const std::string &name) {

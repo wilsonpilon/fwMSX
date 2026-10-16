@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.4 -- "Knightmare: Teclado japones" (Konami) (2026-10-16)
+
+**Fase:** o bug do teclado achado ao tirar as capturas do README, mais a conferencia em tela do F10 e do splash.
+
+### O que foi feito
+- `Machine::KeysForCharLayout(c, layout, ...)` com duas tabelas (internacional e japones/JIS); `keyboard_layout()` le o byte 002Ch da BIOS;
+  `type`, `--keys` e o modo terminal passam a usar o layout da BIOS carregada. Tecla nova `ro` na matriz (Fortran + tabela de nomes).
+- Verificacao: as tabelas sao conferidas contra as tabelas reais das BIOS do repositorio (nao contra uma lista escrita a mao).
+- `tools/wincap/wincap.ps1` (teclas por PostMessage + captura so' da janela) e a conferencia em tela do painel F10 e do splash.
+
+### Validacao
+`ctest` 24/24 (Windows e Linux). Janela real: F10, ENTER, setas, B, M, G (com digitos), C e Q funcionam; splash visivel com `--splash`.
+Nao conferido: o teclado frances/ingles/alemao (usam o internacional); a pontuacao no modo terminal (so' o codigo muda, igual ao `type`).
+
+---
+
 ## v1.37.3 -- "Knightmare: Depurador na TUI" (Konami) (2026-10-13)
 
 **Fase:** o painel Z80 Debugger tambem na TUI, a pedido do usuario; fecha o dia com a documentacao e o README atualizados.

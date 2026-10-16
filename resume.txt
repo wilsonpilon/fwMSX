@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-13, apos a 1.37.3)
+fwMSX -- como retomar (atualizado em 2026-10-16, apos a 1.37.4)
 
 == Em OUTRO computador (o caminho que importa) ==
 1. git clone / git pull de origin main (traz tudo: codigo, docs, ROMs de teste, dist/).
@@ -11,12 +11,14 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
 (sessao anterior: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
 == Estado ao encerrar (2026-10-13) ==
-- Ultima versao publicada: 1.37.3 "Knightmare: Depurador na TUI" (Konami). main == origin/main; tags 1.36.0 a 1.37.3, branches v1.36.x/v1.37.x,
+- Ultima versao publicada: 1.37.4 "Knightmare: Teclado japones" (Konami). main == origin/main; tags 1.36.0 a 1.37.4, branches v1.36.x/v1.37.x,
   releases do GitHub com zip + tar.gz.
 - ctest 23/23 em Windows (build.ps1) e Linux/WSL (build.sh).
 - 1.36.0: montador Z80 fwasm (fwmsx --asm, comando asm do console); C + Fortran + C++. Saidas .z80/.sym/.txt.
 - 1.36.1: texto de 40 colunas/TEXT80 comeca no pixel 9 (como o fMSX).
 - 1.36.2: R-Type inicia (MegaROM de bancos nao potencia de 2 completada para 2^n; AB no fim = comeca nas ultimas paginas).
+- 1.37.4: type/--keys/modo terminal digitam a pontuacao pelo layout da BIOS (byte 002Ch; japones x internacional). F10 (Z80 Debugger) e
+  splash CONFERIDOS em tela com tools/wincap/wincap.ps1 (manda teclas por PostMessage e captura so' a janela).
 - 1.37.3: painel Z80 Debugger tambem na TUI (menu Depurador; abre sozinho em break/watch/until) via comando novo `dbgui` da ponte
   (mesmo modelo da janela, calculado no emulador). README/MANUAL/specs atualizados ao estado do dia.
 - 1.37.2: Z80 DEBUGGER VISUAL NA JANELA (F10/menu Depurador; abre sozinho em break/watch/until/--debug): registradores no topo, ENDERECO: bytes
@@ -39,10 +41,9 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
   Armadilha: o fMSX grava CMOS.ROM e le na partida seguinte (o compare.py apaga entre os casos).
 
 == Proximos passos sugeridos ==
-00. BUG achado: --keys e `type` digitam pontuacao no layout INTERNACIONAL, mas a BIOS do fMSX e' JAPONESA ( ( vira ), = vira ^ ). Ver OUTLINE.
+00. (feito na 1.37.4: o bug do teclado japones.)
     Capturas do README: python tools/assets/make_screenshots.py (precisa de tests/media e do build).
-0. Conferir a olho, com o teclado real: o painel Z80 Debugger NA JANELA (F10) e o splash (nada disso foi visto em tela, so' testado por
-   modelo/tempo). Depois: depurador sofisticado (doc/debug-spec.md secao 7), --cmd, baixador de ROMs do fMSX + navegador do file-hunter.
+0. (F10 e splash: conferidos em tela na 1.37.4.) Agora: depurador sofisticado (doc/debug-spec.md secao 7), --cmd, baixador de ROMs do fMSX + navegador do file-hunter.
 1. Montador: formatos rom/megarom/basic/msxdos/cas/wav, select/subpage/search, debug/break e o modulo em ASSEMBLY (a regra
    das 4 linguagens por fase ainda nao esta' cumprida no fwasm). Ver doc/asm-spec.md.
 2. Comparacao com o fMSX: casos com disco (MSX-DOS), teclas digitadas (inclusive TEXT80, ainda sem caso), SCREEN 5-8 de

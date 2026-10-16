@@ -197,7 +197,7 @@ Result Commander::Execute(const std::string &line) {
             TypedKey k{};
             if (c == '\n') {
                 k.key = "enter";
-            } else if (!machine::Machine::KeysForChar(c, k.key, k.shift)) {
+            } else if (!m.KeysFor(c, k.key, k.shift)) {
                 return Err(std::string("type: o caractere '") + c + "' nao tem tecla no MSX");
             }
             keys.push_back(k);

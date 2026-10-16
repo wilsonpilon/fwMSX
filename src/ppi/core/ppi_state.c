@@ -21,6 +21,7 @@ static const char *const kKeyNames[] = {
     "space", "home", "ins", "del", "left", "up", "down", "right",
     "pad0", "pad1", "pad2", "pad3", "pad4", "pad5", "pad6", "pad7", "pad8", "pad9",
     "pad*", "pad+", "pad/", "pad-", "pad,", "pad.",
+    "ro", // linha 2, bit 5: o "_" do teclado japones (no internacional e' uma tecla morta)
 };
 #define KEY_COUNT ((int)(sizeof(kKeyNames) / sizeof(kKeyNames[0])))
 

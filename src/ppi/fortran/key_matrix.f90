@@ -12,12 +12,13 @@
 !   26-35  0..9            55-62 f4 f5 esc tab stop bs select enter
 !   36-41  - = \ [ ] ;     63-70 space home ins del left up down right
 !   42-46  ' ` , . /       71-80 pad0..pad9, 81-86 pad* pad+ pad/ pad- pad, pad.
+!   87 ro (linha 2, bit 5: o "_" do teclado japones)
 ! ---------------------------------------------------------------------------
 module mod_ppi_key_matrix
     use iso_c_binding, only: c_int8_t, c_int
     implicit none
 
-    integer, parameter :: key_count = 87
+    integer, parameter :: key_count = 88
 
 contains
 
@@ -38,7 +39,9 @@ contains
         integer, intent(in) :: id
         integer, intent(out) :: row, bit
 
-        if (id <= 1) then               ! a, b: linha 2, bits 6-7
+        if (id == 87) then              ! ro: linha 2, bit 5 (entre "/" e "a"; "tecla morta" no internacional)
+            row = 2; bit = 5
+        else if (id <= 1) then          ! a, b: linha 2, bits 6-7
             row = 2; bit = 6 + id
         else if (id <= 9) then          ! c..j: linha 3
             row = 3; bit = id - 2

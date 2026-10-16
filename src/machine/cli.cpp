@@ -474,7 +474,7 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
         for (char c : keys) {
             std::string key;
             bool shift = false;
-            if (!Machine::KeysForChar(c, key, shift)) {
+            if (!m->KeysFor(c, key, shift)) {
                 std::cerr << "fwmsx --msx: caractere nao suportado em --keys: '" << c << "'" << std::endl;
                 return 2;
             }

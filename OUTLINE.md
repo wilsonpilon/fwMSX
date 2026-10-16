@@ -15,8 +15,13 @@ chamado **MSX-PoorManOS**. Ainda sem data.
 Este repositorio e' **pessoal**. Midias de terceiros (ROMs, discos, fitas) podem ser versionadas por
 enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver `LICENSE-THIRD-PARTY.md`).
 
-## 2. Onde estamos (2026-10-13)
+## 2. Onde estamos (2026-10-16)
 
+- **1.37.4 "Knightmare: Teclado japones" (publicada)**: `type`/`--keys`/modo terminal passam a digitar a pontuacao pelo layout da BIOS
+  (byte 002Ch: 0 = japones/JIS, senao internacional); tabelas conferidas contra as das proprias BIOS; tecla `ro` na matriz. **Conferido em
+  tela** (janela real, com `tools/wincap/wincap.ps1`, que captura SO' a janela): o painel Z80 Debugger (F10, ENTER, setas, B, M, G, C, Q) e o
+  splash funcionam. Pendente: depurador sofisticado, `--cmd`, baixador de ROMs/navegador do file-hunter, formatos do montador, mais casos na
+  comparacao com o fMSX. (O `dist/fwmsx.cfg` do usuario tem `splash=0`: ele desligou o splash; `--splash` o mostra.)
 - **1.37.3 "Knightmare: Depurador na TUI" (publicada; fecha o dia 2026-10-13)**: o painel Z80 Debugger tambem na TUI (menu Depurador; abre
   sozinho em breakpoint/watchpoint/until), via o comando novo `dbgui` da ponte (o mesmo modelo da janela, calculado no emulador). README,
   MANUAL e specs atualizados ao estado de hoje. **Resumo do dia**: 1.36.0 montador; 1.36.1 texto SCREEN 0 como o fMSX; 1.36.2 R-Type (MegaROM
@@ -24,9 +29,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
   fMSX original: 26/26 casos. **Pendente para a proxima sessao**: conferir a olho o painel NA JANELA (F10, teclado real) e o splash; depurador
   sofisticado (condicoes, simbolos, trace, E/S; `doc/debug-spec.md` secao 7); `--cmd`; baixador de ROMs do site do fMSX e navegador do file-hunter;
   montador (formatos de ROM e modulo em Assembly); casos de disco/teclas/audio na comparacao com o fMSX.
-- **Achado ao tirar as capturas do README (2026-10-13, nao corrigido)**: o que o `--keys` e o comando `type` digitam segue o teclado
-  INTERNACIONAL do MSX, mas a BIOS do fMSX (`MSX.ROM`/`MSX2P.ROM`) e' de teclado JAPONES: `(` sai `)`, `=` sai `^`, `"` sai `*`... (so' letras
-  e digitos saem certos). Consertar: escolher a tabela de teclas conforme o byte de tipo de teclado da BIOS (cabecalho, endereco 002Ch).
+- **Achado ao tirar as capturas do README (2026-10-13)**: o teclado da BIOS (japones) x o que o `type` digitava (internacional) -- CORRIGIDO na 1.37.4.
   As capturas (`images/fwMSX-04..08.png`) saem de `tools/assets/make_screenshots.py` (usa a captura do proprio emulador e o comando `dbgui`).
 - **1.37.2 "Knightmare: Depurador na janela" (publicada)**: o **Z80 Debugger visual** da janela (F10 / menu Depurador; abre sozinho em
   breakpoint, watchpoint, `until` e `--debug`). Layout pedido: registradores no topo, `ENDERECO: bytes instrucao`, ENTER passo, setas,

@@ -764,7 +764,7 @@ barra invertida dos caminhos do Windows e' literal). Numeros: `123`, `0x7B`, `$7
 | `help`, `version`, `status` | ajuda, versao, `frame=N paused=0 screen=M pc=XXXX typing=0 cart=... diskA=... tape=...` |
 | `reset` | reinicia a maquina |
 | `pause`, `resume`, `step [n]` | pausa, retoma, avanca n quadros (so' pausado) |
-| `type <texto>` | digita no teclado do MSX; `\n` = Enter (use aspas) |
+| `type <texto>` | digita no teclado do MSX; `\n` = Enter (use aspas). A pontuacao segue o teclado da BIOS carregada (japones no MSX2+ do fMSX, internacional nas outras) |
 | `peek <end> [n]`, `poke <end> <v>...` | le/grava memoria como o Z80 enxerga (ROM nao e' alterada) |
 | `regs` | registradores do Z80 (o depurador tem o `reg`, completo) |
 | `cart <arq\|-> [mapper]` | troca o cartucho (reinicia); `-` retira; mapper: auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2 |

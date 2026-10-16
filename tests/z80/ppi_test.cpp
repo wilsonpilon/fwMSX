@@ -133,7 +133,7 @@ int main() {
                 (mask & (mask - 1)) != 0 || !seen.insert(row * 256 + mask).second)
                 ok = false;
         }
-        check(ok && ppi_key_count() == 87, "todas as 87 teclas tem posicao unica na matriz (1 bit, linha 0-10)");
+        check(ok && ppi_key_count() == 88, "todas as 88 teclas tem posicao unica na matriz (1 bit, linha 0-10)");
         check(ppi_key_lookup("SHIFT") == ppi_key_lookup("shift") && ppi_key_lookup("A") == ppi_key_lookup("a"),
               "nomes de tecla nao diferenciam maiusculas");
         check(ppi_key_lookup("xyz") == PPI_KEY_NONE && ppi_key_lookup("") == PPI_KEY_NONE &&

@@ -32,6 +32,7 @@ static void sock_close(sock_t s) { close(s); }
 #include "../../src/control/server.h"
 #include "../../src/debug/cpp/debug_view.h"
 #include "../../src/machine/machine.h"
+#include "../../src/ppi/core/ppi_state.h"
 #include "../../src/vdp/core/vdp_state.h"
 
 namespace {
@@ -631,6 +632,112 @@ void TestDbgUiCommand(const std::string &bios) {
     check(Contains(cmd.Execute("dbgui key q").text, "action=quit") && host.quit_, "q: action=quit e o emulador e' encerrado");
 }
 
+
+// ---- teclado: a pontuacao digitada usa a tecla CERTA para a BIOS (internacional x japones) -------------------
+std::vector<uint8_t> ReadFile(const std::string &path) {
+    std::ifstream f(path, std::ios::binary);
+    return std::vector<uint8_t>((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+}
+
+// A tecla `key` esta' na posicao (row, mask) da matriz?
+bool KeyAtPos(const std::string &key, int row, int bit) {
+    const int id = ppi_key_lookup(key.c_str());
+    int r = -1;
+    uint8_t mask = 0;
+    return id != PPI_KEY_NONE && ppi_key_position(id, &r, &mask) && r == row && mask == (1u << bit);
+}
+
+// Confere `ch` (lido da tabela da BIOS na posicao row/bit, com ou sem SHIFT) contra o que o layout manda digitar.
+bool LayoutGivesChar(machine::Machine::KeyboardLayout layout, uint8_t ch, int row, int bit, bool want_shift) {
+    if (ch == 0xFF || ch == 0 || ch == '|') return true; // sem tecla / dead key / o '|' do --keys e' ENTER
+    std::string key;
+    bool shift = false;
+    if (!machine::Machine::KeysForCharLayout(static_cast<char>(ch), layout, key, shift)) return false;
+    return shift == want_shift && KeyAtPos(key, row, bit);
+}
+
+void TestKeyboard(const std::string &root, const std::string &bios) {
+    using machine::Machine;
+    // Internacional: as 2 tabelas (normal e com SHIFT, 6 linhas de 8 teclas) do MSX.ROM em 0DA5h.
+    {
+        const std::vector<uint8_t> rom = ReadFile(bios);
+        bool ok = rom.size() >= 0x0DA5 + 96, all = true;
+        for (int r = 0; ok && r < 6; ++r) {
+            for (int b = 0; b < 8; ++b) {
+                const uint8_t n = rom[0x0DA5 + r * 8 + b], sh = rom[0x0DA5 + 48 + r * 8 + b];
+                if (!LayoutGivesChar(Machine::KeyboardLayout::International, n, r, b, false)) {
+                    std::printf("   internacional: '%c' (linha %d, bit %d) nao confere\n", n, r, b);
+                    all = false;
+                }
+                if (!LayoutGivesChar(Machine::KeyboardLayout::International, sh, r, b, true)) {
+                    std::printf("   internacional: SHIFT '%c' (linha %d, bit %d) nao confere\n", sh, r, b);
+                    all = false;
+                }
+            }
+        }
+        check(ok && all, "layout internacional: cada caractere das tabelas da BIOS (MSX.ROM, 0DA5h) sai da tecla e do SHIFT certos");
+    }
+    // Japones: a BIOS do MSX2+ (so' guarda a pontuacao: digitos com SHIFT em 0DC9h, 12+12 teclas em 0DE3h/0DEFh).
+    {
+        const std::vector<uint8_t> rom = ReadFile(root + "/dist/roms/bios/MSX2P.ROM");
+        bool ok = rom.size() >= 0x0DFB, all = true;
+        for (int d = 0; ok && d < 10; ++d) { // SHIFT+digito: linha 0 (0-7) e linha 1 (8, 9)
+            const int row = d < 8 ? 0 : 1, bit = d < 8 ? d : d - 8;
+            if (!LayoutGivesChar(Machine::KeyboardLayout::Japanese, rom[0x0DC9 + d], row, bit, true)) {
+                std::printf("   japones: SHIFT+%d -> '%c' nao confere\n", d, rom[0x0DC9 + d]);
+                all = false;
+            }
+        }
+        for (int i = 0; ok && i < 12; ++i) { // linha 1 bits 2-7, depois linha 2 bits 0-5
+            const int row = i < 6 ? 1 : 2, bit = i < 6 ? 2 + i : i - 6;
+            if (!LayoutGivesChar(Machine::KeyboardLayout::Japanese, rom[0x0DE3 + i], row, bit, false)) {
+                std::printf("   japones: '%c' (linha %d, bit %d) nao confere\n", rom[0x0DE3 + i], row, bit);
+                all = false;
+            }
+            if (!LayoutGivesChar(Machine::KeyboardLayout::Japanese, rom[0x0DEF + i], row, bit, true)) {
+                std::printf("   japones: SHIFT '%c' (linha %d, bit %d) nao confere\n", rom[0x0DEF + i], row, bit);
+                all = false;
+            }
+        }
+        check(ok && all, "layout japones: cada caractere da pontuacao da BIOS do MSX2+ (MSX2P.ROM) sai da tecla e do SHIFT certos");
+    }
+    std::string key;
+    bool shift = false;
+    check(Machine::KeysForCharLayout('(', Machine::KeyboardLayout::International, key, shift) && key == "9" && shift &&
+              Machine::KeysForCharLayout('(', Machine::KeyboardLayout::Japanese, key, shift) && key == "8" && shift,
+          "'(' e' SHIFT+9 no internacional e SHIFT+8 no japones");
+    check(Machine::KeysForCharLayout('=', Machine::KeyboardLayout::International, key, shift) && key == "=" && !shift &&
+              Machine::KeysForCharLayout('=', Machine::KeyboardLayout::Japanese, key, shift) && key == "-" && shift,
+          "'=' e' a tecla do '=' no internacional e SHIFT+'-' no japones");
+    check(!Machine::KeysForCharLayout('\x01', Machine::KeyboardLayout::Japanese, key, shift), "caractere sem tecla = false");
+    check(ppi_key_count() == 88 && ppi_key_lookup("ro") != PPI_KEY_NONE, "a tecla 'ro' (o '_' do teclado japones) existe na matriz");
+
+    // De ponta a ponta: o BASIC mostra o que foi digitado. MSX1 (internacional) e MSX2+ (japones).
+    for (int pass = 0; pass < 2; ++pass) {
+        machine::MachineConfig config;
+        if (pass == 0) {
+            config.bios_path = bios;
+        } else {
+            config.model = machine::Model::MSX2P;
+            config.bios_path = root + "/dist/roms/bios/MSX2P.ROM";
+            config.ext_rom_path = root + "/resource/fMSX/MSX2PEXT.ROM";
+        }
+        TestHost host(config);
+        if (!host.ok()) {
+            check(false, "Machine para o teste do teclado (pass " + std::to_string(pass) + ")");
+            continue;
+        }
+        control::Commander cmd(host);
+        machine::Machine &m = host.machine();
+        check(m.keyboard_layout() == (pass == 0 ? Machine::KeyboardLayout::International : Machine::KeyboardLayout::Japanese),
+              pass == 0 ? "MSX1: a BIOS e' de teclado internacional (byte 002Ch)" : "MSX2+: a BIOS e' de teclado japones (byte 002Ch)");
+        Frames(host, cmd, 320);
+        check(cmd.Execute("type \"print (1+2)*3:rem a=b\\n\"").ok, "type com parenteses, +, *, : e = (" + std::string(pass == 0 ? "MSX1" : "MSX2+") + ")");
+        Frames(host, cmd, 400);
+        check(VramHas(m, "print (1+2)*3:rem a=b"), "o BASIC recebeu exatamente 'print (1+2)*3:rem a=b' (" + std::string(pass == 0 ? "MSX1" : "MSX2+") + ")");
+    }
+}
+
 // Cliente TCP que se inscreve nos eventos e le linhas soltas ("! ...").
 bool ReadLine(sock_t s, std::string &line) {
     line.clear();
@@ -743,6 +850,7 @@ int main() {
     TestDebugger(bios);
     TestDebugView(bios);
     TestDbgUiCommand(bios);
+    TestKeyboard(FWMSX_SOURCE_DIR, bios);
     TestEvents(bios);
 #else
     std::printf("[SKIP] FWMSX_SOURCE_DIR nao definido\n");

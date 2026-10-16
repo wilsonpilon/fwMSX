@@ -21,8 +21,8 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 37
-#define FWMSX_VERSION_PATCH 3
+#define FWMSX_VERSION_PATCH 4
 
 #define FWMSX_COMPANY   "Konami"
 #define FWMSX_CODENAME  "Knightmare"
-#define FWMSX_SUBTITLE  "Depurador na TUI"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_SUBTITLE  "Teclado japones"  // so' nas versoes X.Y.Z com Z > 0

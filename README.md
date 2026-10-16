@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.37.3 "Knightmare: Depurador na TUI", Konami)
+## Estado atual (v1.37.4 "Knightmare: Teclado japones", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -129,7 +129,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.37.0 depurador basico + eventos assincronos (console, TUI, ponte, parametros);
 1.37.1 splash de abertura, icone do aplicativo e configuracoes salvas;
 1.37.2 Z80 Debugger na janela (F10, fonte do MSX);
-**1.37.3 Z80 Debugger na TUI (comando `dbgui`)**. Detalhes em
+1.37.3 Z80 Debugger na TUI (comando `dbgui`);
+**1.37.4 `type`/`--keys` seguem o teclado da BIOS (japones x internacional)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

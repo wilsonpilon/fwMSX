@@ -204,6 +204,16 @@ public:
     // Tecla(s) MSX para um caractere (letras, numeros, espaco, pontuacao comum com
     // SHIFT quando preciso; '|' = ENTER) -- usado pelo --keys e pelos testes.
     // Devolve false se o caractere nao tem tecla.
+    // Disposicao do teclado: a matriz e' a mesma, mas a BIOS traduz cada tecla para um caractere diferente
+    // (o byte 002Ch da BIOS, bits 0-3, diz qual: 0 = japones/JIS, 1 = internacional...). A pontuacao digitada tem
+    // que usar a tecla CERTA para a BIOS carregada: no japones '(' e' SHIFT+8 e '=' e' SHIFT+'-'; no internacional
+    // '(' e' SHIFT+9 e '=' e' a tecla do "^" japones. Os demais tipos (frances, ingles, alemao...) usam o internacional.
+    enum class KeyboardLayout { International, Japanese };
+    static bool KeysForCharLayout(char c, KeyboardLayout layout, std::string &key, bool &shift);
+    // Igual a KeysForChar(), no layout da BIOS carregada (le o byte 002Ch). Usado por `type`, --keys e o modo terminal.
+    bool KeysFor(char c, std::string &key, bool &shift);
+    KeyboardLayout keyboard_layout() { return (startup_.memory_system->PeekSlot(0, 0, 0x2C) & 0x0F) == 0 ? KeyboardLayout::Japanese : KeyboardLayout::International; }
+    // O mesmo no layout INTERNACIONAL (o que os testes e o codigo antigo usam).
     static bool KeysForChar(char c, std::string &key, bool &shift);
 
     bool KeyDown(const std::string &name);

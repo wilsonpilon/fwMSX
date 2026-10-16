@@ -7,6 +7,25 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.4] - 2026-10-16 - "Knightmare: Teclado japones" (Konami)
+
+### Corrigido
+- **`type`, `--keys` e o modo terminal digitavam a pontuacao no teclado INTERNACIONAL** mesmo com a BIOS de teclado japones (a do MSX2+ do
+  fMSX): `(` saia `)`, `=` saia `^`, `"` saia `*`... Agora o layout vem da BIOS carregada (byte 002Ch, bits 0-3: 0 = japones/JIS; os demais usam o
+  internacional) -- `Machine::keyboard_layout()`, `KeysFor()` e `KeysForCharLayout()`. As duas tabelas conferem com as da PROPRIA BIOS em
+  `controltest` (MSX.ROM 0DA5h; MSX2P.ROM 0DC9h/0DE3h/0DEFh), e um teste de ponta a ponta digita `print (1+2)*3:rem a=b` no BASIC do MSX1 e do MSX2+.
+- O layout internacional ganhou `\ { } ~`.
+
+### Adicionado
+- Tecla `ro` (linha 2, bit 5 da matriz): o `_` do teclado japones (88 teclas na matriz).
+- `tools/wincap/wincap.ps1`: manda teclas a UMA janela por PostMessage e grava uma captura so' dela (PrintWindow) -- verificacao visual sem
+  fotografar a area de trabalho.
+
+### Verificado em tela (janela real, via `wincap`)
+- **F10 / Z80 Debugger**: abre sobre o jogo com a fonte do MSX; ENTER passo, setas (Cima/Baixo movem o cursor), B (breakpoint `*`), M (dump com os
+  graficos do MSX), G (pergunta e vai ao endereco), C (continua e o painel fecha) e Q (encerra o emulador) funcionam.
+- **Splash**: aparece com `--splash`; `splash=0` no `fwmsx.cfg` o desliga.
+
 ## [1.37.3] - 2026-10-13 - "Knightmare: Depurador na TUI" (Konami)
 
 ### Adicionado

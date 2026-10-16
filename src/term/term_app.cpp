@@ -149,6 +149,9 @@ public:
         return snapshot_;
     }
 
+    // Teclado da BIOS carregada (japones x internacional), atualizado pela thread da maquina a cada quadro de tela.
+    Machine::KeyboardLayout KbdLayout() const { return kbd_japanese_ ? Machine::KeyboardLayout::Japanese : Machine::KeyboardLayout::International; }
+
     bool quit_requested() const { return quit_; }
     bool audio_ok() const { return audio_ok_; }
     int ctl_port() { return server_.port(); }
@@ -256,6 +259,7 @@ private:
         s.frame = machine_->frame_count();
         s.paused = paused_;
         s.stopped = machine_->debugger().stopped();
+        kbd_japanese_ = machine_->keyboard_layout() == Machine::KeyboardLayout::Japanese;
         s.fps = fps;
         s.valid = true;
         if (vs.scr_mode == 0 || vs.scr_mode == 1 || vs.scr_mode == 13) {
@@ -348,6 +352,7 @@ private:
     audio::AudioOutput audio_;
     bool audio_ok_ = false;
     std::string ctl_message_;
+    std::atomic<bool> kbd_japanese_{false};
     std::mutex events_mutex_;
     std::vector<std::string> events_;
     std::vector<std::string> port_files_;
@@ -488,7 +493,7 @@ private:
 // ---- traducao de teclas do terminal para o MSX -----------------------------------------------------
 
 // Devolve true e preenche key/shift se o evento vira uma tecla do MSX.
-bool EventToMsxKey(const Event &e, std::string &key, bool &shift) {
+bool EventToMsxKey(const Event &e, Machine::KeyboardLayout layout, std::string &key, bool &shift) {
     shift = false;
     if (e == Event::Return) { key = "enter"; return true; }
     if (e == Event::Backspace) { key = "bs"; return true; }
@@ -515,7 +520,7 @@ bool EventToMsxKey(const Event &e, std::string &key, bool &shift) {
             key = std::string(1, static_cast<char>('a' + c - 1));
             return true;
         }
-        if (c >= 0x20 && c < 0x7F) return Machine::KeysForChar(static_cast<char>(c), key, shift);
+        if (c >= 0x20 && c < 0x7F) return Machine::KeysForCharLayout(static_cast<char>(c), layout, key, shift); // a pontuacao segue o teclado da BIOS
     }
     return false;
 }
@@ -741,7 +746,7 @@ int RunTerm(const TermOptions &options) {
 
         std::string key;
         bool shift = false;
-        if (EventToMsxKey(e, key, shift)) {
+        if (EventToMsxKey(e, runner.KbdLayout(), key, shift)) {
             if (e.input().size() == 1 && static_cast<unsigned char>(e.input()[0]) == 3) {
                 // Ctrl+C: CTRL+STOP do MSX
                 runner.PressKey("ctrl", false);
