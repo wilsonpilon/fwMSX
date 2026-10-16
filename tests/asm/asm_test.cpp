@@ -53,6 +53,15 @@ std::string MaskGenerated(std::string s) {
     return s;
 }
 
+unsigned Crc32(const std::vector<uint8_t> &d) {
+    unsigned crc = 0xFFFFFFFFu;
+    for (const uint8_t b : d) {
+        crc ^= b;
+        for (int k = 0; k < 8; ++k) crc = (crc >> 1) ^ (0xEDB88320u & (0u - (crc & 1u)));
+    }
+    return ~crc;
+}
+
 std::string AsText(const std::vector<uint8_t> &d) { return std::string(d.begin(), d.end()); }
 
 struct Stats {
@@ -96,8 +105,22 @@ bool Check(const asmtest::GoldenCase &c, std::string &why) {
             return false;
         }
     }
+    for (const auto &kv : c.outs_crc) {
+        auto it = r.outs.find(kv.first);
+        if (it == r.outs.end()) {
+            why = "falta a saida '" + kv.first + "'";
+            return false;
+        }
+        const unsigned crc = Crc32(it->second);
+        if (it->second.size() != kv.second.first || crc != kv.second.second) {
+            char buf[96];
+            std::snprintf(buf, sizeof(buf), "tamanho %zu crc %08x (esperado %zu, %08x)", it->second.size(), crc, kv.second.first, kv.second.second);
+            why = "bytes de '" + kv.first + "' diferentes: " + buf;
+            return false;
+        }
+    }
     for (const auto &kv : r.outs) {
-        if (!c.outs.count(kv.first)) {
+        if (!c.outs.count(kv.first) && !c.outs_crc.count(kv.first)) {
             why = "saida a mais: '" + kv.first + "'";
             return false;
         }
@@ -114,7 +137,7 @@ int main() {
     const std::string dir = std::string(FWMSX_SOURCE_DIR) + "/tests/asm/golden/";
     int failures_shown = 0;
     int bad = 0;
-    for (const char *file : {"instr.golden", "expr.golden", "misc.golden", "lang.golden"}) {
+    for (const char *file : {"instr.golden", "expr.golden", "misc.golden", "lang.golden", "formats.golden"}) {
         const std::vector<asmtest::GoldenCase> cases = asmtest::ReadGolden(dir + file);
         if (cases.empty()) {
             std::printf("[SKIP] %s nao encontrado em '%s'\n", file, dir.c_str());

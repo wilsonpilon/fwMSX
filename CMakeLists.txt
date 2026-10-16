@@ -395,6 +395,7 @@ set(REPL_LIB_SOURCES ${REPL_CORE_SOURCES} src/repl/repl.cpp)
 set(FWASM_LIB_SOURCES
         src/asm/core/z80_enc.c
         src/asm/fortran/asm_math.f90
+        src/asm/asm/wav_synth.asm
         src/asm/cpp/lexer.cpp
         src/asm/cpp/expr.cpp
         src/asm/cpp/tables.cpp
@@ -606,6 +607,19 @@ if (WIN32)
     target_link_libraries(controltest PRIVATE ws2_32)
 endif ()
 add_test(NAME control COMMAND controltest)
+
+# asme2etest: o fwasm monta ROM, MegaROM (4 mappers) e fita .cas, e o resultado RODA na maquina emulada.
+add_executable(asme2etest tests/z80/asm_e2e_test.cpp ${FWASM_LIB_SOURCES} ${CONTROL_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
+target_include_directories(asme2etest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine src/asm)
+target_compile_definitions(asme2etest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(asme2etest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/asme2etest)
+if (MINGW)
+    target_link_options(asme2etest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+if (WIN32)
+    target_link_libraries(asme2etest PRIVATE ws2_32)
+endif ()
+add_test(NAME asm_e2e COMMAND asme2etest)
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})

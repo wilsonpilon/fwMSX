@@ -7,6 +7,26 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.39.0] - 2026-10-16 - "Yie Ar Kung-Fu" (Konami)
+
+### Adicionado -- o fwasm vira um compilador completo para o MSX
+- **Cartuchos**: `.rom` (cabecalho `AB` + INIT, tamanho em multiplos de 8 KB ou `.size`) e **MegaROM** com os quatro mappers (`.megarom konami|konamiscc|ascii8|ascii16`,
+  `.subpage n at X`, `.select n|registrador at X`), `.search`.
+- **Programas**: `.basic` (arquivo `.bin` para `BLOAD"x",R`), `.msxdos` (`.com` em 0100h) com `.calldos`, `.callbios`.
+- **Fitas**: `.cas`/`.cassette` (fita para emuladores), `.wav` (fita para um MSX de verdade, 44,1 kHz 8 bits, sintetizada em Assembly NASM) e `.sinclair` (`.tap` do ZX Spectrum,
+  com carregador BASIC quando ha' `.start`).
+- `.start` (cabecalho da ROM, MegaROM, BASIC, `.tap`), `.size n` (tamanho do arquivo em KB), `.debug "texto"` e `.break [X]`/`.breakpoint` (marcadores do depurador do blueMSX).
+- O `.sym` da MegaROM mostra a subpagina de cada rotulo (`01h:8000h nome`).
+- Tudo conferido **byte a byte contra o `asmsx.exe` de verdade**: 382 casos novos em `tests/asm/golden/formats.golden` (os `.wav` por tamanho + CRC-32), alem dos 6224 anteriores.
+- Manual dentro do fwMSX: `man fwasm-formats` e `man fwasm-megarom` (e `man fwasm`, `man fwasm-directives` agora sem nada em falta).
+- Novo modulo **Assembly (NASM dual-ABI)** `src/asm/asm/wav_synth.asm`: `fwasm_wav_render`, o sintetizador dos pulsos da fita.
+
+### Corrigido
+- O CLI `--asm` fixava o nome-base sempre; por isso o `.filename "x"` nunca valia na linha de comando. Agora so' o `-o` fixa o nome.
+
+### Nao reproduzido (do asMSX)
+- Codigo em 0000h antes de `.sinclair` (bloco de 32 KB) e a violacao de acesso do asMSX com `.org` abaixo do inicio de uma subpagina; detalhes em `doc/asm-spec.md`.
+
 ## [1.38.5] - 2026-10-16 - "Road Fighter: Nestor, SEE e fwasm" (Konami)
 
 ### Adicionado

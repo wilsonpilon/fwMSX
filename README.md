@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.38.5 "Road Fighter: Nestor, SEE e fwasm", Konami)
+## Estado atual (v1.39.0 "Yie Ar Kung-Fu", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -140,7 +140,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.2 rotinas/variaveis da BIOS e BDOS (554) e hardware (33) no `man`; `man -l` e `man -k`;
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
-**1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`**. Detalhes em
+1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.39.0 fwasm completo: gera ROM, MegaROM, BASIC (.bin), MSX-DOS (.com), fita (.cas/.wav) e .tap (ZX Spectrum)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

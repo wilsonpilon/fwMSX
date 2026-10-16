@@ -56,6 +56,11 @@ escrita para o paleobasic). Nomes: `rb-`, `th2-`, `bd-` + o titulo; categorias "
 MSX-Music...), `dos-*` (MSX-DOS 1) e `cpm`. Palavras que ja' tinham pagina (livro da Gradiente) ganham a versao em ingles como secao `==== MSX-BASIC ====` da mesma pagina (a fusao considera apelidos da
 mesma categoria). **Nao importado**: OpenMSX (o fwMSX nao usa) e os 8 capitulos do MSX2 Technical Handbook do MANUALS.CHM (o livro inteiro ja' vem de `import_books_help.py`).
 
+### 1g. O manual do fwasm na 1.39.0
+
+Com os formatos implementados, `man fwasm-directives` nao tem mais nada "FALTA", e ganhou duas paginas: `fwasm-formats` (`.rom .basic .msxdos .size .search .cas .wav .sinclair`) e `fwasm-megarom`
+(`.megarom .subpage .select` e os registradores de cada mapper). Escritas a partir do que o `asmsx.exe` de verdade faz (os achados estao em `doc/asm-spec.md`).
+
 ### 1f. NestorBASIC, SEE Tracker, MSXBAS2ROM e o manual do fwasm (1.38.5)
 
 `tools/paleobasic/import_tools_help.py` importa as ajudas do paleobasic de **NestorBASIC** (`nestorbasic`, `nb-<n>`; apelido pelo wrapper `.NB_*`), **SEE Tracker** (`seetracker`, `see-<titulo>`) e **MSXBAS2ROM**

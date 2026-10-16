@@ -162,7 +162,7 @@ void TestTopics() {
 
         // o manual do fwasm
         const char *const pages[] = {"fwasm", "fwasm-syntax", "fwasm-labels", "fwasm-numbers", "fwasm-operators", "fwasm-data", "fwasm-directives",
-                                     "fwasm-conditional", "fwasm-macros", "fwasm-bios", "fwasm-biosvars"};
+                                     "fwasm-formats", "fwasm-megarom", "fwasm-conditional", "fwasm-macros", "fwasm-bios", "fwasm-biosvars"};
         bool all = true;
         for (const char *p : pages) {
             const man::Topic *tp = man::Find(p);
@@ -171,10 +171,12 @@ void TestTopics() {
                 all = false;
             }
         }
-        check(all, "as 11 paginas do manual do fwasm existem");
+        check(all, "as 13 paginas do manual do fwasm existem");
         check(Contains(man::Find("fwasm-bios")->page, "CHPUT   00A2h") && Contains(man::Find("fwasm-bios")->page, "SUBROM"), "fwasm-bios: tabela gerada das tabelas do montador (CHPUT = 00A2h)");
         check(Contains(man::Find("fwasm-biosvars")->page, "JIFFY") && Contains(man::Find("fwasm-biosvars")->page, "FC9Eh"), "fwasm-biosvars: JIFFY = FC9Eh");
-        check(Contains(man::Find("fwasm-directives")->page, "FALTA") && Contains(man::Find("fwasm-directives")->page, "PRONTA"), "fwasm-directives mostra o estado de cada diretiva");
+        check(Contains(man::Find("fwasm-directives")->page, "megarom [mapper]") && Contains(man::Find("fwasm-directives")->page, "sinclair") && !Contains(man::Find("fwasm-directives")->page, "FALTA"),
+              "fwasm-directives lista as diretivas de formato e nada falta");
+        check(Contains(man::Find("fwasm-megarom")->page, "Konami megaROM forces page 0 at 4000h") && Contains(man::Find("fwasm-formats")->page, "16000 ciclos"), "fwasm-megarom e fwasm-formats");
         check(man::Find("asm") && Contains(man::Find("asm")->page, "fwasm"), "man asm aponta para o manual do fwasm");
         check(man::Find("asmsx") == man::Find("fwasm"), "asmsx e' apelido do manual do nosso montador");
     }

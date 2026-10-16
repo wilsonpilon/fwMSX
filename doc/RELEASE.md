@@ -17,6 +17,28 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.39.0 -- "Yie Ar Kung-Fu" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- o fwasm como ferramenta completa de compilacao do sistema. Era o item "Falta" do `asm-spec.md` desde a 1.36.0.
+
+### Metodo
+O `resource/asmsx.exe` (o oraculo ja' usado nos 6224 casos anteriores) foi a fonte da verdade: para cada diretiva, primeiro varreduras de sondagem (`/tmp/probe_*.py`, caixa-preta)
+para descobrir as regras, depois o codigo, depois os casos dourados em `tools/asmdiff/gen_formats.py`, e iterar ate' 382/382. Nada do fonte GPL do asMSX foi lido.
+
+### Descobertas (ver doc/asm-spec.md para a lista completa)
+- O `.rom` perde o ultimo byte quando o bloco tem 8 KB + 1 (tamanho calculado de len-1).
+- MegaROM: o deslocamento no arquivo e' `subpagina*tamanho + (endereco - X)` (o X do `.subpage` so' e' a origem); `.select` por mapper; o aviso "only N out of M" conta as paginas que FALTAM.
+- `.start` depois do `.rom`: ignorado no arquivo, MAS com fita pedida o INIT final entra no `.rom` e na fita.
+- `.wav`: ciclos de 2400/1200 Hz, fronteiras na amostra arredondada do tempo acumulado (em 1/16: 147/294, exato, sem ponto flutuante); termina com numero PAR de amostras.
+- `.sinclair`: o carregador BASIC tem checksums errados no original (cabecalho: sem o nome e +11h; dados: +11h e o XOR do nome) -- reproduzidos; o nome da fita e' o do primeiro `.cas`/`.wav`.
+- O CLI `--asm` fixava o nome-base sempre (o `.filename` nunca valia): corrigido.
+
+### Validacao
+`ctest` 26/26 (Windows e Linux; o NASM roda nas duas ABIs). Novo `asme2etest`: monta com o fwasm e RODA no emulador um cartucho ROM, as MegaROMs dos 4 mappers (a troca de subpagina funciona de verdade) e a fita `.cas` (`BLOAD"CAS:",R` acha "HELLO" e executa). `asmtest`: 6606 casos (4170 + 1590 + 279 + 185 + 382). `mantest` com as paginas novas do manual.
+Nao conferido: os `.wav` num MSX de verdade; o `.cas` carregado no emulador alem do que o teste de CRC garante (ver OUTLINE); os cantos "nao reproduzidos".
+
+---
+
 ## v1.38.5 -- "Road Fighter: Nestor, SEE e fwasm" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- trazer do paleobasic o manual do SEE Tracker, do NestorBASIC e do "MSX Turbo Basic"; no lugar do manual do asMSX, o manual do NOSSO montador (que e' baseado no asMSX); N80/LK80/LIBSTOR ficam para depois.

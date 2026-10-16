@@ -17,6 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.39.0 "Yie Ar Kung-Fu" (publicada)**: **fwasm completo** -- `.rom`, `.megarom`+`.subpage`+`.select`, `.basic`, `.msxdos`, `.cas`, `.wav` (modulo NASM `wav_synth.asm`), `.sinclair`, `.size`, `.search`,
+  `.callbios`, `.calldos`, `.debug`, `.break`, `.start`. 382 casos novos (`formats.golden`) conferidos byte a byte contra o `asmsx.exe`; CLI corrigido (o `.filename` valia nunca). Proximos passos naturais:
+  integrar o fwasm ao emulador/TUI (`asm` ja' existe no console; falta "Montar e rodar" nos menus e a janela), usar `.debug`/`.break` no depurador do fwMSX, carregar o `.cas`/`.wav` gerado na janela do
+  emulador (teste de ponta a ponta com `--fita`), e montar os `.asm` do `tests/media` automaticamente. Pendente de conferir: o `.wav` num MSX de verdade.
 - **1.38.5 "Road Fighter: Nestor, SEE e fwasm" (publicada)**: `man fwasm` (manual do NOSSO montador, 11 paginas, com o estado de cada diretiva), NestorBASIC (87 funcoes), SEE Tracker e MSXBAS2ROM ("MSX Turbo Basic").
   **Ao implementar uma diretiva do fwasm, atualizar `fwasm-directives`/`fwasm` em `man_pages_fwasm.cpp`.** Pendente: N80/LK80/LIBSTOR (adiado pelo usuario); ideia do usuario para o Basic Dignified (a descobrir).
 - **1.38.4 "Road Fighter: MSX-DOS 2 e Z80" (publicada)**: MSX-DOS 2 partido (40 comandos, 92 chamadas de funcao), MSX-DOS 1, CP/M, Z80, R800, FM-PAC, Turbo-Basic, 85 extensoes CALL e referencias do BASIC

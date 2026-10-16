@@ -41,10 +41,13 @@ std::string SymbolColumns(const T (&table)[N]) {
 const char *const kFwasm = R"MAN(DESCRICAO
   O fwasm e' o montador Z80 do fwMSX: uma reimplementacao do asMSX 1.2.0
   (clean-room: escrita a partir do manual e do comportamento do asmsx.exe,
-  conferida por mais de 1500 casos de teste gerados com o asmsx.exe de verdade).
+  conferida por mais de 6200 casos de teste gerados com o asmsx.exe de verdade,
+  inclusive os arquivos .rom, .bin, .com, .cas, .wav e .tap, byte a byte).
   Aceita todas as instrucoes oficiais e as nao documentadas do Z80, expressoes
   com operadores e funcoes matematicas, macros, repeticao, montagem condicional,
-  includes e as tabelas de nomes da BIOS do MSX.
+  includes, as tabelas de nomes da BIOS do MSX e gera cartuchos ROM e MegaROM
+  (Konami, Konami SCC, ASCII8, ASCII16), programas para o BASIC, MSX-DOS, fitas
+  e arquivos para o ZX Spectrum.
 
 USO
   fwmsx --asm [-z] [-s] [-vv] [-o <caminho>] <arquivo.asm>
@@ -56,31 +59,30 @@ USO
   -o   nome-base das saidas (sem extensao), ou uma pasta terminada em / ou \
   -r   aceito e ignorado (os includes ja' sao relativos a pasta do fonte)
 
-SAIDAS
-  arquivo.z80   os bytes montados, do menor ao maior endereco gravado, SEM
-                cabecalho (a extensao e' sempre .z80 por enquanto)
-  arquivo.sym   tabela de simbolos (constantes, variaveis e rotulos)
-  arquivo.txt   as mensagens das diretivas print (so' existe se houver print)
+SAIDAS (a extensao depende do formato; .filename "x" troca o nome-base)
+  .z80   os bytes montados SEM cabecalho (quando nao ha' diretiva de formato)
+  .rom   cartucho ROM ou MegaROM (.rom, .megarom)
+  .bin   arquivo do BASIC, BLOAD "x.bin",R (.basic)
+  .com   executavel do MSX-DOS (.msxdos)
+  .cas   fita para emuladores (.cas); BLOAD "CAS:",R
+  .wav   fita para um MSX de verdade, 44,1 kHz, 8 bits (.wav)
+  .tap   fita para o ZX Spectrum (.sinclair)
+  .sym   tabela de simbolos (a MegaROM mostra a subpagina: "01h:8000h nome")
+  .txt   mensagens de print (so' existe se houver print)
   Codigo de saida: 0 = ok; diferente de 0 = erro no fonte (a mensagem diz a
   linha); 2 = uso incorreto ou arquivo ilegivel.
 
-O QUE JA' FUNCIONA E O QUE FALTA
-  Pronto:   org page phase dephase zilog bios biosvars db defb dt deft dw defw
-            ds defs byte word incbin include print printdec printhex printfix
-            printtext printstring filename if ifdef ifndef else endif macro
-            endm rept endr equ, variaveis (X=expr), rotulos locais, todas as
-            expressoes e funcoes, a funcao .random(n).
-  Parcial:  .start (valida a expressao; ainda nao muda o ponto de entrada).
-  FALTA:    os formatos de saida .rom .megarom .basic .msxdos .cas .wav
-            .sinclair, e select subpage search callbios calldos size debug
-            break breakpoint. Sem eles a saida e' um bloco cru (.z80); veja o
-            exemplo "cartucho de 16 KB" abaixo para rodar no emulador mesmo assim.
+ESTADO
+  Todas as diretivas do asMSX estao prontas (fwasm-directives). Diferencas
+  conhecidas: um programa com codigo no endereco 0000h antes de .sinclair gera,
+  no asMSX, um bloco de 32 KB (o fwasm gera os bytes certos); .debug/.break
+  gravam os marcadores do blueMSX mas o fwMSX ainda nao os usa (o depurador do
+  proprio fwMSX tem breakpoints: man break).
 
 EXEMPLO: UM CARTUCHO DE 16 KB (testado)
-        org 4000h
-        db "AB"             ; assinatura de cartucho
-        dw init             ; INIT
-        ds 12               ; STATEXT, DEVICE, TEXT e reservado
+        .page 1
+        .start init
+        .rom                ; cabecalho "AB" + INIT, gerado pelo fwasm
   init: ld hl,msg
   loop: ld a,[hl]
         or a
@@ -91,10 +93,17 @@ EXEMPLO: UM CARTUCHO DE 16 KB (testado)
   fim:  jr fim
   msg:  db "Ola do fwasm!",0
 
-  Monte, renomeie o .z80 para .rom e rode:
+  Monte e rode (o .rom sai pronto):
     asm hello.asm
-    (copie hello.z80 para hello.rom)
     emu start --cart hello.rom
+
+EXEMPLO: PROGRAMA DO BASIC
+        .org 0d000h
+        .basic
+        .cas "TESTE"        ; tambem gera TESTE.cas
+        ld a,[0fcafh]       ; SCRMOD
+        ret
+  No MSX-BASIC:  BLOAD"teste.bin",R   (ou  BLOAD"CAS:",R  com a fita)
 
 TOPICOS DESTE MANUAL
   fwasm-syntax        formato da linha, comentarios, colchetes x parenteses
@@ -103,6 +112,8 @@ TOPICOS DESTE MANUAL
   fwasm-operators     operadores, funcoes matematicas, ponto fixo
   fwasm-data          db dw ds dt byte word incbin include
   fwasm-directives    todas as diretivas, com o estado de cada uma
+  fwasm-formats       .rom .megarom .basic .msxdos .cas .wav .sinclair .size
+  fwasm-megarom       .megarom, .subpage e .select (mappers)
   fwasm-conditional   if / ifdef / ifndef / else / endif
   fwasm-macros        macro / endm e rept / endr
   fwasm-bios          nomes das rotinas da BIOS (.bios)
@@ -299,77 +310,199 @@ VER TAMBEM
   fwasm, fwasm-directives, fwasm-labels)MAN";
 
 const char *const kDirectives = R"MAN(DESCRICAO
-  As diretivas podem ser escritas com ou sem o ponto inicial. Coluna ESTADO:
-  PRONTA = funciona no fwasm; PARCIAL; FALTA = existe no asMSX, ainda nao no
-  fwasm (a montagem acusa erro de sintaxe).
+  As diretivas podem ser escritas com ou sem o ponto inicial (.org = org), em
+  maiusculas ou minusculas. Todas estao PRONTAS no fwasm.
 
-  diretiva        ESTADO   O QUE FAZ
-  zilog           PRONTA   parenteses = memoria, colchetes = contas (-z faz o mesmo)
-  org X           PRONTA   muda o endereco atual
-  page X          PRONTA   idem, em blocos de 16 KB (page 1 = 4000h)
-  equ             PRONTA   define constantes:  nome equ expr
-  nome = expr     PRONTA   variavel inteira reatribuivel
-  bios            PRONTA   libera os nomes das rotinas da BIOS (fwasm-bios)
-  biosvars        PRONTA   libera os nomes das variaveis (fwasm-biosvars)
-  phase X/dephase PRONTA   monta para um endereco e guarda em outro
-  db defb dt deft PRONTA   bytes e textos
-  dw defw         PRONTA   palavras de 16 bits
-  ds defs         PRONTA   reserva bytes
-  byte word       PRONTA   reservam um byte / uma palavra
-  include         PRONTA   inclui outro fonte
-  incbin          PRONTA   inclui um binario (skip, size)
-  print printdec  PRONTA   escreve o valor decimal de uma expressao no .txt
-  printhex        PRONTA   idem, em hexadecimal
-  printfix        PRONTA   idem, para um ponto fixo
-  printtext       PRONTA   escreve um texto no .txt (printstring e' sinonimo)
-  filename "x"    PRONTA   nome-base das saidas (o -o tem prioridade)
-  if/ifdef/ifndef/else/endif   PRONTA   montagem condicional (fwasm-conditional)
-  macro/endm, rept/endr        PRONTA   macros e repeticao (fwasm-macros)
-  random(n)       PRONTA   funcao: inteiro aleatorio de 0 a n-1
-  start X         PARCIAL  so' valida a expressao; o ponto de entrada ainda nao e'
-                           gravado
-  rom             FALTA    cabecalho de cartucho ROM (use "AB" + INIT a' mao)
-  megarom [tipo]  FALTA    MegaROM: konami, konamiscc, ascii8, ascii16
-  subpage n at X  FALTA    define uma subpagina do MegaROM
-  select n at X   FALTA    seleciona uma subpagina do MegaROM
-  search          FALTA    acha o slot da pagina 2 numa ROM que comeca na 1
-  basic           FALTA    binario carregavel por BLOAD "x",R (extensao .bin)
-  msxdos          FALTA    executavel .com do MSX-DOS (carregado em 0100h)
-  callbios X      FALTA    chama uma rotina da BIOS de um programa do MSX-DOS
-  calldos X       FALTA    chama uma funcao do MSX-DOS
-  cas ["nome"]    FALTA    fita .cas para BLOAD "CAS:",R
-  wav ["nome"]    FALTA    fita .wav para um MSX de verdade
-  sinclair        FALTA    (quebrada ate' no asMSX original) arquivo .tap
-  size X          FALTA    tamanho do arquivo de saida em KB
-  debug "texto"   FALTA    texto visivel no depurador do blueMSX
-  break [X]       FALTA    breakpoint do blueMSX (breakpoint e' sinonimo)
+  diretiva          O QUE FAZ
+  zilog             parenteses = memoria, colchetes = contas (-z faz o mesmo)
+  org X             muda o endereco atual
+  page X            idem, em blocos de 16 KB (page 1 = 4000h)
+  equ               define constantes:  nome equ expr
+  nome = expr       variavel inteira reatribuivel
+  bios              libera os nomes das rotinas da BIOS (fwasm-bios)
+  biosvars          libera os nomes das variaveis (fwasm-biosvars)
+  phase X/dephase   monta para um endereco e guarda em outro
+  db defb dt deft   bytes e textos
+  dw defw           palavras de 16 bits
+  ds defs           reserva bytes
+  byte word         reservam um byte / uma palavra
+  include           inclui outro fonte
+  incbin            inclui um binario (skip, size)
+  print printdec    escreve o valor decimal de uma expressao no .txt
+  printhex          idem, em hexadecimal
+  printfix          idem, para um ponto fixo
+  printtext         escreve um texto no .txt (printstring e' sinonimo)
+  filename "x"      nome-base das saidas (o -o tem prioridade)
+  if/ifdef/ifndef/else/endif    montagem condicional (fwasm-conditional)
+  macro/endm, rept/endr         macros e repeticao (fwasm-macros)
+  random(n)         funcao: inteiro aleatorio de 0 a n-1
+  start X           ponto de entrada (cabecalho da ROM/MegaROM/BASIC)
+  rom               cartucho ROM: cabecalho "AB" de 16 bytes
+  megarom [mapper]  MegaROM: konami, konamiscc, ascii8, ascii16
+  subpage n at X    define uma subpagina da MegaROM
+  select n at X     troca a subpagina visivel (gera o codigo)
+  search            acha o slot da pagina 2 numa ROM que comeca na 1
+  basic             binario carregavel por BLOAD "x",R (extensao .bin)
+  msxdos            executavel .com do MSX-DOS (carregado em 0100h)
+  callbios X        chama uma rotina da BIOS (LD IY,..; LD IX,X; CALL CALSLT)
+  calldos X         chama uma funcao do MSX-DOS (so' com .msxdos)
+  cas ["nome"]      fita .cas para BLOAD "CAS:",R (cassette e' sinonimo)
+  wav ["nome"]      fita .wav para um MSX de verdade
+  sinclair          arquivo .tap para o ZX Spectrum
+  size X            tamanho do arquivo de saida em KB
+  debug "texto"     marcador de texto para o depurador do blueMSX
+  break [X]         marcador de breakpoint do blueMSX (breakpoint = sinonimo)
 
-  (O depurador do proprio fwMSX tem breakpoints: man break.)
+  Os formatos (rom, megarom, basic, msxdos, sinclair) sao exclusivos: misturar
+  da' o erro "type previously defined". Detalhes: man fwasm-formats e
+  man fwasm-megarom.
 
 DETALHES
   .org X         todo o codigo seguinte e' montado a partir de X. Voltar para um
-                 endereco menor e' permitido; a saida .z80 vai do menor ao maior
+                 endereco menor e' permitido; a saida vai do menor ao maior
                  endereco gravado.
   .page X        page 0 = 0000h, 1 = 4000h, 2 = 8000h, 3 = 0C000h.
   .phase X       as instrucoes sao montadas para executar em X, mas guardadas no
                  endereco atual: util para codigo que fica na ROM e e' copiado
                  para a RAM. Os rotulos valem X em diante. .dephase volta ao
                  normal (org, page e subpage tambem).
+  .start X       na ROM o .start tem de vir ANTES do .rom (depois e' ignorado, a
+                 nao ser que haja fita); na MegaROM e no BASIC vale em qualquer
+                 ordem. Sem .start o INIT/execucao e' o fim do cabecalho / o
+                 primeiro endereco.
+  .size X        enche com zeros ate' X KB. Se o programa nao cabe: erro "code
+                 size overflow"; se passa de 64 KB a partir do primeiro endereco:
+                 "memory overflow". Na MegaROM so' corta ou completa.
   .incbin "f" skip X size Y   injeta um binario; skip e size sao opcionais.
   .print expr    escreve no arquivo .txt (nao na tela).
-
-PREVISTO (quando as diretivas de formato existirem)
-  .rom       Depois de .page/.org e antes de .start; escreve o cabecalho "AB".
-  .megarom   Konami e KonamiSCC: subpaginas de 8 KB (ate' 256 KB / 512 KB);
-             ASCII8: 8 KB (ate' 2 MB); ASCII16: 16 KB (ate' 4 MB). O codigo vive em
-             subpaginas (.subpage n at X) e se troca com .select n at X.
-  .basic     Cabecalho de arquivo binario do BASIC; precisa de .org; .start diz a
-             entrada.
-  .msxdos    Executavel .com (sempre em 0100h; dispensa .org).
-  .search    Descobre o slot da pagina 2 (RSLREG, EXPTBL, ENASLT).
+  .callbios X    gera  LD IY,[EXPTBL-1] / LD IX,X / CALL CALSLT  (11 bytes).
+  .calldos X     gera  LD C,X / CALL 0005h  (5 bytes).
+  .debug "t"     gera  LD D,D / JR (tamanho+4) / texto  (sem terminador).
+  .break [X]     sem X: LD B,B / JR 0; com X: LD B,B / JR 2 / DW X.
 
 VER TAMBEM
-  fwasm, fwasm-data, fwasm-conditional, fwasm-macros)MAN";
+  fwasm, fwasm-formats, fwasm-megarom, fwasm-data, fwasm-conditional)MAN";
+
+const char *const kFormats = R"MAN(DESCRICAO
+  Sem diretiva de formato a saida e' o bloco cru (.z80). Os formatos abaixo
+  trocam o arquivo gerado; so' um por programa (repetir o mesmo e' permitido).
+
+.ROM  (arquivo .rom)
+  Escreve um cabecalho de 16 bytes no endereco atual -- "AB", o INIT, 12 zeros --
+  e o codigo vem a seguir. Use depois de .page/.org. O INIT e' o .start dado
+  ANTES do .rom, ou o fim do cabecalho. O arquivo comeca no MENOR endereco gravado e
+  seu tamanho e' o do bloco arredondado para multiplo de 8 KB (ou o .size).
+  Escrever na pagina 3 (>= 0C000h) e' o erro "cannot write ROM code/data to page 3".
+  Particularidade do asMSX, reproduzida: o arredondamento conta a partir do ULTIMO
+  endereco, entao um bloco de exatamente 8 KB + 1 byte perde esse ultimo byte.
+
+.BASIC  (arquivo .bin)
+  Arquivo do BASIC: byte 0FEh, endereco inicial, final e de execucao (2 bytes cada)
+  e os bytes. A execucao e' o .start (em qualquer ordem) ou o endereco inicial. Com
+  .size o arquivo e' completado com zeros, mas o endereco final nao muda.
+
+.MSXDOS  (arquivo .com)
+  Executavel do MSX-DOS: so' os bytes, montados a partir de 0100h (a diretiva poe o
+  endereco em 0100h; .org depois dela vale). Tem de vir antes de qualquer codigo.
+  Com .msxdos existe .calldos.
+
+.SIZE n
+  Tamanho do arquivo em KB (zeros no fim). Uma vez so'. .size 0 = tamanho natural.
+
+.SEARCH
+  Para ROM e MegaROM: gera 31 bytes que descobrem o slot da pagina 2 e a ativam
+  (RSLREG, EXPTBL, ENASLT). Use num cartucho que comeca na pagina 1.
+
+.CAS ["nome"]  /  .WAV ["nome"]
+  Gera tambem a fita. O nome (ate' 6 letras, exatamente como escrito) e' o que o MSX
+  mostra no BLOAD; sem nome vale o nome-base da saida. O PRIMEIRO .cas ou .wav fixa
+  o nome dos dois. Mensagens: "cas file x.cas" e "Audio file x.wav saved [8.55 sec]".
+    .basic        fita de arquivo BLOAD: BLOAD"CAS:",R
+    .rom na pagina 2 (a partir de 8000h)   idem; o INIT final entra no cabecalho
+    sem formato, .msxdos, .sinclair   so' os bytes (precedidos da marca do .cas)
+    .rom abaixo de 8000h   aviso "cas file generation is not supported for ROM that
+                           start below address 0x8000" e nenhum arquivo de fita
+    .megarom   aviso "cas file generation is not supported for MEGAROM"
+  O .wav tem 16000 ciclos de 2400 Hz de tom de cabecalho, os bytes a 1200 baud
+  (1 start, 8 bits, 2 stop; o 1 e' dois ciclos de 2400 Hz, o 0 um de 1200 Hz) e um
+  segundo tom de 4000 ciclos entre a identificacao e os dados; termina com um numero
+  par de amostras. Carregue num MSX real pela entrada de fita.
+
+.SINCLAIR  (arquivo .tap)
+  Fita do ZX Spectrum: bloco CODE com o nome-base (10 letras) e os bytes. Com
+  .start (diferente de 0) vem antes um carregador BASIC de uma linha:
+      10 CLEAR VAL "<inicio-1>": LOAD ""CODE: RANDOMIZE USR VAL "<start>"
+  Nao pode ser misturado com os outros formatos ("Sinclair directive should
+  preceed any code"). Os checksums do carregador seguem o asMSX original.
+
+EXEMPLOS
+  ROM de 32 KB:    .page 1 / .rom / .size 32 / ...
+  MegaROM:         .megarom konami / .start init / ...   (man fwasm-megarom)
+  BASIC + fita:    .org 0d000h / .basic / .cas "JOGO" / ...
+  MSX-DOS:         .msxdos / ld c,9 / ld de,msg / call 5 / ret / msg: db "Oi$"
+                   (ou  .calldos 9  no lugar de  ld c,9 / call 5 )
+
+VER TAMBEM
+  fwasm, fwasm-directives, fwasm-megarom, cart, tape)MAN";
+
+const char *const kMegaRom = R"MAN(DESCRICAO
+  Uma MegaROM e' um cartucho maior que 64 KB cujo codigo vive em SUBPAGINAS que
+  um registrador do mapper coloca, uma de cada vez, nas janelas de 8 KB (ou 16 KB)
+  do Z80. O fwasm monta o arquivo .rom inteiro; o programa troca de subpagina com
+  .select.
+
+.MEGAROM [mapper]
+  Escolhe o mapper e escreve o cabecalho "AB" em 4000h (a subpagina 0 vive la'; .page
+  e .org antes dela nao importam). Mappers:
+    konami     subpaginas de 8 KB, ate' 32 (256 KB). A janela 4000h e' fixa.
+    konamiscc  8 KB, ate' 64 (512 KB); acessa o SCC.
+    ascii8     8 KB, ate' 256 (2 MB).
+    ascii16    16 KB, ate' 256 (4 MB).
+  Sem argumento vale konami. Um segundo .megarom nao faz nada. Depois do .start
+  (em qualquer ordem) o INIT do cabecalho e' o final.
+
+.SUBPAGE n AT X
+  Abre a subpagina n (1 em diante; a 0 e' a do .megarom) cujo codigo sera' executado
+  com a janela em X (4000h a 0BFFFh). O codigo seguinte vai para o arquivo em
+  n*tamanho + (endereco - X); passar do tamanho da subpagina e' "megaROM subpage
+  overflow". Definir a mesma subpagina duas vezes: "megaROM subpage already defined".
+
+.SELECT n AT X   |   .SELECT registrador AT X
+  Gera o codigo que escolhe a subpagina n na janela X: PUSH AF / LD A,n / LD (reg),A
+  / POP AF (7 bytes); com A como registrador so' o LD (reg),A (3 bytes); com B, C, D,
+  E, H ou L: PUSH AF / LD A,r / LD (reg),A / POP AF. "reg" e' o registrador do mapper:
+    konami     janela 6000h -> 6000h, 8000h -> 8000h, 0A000h -> 0A000h
+               (janela 4000h: erro "Konami megaROM forces page 0 at 4000h")
+    konamiscc  4000h -> 5000h, 6000h -> 7000h, 8000h -> 9000h, 0A000h -> 0B000h
+    ascii8     4000h -> 6000h, 6000h -> 6800h, 8000h -> 7000h, 0A000h -> 7800h
+    ascii16    4000h -> 6000h, 8000h -> 7000h
+  A subpagina n tem de existir em algum ponto do programa (pode vir DEPOIS do select):
+  senao "megaROM subpage not defined".
+  A BIOS so' liga a pagina 1 (4000h) ao cartucho: para usar janelas em 8000h ou 0A000h
+  chame .search antes do primeiro .select (testado no emulador com os quatro mappers).
+
+ARQUIVO .rom
+  Tem (maior subpagina definida + 1) paginas. Se alguma entre 0 e a maior nao foi
+  definida o aviso diz "only N out of M megaROM pages are defined" (N e' quantas
+  FALTAM -- assim e' no asMSX). .size corta ou completa o arquivo. O .sym mostra
+  cada rotulo com sua subpagina ("01h:8000h nome"). Na MegaROM nao ha' fita
+  (.cas/.wav dao um aviso) e .page nao serve (depois dele o codigo da' "code/data
+  without subpage" ate' o proximo .subpage).
+
+EXEMPLO
+        .bios
+        .megarom konami
+        .start init
+  init: .search                  ; liga a pagina 2 (8000h) ao slot do cartucho
+        .select 1 at 8000h       ; mostra a subpagina 1 na janela de 8000h
+        jp sub1
+        .subpage 1 at 8000h
+  sub1: ld a,'A'
+        call CHPUT
+        jr $
+
+VER TAMBEM
+  fwasm, fwasm-formats, fwasm-directives, cart)MAN";
 
 const char *const kConditional = R"MAN(DESCRICAO
   Montagem condicional:
@@ -489,6 +622,8 @@ std::vector<Topic> FwasmTopics() {
     add("fwasm-operators", "fwasm-functions", "operadores, funcoes matematicas e ponto fixo das expressoes", kOperators);
     add("fwasm-data", "", "db, dw, ds, dt, byte, word, include, incbin, org, page, phase", kData);
     add("fwasm-directives", "", "todas as diretivas do asMSX e o estado de cada uma no fwasm", kDirectives);
+    add("fwasm-formats", "", ".rom .basic .msxdos .cas .wav .sinclair .size .search: os arquivos de saida", kFormats);
+    add("fwasm-megarom", "", "MegaROM: .megarom, .subpage, .select e os mappers", kMegaRom);
     add("fwasm-conditional", "", "if / ifdef / ifndef / else / endif", kConditional);
     add("fwasm-macros", "fwasm-rept", "macro / endm e rept / endr", kMacros);
     add("fwasm-bios", "", "nomes das rotinas da BIOS liberados por .bios (com os enderecos)",

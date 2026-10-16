@@ -1056,8 +1056,10 @@ Detalhes: [splash-spec.md](splash-spec.md).
 
 ## Montador Z80 (`fwmsx --asm`)
 
-O fwMSX inclui um montador compativel com o asMSX 1.2.0 (reescrito do zero a partir do manual, em C, C++ e
-Fortran). Uso:
+O fwMSX inclui um montador compativel com o asMSX 1.2.0 (reescrito do zero a partir do manual, em C, C++, Fortran e
+Assembly). E' um compilador completo para o MSX: gera cartuchos **ROM e MegaROM** (Konami, Konami SCC, ASCII8, ASCII16),
+programas para o **BASIC** (`.bin`) e o **MSX-DOS** (`.com`), **fitas** (`.cas` para emuladores, `.wav` para um MSX de verdade) e
+`.tap` do ZX Spectrum. Uso:
 
     fwmsx --asm [-z] [-s] [-vv] [-o <caminho>] <arquivo.asm>
 
@@ -1069,7 +1071,28 @@ Fortran). Uso:
 | `-o base` | nome-base (sem extensao) das saidas; `-o pasta/` grava na pasta com o nome do fonte |
 | `-r` | aceito e ignorado (obsoleto: includes sao relativos ao fonte) |
 
-Os arquivos de saida (`.z80`, `.sym`, `.txt`, e os de formato conforme as diretivas do fonte) ficam ao lado do
+Exemplo -- um cartucho de 16 KB (monte com `asm hello.asm` no console e rode com `emu start --cart hello.rom`):
+
+```
+        .page 1
+        .start init
+        .rom
+  init: ld hl,msg
+  loop: ld a,[hl]
+        or a
+        jr z,fim
+        call 00A2h          ; CHPUT
+        inc hl
+        jr loop
+  fim:  jr fim
+  msg:  db "Ola do fwasm!",0
+```
+
+As diretivas de formato: `.rom`, `.megarom konami|konamiscc|ascii8|ascii16` (com `.subpage n at X` e `.select n at X`), `.basic`, `.msxdos`, `.sinclair`,
+mais `.cas`/`.wav "NOME"` para a fita, `.size KB`, `.start`, `.search`, `.callbios`, `.calldos`. O manual completo, com todas as diretivas, mappers e exemplos,
+esta' no proprio fwMSX: `man fwasm`, `man fwasm-formats`, `man fwasm-megarom`, `man fwasm-directives`.
+
+Os arquivos de saida (`.z80`, `.rom`, `.bin`, `.com`, `.cas`, `.wav`, `.tap`, `.sym`, `.txt`, conforme as diretivas do fonte) ficam ao lado do
 fonte, ou onde o `-o` indicar. O codigo de saida e' o do asMSX (0 = ok; erros e avisos vao para o stderr no
 formato `arquivo.asm, line N: mensagem`). No console (`fwMSXc.exe --cli`) o mesmo montador e' o comando `asm`.
 Detalhes e estado do suporte as diretivas: `doc/asm-spec.md`.

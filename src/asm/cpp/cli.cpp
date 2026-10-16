@@ -97,7 +97,7 @@ int RunAsmCommand(const std::vector<std::string> &tokens) {
         if (out_arg.back() == '/' || out_arg.back() == '\\') base = out_arg + StripExt(file);
         else base = StripExt(out_arg);
     }
-    opts.out_base = base;
+    if (!out_arg.empty()) opts.out_base = base; // sem -o o .FILENAME do programa decide o nome
 
     DiskFiles files(dir);
     const AsmResult r = Assemble(source, std::string(raw.begin(), raw.end()), opts, &files);

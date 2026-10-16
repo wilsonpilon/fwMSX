@@ -2,6 +2,7 @@
 // que o asMSX de verdade produziu (codigo de saida, mensagens e arquivos de saida em hexadecimal).
 #pragma once
 
+#include <cstdlib>
 #include <fstream>
 #include <map>
 #include <string>
@@ -15,6 +16,7 @@ struct GoldenCase {
     int rc = 0;
     std::vector<std::string> msgs;
     std::map<std::string, std::string> outs; // extensao -> hex
+    std::map<std::string, std::pair<size_t, unsigned>> outs_crc; // arquivos grandes: extensao -> (tamanho, CRC-32)
     // Arquivos auxiliares para .include / .incbin ("@file nome hex" no golden).
     std::map<std::string, std::string> files;
     // Argumentos de linha de comando ("@args -z ..."), se houver.
@@ -54,6 +56,15 @@ inline std::vector<GoldenCase> ReadGolden(const std::string &path) {
             std::string name = line.substr(5, sp - 5);
             for (size_t p = name.find("%20"); p != std::string::npos; p = name.find("%20")) name.replace(p, 3, " ");
             cur.outs[name] = sp == std::string::npos ? "" : line.substr(sp + 1);
+        } else if (line.rfind("@outcrc ", 0) == 0) {
+            // @outcrc <arquivo> <tamanho> <crc32 hex>
+            const size_t a = line.find(' ', 8), b = a == std::string::npos ? a : line.find(' ', a + 1);
+            if (a != std::string::npos && b != std::string::npos) {
+                std::string name = line.substr(8, a - 8);
+                for (size_t p = name.find("%20"); p != std::string::npos; p = name.find("%20")) name.replace(p, 3, " ");
+                cur.outs_crc[name] = {static_cast<size_t>(std::strtoull(line.c_str() + a + 1, nullptr, 10)),
+                                      static_cast<unsigned>(std::strtoul(line.c_str() + b + 1, nullptr, 16))};
+            }
         } else if (line.rfind("@file ", 0) == 0) {
             const size_t sp = line.find(' ', 6);
             cur.files[line.substr(6, sp - 6)] = sp == std::string::npos ? "" : line.substr(sp + 1);

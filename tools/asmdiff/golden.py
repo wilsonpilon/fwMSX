@@ -8,11 +8,15 @@
     @rc <codigo de saida do asMSX>
     @msg <uma mensagem de erro/aviso>             (zero ou mais)
     @out <arquivo> <hex>                          (uma por arquivo gerado; "z80", "sym"... = x.<ext>)
+    @outcrc <arquivo> <tamanho> <crc32 hex>       (no lugar do @out quando o arquivo passa de 2048 bytes)
     @end
 
 Os `.golden` sao gerados pelo asMSX de verdade (oraculo) e lidos pelo teste do fwMSX, que assim roda
 sem o oraculo (e no Linux).
 """
+
+
+import zlib
 
 
 def write_golden(path, cases):
@@ -32,5 +36,9 @@ def write_golden(path, cases):
             for m in res["msgs"]:
                 f.write("@msg %s\n" % m)
             for ext, data in sorted(res["outs"].items()):
-                f.write("@out %s %s\n" % (ext.replace(" ", "%20"), data.hex()))
+                if len(data) > 2048:
+                    # arquivos grandes (os .wav chegam a 1 MB) entram so' como tamanho + CRC-32, para o .golden nao virar 50 MB
+                    f.write("@outcrc %s %d %08x\n" % (ext.replace(" ", "%20"), len(data), zlib.crc32(data) & 0xFFFFFFFF))
+                else:
+                    f.write("@out %s %s\n" % (ext.replace(" ", "%20"), data.hex()))
             f.write("@end\n")
