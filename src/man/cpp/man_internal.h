@@ -11,6 +11,7 @@ std::vector<Topic> ReferenceTopics(); // man_pages_msx.cpp: BIOS, variaveis do s
 std::vector<Topic> BiosTopics();      // man_pages_msxbios.cpp (GERADO por tools/paleobasic/import_bios_help.py): rotinas/variaveis da BIOS e do BDOS
 std::vector<Topic> HardwareTopics();  // idem: chips e perifericos (RTC, PSG, SCC, OPLL, V9958, V9990...)
 std::vector<Topic> BookTopics();      // man_pages_books.cpp (GERADO por tools/paleobasic/import_books_help.py): Red Book, MSX2 Technical Handbook, Basic Dignified
+std::vector<Topic> ManualTopics();    // man_pages_manuals.cpp (GERADO por tools/paleobasic/import_manuals_help.py): MSX-DOS 2, MSX-DOS 1, Z80, R800, FM-PAC, referencias do BASIC
 std::vector<Topic> BasicTopics();     // man_pages_basic.cpp (GERADO por tools/paleobasic/import_basic_help.py): palavras do MSX-BASIC e o manual
 
 // Uma linha das tabelas de referencia (BIOS, variaveis do sistema, ganchos). As tabelas sao dados: as paginas do man

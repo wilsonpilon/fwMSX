@@ -431,8 +431,8 @@ std::vector<Topic> ReferenceTopics() {
     auto add = [&](const char *name, const char *aliases, const char *summary, std::string page) {
         v.push_back(Topic{name, aliases, "Referencia MSX", "", summary, std::move(page), false});
     };
-    add("bios", "rotinas,chput,chget", "tabela de entradas da BIOS (CHPUT, CHGET, WRTVDP...)", BiosPage());
-    add("sysvars", "variaveis,workarea", "variaveis do sistema (FORCLR, JIFFY, SCRMOD...)", SysVarsPage());
+    add("bios", "rotinas", "tabela de entradas da BIOS (CHPUT, CHGET, WRTVDP...)", BiosPage());
+    add("sysvars", "workarea", "variaveis do sistema (FORCLR, JIFFY, SCRMOD...)", SysVarsPage());
     add("hooks", "ganchos,hook", "ganchos da RAM (H.KEYI, H.TIMI...) e como encadear", HooksPage());
     add("basic", "msxbasic", "resumo dos comandos do MSX-BASIC", kBasicPage);
     add("cores", "colors,cor", "os 16 codigos de cor do MSX", kColorPage);

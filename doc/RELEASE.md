@@ -17,6 +17,31 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.38.4 -- "Road Fighter: MSX-DOS 2 e Z80" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- estudar `MsxManualsHelpData.pbi` (MSX-DOS 2 e outros) e `MsxSoftwareHelpData.pbi` (help mais simples do MSX-BASIC, MSX-DOS, CP/M), acrescentar o que falta e ver o que
+complementa o que ja' existe. O `OpenMsxHelpData.pbi` fica de fora (o projeto nao usa o openMSX).
+
+### Estudo das fontes
+- **MsxManualsHelpData.pbi** (MANUALS.CHM): 18 paginas gigantes (1,8 MB): MSX-DOS 2 (referencia de comandos 129 KB, interface de programa 19 KB, codigos de funcao 114 KB), Z80 (3), R800 (2), Turbo-Basic, FM-PAC
+  e **8 capitulos do MSX2 Technical Handbook (700 KB), que ja' existem no man desde a 1.38.3** (edicao Markdown do Konamiman, mais limpa) -> nao importados.
+- **MsxSoftwareHelpData.pbi** (SOFTWARE.CHM): 359 topicos curtos em ingles: 148 palavras do MSX-BASIC 1, 85 extensoes CALL de firmware, 45 comandos do MSX-DOS 1 (25 sao esqueletos sem texto), 28 do Disk-BASIC,
+  21 do MSX-BASIC 2, 17 referencias (cores, erros, modos de tela, vozes do MSX-Music...), 10 "outros" (operadores, variaveis, USING, PLAY...), Turbo-R, 2+ e CP/M.
+- **Sobreposicao com o que o man ja' tinha**: as palavras do BASIC (livro da Gradiente, portugues, mais completo) coincidem; a versao em ingles traz exemplos de saida e "veja tambem" -> vira secao extra.
+  O MSX2 Technical Handbook ja' cobre os mesmos assuntos do MANUALS.CHM -> nao duplicado. Tudo o mais (MSX-DOS 2, MSX-DOS 1, CP/M, Z80, R800, FM-PAC, Turbo-Basic, CALL de firmware, referencias) e' NOVO.
+
+### O que foi feito
+- `tools/paleobasic/import_manuals_help.py`: **partiu** os manuais grandes -- o MSX-DOS 2 por capitulo e por comando (um comando = linha sozinha em maiusculas seguida de "Format") e por chamada de funcao (cabecalho "3.n NOME (XXH)",
+  simbolo `_NOME` lido de "Parameters: C = 09H (_STROUT)" vira apelido). Rotulos `**Sintaxe:**` viram `SINTAXE`; tabulacoes viram espacos; ASCII puro; esqueletos descartados.
+- `man.cpp`: a fusao de nomes iguais agora tambem olha apelidos, mas so' os da mesma categoria (senao `screen` seria absorvido pela pagina de referencia `screens`).
+- Testes: `dos2-copy` (so' o COPY), `dos2-fn-09h`/`_strout`, 00h a 70h, `dos-dir`/`cpm`, `call kanji`, `abs` com a referencia em ingles, `ref-*`, `z80-opcodes`, R800, FM-PAC, Turbo-Basic e nenhum esqueleto.
+
+### Validacao
+`ctest` 25/25 (Windows e Linux). Visto na tela: `man _strout`, `man dos2-chdir`, `man ref-screen-modes`.
+Nao conferido: fidelidade ao texto dos manuais (herdada do paleobasic); a partida dos manuais em casos de borda (um comando cujo titulo nao segue o padrao ficaria dentro do anterior).
+
+---
+
 ## v1.38.3 -- "Road Fighter: Livros de referencia" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- importar o Red Book, o Technical Handbook e a ajuda do Basic Dignified (ideia dele para uso do Basic Dignified).

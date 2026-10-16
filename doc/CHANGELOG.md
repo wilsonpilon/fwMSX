@@ -7,6 +7,27 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.38.4] - 2026-10-16 - "Road Fighter: MSX-DOS 2 e Z80" (Konami)
+
+### Adicionado
+- **MSX-DOS 2** (manual 2.20, ingles), partido para consulta: **um topico por comando** (`man dos2-copy`, `dos2-dir`, `dos2-xcopy`, `dos2-chdir`... 40 comandos, com Format/Purpose/Use/Examples),
+  os capitulos (`dos2-notation`, `dos2-redirection-and-piping`, `dos2-batch-files`, `dos2-environment-items`, `dos2-errors-and-messages`, `dos2-command-summary`, `dos2-disk-basic-2-0`),
+  a interface de programa (`dos2-program-interface`) e **uma pagina por chamada de funcao** (`man dos2-fn-09h`; tambem pelo simbolo, `man _strout`, e pelo nome, `man dos2-fn-string-output`; 92 chamadas).
+- **MSX-DOS 1 e CP/M** (`man dos-dir`, `dos-copy`, `dos-format`... e `man cpm`).
+- **Z80 e R800**: tabelas de instrucoes (`man z80-opcodes`, `z80-mnemonics`, `z80-overview`, `r800-instructions`, `r800-msx`).
+- **FM-PAC** (`man fmpac-manual`) e **Turbo-Basic Compiler** (`man turbo-basic-compiler`).
+- **Extensoes do MSX-BASIC em ingles** (SOFTWARE.CHM do RuMSX): as 85 extensoes de firmware `CALL ...` (`man call kanji`, `call music`, `call pcmplay`, `call tohijri`...), Disk-BASIC, MSX2/2+/Turbo-R
+  (`set video`, `color sprite$`, `call pcmrec`), `operators`, `variables`, `using`, `copy screen`... e as referencias `ref-color-table`, `ref-error-codes`, `ref-screen-modes`, `ref-msx-music-voices`,
+  `ref-kanji-basic`... Quando a palavra ja' existia (a do livro da Gradiente), a referencia em ingles entra como uma SECAO a mais da mesma pagina (complemento: exemplos de saida, "veja tambem").
+- A fusao de nomes iguais tambem considera os apelidos da MESMA categoria (`for` entra em `for-next`, `interval` em `interval on/off/stop`).
+- `tools/paleobasic/import_manuals_help.py` (gera `src/man/cpp/man_pages_manuals.cpp`, ~780 KB).
+
+### Mudou
+- Apelidos de referencia escritos a mao que conflitavam com topicos importados (`chput`/`chget` em `bios`, `variaveis` em `sysvars`) foram retirados.
+
+### Nao importado
+- `OpenMsxHelpData.pbi` (o fwMSX nao usa o openMSX) e os 8 capitulos do MSX2 Technical Handbook que vem no MANUALS.CHM (ja' temos o livro inteiro, 1.38.3). 25 verbetes "ainda sem pagina propria" do MSX-DOS 1.
+
 ## [1.38.3] - 2026-10-16 - "Road Fighter: Livros de referencia" (Konami)
 
 ### Adicionado

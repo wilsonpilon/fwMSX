@@ -764,6 +764,9 @@ nos nomes e resumos.
 **Livros**: `man rb-<titulo>` (The MSX Red Book, 973 topicos), `man th2-<titulo>` (MSX2 Technical Handbook, 1356) e `man dignified` / `man bd-<titulo>` (ajuda do
 Basic Dignified, em portugues). Os links dos livros aparecem como "VER TAMBEM" no fim de cada pagina. Para achar: `man -l red` (capitulos e nomes do Red Book), `man -l handbook`,
 `man -k expander` (procura em nomes e resumos). O texto dos livros e' em ingles.
+**MSX-DOS e processadores**: `man dos2-copy`, `man dos2-xcopy`... (um topico por comando do MSX-DOS 2; `man dos2-commands` e' a introducao), `man dos2-fn-09h` ou `man _strout` (uma por chamada de
+funcao do sistema), `man dos2-program-interface`, `man dos-dir` (MSX-DOS 1) e `man cpm`; `man z80-opcodes` / `man z80-mnemonics` (tabelas de instrucoes), `man r800-instructions`, `man fmpac-manual`,
+`man turbo-basic-compiler`. Extensoes de firmware do BASIC: `man call kanji`, `man call music`...; referencias: `man ref-color-table`, `man ref-error-codes`, `man ref-screen-modes`. Em ingles, como nos originais.
 No console o texto e' paginado (espaco = pagina, Enter = linha, `q` sai); na TUI abre uma janelinha (setas, PgUp/PgDn, Home/End, Esc ou `q`
 fecham). Detalhes e como acrescentar topicos: [man-spec.md](man-spec.md).
 

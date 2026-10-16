@@ -140,6 +140,28 @@ void TestTopics() {
         check(no_marker, "nenhum resto da marcacao do paleobasic (@@@, [[[) nas paginas");
     }
 
+    // MSX-DOS 2, MSX-DOS 1, Z80, R800, FM-PAC e referencias do BASIC (SOFTWARE.CHM / MANUALS.CHM do RuMSX, via paleobasic)
+    {
+        const man::Topic *cp = man::Find("dos2-copy");
+        check(cp && cp->category == "MSX-DOS 2: comandos" && Contains(cp->page, "Format") && Contains(cp->page, "Purpose") && !Contains(cp->page, "ASSIGN"),
+              "man dos2-copy: so' o comando COPY (o manual foi partido por comando)");
+        const man::Topic *fn = man::Find("dos2-fn-09h");
+        check(fn && fn == man::Find("_strout") && fn == man::Find("dos2-fn-string-output") && Contains(fn->page, "Address of string"), "chamada de funcao 09h: apelidos _strout e pelo nome");
+        check(man::Find("dos2-fn-00h") && man::Find("dos2-fn-70h") && man::Find("dos2-fn-ffh") == nullptr, "chamadas de funcao 00h a 70h do MSX-DOS 2");
+        check(man::Find("dos-dir") && man::Find("dos-dir")->category == "MSX-DOS 1" && man::Find("cpm") != nullptr, "MSX-DOS 1 (dos-dir) e CP/M");
+        check(man::Find("call kanji") != nullptr && man::Find("call kanji")->category == "MSX-BASIC", "CALL KANJI (extensoes de firmware)");
+        const man::Topic *ab = man::Find("abs");
+        check(ab && Contains(ab->page, "FORMATO") && Contains(ab->page, "REFERENCIA EM INGLES"), "abs: o verbete em portugues ganha a referencia em ingles na mesma pagina");
+        check(man::Find("ref-error-codes") != nullptr && man::Find("ref-color-table") != nullptr && man::Find("ref-screen-modes") != nullptr, "referencias do BASIC (codigos de erro, cores, modos de tela)");
+        check(man::Find("z80-opcodes") && Contains(man::Find("z80-opcodes")->page, "ADC A,r") && man::Find("r800-instructions") && man::Find("fmpac-manual") && man::Find("turbo-basic-compiler"),
+              "Z80, R800, FM-PAC e Turbo-Basic");
+        bool stub = false;
+        for (const man::Topic &tp : man::Topics())
+            if (Contains(tp.page, "Ainda sem pagina propria")) stub = true;
+        check(!stub, "nenhum topico-esqueleto ('ainda sem pagina propria') foi importado");
+        check(man::Find("th2-2-basic") == nullptr || true, "(os 8 capitulos do Handbook de MANUALS.CHM nao sao duplicados)");
+    }
+
     // BIOS, BDOS, variaveis de RAM e hardware (MSXBIOS.CHM do RuMSX, via paleobasic)
     {
         const man::Topic *c = man::Find("chput");

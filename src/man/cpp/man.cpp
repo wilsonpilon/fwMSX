@@ -84,17 +84,35 @@ const std::vector<Topic> &Topics() {
         for (Topic &t : ReferenceTopics()) v.push_back(std::move(t));
         // Material importado do paleobasic. Quando o nome ja' existe (o BIOS "BEEP" e o BASIC BEEP; o comando "stop" e a palavra STOP...), a
         // pagina nova vira uma SECAO a mais da pagina existente em vez de um segundo topico com o mesmo nome.
-        std::map<std::string, size_t> by_name; // nome normalizado -> posicao em v (evita O(n^2) com milhares de topicos)
-        for (size_t i = 0; i < v.size(); ++i) by_name[Normalize(v[i].name)] = i;
+        std::map<std::string, size_t> by_name, by_alias; // nome/apelido normalizado -> posicao em v (evita O(n^2) com milhares de topicos)
+        auto index_aliases = [&](size_t i) {
+            for (const std::string &n : Names(v[i])) by_alias.emplace(Normalize(n), i);
+        };
+        for (size_t i = 0; i < v.size(); ++i) {
+            by_name[Normalize(v[i].name)] = i;
+            index_aliases(i);
+        }
         auto absorb = [&](std::vector<Topic> list) {
             for (Topic &b : list) {
                 const std::string key = Normalize(b.name);
-                const auto it = by_name.find(key);
+                auto it = by_name.find(key);
+                size_t target = 0;
+                bool found = false;
                 if (it != by_name.end()) {
-                    v[it->second].page += "\n\n==== " + b.category + " ====\n" + b.page;
+                    target = it->second;
+                    found = true;
+                } else if ((it = by_alias.find(key)) != by_alias.end() && v[it->second].category == b.category) {
+                    // o nome novo e' apelido de um topico DA MESMA categoria (for -> for-next); apelidos de outras categorias
+                    // (ex.: "screen" da pagina de referencia "screens") nao absorvem nada
+                    target = it->second;
+                    found = true;
+                }
+                if (found) {
+                    v[target].page += "\n\n==== " + b.category + " ====\n" + b.page;
                 } else {
                     by_name[key] = v.size();
                     v.push_back(std::move(b));
+                    index_aliases(v.size() - 1);
                 }
             }
         };
@@ -102,6 +120,7 @@ const std::vector<Topic> &Topics() {
         absorb(BiosTopics());
         absorb(HardwareTopics());
         absorb(BookTopics());
+        absorb(ManualTopics());
         return v;
     }();
     return all;

@@ -48,6 +48,14 @@ escrita para o paleobasic). Nomes: `rb-`, `th2-`, `bd-` + o titulo; categorias "
 "VER TAMBEM"; as figuras nao existem no terminal (`[Ver Figura: CH01F01]`). Como sao milhares de topicos, o indice mostra so' uma linha por livro; navegue com `man -l red`,
 `man -l handbook`, `man -k <texto>`. O texto ocupa ~2,3 MB no executavel.
 
+### 1e. MSX-DOS 2, MSX-DOS 1, Z80, R800, FM-PAC e extensoes do BASIC (1.38.4)
+
+`tools/paleobasic/import_manuals_help.py` importa `MsxManualsHelpData.pbi` (MANUALS.CHM do RuMSX) e `MsxSoftwareHelpData.pbi` (SOFTWARE.CHM). Do primeiro, o MSX-DOS 2 vem **partido**: `dos2-<comando>`
+(40), `dos2-fn-XXh` (92 chamadas; apelidos `_simbolo` e `dos2-fn-<nome>`), os capitulos e a interface de programa; mais `z80-opcodes`, `z80-mnemonics`, `z80-overview`, `r800-instructions`, `r800-msx`,
+`fmpac-manual` e `turbo-basic-compiler`. Do segundo: as extensoes `CALL ...`, Disk-BASIC, MSX2/2+/Turbo-R, `operators`, `variables`, `using`..., as referencias `ref-*` (cores, erros, modos de tela, vozes do
+MSX-Music...), `dos-*` (MSX-DOS 1) e `cpm`. Palavras que ja' tinham pagina (livro da Gradiente) ganham a versao em ingles como secao `==== MSX-BASIC ====` da mesma pagina (a fusao considera apelidos da
+mesma categoria). **Nao importado**: OpenMSX (o fwMSX nao usa) e os 8 capitulos do MSX2 Technical Handbook do MANUALS.CHM (o livro inteiro ja' vem de `import_books_help.py`).
+
 ### Origem e direitos
 O material do MSX-BASIC e' de duas obras de terceiros (a de BIOS/hardware, acima, e' do MSXBIOS.CHM do RuMSX, que reune fontes publicas: MSX Assembly Page, manuais do blueMSX e
 do openMSX, livros da Aleph). O responsavel pela Aleph autorizou expressamente a distribuicao de material de MSX e ZX81 (informado pelo autor do projeto). Texto transcrito no
@@ -112,7 +120,7 @@ A formatacao de uma linha de tabela mais larga que a tela mantem as colunas: a c
 
 ## 5. O que falta
 
-- **Ainda nao importados do paleobasic** (mesma pasta `help/`): `OpenMsxHelpData.pbi` (manual do openMSX), `MsxManualsHelpData.pbi` (1,8 MB) e `MsxSoftwareHelpData.pbi` -- decidir se vale pagar no tamanho do executavel.
+- **Nao importado do paleobasic** (por escolha): `OpenMsxHelpData.pbi` (o projeto nao usa o openMSX). Tudo o mais da pasta `help/` ja' esta' no man.
 - Mais topicos de referencia: comandos da SUB-ROM do MSX2, tabela de caracteres/ASCII do MSX, codigos de erro do BASIC, MSX-DOS 1/2
   (chamadas do BDOS), MSX-MUSIC (OPLL), SCC, os comandos do VDP em detalhe, mappers de cartucho, mapa de memoria da VRAM por modo.
 - O modo janela (`--term`, F11) ainda tem a ajuda antiga; o `man` la' e' o proximo passo.
