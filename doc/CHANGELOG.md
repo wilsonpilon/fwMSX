@@ -7,6 +7,22 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.38.2] - 2026-10-16 - "Road Fighter: BIOS e hardware" (Konami)
+
+### Adicionado
+- **Rotinas, variaveis e hardware do MSX no `man`**, importados do paleobasic (MSXBIOS.CHM do RuMSX, texto em ingles como no original):
+  **554 topicos de BIOS/BDOS/RAM** (`man chput`, `man wrtvdp`, `man jiffy`, `man linl40`; rotinas da MainROM, SubROM, Disk-ROM, Hangul-ROM, BDOS e as
+  variaveis da area de trabalho) e **33 de hardware** (RTC, PSG, SCC, MSX-Music/OPLL, MSX-Audio, MoonSound, V9958, V9990, matriz do teclado, mapa de portas,
+  Kanji, PCM, MIDI, SCSI, caneta optica, fita): `man hw-rtc`, `man hw-psg`, `man hw-v9990`, `man opll`... Nomes iguais em areas diferentes (WRTVDP na
+  MainROM e na SubROM; BEEP na BIOS e no BASIC) viram secoes da mesma pagina.
+- **`man -l [categoria]`**: sem argumento, as categorias e quantos topicos tem cada; com uma (`man -l bios-rom`), os nomes de todos os topicos.
+- **`man -k texto`**: procura o texto nos nomes, apelidos e resumos (`man -k sprite`).
+- `tools/paleobasic/import_bios_help.py` (gera `src/man/cpp/man_pages_msxbios.cpp`).
+
+### Mudou
+- O indice (`man`) mostra so' a CONTAGEM das familias grandes (BIOS-ROM, BDOS, Variaveis RAM), com a dica de como listar.
+- A fusao de nomes iguais ficou generica (secao `==== categoria ====` dentro da pagina), no lugar do texto fixo "NO MSX-BASIC".
+
 ## [1.38.1] - 2026-10-16 - "Road Fighter: Manual do BASIC" (Konami)
 
 ### Adicionado

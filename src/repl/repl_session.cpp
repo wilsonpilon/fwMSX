@@ -62,7 +62,16 @@ void ReplSession::Help(const std::vector<std::string> &t, std::ostream &out) {
 void ReplSession::Man(const std::vector<std::string> &t, std::ostream &out) {
     const int width = std::min(std::max(width_, 40), 100);
     std::string title, text;
-    if (t.size() < 2) {
+    // man -l [categoria] lista as categorias / os nomes de uma categoria; man -k texto procura em nomes, apelidos e resumos
+    std::string rest;
+    for (size_t i = 2; i < t.size(); ++i) rest += (i > 2 ? " " : "") + t[i];
+    if (t.size() >= 2 && (t[1] == "-l" || t[1] == "--list")) {
+        title = "man -l";
+        text = man::ListCategory(rest, width);
+    } else if (t.size() >= 2 && (t[1] == "-k" || t[1] == "--apropos")) {
+        title = "man -k " + rest;
+        text = man::Apropos(rest, width);
+    } else if (t.size() < 2) {
         title = "man";
         text = man::Index(width);
     } else {

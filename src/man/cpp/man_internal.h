@@ -8,6 +8,8 @@ namespace man {
 std::vector<Topic> CommandTopics();   // man_pages_cmd.cpp: comandos do console, do emulador e do depurador
 std::vector<Topic> ToolTopics();      // man_pages_tools.cpp: newdisk, asm, romdb, cas, fitadb, msxdisk
 std::vector<Topic> ReferenceTopics(); // man_pages_msx.cpp: BIOS, variaveis do sistema, ganchos, BASIC, cores...
+std::vector<Topic> BiosTopics();      // man_pages_msxbios.cpp (GERADO por tools/paleobasic/import_bios_help.py): rotinas/variaveis da BIOS e do BDOS
+std::vector<Topic> HardwareTopics();  // idem: chips e perifericos (RTC, PSG, SCC, OPLL, V9958, V9990...)
 std::vector<Topic> BasicTopics();     // man_pages_basic.cpp (GERADO por tools/paleobasic/import_basic_help.py): palavras do MSX-BASIC e o manual
 
 // Uma linha das tabelas de referencia (BIOS, variaveis do sistema, ganchos). As tabelas sao dados: as paginas do man

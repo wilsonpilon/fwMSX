@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.38.1 "Road Fighter: Manual do BASIC", Konami)
+## Estado atual (v1.38.2 "Road Fighter: BIOS e hardware", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -136,7 +136,8 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.37.7 `type` com teclas: `type "key off" {enter}`, `{ctrl}+{c}`;
 1.37.8 `--keys` aceita a mesma sintaxe;
 1.38.0 `help` organizado, `help <comando>` e `man <topico>` (manual + referencia do MSX: BIOS, variaveis, ganchos, cores...);
-**1.38.1 manual completo do MSX-BASIC no `man` (172 palavras com exemplos + apendices)**. Detalhes em
+1.38.1 manual completo do MSX-BASIC no `man` (172 palavras com exemplos + apendices);
+**1.38.2 rotinas/variaveis da BIOS e BDOS (554) e hardware (33) no `man`; `man -l` e `man -k`**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).

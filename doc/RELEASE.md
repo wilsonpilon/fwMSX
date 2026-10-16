@@ -17,6 +17,30 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.38.2 -- "Road Fighter: BIOS e hardware" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- importar tambem `BiosCallsHelpData.pbi`, `BiosDocHelpData.pbi` e `HardwareHelpData.pbi` do paleobasic. O usuario informou que o
+responsavel pela Aleph autorizou explicitamente a distribuicao de material de MSX/ZX81 e que o restante vem de fontes publicas (MSX Assembly Page, manuais do
+blueMSX e do openMSX, livros da Aleph).
+
+### O que foi feito
+- `tools/paleobasic/import_bios_help.py`: mesmas regras do conversor do BASIC (so' literais PureBasic; qualquer outro termo e' erro) para o formato
+  `X_Begin()/X_L("...")/X_Commit(titulo, grupo)`. 597 verbetes de BIOS/BDOS/RAM -> 554 topicos (os de mesmo nome em areas diferentes se juntam); 2 de
+  documentacao; 33 de hardware. Tabulacoes viram espacos; ASCII puro. Hardware: apelidos curtos para o primeiro topico de cada grupo (`hw-rtc`, `rtc`, `opll`, `v9990`...).
+- `man.cpp`: fusao generica de nomes iguais (`==== categoria ====`), `ListCategory` (`man -l`), `Apropos` (`man -k`), indice com contagem das familias grandes.
+- Testes (`mantest`): `chput`, `wrtvdp` (MainROM + Sub-ROM), `beep` (BASIC + BIOS), `jiffy` (FC9E), `hw-rtc`/`rtc`/`v9990`/`hw-psg`, contagens, `man -l`, `man -k`.
+
+### Achados
+- Muitas variaveis de RAM e rotinas do paleobasic tem so' o endereco e o nome (ex.: `jiffy` = "FC9E JIFFY"); e' o que a fonte tem. A tabela escrita a mao em `man bios`/`man sysvars`
+  continua util para registradores de entrada/saida e foi conferida contra as ROMs.
+- Diagramas ASCII mais largos que o terminal (ex.: a estrutura do RTC) quebram de forma feia; em terminal de 100+ colunas ficam inteiros.
+
+### Validacao
+`ctest` 25/25 (Windows e Linux). Visto na tela: `man chput`, `man -l`, `man -k rtc`, `man rtc`.
+Nao conferido: a fidelidade ao MSXBIOS.CHM original (herdada do paleobasic); os diagramas em terminal estreito.
+
+---
+
 ## v1.38.1 -- "Road Fighter: Manual do BASIC" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- o paleobasic ja' tem o help completo das palavras-chave do MSX-BASIC (livro da Gradiente, em portugues); importar

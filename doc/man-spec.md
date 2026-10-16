@@ -30,8 +30,20 @@ fwmsx> man sysv              # nome parcial: "nao ha' topico 'sysv' -- parecidos
 depois, "NO MSX-BASIC". Tambem entram 23 topicos do manual, por exemplo `apendice-c-codigos-de-erro`, `apendice-d-mapa-da-memoria`,
 `apendice-a-caracteres-ascii`, `operadores`, `variaveis`, `interrupcoes` e os do FM-Music.
 
+### 1c. BIOS, BDOS, variaveis de RAM e hardware (1.38.2)
+
+`tools/paleobasic/import_bios_help.py` importa `BiosCallsHelpData.pbi`, `BiosDocHelpData.pbi` e `HardwareHelpData.pbi` (o paleobasic as gerou do MSXBIOS.CHM do RuMSX, Lex Lechz).
+Categorias: **BIOS-ROM** (MainROM, SubROM, Disk-ROM, Hangul-ROM, MSX-JE, EXTBIO), **BDOS**, **Variaveis RAM**, **Doc BIOS** e **Hardware** (RTC, PSG, SCC, OPLL, MSX-Audio,
+MoonSound, V9958, V9990, teclado, portas, Kanji, PCM, MIDI, SCSI, caneta optica, fita). O texto e' em INGLES, como no original. Uma rotina que existe em areas
+diferentes (WRTVDP na MainROM e na SubROM) vira UMA pagina com uma secao `AREA:` por area; um nome que ja' existe em outra categoria (BEEP no BASIC e na BIOS) vira uma
+secao `==== categoria ====` da pagina existente. `man -l` lista as categorias, `man -l <categoria>` os nomes, `man -k <texto>` procura em nomes, apelidos e resumos.
+Os topicos de hardware tem apelidos (`hw-rtc`/`rtc`, `hw-psg`, `hw-opll`/`opll`, `hw-v9990`/`v9990`, `hw-ports`...). Muitas variaveis de RAM trazem so' o endereco e o nome: e'
+o que a fonte tem; as tabelas `man bios` e `man sysvars` (escritas a mao e conferidas contra as ROMs) trazem os registradores de cada rotina.
+
 ### Origem e direitos
-Texto transcrito no projeto **paleobasic** (`resource/paleobasic/src/editor/help/MsxBasic*Data.pbi`) de duas obras de terceiros: *Linguagem BASIC MSX*
+O material do MSX-BASIC e' de duas obras de terceiros (a de BIOS/hardware, acima, e' do MSXBIOS.CHM do RuMSX, que reune fontes publicas: MSX Assembly Page, manuais do blueMSX e
+do openMSX, livros da Aleph). O responsavel pela Aleph autorizou expressamente a distribuicao de material de MSX e ZX81 (informado pelo autor do projeto). Texto transcrito no
+projeto **paleobasic** (`resource/paleobasic/src/editor/help/MsxBasic*Data.pbi`) de duas obras: *Linguagem BASIC MSX*
 (Denise Santoro Cruz, Editora Aleph/Gradiente, 4a edicao, 1986) e *Manual MSX 2+ FM* (Ademir Carchano / Flavio Monaco, ACVS Eletronica). Cada pagina
 cita a fonte e a pagina. A importacao e' feita UMA vez por `tools/paleobasic/import_basic_help.py`, que gera `src/man/cpp/man_pages_basic.cpp`
 (arquivo gerado: nao editar a mao; corrigir no paleobasic e rodar o script de novo). Para distribuir sem esse texto basta tirar o arquivo de
@@ -92,8 +104,8 @@ A formatacao de uma linha de tabela mais larga que a tela mantem as colunas: a c
 
 ## 5. O que falta
 
-- **Ainda nao importados do paleobasic** (mesma pasta `help/`): `BiosCallsHelpData.pbi` (chamadas da BIOS com registradores, mais completo que a nossa
-  tabela), `BiosDocHelpData.pbi`, `HardwareHelpData.pbi` e a ajuda do Basic Dignified. Candidatos naturais para o proximo passo.
+- **Ainda nao importados do paleobasic** (mesma pasta `help/`): `RedBookHelpData.pbi` (MSX Red Book), `Th2HandbookHelpData.pbi` (MSX2 Technical Handbook), `OpenMsxHelpData.pbi`
+  (manual do openMSX), `MsxManualsHelpData.pbi`, `MsxSoftwareHelpData.pbi` e a ajuda do Basic Dignified -- grandes (ate 1,8 MB cada); decidir quais vale pagar no tamanho do executavel.
 - Mais topicos de referencia: comandos da SUB-ROM do MSX2, tabela de caracteres/ASCII do MSX, codigos de erro do BASIC, MSX-DOS 1/2
   (chamadas do BDOS), MSX-MUSIC (OPLL), SCC, os comandos do VDP em detalhe, mappers de cartucho, mapa de memoria da VRAM por modo.
 - O modo janela (`--term`, F11) ainda tem a ajuda antiga; o `man` la' e' o proximo passo.

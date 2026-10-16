@@ -103,8 +103,8 @@ void TestTopics() {
         const man::Topic *sc = man::Find("screen");
         check(sc && Contains(sc->page, "NO MSX2+"), "screen traz o verbete do MSX1 e o do MSX2+");
         const man::Topic *st = man::Find("stop");
-        check(st && st->command && Contains(st->page, "NO MSX-BASIC") && Contains(st->page, "FORMATO"), "stop: o comando do fwMSX ganha a secao do BASIC");
-        check(man::Find("wait") && man::Find("wait")->command && Contains(man::Find("wait")->page, "NO MSX-BASIC"), "wait: idem");
+        check(st && st->command && Contains(st->page, "==== MSX-BASIC ====") && Contains(st->page, "FORMATO"), "stop: o comando do fwMSX ganha a secao do BASIC");
+        check(man::Find("wait") && man::Find("wait")->command && Contains(man::Find("wait")->page, "==== MSX-BASIC ===="), "wait: idem");
         check(man::Find("apendice-c-codigos-de-erro") != nullptr && man::Find("apendice-d-mapa-da-memoria") != nullptr, "topicos do manual (erros, mapa da memoria)");
         int nbasic = 0, nmanual = 0;
         for (const man::Topic &tp : man::Topics()) {
@@ -113,6 +113,29 @@ void TestTopics() {
         }
         check(nbasic >= 150 && nmanual == 23, "importados: " + std::to_string(nbasic) + " palavras e " + std::to_string(nmanual) + " topicos de manual");
         check(Contains(man::Index(78), "print") && Contains(man::Index(78), "Manual MSX-BASIC"), "o indice lista as palavras do BASIC");
+    }
+
+    // BIOS, BDOS, variaveis de RAM e hardware (MSXBIOS.CHM do RuMSX, via paleobasic)
+    {
+        const man::Topic *c = man::Find("chput");
+        check(c && c->category == "BIOS-ROM" && Contains(c->page, "AREA: ") && Contains(c->page, "00A2H") && Contains(c->page, "FONTE"), "man chput: rotina da BIOS com endereco");
+        const man::Topic *w = man::Find("wrtvdp");
+        check(w && Contains(w->page, "MainROM") && Contains(w->page, "Sub-ROM"), "wrtvdp: a rotina da BIOS e a da sub-ROM na mesma pagina");
+        const man::Topic *b = man::Find("beep");
+        check(b && Contains(b->page, "FORMATO") && Contains(b->page, "==== BIOS-ROM ====") && Contains(b->page, "AREA: "), "beep: a palavra do BASIC e a rotina da BIOS na mesma pagina");
+        const man::Topic *j = man::Find("jiffy");
+        check(j && j->category == "Variaveis RAM" && Contains(j->page, "FC9E"), "man jiffy: variavel de RAM com endereco (FC9E)");
+        check(man::Find("hw-rtc") != nullptr && man::Find("rtc") == man::Find("hw-rtc") && man::Find("v9990") != nullptr && man::Find("hw-psg") != nullptr, "topicos de hardware (rtc, v9990, psg)");
+        int bios = 0, hw = 0, ram = 0, dos = 0;
+        for (const man::Topic &tp : man::Topics()) {
+            if (tp.category == "BIOS-ROM") ++bios;
+            if (tp.category == "Hardware") ++hw;
+            if (tp.category == "Variaveis RAM") ++ram;
+            if (tp.category == "BDOS") ++dos;
+        }
+        check(bios > 200 && ram > 100 && dos > 50 && hw == 33, "importados: " + std::to_string(bios) + " BIOS, " + std::to_string(dos) + " BDOS, " + std::to_string(ram) + " RAM, " + std::to_string(hw) + " hardware");
+        check(Contains(man::ListCategory("", 78), "bios-rom") && Contains(man::ListCategory("bios", 78), "chput") && Contains(man::ListCategory("nada", 78), "nao ha'"), "man -l: categorias e nomes");
+        check(Contains(man::Apropos("sprite", 78), "put sprite") && Contains(man::Apropos("zzzz", 78), "nada encontrado"), "man -k: busca em nomes e resumos");
     }
 
     // as referencias existem

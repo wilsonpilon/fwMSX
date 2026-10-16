@@ -39,6 +39,12 @@ std::string HelpTable(int width = 78);
 // `help <comando>`: uso e resumo (poucas linhas).
 std::string HelpFor(const Topic &t);
 
+// `man -l [categoria]`: sem argumento, as categorias com a contagem; com uma (nome inteiro ou o comeco), os nomes de todos os topicos dela.
+std::string ListCategory(const std::string &category, int width = 78);
+
+// `man -k texto`: os topicos cujo nome, apelido ou resumo contem o texto.
+std::string Apropos(const std::string &text, int width = 78);
+
 // `man` sem argumento: o indice de TODOS os topicos (comandos e referencia), por categoria.
 std::string Index(int width = 78);
 

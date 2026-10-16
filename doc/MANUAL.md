@@ -758,6 +758,9 @@ abre o manual completo, com exemplos. O `man` tambem traz a **referencia do MSX*
 **Manual do MSX-BASIC**: cada palavra reservada tem sua pagina, em portugues, com formato, exemplo, descricao e programa exemplo (`man print`,
 `man screen`, `man put sprite`, `man for`, `man call music`...; `help print` mostra so' o formato e o resumo), alem de topicos do manual como
 `man apendice-c-codigos-de-erro` e `man apendice-d-mapa-da-memoria`. Os textos vem do livro *Linguagem BASIC MSX* (Aleph/Gradiente) e do *Manual MSX 2+ FM*.
+**BIOS e hardware**: `man chput`, `man wrtvdp`, `man jiffy`... (rotinas da MainROM/SubROM/Disk-ROM, BDOS e variaveis de RAM, em ingles) e os chips: `man hw-rtc`,
+`man hw-psg`, `man opll`, `man v9990`, `man hw-ports`... **`man -l`** lista as categorias; `man -l bios-rom` lista os nomes de uma; **`man -k sprite`** procura o texto
+nos nomes e resumos.
 No console o texto e' paginado (espaco = pagina, Enter = linha, `q` sai); na TUI abre uma janelinha (setas, PgUp/PgDn, Home/End, Esc ou `q`
 fecham). Detalhes e como acrescentar topicos: [man-spec.md](man-spec.md).
 

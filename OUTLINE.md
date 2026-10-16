@@ -17,6 +17,9 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.38.2 "Road Fighter: BIOS e hardware" (publicada)**: `man`/`help` ganharam 554 rotinas/variaveis (BIOS, BDOS, RAM) e 33 topicos de hardware (ingles, do paleobasic);
+  `man -l [categoria]` e `man -k texto`. Autorizacao da Aleph para distribuir material MSX/ZX81 informada pelo usuario (registrada em doc/man-spec.md). **Proximos candidatos** (mesma pasta
+  do paleobasic): `RedBookHelpData.pbi`, `Th2HandbookHelpData.pbi`, `OpenMsxHelpData.pbi`, `MsxManualsHelpData.pbi`, `MsxSoftwareHelpData.pbi` (1,8 MB!) -- pesar o tamanho do executavel.
 - **1.38.1 "Road Fighter: Manual do BASIC" (publicada)**: `man`/`help` ganharam as 172 palavras reservadas do MSX-BASIC e 23 topicos do manual (erros, mapa da memoria,
   ASCII, FM-Music...), em portugues, importados do paleobasic por `tools/paleobasic/import_basic_help.py` (gera `src/man/cpp/man_pages_basic.cpp`). **Proximo candidato**: importar
   `BiosCallsHelpData.pbi`, `BiosDocHelpData.pbi` e `HardwareHelpData.pbi` do mesmo paleobasic (substituiriam/complementariam a nossa tabela da BIOS escrita a mao).

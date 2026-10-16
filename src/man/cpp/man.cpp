@@ -55,25 +55,6 @@ void AppendRow(std::string &out, const std::string &left, const std::string &rig
 
 } // namespace
 
-const std::vector<Topic> &Topics() {
-    static const std::vector<Topic> all = [] {
-        std::vector<Topic> v = CommandTopics();
-        for (Topic &t : ToolTopics()) v.push_back(std::move(t));
-        for (Topic &t : ReferenceTopics()) v.push_back(std::move(t));
-        // Palavras do MSX-BASIC: quando o nome e' o de um comando do fwMSX (stop, wait), a pagina do BASIC vira uma secao a mais da pagina
-        // do comando em vez de um segundo topico com o mesmo nome.
-        for (Topic &b : BasicTopics()) {
-            Topic *same = nullptr;
-            for (Topic &t : v)
-                if (t.command && Lower(t.name) == Lower(b.name)) same = &t;
-            if (same) same->page += "\n\nNO MSX-BASIC (palavra reservada de mesmo nome)\n" + b.page;
-            else v.push_back(std::move(b));
-        }
-        return v;
-    }();
-    return all;
-}
-
 namespace {
 
 // minusculas, sem espacos nas pontas e com os espacos repetidos reduzidos a um
@@ -94,6 +75,30 @@ std::string Normalize(const std::string &s) {
 }
 
 } // namespace
+
+const std::vector<Topic> &Topics() {
+    static const std::vector<Topic> all = [] {
+        std::vector<Topic> v = CommandTopics();
+        for (Topic &t : ToolTopics()) v.push_back(std::move(t));
+        for (Topic &t : ReferenceTopics()) v.push_back(std::move(t));
+        // Material importado do paleobasic. Quando o nome ja' existe (o BIOS "BEEP" e o BASIC BEEP; o comando "stop" e a palavra STOP...), a
+        // pagina nova vira uma SECAO a mais da pagina existente em vez de um segundo topico com o mesmo nome.
+        auto absorb = [&](std::vector<Topic> list) {
+            for (Topic &b : list) {
+                Topic *same = nullptr;
+                for (Topic &t : v)
+                    if (Normalize(t.name) == Normalize(b.name)) same = &t;
+                if (same) same->page += "\n\n==== " + b.category + " ====\n" + b.page;
+                else v.push_back(std::move(b));
+            }
+        };
+        absorb(BasicTopics());
+        absorb(BiosTopics());
+        absorb(HardwareTopics());
+        return v;
+    }();
+    return all;
+}
 
 const Topic *Find(const std::string &name) {
     const std::string want = Normalize(name);
@@ -224,9 +229,7 @@ std::string Index(int width) {
     std::string out;
     out += "fwMSX - manual (man <topico>)\n" + Repeat('=', width) + "\n";
     std::vector<std::string> cats(std::begin(kCommandCategories), std::end(kCommandCategories));
-    cats.push_back("Referencia MSX");
-    cats.push_back("Manual MSX-BASIC");
-    cats.push_back("MSX-BASIC");
+    for (const char *extra : {"Referencia MSX", "Manual MSX-BASIC", "MSX-BASIC", "Hardware", "Doc BIOS", "BIOS-ROM", "BDOS", "Variaveis RAM"}) cats.push_back(extra);
     for (const std::string &cat : cats) {
         std::string block;
         if (cat == "MSX-BASIC") { // ~170 palavras: so' os nomes, em linhas corridas
@@ -234,13 +237,68 @@ std::string Index(int width) {
             for (const Topic &t : Topics())
                 if (t.category == cat) names += (names.empty() ? "" : "  ") + t.name;
             for (const std::string &l : Wrap(names, width - 2)) block += "  " + l + "\n";
+        } else if (cat == "BIOS-ROM" || cat == "BDOS" || cat == "Variaveis RAM") { // centenas de nomes: so' a contagem e como listar
+            int n = 0;
+            for (const Topic &t : Topics())
+                if (t.category == cat) ++n;
+            if (n) block += "  " + std::to_string(n) + " topicos (man <nome>; os nomes: man -l " + Lower(cat) + ")\n";
         }
         for (const Topic &t : Topics())
-            if (t.category == cat && cat != "MSX-BASIC") AppendRow(block, t.name, t.summary, 16, width);
+            if (t.category == cat && cat != "MSX-BASIC" && cat != "BIOS-ROM" && cat != "BDOS" && cat != "Variaveis RAM") AppendRow(block, t.name, t.summary, 16, width);
         if (block.empty()) continue;
         out += " " + cat + "\n " + Repeat('-', width - 1) + "\n" + block + "\n";
     }
     return out;
+}
+
+std::string ListCategory(const std::string &category, int width) {
+    std::vector<std::string> cats; // na ordem em que aparecem
+    for (const Topic &t : Topics())
+        if (std::find(cats.begin(), cats.end(), t.category) == cats.end()) cats.push_back(t.category);
+    const std::string want = Normalize(category);
+    std::string out;
+    if (want.empty()) {
+        out += "Categorias (man -l <categoria> lista os nomes):\n";
+        for (const std::string &c : cats) {
+            int n = 0;
+            for (const Topic &t : Topics())
+                if (t.category == c) ++n;
+            out += "  " + Lower(c) + std::string(Lower(c).size() < 20 ? 20 - Lower(c).size() : 1, ' ') + std::to_string(n) + "\n";
+        }
+        return out;
+    }
+    std::string chosen;
+    for (const std::string &c : cats)
+        if (Normalize(c) == want) chosen = c;
+    for (const std::string &c : cats)
+        if (chosen.empty() && Normalize(c).compare(0, want.size(), want) == 0) chosen = c;
+    if (chosen.empty()) return "nao ha' categoria '" + category + "' (man -l lista as categorias)\n";
+    std::string names;
+    int n = 0;
+    for (const Topic &t : Topics())
+        if (t.category == chosen) {
+            names += (names.empty() ? "" : "  ") + t.name;
+            ++n;
+        }
+    out += chosen + " (" + std::to_string(n) + ")\n";
+    for (const std::string &l : Wrap(names, width - 2)) out += "  " + l + "\n";
+    return out;
+}
+
+std::string Apropos(const std::string &text, int width) {
+    const std::string want = Normalize(text);
+    std::string out;
+    if (want.empty()) return "use: man -k <texto>\n";
+    int n = 0;
+    for (const Topic &t : Topics()) {
+        bool hit = Normalize(t.name).find(want) != std::string::npos || Normalize(t.summary).find(want) != std::string::npos;
+        for (const std::string &a : Names(t)) hit = hit || Normalize(a).find(want) != std::string::npos;
+        if (!hit) continue;
+        AppendRow(out, t.name, t.summary, 24, width);
+        ++n;
+    }
+    if (!n) return "nada encontrado para '" + text + "'\n";
+    return out + std::to_string(n) + " topico(s)\n";
 }
 
 std::string Render(const Topic &t, int width) {
