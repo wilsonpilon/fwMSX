@@ -755,6 +755,9 @@ fwmsx> newdisk novo.dsk ds35
 abre o manual completo, com exemplos. O `man` tambem traz a **referencia do MSX**: `man bios` (rotinas da BIOS: CHPUT, CHGET, WRTVDP...),
 `man sysvars` (variaveis do sistema: FORCLR, JIFFY, SCRMOD...), `man hooks` (ganchos), `man basic`, `man cores`, `man screens`, `man vdpregs`,
 `man psgregs`, `man portas`, `man slotsmsx` e `man teclado`. `man` sozinho lista tudo; `man sysv` (nome parcial) sugere `sysvars`.
+**Manual do MSX-BASIC**: cada palavra reservada tem sua pagina, em portugues, com formato, exemplo, descricao e programa exemplo (`man print`,
+`man screen`, `man put sprite`, `man for`, `man call music`...; `help print` mostra so' o formato e o resumo), alem de topicos do manual como
+`man apendice-c-codigos-de-erro` e `man apendice-d-mapa-da-memoria`. Os textos vem do livro *Linguagem BASIC MSX* (Aleph/Gradiente) e do *Manual MSX 2+ FM*.
 No console o texto e' paginado (espaco = pagina, Enter = linha, `q` sai); na TUI abre uma janelinha (setas, PgUp/PgDn, Home/End, Esc ou `q`
 fecham). Detalhes e como acrescentar topicos: [man-spec.md](man-spec.md).
 

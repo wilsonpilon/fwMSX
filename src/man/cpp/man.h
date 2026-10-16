@@ -21,8 +21,11 @@ struct Topic {
 // Todos os topicos, na ordem de exibicao.
 const std::vector<Topic> &Topics();
 
-// Procura pelo nome ou apelido, sem diferenciar maiusculas. nullptr se nao existe.
+// Procura pelo nome ou apelido, sem diferenciar maiusculas (espacos repetidos valem um). Nome exato antes de apelido.
 const Topic *Find(const std::string &name);
+
+// Find e, se nao achar, o UNICO topico cujo nome comeca pela consulta ("man interval" -> "interval on/off/stop"). nullptr se nao ha ou se ha varios.
+const Topic *Resolve(const std::string &name);
 
 // Topicos cujo nome (ou apelido) casa com `query` (igual, comeco ou trecho), melhores primeiro.
 std::vector<const Topic *> Search(const std::string &query);

@@ -7,6 +7,21 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.38.1] - 2026-10-16 - "Road Fighter: Manual do BASIC" (Konami)
+
+### Adicionado
+- **Manual completo do MSX-BASIC no `man`**, em portugues, importado do paleobasic (`resource/paleobasic/src/editor/help/*.pbi`): **172 palavras
+  reservadas** (`man print`, `man screen`, `man put sprite`, `man for`, `man call music`...), cada uma com tipo (instrucao/funcao), formato, exemplo,
+  descricao e programa exemplo, do livro *Linguagem BASIC MSX* (Denise Santoro Cruz, Aleph/Gradiente, 1986) e do *Manual MSX 2+ FM* (ACVS) --
+  `screen`, `color`, `width`, `circle`... mostram o verbete do MSX1 e, em seguida, o do MSX2+. Mais **23 topicos do manual**: estrutura do BASIC
+  (modos, caracteres, constantes, variaveis, operadores, edicao), interrupcoes, arquivos, rotinas em linguagem de maquina, apendices (ASCII,
+  **codigos de erro**, **mapa da memoria**, funcoes trigonometricas) e o FM-Music (instrumentos, dicas, exemplos).
+- `help <palavra>` mostra o formato e o resumo (`help print`); `stop` e `wait` (que tambem sao comandos do fwMSX) mostram o comando e,
+  na mesma pagina, a palavra do BASIC.
+- Nomes de varias palavras (`man put sprite`), apelidos para os verbetes compostos (`man for`/`man next` -> for-next, `man err` -> erl/err,
+  `man interval`...) e prefixo unico (`man interval` abre `interval on/off/stop`).
+- `tools/paleobasic/import_basic_help.py`: o conversor (importacao unica; gera `src/man/cpp/man_pages_basic.cpp`, que e' o que vai ao git).
+
 ## [1.38.0] - 2026-10-16 - "Road Fighter" (Konami)
 
 ### Adicionado

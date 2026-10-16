@@ -8,6 +8,7 @@ namespace man {
 std::vector<Topic> CommandTopics();   // man_pages_cmd.cpp: comandos do console, do emulador e do depurador
 std::vector<Topic> ToolTopics();      // man_pages_tools.cpp: newdisk, asm, romdb, cas, fitadb, msxdisk
 std::vector<Topic> ReferenceTopics(); // man_pages_msx.cpp: BIOS, variaveis do sistema, ganchos, BASIC, cores...
+std::vector<Topic> BasicTopics();     // man_pages_basic.cpp (GERADO por tools/paleobasic/import_basic_help.py): palavras do MSX-BASIC e o manual
 
 // Uma linha das tabelas de referencia (BIOS, variaveis do sistema, ganchos). As tabelas sao dados: as paginas do man
 // saem delas e o teste (tests/z80/man_test.cpp) confere os enderecos contra a BIOS e a maquina emulada.

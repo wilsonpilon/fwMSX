@@ -361,6 +361,12 @@ const char *const kBasicPage = R"MAN(DESCRICAO
   Resumo dos comandos do MSX-BASIC (1.0 no MSX1; 2.0/2.1 no MSX2; 3.0 no
   MSX2+). Marcado (2): MSX2 em diante.
 
+  CADA palavra tem um manual proprio, com formato, descricao e programa de
+  exemplo (livro "Linguagem BASIC MSX", Aleph/Gradiente, e Manual MSX 2+ FM):
+  man print, man screen, man put sprite, man for... A lista completa das
+  palavras esta' no indice (man). Topicos do manual (variaveis, operadores,
+  codigos de erro, mapa da memoria, ASCII...) tambem estao la'.
+
 CONTROLE DE FLUXO
   FOR v=a TO b [STEP s] ... NEXT [v]      GOTO n
   GOSUB n ... RETURN [n]                  ON x GOTO/GOSUB n,n,...

@@ -60,17 +60,66 @@ const std::vector<Topic> &Topics() {
         std::vector<Topic> v = CommandTopics();
         for (Topic &t : ToolTopics()) v.push_back(std::move(t));
         for (Topic &t : ReferenceTopics()) v.push_back(std::move(t));
+        // Palavras do MSX-BASIC: quando o nome e' o de um comando do fwMSX (stop, wait), a pagina do BASIC vira uma secao a mais da pagina
+        // do comando em vez de um segundo topico com o mesmo nome.
+        for (Topic &b : BasicTopics()) {
+            Topic *same = nullptr;
+            for (Topic &t : v)
+                if (t.command && Lower(t.name) == Lower(b.name)) same = &t;
+            if (same) same->page += "\n\nNO MSX-BASIC (palavra reservada de mesmo nome)\n" + b.page;
+            else v.push_back(std::move(b));
+        }
         return v;
     }();
     return all;
 }
 
+namespace {
+
+// minusculas, sem espacos nas pontas e com os espacos repetidos reduzidos a um
+std::string Normalize(const std::string &s) {
+    std::string out;
+    bool space = false;
+    for (const char raw : s) {
+        const char c = static_cast<char>(man_fold(static_cast<unsigned char>(raw)));
+        if (c == ' ' || c == '\t') {
+            space = !out.empty();
+            continue;
+        }
+        if (space) out += ' ';
+        space = false;
+        out += c;
+    }
+    return out;
+}
+
+} // namespace
+
 const Topic *Find(const std::string &name) {
-    const std::string want = Lower(name);
+    const std::string want = Normalize(name);
+    if (want.empty()) return nullptr;
+    for (const Topic &t : Topics()) // 1a passada: o nome do topico
+        if (Normalize(t.name) == want) return &t;
+    for (const Topic &t : Topics()) // 2a: os apelidos
+        for (const std::string &n : Names(t))
+            if (Normalize(n) == want) return &t;
+    return nullptr;
+}
+
+const Topic *Resolve(const std::string &name) {
+    if (const Topic *t = Find(name)) return t;
+    const std::string want = Normalize(name);
+    if (want.empty()) return nullptr;
+    const Topic *hit = nullptr;
+    int count = 0;
     for (const Topic &t : Topics())
         for (const std::string &n : Names(t))
-            if (Lower(n) == want) return &t;
-    return nullptr;
+            if (man_match_score(n.data(), static_cast<int>(n.size()), want.data(), static_cast<int>(want.size())) == 2) {
+                if (hit != &t) ++count;
+                hit = &t;
+                break;
+            }
+    return count == 1 ? hit : nullptr;
 }
 
 std::vector<const Topic *> Search(const std::string &query) {
@@ -158,7 +207,7 @@ std::string HelpTable(int width) {
         out += "\n";
     }
     out += "Qualquer comando que o console nao conheca vai para o emulador conectado (emu start).\n";
-    out += "Referencia MSX (BIOS, variaveis, ganchos, BASIC, cores...): man <topico>; man lista todos.\n";
+    out += "MSX-BASIC (print, screen, for...) e referencia do MSX (bios, sysvars, hooks, cores...): man <topico>; man lista todos.\n";
     return out;
 }
 
@@ -176,10 +225,18 @@ std::string Index(int width) {
     out += "fwMSX - manual (man <topico>)\n" + Repeat('=', width) + "\n";
     std::vector<std::string> cats(std::begin(kCommandCategories), std::end(kCommandCategories));
     cats.push_back("Referencia MSX");
+    cats.push_back("Manual MSX-BASIC");
+    cats.push_back("MSX-BASIC");
     for (const std::string &cat : cats) {
         std::string block;
+        if (cat == "MSX-BASIC") { // ~170 palavras: so' os nomes, em linhas corridas
+            std::string names;
+            for (const Topic &t : Topics())
+                if (t.category == cat) names += (names.empty() ? "" : "  ") + t.name;
+            for (const std::string &l : Wrap(names, width - 2)) block += "  " + l + "\n";
+        }
         for (const Topic &t : Topics())
-            if (t.category == cat) AppendRow(block, t.name, t.summary, 16, width);
+            if (t.category == cat && cat != "MSX-BASIC") AppendRow(block, t.name, t.summary, 16, width);
         if (block.empty()) continue;
         out += " " + cat + "\n " + Repeat('-', width - 1) + "\n" + block + "\n";
     }

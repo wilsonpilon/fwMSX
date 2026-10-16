@@ -371,6 +371,7 @@ set(MAN_LIB_SOURCES
         src/man/cpp/man_pages_tools.cpp
         src/man/cpp/man_pages_msx.cpp
         src/man/cpp/man_pages_msx_data.cpp
+        src/man/cpp/man_pages_basic.cpp
         src/man/c/man_wrap.c
         src/man/fortran/man_match.f90
         src/man/asm/man_fold.asm

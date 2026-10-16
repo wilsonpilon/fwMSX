@@ -17,6 +17,34 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.38.1 -- "Road Fighter: Manual do BASIC" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- o paleobasic ja' tem o help completo das palavras-chave do MSX-BASIC (livro da Gradiente, em portugues); importar
+para o `man` e para o `help`.
+
+### O que foi feito
+- **Achado**: `resource/paleobasic/src/editor/help/` tem `MsxBasicDictData.pbi` (140 verbetes do livro), `MsxBasic2PlusDictData.pbi` (41, do manual
+  ACVS MSX2+/FM), `MsxBasicManualData.pbi` (16 topicos de prosa/apendices) e `MsxBasic2PlusManualData.pbi` (7). Sao chamadas PureBasic
+  (`MSXDict_Add(...)`) com argumentos que sao concatenacoes de literais; ha' ainda `BiosCallsHelpData.pbi`, `BiosDocHelpData.pbi` e `HardwareHelpData.pbi`
+  (nao importados ainda -- ver doc/man-spec.md, secao 5).
+- `tools/paleobasic/import_basic_help.py` interpreta so' esses literais (`"..."`, `#CRLF$`, `MSXQ`, `Chr(34)`, `#True/#False`, inteiros; qualquer outro termo
+  e' erro), junta os verbetes MSX1 e "(MSX2+)" numa pagina so', gera apelidos e escreve `man_pages_basic.cpp` (ASCII puro; o `¡` e o `¿` do
+  apendice de ASCII viraram "! (invertido)"/"? (invertido)").
+- `man.cpp`: `Find` em duas passadas (nome exato antes de apelido, espacos repetidos valem um), `Resolve` (prefixo unico), fusao com comandos de mesmo nome,
+  indice compacto das palavras do BASIC.
+- A pagina `basic` (resumo escrito a mao) ganhou um aviso apontando para os manuais por palavra.
+
+### Origem e direitos
+Os textos sao transcricoes de obras de terceiros (livro Aleph/Gradiente 1986; manual ACVS) feitas no paleobasic, cujo repositorio (com os PDFs) ja' vive em
+`resource/paleobasic`. O `man` cita a fonte e a pagina em cada verbete. Se for preciso, e' so' tirar `man_pages_basic.cpp` do CMake: o resto do `man` funciona sem ele.
+
+### Validacao
+`ctest` 25/25 (Windows e Linux). `mantest` confere: 150+ palavras e 23 topicos importados, apelidos, `Resolve`, fusao stop/wait, erros e mapa da memoria presentes,
+ASCII puro e ate' 78 colunas. Visto na tela: `help print`, `man for`, `man put sprite`.
+Nao conferido: a fidelidade das transcricoes ao livro (herdada do paleobasic, que diz ter transcrito "letra a letra"); o indice no console paginado.
+
+---
+
 ## v1.38.0 -- "Road Fighter" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- organizar o `help` e criar um `man <comando>` com janelinha de leitura, ja' pensando em abrigar a referencia

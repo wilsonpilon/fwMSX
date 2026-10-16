@@ -21,6 +21,22 @@ fwmsx> man sysv              # nome parcial: "nao ha' topico 'sysv' -- parecidos
   topo/fim, Esc ou `q` fecham. O titulo mostra a posicao (`1-18/47`). O texto e' quebrado na largura da caixa.
 - Os nomes nao diferenciam maiusculas e aceitam apelidos (`?` = help, `quit` = exit, `ganchos` = hooks, `colors` = cores...).
 
+## 1b. O manual do MSX-BASIC (1.38.1)
+
+`man <palavra>` mostra a pagina de qualquer palavra reservada do MSX-BASIC: **TIPO** (instrucao/funcao, uso avancado), **FORMATO**, **EXEMPLO**,
+**DESCRICAO**, **PROGRAMA EXEMPLO** e a **FONTE** (livro e pagina). Vale o mesmo para `help <palavra>` (formato + resumo). Os nomes aceitam varias palavras
+(`man put sprite`), apelidos dos verbetes compostos (`man for`, `man next`, `man err`, `man cload`) e prefixo unico (`man interval`). `screen`, `color`,
+`width`, `circle`, `play`... trazem o verbete do MSX1 e, abaixo, o do MSX2+. `stop` e `wait` sao tambem comandos do fwMSX: a pagina mostra o comando e,
+depois, "NO MSX-BASIC". Tambem entram 23 topicos do manual, por exemplo `apendice-c-codigos-de-erro`, `apendice-d-mapa-da-memoria`,
+`apendice-a-caracteres-ascii`, `operadores`, `variaveis`, `interrupcoes` e os do FM-Music.
+
+### Origem e direitos
+Texto transcrito no projeto **paleobasic** (`resource/paleobasic/src/editor/help/MsxBasic*Data.pbi`) de duas obras de terceiros: *Linguagem BASIC MSX*
+(Denise Santoro Cruz, Editora Aleph/Gradiente, 4a edicao, 1986) e *Manual MSX 2+ FM* (Ademir Carchano / Flavio Monaco, ACVS Eletronica). Cada pagina
+cita a fonte e a pagina. A importacao e' feita UMA vez por `tools/paleobasic/import_basic_help.py`, que gera `src/man/cpp/man_pages_basic.cpp`
+(arquivo gerado: nao editar a mao; corrigir no paleobasic e rodar o script de novo). Para distribuir sem esse texto basta tirar o arquivo de
+`MAN_LIB_SOURCES` no CMake: o resto do man continua funcionando.
+
 ## 2. Os topicos
 
 **Comandos** (categoria no `help`): Console (`help man exit clear emu wait`), Emulador (`version status reset pause resume
@@ -76,6 +92,8 @@ A formatacao de uma linha de tabela mais larga que a tela mantem as colunas: a c
 
 ## 5. O que falta
 
+- **Ainda nao importados do paleobasic** (mesma pasta `help/`): `BiosCallsHelpData.pbi` (chamadas da BIOS com registradores, mais completo que a nossa
+  tabela), `BiosDocHelpData.pbi`, `HardwareHelpData.pbi` e a ajuda do Basic Dignified. Candidatos naturais para o proximo passo.
 - Mais topicos de referencia: comandos da SUB-ROM do MSX2, tabela de caracteres/ASCII do MSX, codigos de erro do BASIC, MSX-DOS 1/2
   (chamadas do BDOS), MSX-MUSIC (OPLL), SCC, os comandos do VDP em detalhe, mappers de cartucho, mapa de memoria da VRAM por modo.
 - O modo janela (`--term`, F11) ainda tem a ajuda antiga; o `man` la' e' o proximo passo.

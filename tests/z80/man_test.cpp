@@ -91,6 +91,30 @@ void TestTopics() {
     check(Contains(table, "Console") && Contains(table, "Depurador") && Contains(table, "=====") && Contains(table, "-----"),
           "a tabela tem categorias e separadores");
 
+    // palavras do MSX-BASIC (importadas do paleobasic) e o manual do livro
+    {
+        const man::Topic *pr = man::Find("PRINT");
+        check(pr && pr->category == "MSX-BASIC" && Contains(pr->page, "FORMATO") && Contains(pr->page, "PROGRAMA EXEMPLO") && Contains(pr->page, "FONTE"),
+              "man print: formato, descricao, programa exemplo e fonte");
+        check(man::Find("for") == man::Find("for-next") && man::Find("next") != nullptr && man::Find("erl") == man::Find("erl/err"), "apelidos das palavras compostas (for, erl)");
+        check(man::Resolve("interval") != nullptr && man::Resolve("interval")->name == "interval on/off/stop", "Resolve: prefixo unico ('interval')");
+        check(man::Resolve("put  sprite") == man::Find("put sprite") && man::Find("put sprite") != nullptr, "nomes de varias palavras ('put sprite', espacos repetidos)");
+        check(man::Resolve("zzzz") == nullptr && man::Resolve("") == nullptr, "Resolve: nada casa = nullptr");
+        const man::Topic *sc = man::Find("screen");
+        check(sc && Contains(sc->page, "NO MSX2+"), "screen traz o verbete do MSX1 e o do MSX2+");
+        const man::Topic *st = man::Find("stop");
+        check(st && st->command && Contains(st->page, "NO MSX-BASIC") && Contains(st->page, "FORMATO"), "stop: o comando do fwMSX ganha a secao do BASIC");
+        check(man::Find("wait") && man::Find("wait")->command && Contains(man::Find("wait")->page, "NO MSX-BASIC"), "wait: idem");
+        check(man::Find("apendice-c-codigos-de-erro") != nullptr && man::Find("apendice-d-mapa-da-memoria") != nullptr, "topicos do manual (erros, mapa da memoria)");
+        int nbasic = 0, nmanual = 0;
+        for (const man::Topic &tp : man::Topics()) {
+            if (tp.category == "MSX-BASIC") ++nbasic;
+            if (tp.category == "Manual MSX-BASIC") ++nmanual;
+        }
+        check(nbasic >= 150 && nmanual == 23, "importados: " + std::to_string(nbasic) + " palavras e " + std::to_string(nmanual) + " topicos de manual");
+        check(Contains(man::Index(78), "print") && Contains(man::Index(78), "Manual MSX-BASIC"), "o indice lista as palavras do BASIC");
+    }
+
     // as referencias existem
     for (const char *r : {"bios", "sysvars", "hooks", "basic", "cores", "screens", "vdpregs", "psgregs", "portas", "slotsmsx", "teclado"})
         check(man::Find(r) != nullptr && !man::Find(r)->command && man::Find(r)->page.size() > 200, std::string("referencia '") + r + "' existe");

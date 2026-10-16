@@ -9,6 +9,17 @@
 
 namespace repl {
 
+namespace {
+
+// "man put sprite" -> "put sprite": o nome do topico pode ter varias palavras (as do MSX-BASIC tem).
+std::string JoinWords(const std::vector<std::string> &t) {
+    std::string name;
+    for (size_t i = 1; i < t.size(); ++i) name += (i > 1 ? " " : "") + t[i];
+    return name;
+}
+
+} // namespace
+
 ReplSession::ReplSession(std::string exe_path) : exe_path_(std::move(exe_path)), spawner_(SpawnDetached) {}
 
 void ReplSession::AddTool(const std::string &name, Tool tool, const std::string &help) {
@@ -27,9 +38,10 @@ std::string ReplSession::Prompt() const {
 // help <comando>  -> uso e resumo; o manual completo e' o `man <comando>`
 void ReplSession::Help(const std::vector<std::string> &t, std::ostream &out) {
     if (t.size() > 1) {
-        const man::Topic *topic = man::Find(t[1]);
+        const std::string name = JoinWords(t);
+        const man::Topic *topic = man::Resolve(name);
         if (topic) out << man::HelpFor(*topic);
-        else out << man::NotFound(t[1]);
+        else out << man::NotFound(name);
         return;
     }
     out << man::HelpTable(std::min(std::max(width_, 40), 100));
@@ -54,9 +66,10 @@ void ReplSession::Man(const std::vector<std::string> &t, std::ostream &out) {
         title = "man";
         text = man::Index(width);
     } else {
-        const man::Topic *topic = man::Find(t[1]);
+        const std::string name = JoinWords(t);
+        const man::Topic *topic = man::Resolve(name);
         if (!topic) {
-            out << man::NotFound(t[1]);
+            out << man::NotFound(name);
             return;
         }
         title = topic->name;
