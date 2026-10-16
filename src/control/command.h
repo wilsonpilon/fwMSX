@@ -74,13 +74,15 @@ public:
     // Quem hospeda a maquina (servidor TCP, TUI, modo terminal) chama depois de cada quadro/comando.
     std::vector<std::string> TakeEvents();
 
-private:
     // Uma "digitacao": as teclas descem juntas (na ordem) e sobem juntas (na ordem inversa) -- {ctrl}+{c} e' uma so'.
     struct TypedKey {
         std::vector<std::string> keys;
     };
     // Interpreta o argumento do "type" (texto entre aspas ou solto, {tecla}, {a}+{b}); false + erro se invalido.
-    bool ParseTypeSpec(const std::string &spec, std::vector<TypedKey> &out, std::string &error);
+    // literal = true e' o modo do --keys: aspas e espacos sao texto comum, so' {tecla} e a barra-n tem sentido especial.
+    static bool ParseTypeSpec(machine::Machine &m, const std::string &spec, bool literal, std::vector<TypedKey> &out, std::string &error);
+
+private:
 
     Host &host_;
     // Painel "Z80 Debugger" por texto (comando `dbgui`): o MESMO modelo da janela, para a TUI e qualquer cliente.

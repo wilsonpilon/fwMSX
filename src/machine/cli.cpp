@@ -471,18 +471,17 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
         if (!wav_path.empty()) m->EnableLiveAudio(true);
         const int boot_frames = frames > 0 ? frames : 400;
         for (int i = 0; i < boot_frames; ++i) run_frame();
-        for (char c : keys) {
-            std::string key;
-            bool shift = false;
-            if (!m->KeysFor(c, key, shift)) {
-                std::cerr << "fwmsx --msx: caractere nao suportado em --keys: '" << c << "'" << std::endl;
-                return 2;
-            }
-            if (shift) m->KeyDown("shift");
-            m->KeyDown(key);
+        // --keys usa a mesma sintaxe do comando type ({enter}, {ctrl}+{c}, {ctrl}{c}...), mas com aspas e espacos como texto comum.
+        std::vector<control::Commander::TypedKey> typed;
+        std::string keys_error;
+        if (!control::Commander::ParseTypeSpec(*m, keys, true, typed, keys_error)) {
+            std::cerr << "fwmsx --msx: --keys: " << keys_error << std::endl;
+            return 2;
+        }
+        for (const control::Commander::TypedKey &tk : typed) {
+            for (const std::string &k : tk.keys) m->KeyDown(k);
             for (int i = 0; i < 6; ++i) run_frame();
-            m->KeyUp(key);
-            if (shift) m->KeyUp("shift");
+            for (auto it = tk.keys.rbegin(); it != tk.keys.rend(); ++it) m->KeyUp(*it);
             for (int i = 0; i < 6; ++i) run_frame();
         }
         if (!keys.empty()) {

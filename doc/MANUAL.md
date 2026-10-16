@@ -491,7 +491,7 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 | `--diskrom <arquivo>` | `DISK.ROM` (padrao: ao lado da BIOS) |
 | `--fmpac [arquivo]` | FM-PAC no slot 2:0 (padrao: `resource/fMSX/FMPAC.ROM`) |
 | `--no-fmpac` | sem FM-PAC (o padrao o liga quando o `FMPAC.ROM` existe) |
-| `--keys "texto"` | digita o texto no teclado do MSX; `|` = Enter (`\"` para aspas; `(`, `)`, `*` e `@` ja' saem certos) |
+| `--keys "texto"` | digita o texto no teclado do MSX; `|` = Enter (`\"` para aspas; `(`, `)`, `*` e `@` ja' saem certos). Aceita a sintaxe de teclas do `type`: `{enter}`, `{esc}`, `{f1}`, `{stop}`, `{ctrl}+{c}` (juntas), `{ctrl}{c}` (em sequencia), `{enter*3}`. Aspas e espacos aqui sao texto comum |
 | `--wait N` | quadros de espera depois de `--keys` (padrao 60) |
 | `--shot <arquivo.ppm>` | salva a tela em PPM |
 | `--text` | imprime a tela em texto no fim (SCREEN 0 e 1) |

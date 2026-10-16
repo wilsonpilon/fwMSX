@@ -17,8 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.37.8 "Knightmare: Teclas no --keys" (publicada)**: `--keys` usa a mesma sintaxe de `{tecla}` do `type` (modo literal: aspas/espacos = texto).
+  Pendente: conferir a olho Control-C/STOP dentro de um programa BASIC; `--cmd` (ainda nao existe).
 - **1.37.7 "Knightmare: Teclas no type" (publicada)**: `type "key off" {enter}`; `{ctrl}+{c}` junto x `{ctrl}{c}` em sequencia; `{tecla*N}`.
-  Sintaxe desenhada pelo usuario. `--keys` (linha de comando) NAO usa a sintaxe nova ainda. Pendente: conferir Control-C/STOP dentro de um programa.
+  Sintaxe desenhada pelo usuario. Pendente: conferir Control-C/STOP dentro de um programa.
 - **1.37.6 "Knightmare: TUI sem sujeira" (publicada)**: o usuario viu codigos ANSI/desalinhamento na saida de comandos da TUI (ex.: `regs`).
   Causa: o worker trocava o rdbuf GLOBAL do cout e os redesenhos do FTXUI (que escreve em cout) caiam no historico. Corrigido com
   `ThreadCaptureBuf` (captura por thread). Usuario confirmou que a TUI "melhorou muito" na performance (1.37.5). Perguntas sobre o `--cli`

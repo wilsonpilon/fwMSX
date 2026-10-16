@@ -7,6 +7,13 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.8] - 2026-10-16 - "Knightmare: Teclas no --keys" (Konami)
+
+### Adicionado
+- **`--keys` aceita a sintaxe de teclas do `type`**: `--keys "print 1{enter}"`, `{esc}`, `{f1}`, `{ctrl}+{c}`, `{ctrl}{c}`, `{enter*3}`. O mesmo
+  interpretador (`Commander::ParseTypeSpec`, agora estatico, com modo literal: aspas e espacos continuam texto comum e `|` continua Enter).
+  Erro de sintaxe (tecla desconhecida, `{` sem `}`) sai com mensagem e codigo 2, antes de digitar. Atencao: um `{` que antes era texto agora abre uma tecla.
+
 ## [1.37.7] - 2026-10-16 - "Knightmare: Teclas no type" (Konami)
 
 ### Adicionado

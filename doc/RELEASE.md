@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.8 -- "Knightmare: Teclas no --keys" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- `--keys` com a mesma sintaxe de teclas do `type`.
+
+### O que foi feito
+- `Commander::ParseTypeSpec(Machine&, spec, literal, out, erro)` virou estatico e publico; `literal = true` (o `--keys`) trata aspas e espacos como
+  texto comum, mantendo `{tecla}`, `{a}+{b}`, `{tecla*N}` e a barra-n. `cli.cpp` digita cada "digitacao" (teclas juntas, 6 quadros apertadas e 6 soltas).
+- Teste em `controltest` (texto literal + `{enter}` + `{ctrl}+{c}` = 12 digitacoes; tecla desconhecida = erro) e uma execucao real:
+  `--keys "print \"oi\" {enter}print 2+3{enter}" --text` mostra `oi` e `5` na tela.
+- Efeito colateral documentado: `{` em `--keys` deixou de ser texto.
+
+### Validacao
+`ctest` 24/24 (Windows e Linux).
+
+---
+
 ## v1.37.7 -- "Knightmare: Teclas no type" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- mandar caracteres de controle com o `type` (ex.: `KEY OFF` + Enter). Desenho dele: `{tecla}` fora das aspas,

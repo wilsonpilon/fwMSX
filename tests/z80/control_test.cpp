@@ -185,6 +185,15 @@ void TestCommander(const std::string &bios) {
     Frames(host, cmd, 150);
     check(Contains(cmd.Execute("type oi mundo").text, "8 teclas"), "type: palavras soltas continuam juntas por um espaco");
     Frames(host, cmd, 100);
+    {   // --keys: mesma sintaxe, mas aspas e espacos sao texto comum
+        std::vector<control::Commander::TypedKey> tk;
+        std::string kerr;
+        check(control::Commander::ParseTypeSpec(host.machine(), "print \"a\" {enter}{ctrl}+{c}", true, tk, kerr) && tk.size() == 12 &&
+                  tk.back().keys.size() == 2 && tk.back().keys[0] == "ctrl",
+              "--keys: texto literal (aspas e espacos) + {enter} + {ctrl}+{c} -> " + std::to_string(tk.size()) + " " + kerr);
+        tk.clear();
+        check(!control::Commander::ParseTypeSpec(host.machine(), "oi {nada}", true, tk, kerr), "--keys: tecla desconhecida = erro");
+    }
     check(!cmd.Execute("type {foo}").ok && !cmd.Execute("type {enter").ok && !cmd.Execute("type").ok, "type: tecla desconhecida, '{' sem '}' e vazio = erro");
     cmd.Execute("reset");
     Frames(host, cmd, 50);

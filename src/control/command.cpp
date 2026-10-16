@@ -142,8 +142,7 @@ static std::string KeyAlias(std::string n) {
     return n;
 }
 
-bool Commander::ParseTypeSpec(const std::string &spec, std::vector<TypedKey> &out, std::string &error) {
-    machine::Machine &m = host_.machine();
+bool Commander::ParseTypeSpec(machine::Machine &m, const std::string &spec, bool literal, std::vector<TypedKey> &out, std::string &error) {
     const size_t n = spec.size();
     bool pending_space = false; // espaco entre duas palavras soltas vira UM espaco (como era antes das aspas/chaves)
     bool last_bare = false;
@@ -176,10 +175,10 @@ bool Commander::ParseTypeSpec(const std::string &spec, std::vector<TypedKey> &ou
 
     for (size_t i = 0; i < n;) {
         const char c = spec[i];
-        if (c == ' ' || c == '\t' || c == '\r' || c == '\n') {
+        if (!literal && (c == ' ' || c == '\t' || c == '\r' || c == '\n')) {
             if (last_bare) pending_space = true;
             ++i;
-        } else if (c == '"') {
+        } else if (!literal && c == '"') {
             ++i;
             bool closed = false;
             while (i < n) {
@@ -328,7 +327,7 @@ Result Commander::Execute(const std::string &line) {
         p += 4; // "type"
         std::vector<TypedKey> keys;
         std::string error;
-        if (!ParseTypeSpec(line.substr(std::min(p, line.size())), keys, error)) return Err(error);
+        if (!ParseTypeSpec(m, line.substr(std::min(p, line.size())), false, keys, error)) return Err(error);
         if (keys.empty()) return Err("type: informe o texto (\"texto\", {enter}, {ctrl}+{c}...)");
         for (const TypedKey &k : keys) typing_.push_back(k);
         return Ok(std::to_string(keys.size()) + " teclas");

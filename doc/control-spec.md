@@ -85,6 +85,8 @@ O argumento e' lido da linha crua, em pedacos:
 - **{a}+{b}+{c}**: UMA digitacao com as teclas juntas (descem na ordem, sobem na inversa): `{ctrl}+{c}` = Control-C.
   `{ctrl}{c}` sao duas digitacoes (Control apertado e solto, depois o C). `{ctrl+c}` e' atalho de `{ctrl}+{c}`.
 - **{tecla*N}**: repete N vezes (1-200); numa combinacao vale para a combinacao toda.
+- **`--keys`** (linha de comando, sem janela) usa o MESMO interpretador (`ParseTypeSpec`, modo literal): `{tecla}`, `{a}+{b}`, `{tecla*N}` e barra-n valem;
+  aspas e espacos sao texto comum e `|` continua sendo Enter. Um `{` que antes era digitado como texto agora abre uma tecla.
 - Erros: `tecla desconhecida`, `'{' sem '}'`, `aspas sem fechar`. Chaves DENTRO das aspas sao texto.
 
 ## 3. Como ligar
