@@ -69,6 +69,37 @@ void ParseStatus(const std::string &reply, EmuStatus &st) {
     st.screen = static_cast<int>(num("screen"));
 }
 
+// Texto que a thread corrente escreve em std::cout/std::cerr vai para ca' (nullptr = segue para o terminal). O FTXUI desenha a
+// tela escrevendo em std::cout; se o worker trocasse o rdbuf global para capturar a saida de um comando, qualquer redesenho
+// feito pela thread da interface nesse intervalo cairia no historico como um monte de codigos ANSI.
+thread_local std::string *g_capture = nullptr;
+
+class ThreadCaptureBuf : public std::streambuf {
+public:
+    explicit ThreadCaptureBuf(std::streambuf *orig) : orig_(orig) {}
+
+protected:
+    int_type overflow(int_type c) override {
+        if (traits_type::eq_int_type(c, traits_type::eof())) return traits_type::not_eof(c);
+        if (g_capture) {
+            g_capture->push_back(static_cast<char>(c));
+            return c;
+        }
+        return orig_->sputc(static_cast<char>(c));
+    }
+    std::streamsize xsputn(const char *s, std::streamsize n) override {
+        if (g_capture) {
+            g_capture->append(s, static_cast<size_t>(n));
+            return n;
+        }
+        return orig_->sputn(s, n);
+    }
+    int sync() override { return g_capture ? 0 : orig_->pubsync(); }
+
+private:
+    std::streambuf *orig_;
+};
+
 class App {
 public:
     App(std::unique_ptr<repl::ReplSession> session, std::string start_dir)
@@ -78,6 +109,10 @@ public:
     ~App() { StopWorker(); }
 
     void StartWorker() {
+        out_router_ = std::make_unique<ThreadCaptureBuf>(std::cout.rdbuf());
+        err_router_ = std::make_unique<ThreadCaptureBuf>(std::cerr.rdbuf());
+        old_out_ = std::cout.rdbuf(out_router_.get());
+        old_err_ = std::cerr.rdbuf(err_router_.get());
         running_ = true;
         worker_ = std::thread(&App::WorkerLoop, this);
     }
@@ -86,6 +121,8 @@ public:
         if (running_.exchange(false)) {
             cv_.notify_all();
             if (worker_.joinable()) worker_.join();
+            std::cout.rdbuf(old_out_);
+            std::cerr.rdbuf(old_err_);
         }
     }
 
@@ -123,14 +160,12 @@ private:
             }
             if (have) {
                 busy_ = true;
-                std::ostringstream captured;
-                std::streambuf *old_out = std::cout.rdbuf(captured.rdbuf());
-                std::streambuf *old_err = std::cerr.rdbuf(captured.rdbuf());
+                std::string captured;
                 std::ostringstream out;
+                g_capture = &captured;
                 session_->Execute(line, out);
-                std::cout.rdbuf(old_out);
-                std::cerr.rdbuf(old_err);
-                const std::string text = captured.str() + out.str();
+                g_capture = nullptr;
+                const std::string text = captured + out.str();
                 {
                     std::lock_guard<std::mutex> lock(mu_);
                     if (line.rfind("dbgui ", 0) == 0) {
@@ -192,6 +227,8 @@ private:
     std::condition_variable cv_;
     std::deque<std::string> jobs_;
     std::thread worker_;
+    std::unique_ptr<ThreadCaptureBuf> out_router_, err_router_;
+    std::streambuf *old_out_ = nullptr, *old_err_ = nullptr;
     std::atomic<bool> running_{false};
     std::atomic<bool> busy_{false};
     std::atomic<bool> dirty_{true};

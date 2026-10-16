@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.6 -- "Knightmare: TUI sem sujeira" (Konami) (2026-10-16)
+
+**Fase:** relato do usuario -- na TUI, comandos com saida mostravam codigos ANSI e caracteres desalinhados.
+
+### Causa e correcao
+- `WorkerLoop` trocava `std::cout.rdbuf()` (global, vale para todas as threads) por um buffer de captura durante o comando; o FTXUI escreve o
+  quadro em `std::cout`, entao um redesenho nesse intervalo ia parar no historico (e a tela real ficava sem o quadro).
+- `ThreadCaptureBuf` (instalado uma vez em cout/cerr): se a thread corrente tem `g_capture` (thread_local), grava la'; senao repassa ao
+  buffer original. So' o worker captura.
+- Limite conhecido: uma ferramenta que escreva em cout de OUTRA thread propria durante o comando vai para o terminal, nao para o historico.
+
+### Validacao
+`ctest` 24/24 (Windows e Linux); `regs` conferido na TUI real com `tools/conperf` (`CONPERF_CMD`).
+
+---
+
 ## v1.37.5 -- "Knightmare: TUI mais leve" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- a digitacao no console estava "quase impossivel" (letras perdidas). Investigada com medicao; nao reproduzida,

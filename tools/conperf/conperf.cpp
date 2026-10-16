@@ -14,6 +14,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <string>
 #include <thread>
 #include <vector>
@@ -85,7 +86,7 @@ int main(int argc, char **argv) {
         Key(0, true);
         std::this_thread::sleep_for(std::chrono::milliseconds(7000));
     }
-    const std::string text = "abcdefghijklmnopqrstuvwxyz0123456789";
+    const std::string text = std::getenv("CONPERF_CMD") ? std::string() : std::string("abcdefghijklmnopqrstuvwxyz0123456789");
     auto t_start = std::chrono::steady_clock::now();
     auto ms = [&]() { return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - t_start).count(); };
     size_t seen = 0;
@@ -113,6 +114,24 @@ int main(int argc, char **argv) {
     if (!lat.empty()) std::fprintf(g_log, "  latencia ms: min=%lld mediana=%lld max=%lld", lat.front(), lat[lat.size() / 2], lat.back());
     std::fprintf(g_log, "\n");
     std::fflush(g_log);
+    // CONPERF_CMD=<comando>: digita o comando e grava a tela inteira (confere a saida de comandos, ex.: "regs" na TUI)
+    if (const char *extra = std::getenv("CONPERF_CMD")) {
+        TypeText(extra, interval);
+        Key(0, true);
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+        CONSOLE_SCREEN_BUFFER_INFO info;
+        GetConsoleScreenBufferInfo(g_out, &info);
+        const DWORD n = info.dwSize.X * info.dwSize.Y;
+        std::wstring buf(n, L' ');
+        DWORD got = 0;
+        ReadConsoleOutputCharacterW(g_out, &buf[0], n, COORD{0, 0}, &got);
+        for (SHORT y = 0; y < info.dwSize.Y; ++y) {
+            std::string row;
+            for (SHORT x = 0; x < info.dwSize.X; ++x) row += buf[y * info.dwSize.X + x] < 128 ? static_cast<char>(buf[y * info.dwSize.X + x]) : '?';
+            while (!row.empty() && row.back() == ' ') row.pop_back();
+            if (!row.empty()) std::fprintf(g_log, "| %s\n", row.c_str());
+        }
+    }
     TerminateProcess(pi.hProcess, 0);
     system("taskkill /F /IM fwMSX.exe >nul 2>&1");
     return 0;

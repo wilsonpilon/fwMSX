@@ -96,6 +96,12 @@ src/repl/                   ReplSession / EmuLink / BuildSession(): a mesma sess
 A tela so' e' redesenhada quando algo muda: a cada tecla/clique, quando chega uma resposta ou o estado do emulador (lido a cada 0,4 s) e enquanto
 um comando roda (`App::TakeDirty()`/`busy()`). Antes, uma thread mandava um evento a cada 80 ms (12,5 redesenhos/s) mesmo sem nada novo.
 
+## 6c. Captura da saida dos comandos (1.37.6)
+
+O FTXUI escreve o quadro em `std::cout`. A saida de um comando e' capturada por `ThreadCaptureBuf` (roteador instalado em cout/cerr): so' a
+thread do worker (`thread_local g_capture`) grava no historico; as demais escrevem no terminal. Trocar o `rdbuf` global fazia os redesenhos
+virarem texto no historico.
+
 ## 7. O que falta
 
 - Teclas de atalho por letra nos menus (Alt+letra) e menus com mnemonicos.

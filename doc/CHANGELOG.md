@@ -7,6 +7,15 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.6] - 2026-10-16 - "Knightmare: TUI sem sujeira" (Konami)
+
+### Corrigido
+- **TUI: comandos com saida (`regs`, `status`...) enchiam o historico de codigos ANSI e desalinhavam a tela.** O FTXUI desenha escrevendo em
+  `std::cout`, e o worker trocava o `rdbuf` GLOBAL do `std::cout` para capturar a saida do comando: qualquer redesenho da thread da
+  interface nesse intervalo (tecla, resposta) caia no historico como texto. Agora um `streambuf` roteador (`ThreadCaptureBuf`) captura so' o
+  que a thread do worker escreve; a thread da interface continua escrevendo no terminal.
+- Conferido na TUI real (`tools/conperf`, novo `CONPERF_CMD=regs`): a saida do `regs` aparece limpa.
+
 ## [1.37.5] - 2026-10-16 - "Knightmare: TUI mais leve" (Konami)
 
 ### Mudou

@@ -17,6 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.37.6 "Knightmare: TUI sem sujeira" (publicada)**: o usuario viu codigos ANSI/desalinhamento na saida de comandos da TUI (ex.: `regs`).
+  Causa: o worker trocava o rdbuf GLOBAL do cout e os redesenhos do FTXUI (que escreve em cout) caiam no historico. Corrigido com
+  `ThreadCaptureBuf` (captura por thread). Usuario confirmou que a TUI "melhorou muito" na performance (1.37.5). Perguntas sobre o `--cli`
+  lento (abaixo) continuam sem resposta.
 - **1.37.5 "Knightmare: TUI mais leve" (publicada)**: a TUI redesenha so' quando algo muda (antes 12,5x/s sempre). **ABERTO**: o usuario relatou que
   digitar no console (`--cli`) estava "quase impossivel, quase todas as letras perdidas". Medi com `tools/conperf/conperf.cpp` (teclas injetadas
   num console oculto): 36/36 letras ate a 3 ms entre teclas, mediana 16 ms (`--cli`) / 32-47 ms (TUI), com e sem emulador e com audio -- NAO
