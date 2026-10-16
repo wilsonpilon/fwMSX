@@ -66,7 +66,27 @@ struct Pre {
             const int block_before = block;
             const std::string stripped = StripComments(raw, block);
             if (block_before == 0 && block == 1) block_line = no;
-            const std::string t = Trim(stripped);
+            std::string t = Trim(stripped);
+            // "rotulo: .include ..." -- o asMSX aceita o rotulo na mesma linha; vira uma linha so' com o rotulo
+            // (que marca o inicio do texto incluido) seguida do include
+            {
+                const size_t colon = t.find(':');
+                if (colon != std::string::npos && colon > 0) {
+                    bool ident = true;
+                    for (size_t i = 0; i < colon; ++i) {
+                        const unsigned char ch = static_cast<unsigned char>(t[i]);
+                        if (!(std::isalnum(ch) || ch == '_' || ch == '.' || ch == '@')) ident = false;
+                    }
+                    const std::string rest = Trim(t.substr(colon + 1));
+                    if (ident && rest.size() > 7) {
+                        const size_t k2 = rest[0] == '.' ? 1 : 0;
+                        if (Lower(rest.substr(k2, 7)) == "include" && (rest[k2 + 7] == ' ' || rest[k2 + 7] == '\t' || rest[k2 + 7] == '"')) {
+                            dst.push_back({name, no, t.substr(0, colon + 1), false});
+                            t = rest;
+                        }
+                    }
+                }
+            }
             // include "arquivo"
             if (t.size() > 7) {
                 size_t k = 0;

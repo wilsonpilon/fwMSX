@@ -558,8 +558,8 @@ void Assembler::Statement(const std::vector<Token> &t, size_t i) {
         DefineVar(raw, v);
         return;
     }
-    // constante: nome EQU expressao
-    if (i + 1 < t.size() && t[i + 1].kind == Token::Ident && Lower(t[i + 1].text) == "equ") {
+    // constante: nome EQU expressao (o asMSX aceita tambem ".equ", como o PT3-ROM.ASM do replayer)
+    if (i + 1 < t.size() && t[i + 1].kind == Token::Ident && (Lower(t[i + 1].text) == "equ" || Lower(t[i + 1].text) == ".equ")) {
         if (DirectiveWords().count(Lower(raw))) Fail(17, "reserved word used as identifier");
         size_t pos = i + 2;
         if (pos >= t.size()) SyntaxError();

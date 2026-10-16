@@ -17,6 +17,8 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.39.1 "Yie Ar Kung-Fu: Replayer PT3" (publicada)**: primeiro programa real no fwasm (replayer PT3 de SapphiRe, `tests/asm/real/pt3`): achou e corrigiu `ROTULO: .include` e `nome .equ valor`;
+  `.rom`/`.sym` iguais ao asMSX v1.2.0 e a musica toca no emulador (`asme2etest`). Proximos: mais corpora reais, CLI/`.sym`/`.txt` por golden, fuzz diferencial, depois integrar o fwasm a TUI.
 - **1.39.0 "Yie Ar Kung-Fu" (publicada)**: **fwasm completo** -- `.rom`, `.megarom`+`.subpage`+`.select`, `.basic`, `.msxdos`, `.cas`, `.wav` (modulo NASM `wav_synth.asm`), `.sinclair`, `.size`, `.search`,
   `.callbios`, `.calldos`, `.debug`, `.break`, `.start`. 382 casos novos (`formats.golden`) conferidos byte a byte contra o `asmsx.exe`; CLI corrigido (o `.filename` valia nunca). Proximos passos naturais:
   integrar o fwasm ao emulador/TUI (`asm` ja' existe no console; falta "Montar e rodar" nos menus e a janela), usar `.debug`/`.break` no depurador do fwMSX, carregar o `.cas`/`.wav` gerado na janela do

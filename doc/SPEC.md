@@ -192,12 +192,13 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.39.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.39.1)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.39.0, publicada em `main`):**
+**Funcionando (v1.39.1, publicada em `main`):**
+- [x] **fwasm com programa real** (1.39.1): replayer PT3 de SapphiRe monta igual ao asMSX v1.2.0 e toca no emulador (`asme2etest`); corrigidos `ROTULO: .include` e `nome .equ valor`.
 
 - [x] **fwasm completo** (1.39.0): `.rom`, `.megarom` (+`.subpage`/`.select`), `.basic`, `.msxdos`, `.cas`, `.wav` (NASM), `.sinclair`, `.size`, `.search`, `.callbios`, `.calldos`, `.debug`, `.break`, `.start`; 382 casos novos conferidos byte a byte contra o asmsx.exe. Ver `doc/asm-spec.md`.
 - [x] **Manual do fwasm, NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`** (1.38.5): `man fwasm` (11 paginas, estado de cada diretiva), `man nestorbasic`/`nb-23`, `man seetracker`, `man msxbas2rom`.

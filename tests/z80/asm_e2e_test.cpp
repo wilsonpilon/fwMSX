@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -135,6 +136,68 @@ void TestTape(const std::string &bios) {
     std::remove(path.c_str());
 }
 
+unsigned Crc32(const std::vector<uint8_t> &d) {
+    unsigned c = 0xFFFFFFFFu;
+    for (uint8_t b : d) {
+        c ^= b;
+        for (int k = 0; k < 8; ++k) c = (c >> 1) ^ (0xEDB88320u & (0u - (c & 1u)));
+    }
+    return ~c;
+}
+
+// Le os arquivos do .include/.incbin do disco, relativos a uma pasta.
+struct DiskFiles : fwasm::FileProvider {
+    std::string dir;
+    explicit DiskFiles(std::string d) : dir(std::move(d)) {}
+    bool Read(const std::string &path, std::vector<uint8_t> &data) override {
+        std::ifstream f(dir + "/" + path, std::ios::binary);
+        if (!f) return false;
+        data.assign(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+        return true;
+    }
+};
+
+// Programa real: o replayer de PT3 do SapphiRe (tests/asm/real/pt3) -- ROM + .sym iguais ao asMSX v1.2.0 (CRC do oraculo) e
+// a musica AMAZONIA.PT3 realmente toca no PSG da maquina emulada.
+void TestPt3Replayer(const std::string &bios, const std::string &src_dir) {
+    const std::string dir = src_dir + "/tests/asm/real/pt3";
+    std::ifstream sf(dir + "/example.asm", std::ios::binary);
+    if (!sf) {
+        std::printf("[SKIP] fontes do replayer PT3 nao encontrados\n");
+        return;
+    }
+    const std::string text((std::istreambuf_iterator<char>(sf)), std::istreambuf_iterator<char>());
+    DiskFiles files(dir);
+    fwasm::AsmOptions opts;
+    const fwasm::AsmResult r = fwasm::Assemble("example.asm", text, opts, &files);
+    check(r.rc == 0 && r.outs.count("rom") && r.outs.count("sym"), "PT3: montou example.asm + PT3-ROM.ASM + PT3-RAM.ASM");
+    if (r.rc != 0 || !r.outs.count("rom") || !r.outs.count("sym")) return;
+    check(r.outs.at("rom").size() == 8192 && Crc32(r.outs.at("rom")) == 0x898867E9u, "PT3: o .rom e' igual ao do asMSX v1.2.0");
+    check(Crc32(r.outs.at("sym")) == 0x5E6BB47Bu, "PT3: o .sym e' igual ao do asMSX v1.2.0");
+    const std::string path = TempPath("fwasm_e2e_pt3.rom");
+    Write(path, r.outs.at("rom"));
+    machine::MachineConfig cfg;
+    cfg.bios_path = bios;
+    cfg.cart_path = path;
+    std::string error;
+    std::unique_ptr<machine::Machine> m = machine::Machine::Create(cfg, error);
+    check(m != nullptr, "PT3: maquina criada " + error);
+    if (m) {
+        std::vector<int> tons;
+        bool amp = false;
+        for (int i = 0; i < 600; ++i) {
+            m->RunFrame();
+            const uint8_t *rg = m->psg().state().r;
+            const int ton = rg[0] | (rg[1] << 8);
+            if (tons.empty() || tons.back() != ton) tons.push_back(ton);
+            if ((rg[8] & 15) || (rg[9] & 15) || (rg[10] & 15)) amp = true;
+        }
+        check(amp, "PT3: o replayer liga o volume de algum canal do PSG");
+        check(tons.size() >= 3, "PT3: o tom do canal A muda ao longo da musica (" + std::to_string(tons.size()) + " valores)");
+    }
+    std::remove(path.c_str());
+}
+
 } // namespace
 
 int main() {
@@ -149,6 +212,7 @@ int main() {
     }
     TestCartridges(bios);
     TestTape(bios);
+    TestPt3Replayer(bios, FWMSX_SOURCE_DIR);
 #endif
     std::printf("\n%s (%d falha(s))\n", g_failures ? "FALHOU" : "OK", g_failures);
     return g_failures ? 1 : 0;

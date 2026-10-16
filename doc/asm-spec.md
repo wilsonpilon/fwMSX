@@ -24,6 +24,12 @@ mesmos argumentos.
 montador, escrito em `src/man/cpp/man_pages_fwasm.cpp` a partir de `resource/asmsx.md`. Ao mudar uma diretiva, **atualizar `fwasm-directives`, `fwasm-formats`/`fwasm-megarom` e a lista em `fwasm`**
 (o `mantest` confere que as paginas existem, nao o texto de cada diretiva). As tabelas de BIOS saem de `bios_tables.inc`.
 
+## Programas reais (1.39.1)
+
+`tests/asm/real/pt3/` guarda o replayer PT3 de SapphiRe (asMSX) com a musica AMAZONIA.PT3. O `asme2etest` o monta, confere `.rom`/`.sym` por CRC contra o asMSX v1.2.0 e roda na maquina emulada
+(PSG tocando). Achados: `ROTULO: .include` na mesma linha e `nome .equ valor`. O asMSX v0.19.2 (que acompanha o exemplo) poe outro INIT no cabecalho quando `.start ROTULO` vem antes de `.rom`;
+o fwasm segue a v1.2.0. Proximos corpora: mais fontes reais do ecossistema asMSX (cada um que falhar vira um achado).
+
 ## Estado (1.39.0): o fwasm e' completo em relacao ao asMSX
 
 - **Passadas**: ate 4 passadas de simbolos (reaproveitando a tabela da anterior para referencias adiante) mais uma

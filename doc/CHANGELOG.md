@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.39.1] - 2026-10-16 - "Yie Ar Kung-Fu: Replayer PT3" (Konami)
+
+### Corrigido -- achados ao montar um programa real (replayer PT3 do SapphiRe, `tests/asm/real/pt3`)
+- **`ROTULO: .include "arq"` na mesma linha**: o pre-processador so' reconhecia `.include` no inicio da linha; agora o rotulo marca o inicio do texto incluido (como no asMSX).
+- **`nome .equ valor`** (com ponto) passa a ser aceito, alem de `nome equ valor`.
+- Teste novo no `asme2etest`: monta `example.asm` + `PT3-ROM.ASM` + `PT3-RAM.ASM` + `AMAZONIA.PT3`, confere o `.rom` e o `.sym` (CRC) contra o asMSX v1.2.0 e RODA a ROM na
+  maquina emulada, vendo a musica tocar no PSG.
+
 ## [1.39.0] - 2026-10-16 - "Yie Ar Kung-Fu" (Konami)
 
 ### Adicionado -- o fwasm vira um compilador completo para o MSX
