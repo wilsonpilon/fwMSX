@@ -17,6 +17,12 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.37.5 "Knightmare: TUI mais leve" (publicada)**: a TUI redesenha so' quando algo muda (antes 12,5x/s sempre). **ABERTO**: o usuario relatou que
+  digitar no console (`--cli`) estava "quase impossivel, quase todas as letras perdidas". Medi com `tools/conperf/conperf.cpp` (teclas injetadas
+  num console oculto): 36/36 letras ate a 3 ms entre teclas, mediana 16 ms (`--cli`) / 32-47 ms (TUI), com e sem emulador e com audio -- NAO
+  reproduzi. Hipoteses nao testadas: Windows Terminal/ConPTY (o harness `CreatePseudoConsole` ficou instavel), foco indo para a janela do
+  emulador depois de `emu start` (as teclas iriam para o MSX), maquina mais lenta. Perguntar ao usuario: qual terminal, se acontece sem `emu
+  start`, se e' `--cli` ou `--tui`, e se a janela do emulador esta' com o foco.
 - **1.37.4 "Knightmare: Teclado japones" (publicada)**: `type`/`--keys`/modo terminal passam a digitar a pontuacao pelo layout da BIOS
   (byte 002Ch: 0 = japones/JIS, senao internacional); tabelas conferidas contra as das proprias BIOS; tecla `ro` na matriz. **Conferido em
   tela** (janela real, com `tools/wincap/wincap.ps1`, que captura SO' a janela): o painel Z80 Debugger (F10, ENTER, setas, B, M, G, C, Q) e o

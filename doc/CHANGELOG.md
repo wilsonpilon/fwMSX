@@ -7,6 +7,19 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.37.5] - 2026-10-16 - "Knightmare: TUI mais leve" (Konami)
+
+### Mudou
+- **TUI**: deixou de se redesenhar 12 vezes por segundo SEMPRE (inclusive parada, com o terminal inteiro a cada quadro). Agora redesenha a cada
+  tecla/clique, a cada resposta ou estado novo do emulador (lido a cada 0,4 s) e enquanto um comando roda. Em repouso sao ~2,5 redesenhos/s
+  em vez de 12,5 -- menos saida disputando o terminal com a digitacao. (Pedido: "a digitacao no CLI esta quase impossivel".)
+
+### Investigacao da lentidao de digitacao (2026-10-16)
+- Medida com `tools/conperf/conperf.cpp` (injeta teclas num console oculto com `WriteConsoleInput` e le o buffer): o console `--cli` e a TUI
+  mostram 36/36 letras, mesmo a 3 ms entre teclas, **com e sem o emulador rodando e com audio** (latencia mediana 16 ms no `--cli`, 32-47 ms na
+  TUI). O emulador usa ~30% de um nucleo (idle) e roda a ~350 quadros/s headless (6x o tempo real). **Nao reproduzi a lentidao relatada**: ela
+  deve depender do terminal usado (Windows Terminal/ConPTY, cmd, PowerShell...) ou da maquina -- pedi os detalhes ao usuario.
+
 ## [1.37.4] - 2026-10-16 - "Knightmare: Teclado japones" (Konami)
 
 ### Corrigido

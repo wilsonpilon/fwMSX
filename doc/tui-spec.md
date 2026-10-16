@@ -91,6 +91,11 @@ src/repl/                   ReplSession / EmuLink / BuildSession(): a mesma sess
 - **Nao testado:** a digitacao e o mouse num terminal de verdade (aqui so' ha' pipes); a logica por tras
   deles e' a coberta pelo `tuitest`.
 
+## 6b. Redesenho (1.37.5)
+
+A tela so' e' redesenhada quando algo muda: a cada tecla/clique, quando chega uma resposta ou o estado do emulador (lido a cada 0,4 s) e enquanto
+um comando roda (`App::TakeDirty()`/`busy()`). Antes, uma thread mandava um evento a cada 80 ms (12,5 redesenhos/s) mesmo sem nada novo.
+
 ## 7. O que falta
 
 - Teclas de atalho por letra nos menus (Alt+letra) e menus com mnemonicos.

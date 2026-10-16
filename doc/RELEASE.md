@@ -17,6 +17,23 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.37.5 -- "Knightmare: TUI mais leve" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- a digitacao no console estava "quase impossivel" (letras perdidas). Investigada com medicao; nao reproduzida,
+mas a TUI deixou de redesenhar a tela inteira 12 vezes por segundo.
+
+### O que foi feito
+- `tui_app.cpp`: o `refresher` so' redesenha se algo mudou (`TakeDirty()`) ou se ha' comando rodando (`busy()`); o worker marca "sujo" a cada volta (a cada 0,4 s ou
+  resposta). Teclas e cliques ja' redesenham por conta propria.
+- `tools/conperf/conperf.cpp`: mede a latencia de digitacao do `--cli`/`--tui` (teclas injetadas no console, leitura do buffer da tela).
+- Medidas (conhost, 8 nucleos): 36/36 letras a 3, 15 e 30 ms; `--cli` mediana 16 ms, TUI 32-47 ms; emulador ~30% de um nucleo e ~350 quadros/s
+  headless. Atras de um ConPTY (Windows Terminal) NAO consegui medir (o harness ficou instavel) -- e' o ponto em aberto.
+
+### Validacao
+`ctest` 24/24 (Windows e Linux).
+
+---
+
 ## v1.37.4 -- "Knightmare: Teclado japones" (Konami) (2026-10-16)
 
 **Fase:** o bug do teclado achado ao tirar as capturas do README, mais a conferencia em tela do F10 e do splash.

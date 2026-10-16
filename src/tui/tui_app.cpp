@@ -93,6 +93,8 @@ public:
     TuiModel &model() { return model_; }
     repl::ReplSession &session() { return *session_; }
     bool busy() const { return busy_; }
+    // A tela so' e' redesenhada quando algo mudou (tecla, resposta do emulador, estado novo) ou ha' um comando rodando.
+    bool TakeDirty() { return dirty_.exchange(false); }
 
     void Enqueue(const std::string &line) {
         {
@@ -153,6 +155,7 @@ private:
                 busy_ = false;
             }
             PollStatus();
+            dirty_ = true; // chegou resposta/estado novo: a tela precisa ser redesenhada
         }
     }
 
@@ -191,6 +194,7 @@ private:
     std::thread worker_;
     std::atomic<bool> running_{false};
     std::atomic<bool> busy_{false};
+    std::atomic<bool> dirty_{true};
 };
 
 // ---- desenho ----------------------------------------------------------------------------------
@@ -420,12 +424,14 @@ int RunTui(const std::vector<std::string> &args, const std::string &argv0) {
         return true;
     });
 
-    // Redesenha ~12 vezes por segundo (chega a resposta do emulador, o contador de quadros anda...).
+    // Redesenha so' quando ha' o que mostrar: antes era 12 vezes por segundo SEMPRE, mesmo parado, e cada quadro cheio no
+    // terminal (mais as teclas) disputava o terminal com a digitacao. Agora: a cada mudanca de estado (o estado do emulador
+    // e' lido a cada 0,4 s), enquanto um comando roda (o aviso "executando...") e a cada tecla/clique, que ja' redesenham.
     std::atomic<bool> ui_running{true};
     std::thread refresher([&] {
         while (ui_running) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(80));
-            screen.PostEvent(Event::Custom);
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            if (app.TakeDirty() || app.busy()) screen.PostEvent(Event::Custom);
         }
     });
     screen.Loop(component);

@@ -182,7 +182,7 @@ acompanhamento manual do autor a cada build):
   BIOS MSX1 real do fMSX** (192 enderecos de PC distintos visitados em
   100 mil ciclos de execucao real de codigo de BIOS).
 
-  **Estado atual (2026-10-13, v1.37.4 "Knightmare: Teclado japones", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
+  **Estado atual (2026-10-13, v1.37.5 "Knightmare: TUI mais leve", Konami):** a maquina MSX1, MSX2 e MSX2+ estao completas no nucleo
   (VDP com efeitos de rastreio por linha, PSG, SCC, FM com BASIC, disco, joystick, SRAM e layout
   de slots), com o banco de ROMs (`--romdb`, agora com `verify` e auto-mapper pelo SHA-1 ao
   carregar um cartucho), o subsistema de fita completo (leitura, gravacao, empacotador
@@ -192,13 +192,14 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.37.4)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.37.5)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.37.4, publicada em `main`):**
+**Funcionando (v1.37.5, publicada em `main`):**
 
+- [x] **TUI mais leve** (1.37.5): redesenha so' quando algo muda (antes, 12x/s sempre). Lentidao de digitacao do console relatada pelo usuario: NAO reproduzida (medida em `tools/conperf`); aguardando detalhes do terminal.
 - [x] **Teclado japones x internacional no `type`/`--keys`/modo terminal** (1.37.4): a pontuacao digitada usa o layout da BIOS (byte 002Ch); as tabelas sao conferidas contra as das BIOS. F10 (Z80 Debugger) e splash conferidos em tela.
 - [x] **Painel Z80 Debugger na TUI + comando `dbgui`** (1.37.3): o mesmo painel da janela como texto no terminal, calculado no emulador; abre sozinho em breakpoint/watchpoint/until. Ver `doc/debug-spec.md`, secao 6c.
 - [x] **Z80 Debugger na janela** (1.37.2): F10 abre o painel (registradores no topo, `ENDERECO: bytes instrucao`, ENTER/setas/G/D/M/S/J/R/C/B/Q) com a fonte do proprio MSX; abre sozinho em breakpoint/watchpoint/`--debug`. Ver `doc/debug-spec.md`, secao 6b.
