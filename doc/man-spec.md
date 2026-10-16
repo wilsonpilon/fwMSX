@@ -40,6 +40,14 @@ secao `==== categoria ====` da pagina existente. `man -l` lista as categorias, `
 Os topicos de hardware tem apelidos (`hw-rtc`/`rtc`, `hw-psg`, `hw-opll`/`opll`, `hw-v9990`/`v9990`, `hw-ports`...). Muitas variaveis de RAM trazem so' o endereco e o nome: e'
 o que a fonte tem; as tabelas `man bios` e `man sysvars` (escritas a mao e conferidas contra as ROMs) trazem os registradores de cada rotina.
 
+### 1d. Livros: Red Book, MSX2 Technical Handbook e Basic Dignified (1.38.3)
+
+`tools/paleobasic/import_books_help.py` importa `RedBookHelpData.pbi` (*The MSX Red Book*, Avalon Software / Kuma Computers, 1985; versao Markdown de Gustavo Seidler),
+`Th2HandbookHelpData.pbi` (*MSX2 Technical Handbook*, ASCII Corporation, 1987; edicao Markdown de Konamiman) e `BasicDignifiedHelpData.pbi` (ajuda do Basic Dignified, portugues,
+escrita para o paleobasic). Nomes: `rb-`, `th2-`, `bd-` + o titulo; categorias "Red Book: <capitulo>", "Handbook: <capitulo>", "Basic Dignified: <grupo>". Os links internos viram
+"VER TAMBEM"; as figuras nao existem no terminal (`[Ver Figura: CH01F01]`). Como sao milhares de topicos, o indice mostra so' uma linha por livro; navegue com `man -l red`,
+`man -l handbook`, `man -k <texto>`. O texto ocupa ~2,3 MB no executavel.
+
 ### Origem e direitos
 O material do MSX-BASIC e' de duas obras de terceiros (a de BIOS/hardware, acima, e' do MSXBIOS.CHM do RuMSX, que reune fontes publicas: MSX Assembly Page, manuais do blueMSX e
 do openMSX, livros da Aleph). O responsavel pela Aleph autorizou expressamente a distribuicao de material de MSX e ZX81 (informado pelo autor do projeto). Texto transcrito no
@@ -104,8 +112,7 @@ A formatacao de uma linha de tabela mais larga que a tela mantem as colunas: a c
 
 ## 5. O que falta
 
-- **Ainda nao importados do paleobasic** (mesma pasta `help/`): `RedBookHelpData.pbi` (MSX Red Book), `Th2HandbookHelpData.pbi` (MSX2 Technical Handbook), `OpenMsxHelpData.pbi`
-  (manual do openMSX), `MsxManualsHelpData.pbi`, `MsxSoftwareHelpData.pbi` e a ajuda do Basic Dignified -- grandes (ate 1,8 MB cada); decidir quais vale pagar no tamanho do executavel.
+- **Ainda nao importados do paleobasic** (mesma pasta `help/`): `OpenMsxHelpData.pbi` (manual do openMSX), `MsxManualsHelpData.pbi` (1,8 MB) e `MsxSoftwareHelpData.pbi` -- decidir se vale pagar no tamanho do executavel.
 - Mais topicos de referencia: comandos da SUB-ROM do MSX2, tabela de caracteres/ASCII do MSX, codigos de erro do BASIC, MSX-DOS 1/2
   (chamadas do BDOS), MSX-MUSIC (OPLL), SCC, os comandos do VDP em detalhe, mappers de cartucho, mapa de memoria da VRAM por modo.
 - O modo janela (`--term`, F11) ainda tem a ajuda antiga; o `man` la' e' o proximo passo.

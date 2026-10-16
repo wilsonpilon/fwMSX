@@ -761,6 +761,9 @@ abre o manual completo, com exemplos. O `man` tambem traz a **referencia do MSX*
 **BIOS e hardware**: `man chput`, `man wrtvdp`, `man jiffy`... (rotinas da MainROM/SubROM/Disk-ROM, BDOS e variaveis de RAM, em ingles) e os chips: `man hw-rtc`,
 `man hw-psg`, `man opll`, `man v9990`, `man hw-ports`... **`man -l`** lista as categorias; `man -l bios-rom` lista os nomes de uma; **`man -k sprite`** procura o texto
 nos nomes e resumos.
+**Livros**: `man rb-<titulo>` (The MSX Red Book, 973 topicos), `man th2-<titulo>` (MSX2 Technical Handbook, 1356) e `man dignified` / `man bd-<titulo>` (ajuda do
+Basic Dignified, em portugues). Os links dos livros aparecem como "VER TAMBEM" no fim de cada pagina. Para achar: `man -l red` (capitulos e nomes do Red Book), `man -l handbook`,
+`man -k expander` (procura em nomes e resumos). O texto dos livros e' em ingles.
 No console o texto e' paginado (espaco = pagina, Enter = linha, `q` sai); na TUI abre uma janelinha (setas, PgUp/PgDn, Home/End, Esc ou `q`
 fecham). Detalhes e como acrescentar topicos: [man-spec.md](man-spec.md).
 

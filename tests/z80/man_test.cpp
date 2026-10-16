@@ -115,6 +115,31 @@ void TestTopics() {
         check(Contains(man::Index(78), "print") && Contains(man::Index(78), "Manual MSX-BASIC"), "o indice lista as palavras do BASIC");
     }
 
+    // Livros (Red Book, MSX2 Technical Handbook) e a ajuda do Basic Dignified
+    {
+        int rb = 0, th = 0, bd = 0, refs_ok = 0, refs = 0;
+        for (const man::Topic &tp : man::Topics()) {
+            if (tp.category.rfind("Red Book: ", 0) == 0) ++rb;
+            if (tp.category.rfind("Handbook: ", 0) == 0) ++th;
+            if (tp.category.rfind("Basic Dignified: ", 0) == 0) ++bd;
+            if ((tp.category.rfind("Red Book: ", 0) == 0 || tp.category.rfind("Handbook: ", 0) == 0) && tp.page.find("VER TAMBEM\n") != std::string::npos) {
+                ++refs;
+                if (Contains(tp.page, "LIVRO: ")) ++refs_ok;
+            }
+        }
+        check(rb >= 900 && th >= 1300 && bd == 21, "importados: Red Book " + std::to_string(rb) + ", Handbook " + std::to_string(th) + ", Basic Dignified " + std::to_string(bd));
+        check(refs > 100 && refs == refs_ok, "os links internos dos livros viraram VER TAMBEM (" + std::to_string(refs) + " paginas)");
+        const man::Topic *dg = man::Find("dignified");
+        check(dg && dg->category.rfind("Basic Dignified: ", 0) == 0 && Contains(dg->page, "Basic Dignified"), "man dignified abre a introducao do Basic Dignified");
+        check(man::Find("rb-expanders") != nullptr && Contains(man::Find("rb-expanders")->page, "expander"), "man rb-expanders (Red Book)");
+        check(Contains(man::ListCategory("red", 78), "rb-expanders") && Contains(man::ListCategory("handbook", 78), "th2-"), "man -l red / handbook listam os capitulos");
+        check(Contains(man::Index(78), "Livros e listas grandes") && Contains(man::Index(78), "red book") && Contains(man::Index(78), "bios-rom"), "o indice resume as familias grandes");
+        bool no_marker = true;
+        for (const man::Topic &tp : man::Topics())
+            if (Contains(tp.page, "@@@") || Contains(tp.page, "[[[")) no_marker = false;
+        check(no_marker, "nenhum resto da marcacao do paleobasic (@@@, [[[) nas paginas");
+    }
+
     // BIOS, BDOS, variaveis de RAM e hardware (MSXBIOS.CHM do RuMSX, via paleobasic)
     {
         const man::Topic *c = man::Find("chput");
@@ -157,7 +182,7 @@ void TestTopics() {
             std::string word;
             for (size_t i = 0; i <= rest.size(); ++i) {
                 const char c = i < rest.size() ? rest[i] : ' ';
-                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9')) word += c;
+                if ((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-') word += c;
                 else {
                     // so' palavras SEM parenteses/explicacao: o resto da linha apos "(" e' texto livre
                     if (!word.empty() && !man::Find(word) && word.size() > 3 && rest.find("(") == std::string::npos) missing_refs.insert(tp.name + "->" + word);

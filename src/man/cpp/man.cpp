@@ -2,6 +2,7 @@
 #include "man.h"
 
 #include <algorithm>
+#include <map>
 
 #include "../c/man_wrap.h"
 #include "man_internal.h"
@@ -83,32 +84,58 @@ const std::vector<Topic> &Topics() {
         for (Topic &t : ReferenceTopics()) v.push_back(std::move(t));
         // Material importado do paleobasic. Quando o nome ja' existe (o BIOS "BEEP" e o BASIC BEEP; o comando "stop" e a palavra STOP...), a
         // pagina nova vira uma SECAO a mais da pagina existente em vez de um segundo topico com o mesmo nome.
+        std::map<std::string, size_t> by_name; // nome normalizado -> posicao em v (evita O(n^2) com milhares de topicos)
+        for (size_t i = 0; i < v.size(); ++i) by_name[Normalize(v[i].name)] = i;
         auto absorb = [&](std::vector<Topic> list) {
             for (Topic &b : list) {
-                Topic *same = nullptr;
-                for (Topic &t : v)
-                    if (Normalize(t.name) == Normalize(b.name)) same = &t;
-                if (same) same->page += "\n\n==== " + b.category + " ====\n" + b.page;
-                else v.push_back(std::move(b));
+                const std::string key = Normalize(b.name);
+                const auto it = by_name.find(key);
+                if (it != by_name.end()) {
+                    v[it->second].page += "\n\n==== " + b.category + " ====\n" + b.page;
+                } else {
+                    by_name[key] = v.size();
+                    v.push_back(std::move(b));
+                }
             }
         };
         absorb(BasicTopics());
         absorb(BiosTopics());
         absorb(HardwareTopics());
+        absorb(BookTopics());
         return v;
     }();
     return all;
 }
 
+namespace {
+
+// Tabelas de busca montadas uma vez (milhares de topicos): nome normalizado -> topico, e o mesmo para os apelidos.
+struct Lookup {
+    std::map<std::string, const Topic *> names, aliases;
+};
+
+const Lookup &Lk() {
+    static const Lookup lk = [] {
+        Lookup l;
+        for (const Topic &t : Topics()) {
+            l.names.emplace(Normalize(t.name), &t);
+            for (const std::string &n : Names(t)) l.aliases.emplace(Normalize(n), &t);
+        }
+        return l;
+    }();
+    return lk;
+}
+
+} // namespace
+
 const Topic *Find(const std::string &name) {
     const std::string want = Normalize(name);
     if (want.empty()) return nullptr;
-    for (const Topic &t : Topics()) // 1a passada: o nome do topico
-        if (Normalize(t.name) == want) return &t;
-    for (const Topic &t : Topics()) // 2a: os apelidos
-        for (const std::string &n : Names(t))
-            if (Normalize(n) == want) return &t;
-    return nullptr;
+    const Lookup &lk = Lk();
+    auto it = lk.names.find(want); // 1a passada: o nome do topico
+    if (it != lk.names.end()) return it->second;
+    it = lk.aliases.find(want); // 2a: os apelidos
+    return it == lk.aliases.end() ? nullptr : it->second;
 }
 
 const Topic *Resolve(const std::string &name) {
@@ -229,7 +256,7 @@ std::string Index(int width) {
     std::string out;
     out += "fwMSX - manual (man <topico>)\n" + Repeat('=', width) + "\n";
     std::vector<std::string> cats(std::begin(kCommandCategories), std::end(kCommandCategories));
-    for (const char *extra : {"Referencia MSX", "Manual MSX-BASIC", "MSX-BASIC", "Hardware", "Doc BIOS", "BIOS-ROM", "BDOS", "Variaveis RAM"}) cats.push_back(extra);
+    for (const char *extra : {"Referencia MSX", "Manual MSX-BASIC", "MSX-BASIC", "Hardware", "Doc BIOS"}) cats.push_back(extra);
     for (const std::string &cat : cats) {
         std::string block;
         if (cat == "MSX-BASIC") { // ~170 palavras: so' os nomes, em linhas corridas
@@ -237,16 +264,36 @@ std::string Index(int width) {
             for (const Topic &t : Topics())
                 if (t.category == cat) names += (names.empty() ? "" : "  ") + t.name;
             for (const std::string &l : Wrap(names, width - 2)) block += "  " + l + "\n";
-        } else if (cat == "BIOS-ROM" || cat == "BDOS" || cat == "Variaveis RAM") { // centenas de nomes: so' a contagem e como listar
-            int n = 0;
+        } else {
             for (const Topic &t : Topics())
-                if (t.category == cat) ++n;
-            if (n) block += "  " + std::to_string(n) + " topicos (man <nome>; os nomes: man -l " + Lower(cat) + ")\n";
+                if (t.category == cat) AppendRow(block, t.name, t.summary, 16, width);
         }
-        for (const Topic &t : Topics())
-            if (t.category == cat && cat != "MSX-BASIC" && cat != "BIOS-ROM" && cat != "BDOS" && cat != "Variaveis RAM") AppendRow(block, t.name, t.summary, 16, width);
         if (block.empty()) continue;
         out += " " + cat + "\n " + Repeat('-', width - 1) + "\n" + block + "\n";
+    }
+    // Familias grandes (centenas ou milhares de topicos): so' a contagem e como listar. "Red Book: 1. PPI" e' da familia "Red Book".
+    std::vector<std::pair<std::string, std::pair<int, std::vector<std::string>>>> families; // nome -> (topicos, categorias)
+    for (const Topic &t : Topics()) {
+        const bool known = std::find(cats.begin(), cats.end(), t.category) != cats.end();
+        if (known) continue;
+        const size_t colon = t.category.find(": ");
+        const std::string fam = colon == std::string::npos ? t.category : t.category.substr(0, colon);
+        auto it = std::find_if(families.begin(), families.end(), [&](const auto &f) { return f.first == fam; });
+        if (it == families.end()) {
+            families.push_back({fam, {0, {}}});
+            it = families.end() - 1;
+        }
+        ++it->second.first;
+        if (std::find(it->second.second.begin(), it->second.second.end(), t.category) == it->second.second.end()) it->second.second.push_back(t.category);
+    }
+    if (!families.empty()) {
+        out += " Livros e listas grandes (man -l <nome> lista os topicos; man <topico> abre; man -k <texto> procura)\n " + Repeat('-', width - 1) + "\n";
+        for (const auto &f : families) {
+            std::string desc = std::to_string(f.second.first) + " topicos";
+            if (f.second.second.size() > 1) desc += " em " + std::to_string(f.second.second.size()) + " capitulos";
+            AppendRow(out, Lower(f.first), desc, 22, width);
+        }
+        out += "\n";
     }
     return out;
 }
@@ -267,21 +314,25 @@ std::string ListCategory(const std::string &category, int width) {
         }
         return out;
     }
-    std::string chosen;
+    std::vector<std::string> chosen; // a categoria exata, senao todas as que comecam pela consulta (man -l red = todos os capitulos do Red Book)
     for (const std::string &c : cats)
-        if (Normalize(c) == want) chosen = c;
-    for (const std::string &c : cats)
-        if (chosen.empty() && Normalize(c).compare(0, want.size(), want) == 0) chosen = c;
+        if (Normalize(c) == want) chosen.push_back(c);
+    if (chosen.empty())
+        for (const std::string &c : cats)
+            if (Normalize(c).compare(0, want.size(), want) == 0) chosen.push_back(c);
     if (chosen.empty()) return "nao ha' categoria '" + category + "' (man -l lista as categorias)\n";
-    std::string names;
-    int n = 0;
-    for (const Topic &t : Topics())
-        if (t.category == chosen) {
-            names += (names.empty() ? "" : "  ") + t.name;
-            ++n;
-        }
-    out += chosen + " (" + std::to_string(n) + ")\n";
-    for (const std::string &l : Wrap(names, width - 2)) out += "  " + l + "\n";
+    for (const std::string &cat : chosen) {
+        std::string names;
+        int n = 0;
+        for (const Topic &t : Topics())
+            if (t.category == cat) {
+                names += (names.empty() ? "" : "  ") + t.name;
+                ++n;
+            }
+        out += cat + " (" + std::to_string(n) + ")\n";
+        for (const std::string &l : Wrap(names, width - 2)) out += "  " + l + "\n";
+        out += "\n";
+    }
     return out;
 }
 

@@ -17,6 +17,8 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.38.3 "Road Fighter: Livros de referencia" (publicada)**: Red Book (973), MSX2 Technical Handbook (1356) e ajuda do Basic Dignified (21) no `man`, com VER TAMBEM a partir dos links.
+  O usuario quer o Basic Dignified para uma ideia dele (a descobrir). Faltam `OpenMsxHelpData.pbi`, `MsxManualsHelpData.pbi` e `MsxSoftwareHelpData.pbi`.
 - **1.38.2 "Road Fighter: BIOS e hardware" (publicada)**: `man`/`help` ganharam 554 rotinas/variaveis (BIOS, BDOS, RAM) e 33 topicos de hardware (ingles, do paleobasic);
   `man -l [categoria]` e `man -k texto`. Autorizacao da Aleph para distribuir material MSX/ZX81 informada pelo usuario (registrada em doc/man-spec.md). **Proximos candidatos** (mesma pasta
   do paleobasic): `RedBookHelpData.pbi`, `Th2HandbookHelpData.pbi`, `OpenMsxHelpData.pbi`, `MsxManualsHelpData.pbi`, `MsxSoftwareHelpData.pbi` (1,8 MB!) -- pesar o tamanho do executavel.

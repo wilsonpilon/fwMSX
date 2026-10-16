@@ -21,8 +21,8 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 38
-#define FWMSX_VERSION_PATCH 2
+#define FWMSX_VERSION_PATCH 3
 
 #define FWMSX_COMPANY   "Konami"
 #define FWMSX_CODENAME  "Road Fighter"
-#define FWMSX_SUBTITLE  "BIOS e hardware"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_SUBTITLE  "Livros de referencia"  // so' nas versoes X.Y.Z com Z > 0

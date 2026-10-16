@@ -17,6 +17,31 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.38.3 -- "Road Fighter: Livros de referencia" (Konami) (2026-10-16)
+
+**Fase:** pedido do usuario -- importar o Red Book, o Technical Handbook e a ajuda do Basic Dignified (ideia dele para uso do Basic Dignified).
+
+### O que foi feito
+- `tools/paleobasic/import_books_help.py`: le `RedBookHelpData.pbi` (973), `Th2HandbookHelpData.pbi` (1356) e `BasicDignifiedHelpData.pbi` (21). Limpeza do Markdown do paleobasic:
+  `[[[texto|||ancora]]]` -> texto; `[[[[Ver Figura: X|||img:x]]]]` -> `[Ver Figura: X]` (as figuras nao existem no terminal); `@@@` (linha pre-formatada) -> 4 espacos;
+  `**`, crases e cercas ``` saem; `<a>`/`<br>`; escapes `\|`, `\*`. ASCII puro.
+- **Links -> VER TAMBEM**: os mapas `X_AddAnchor(ancora, indice)` do paleobasic dizem para que topico cada link apontava; o conversor lista ate' 12 destinos no fim da pagina.
+- Nomes: `rb-`, `th2-`, `bd-` + titulo (sem acento, ate' 60 caracteres, numerados quando repetem, ex.: `th2-index-2`). Categorias "Red Book: <capitulo>", "Handbook: <capitulo>",
+  "Basic Dignified: <grupo>".
+- `man.cpp`: `Find` com tabelas `std::map` (antes: varredura de ~5000 topicos por chamada), fusao de nomes sem O(n^2), `ListCategory` com varias categorias (prefixo), indice com secao de familias grandes.
+- Testes: contagens, links viram VER TAMBEM (>100 paginas), `man dignified`, `rb-expanders`, `man -l red/handbook`, nenhum `@@@`/`[[[` sobrando; o teste de "VER TAMBEM" ganhou nomes com hifen.
+
+### Achados
+- O texto dos livros e' em ingles, como no original; o Basic Dignified e' em portugues e fala da IDE paleobasic ("esta IDE", "Configurar -> Basic Dignified...") -- lido como referencia da sintaxe do dialeto.
+- Titulos repetidos entre capitulos (`Index`, `Contents`) ficam `th2-index`, `th2-index-2`...: pouco uteis; o caminho e' `man -l <capitulo>` ou `man -k`.
+- O executavel cresceu ~2,3 MB com os textos (de 19,7 para ~22 MB no Windows).
+
+### Validacao
+`ctest` 25/25 (Windows e Linux). Visto na tela: indice, `man -l`, `man rb-expanders` (com VER TAMBEM), `man dignified`.
+Nao conferido: a fidelidade do texto aos livros (herdada do paleobasic); tabelas largas do Handbook em terminal estreito.
+
+---
+
 ## v1.38.2 -- "Road Fighter: BIOS e hardware" (Konami) (2026-10-16)
 
 **Fase:** pedido do usuario -- importar tambem `BiosCallsHelpData.pbi`, `BiosDocHelpData.pbi` e `HardwareHelpData.pbi` do paleobasic. O usuario informou que o

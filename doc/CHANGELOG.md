@@ -7,6 +7,23 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.38.3] - 2026-10-16 - "Road Fighter: Livros de referencia" (Konami)
+
+### Adicionado
+- **The MSX Red Book** (Avalon Software / Kuma Computers, 1985): **973 topicos** em 9 capitulos (PPI, VDP, PSG, ROM BIOS, ROM BASIC, mapa de memoria, rotinas em
+  codigo de maquina). `man rb-expanders`, `man rb-exptbl`... (nomes `rb-<titulo>`).
+- **MSX2 Technical Handbook** (ASCII Corporation, 1987): **1356 topicos** em 15 capitulos (BASIC, MSX-DOS, VDP, BIOS, listagem da BIOS, math-pack, bit block
+  transfer, area de trabalho, mapa da VRAM e de E/S, codigos de controle...). Nomes `th2-<titulo>`.
+- **Ajuda do Basic Dignified** (21 topicos, em portugues): sintaxe do dialeto (labels, defines, proto-funcoes, includes...), configuracoes, remtags e
+  a suite original. `man dignified` abre a introducao; nomes `bd-<titulo>`.
+- Os **links internos dos livros viram "VER TAMBEM"** (`man <nome>`): navegar pelo Red Book/Handbook pelo terminal.
+- `man -l red` / `man -l handbook` listam os capitulos (varias categorias de uma vez); o indice (`man`) resume as familias grandes numa secao
+  "Livros e listas grandes".
+- `tools/paleobasic/import_books_help.py` (gera `src/man/cpp/man_pages_books.cpp`, ~2 MB de texto).
+
+### Mudou
+- `Find` e a fusao de nomes usam tabelas montadas uma vez (milhares de topicos).
+
 ## [1.38.2] - 2026-10-16 - "Road Fighter: BIOS e hardware" (Konami)
 
 ### Adicionado
