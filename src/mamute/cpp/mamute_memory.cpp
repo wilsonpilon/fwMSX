@@ -32,6 +32,8 @@ std::string OfflineMemory::Reconfigure(const Config &cfg) {
             }
         }
     }
+    for (auto &row : sub_) // a reconfiguracao devolve os sub-slots ao estado de RAM zerada
+        for (auto &v : row) v.clear();
     vram_.assign(static_cast<size_t>(cfg.vram_kb) * 1024, 0);
     Boot();
     return warnings;
@@ -58,6 +60,28 @@ bool OfflineMemory::Write(uint16_t addr, uint8_t value) {
 
 bool OfflineMemory::WriteSlot(int slot, uint16_t addr, uint8_t value) {
     blocks_[slot & 3][(addr >> 14) & 3][addr & 0x3FFF] = value;
+    return true;
+}
+
+uint8_t OfflineMemory::ReadSub(int slot, int sub, uint16_t addr) {
+    slot &= 3;
+    sub &= 3;
+    if (sub == 0) return blocks_[slot][(addr >> 14) & 3][addr & 0x3FFF];
+    std::vector<uint8_t> &v = sub_[slot][sub - 1];
+    return v.empty() ? 0 : v[addr]; // nunca escrito = zeros, sem gastar 64 KB so' para ler
+}
+
+bool OfflineMemory::WriteSub(int slot, int sub, uint16_t addr, uint8_t value) {
+    slot &= 3;
+    sub &= 3;
+    if (sub == 0) {
+        if (types_[slot][(addr >> 14) & 3] != CellType::Ram) return false; // ROM/vazio: como a CPU, nada muda
+        blocks_[slot][(addr >> 14) & 3][addr & 0x3FFF] = value;
+        return true;
+    }
+    std::vector<uint8_t> &v = sub_[slot][sub - 1];
+    if (v.empty()) v.assign(0x10000, 0);
+    v[addr] = value;
     return true;
 }
 

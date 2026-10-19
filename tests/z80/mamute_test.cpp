@@ -12,6 +12,7 @@
 #include "../../src/mamute/cpp/mamute_monitor.h"
 #include "../../src/mamute/cpp/mamute_online.h"
 #include "../../src/mamute/cpp/mamute_pdf.h"
+#include "../../src/msxdisk/core/disk_image.h"
 
 namespace {
 
@@ -544,8 +545,435 @@ void TestOnline() {
     checkOut(mon, "G C200", "EXECUTANDO NA MAQUINA", "online: G solta a CPU no programa montado");
     for (int i = 0; i < 4; ++i) m->RunFrame();
     check(m->cpu().state().af.b.hi == 0x5A, "online: o programa montado com A O rodou na maquina (A = 5A)");
+    // SUPER-X no modo ONLINE: os alvos (#slot, #V) e a CPU da maquina
+    checkOut(mon, "XRG", "AF=", "online: XRG mostra os registradores da maquina");
+    checkOut(mon, "XFL C300#3,C30F,77", "PREENCHIDOS 16 BYTES", "online: XFL grava na RAM do slot 3 da maquina");
+    check(m->ReadMemory(0xC300) == 0x77 && m->ReadMemory(0xC30F) == 0x77, "online: a maquina enxerga o XFL");
+    checkOut(mon, "XD C300#3,C307", "C300 77 77 77 77 77 77 77 77", "online: XD le o slot 3 da maquina");
+    checkOut(mon, "XFL 0000#0,0003,11", "4 IGNORADOS", "online: a BIOS e' ROM, o XFL no slot 0 e' ignorado");
+    checkOut(mon, "XD 0000#0,0003", "0000 F3", "online: XD le a BIOS pelo slot 0");
+    checkOut(mon, "XFL 0000#V,0003,5A", "PREENCHIDOS 4 BYTES", "online: XFL na VRAM da maquina");
+    check(m->vdp_state().vram[0] == 0x5A && m->vdp_state().vram[3] == 0x5A, "online: a VRAM da maquina recebeu o XFL");
+    checkOut(mon, "XTR C000", "C000  3E 2A", "online: XTR executa um passo na CPU da maquina");
     checkOut(mon, "OFFLINE", "MODO OFFLINE", "OFFLINE volta para a memoria privada");
 #endif
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Fase 4: os comandos do SUPER-X (prefixo X)
+// ---------------------------------------------------------------------------------------------------------------------
+void TestSuperX() {
+    mamute::Config cfg;
+    mamute::Monitor mon(cfg);
+
+    // ---- CL: a calculadora ----
+    checkOut(mon, "CL 4000", "HEX  : 4000H", "CL: hexa por padrao");
+    checkOut(mon, "CL 4000", "DEC+ : 16384", "CL: decimal");
+    checkOut(mon, "CL (100H+2ADH)*3-1", "HEX  : 0B06H", "CL: o exemplo do manual (parenteses, sufixo H)");
+    checkOut(mon, "CL 10D", "DEC+ : 10", "CL: 10D e' decimal 10");
+    checkOut(mon, "CL 10DH", "DEC+ : 269", "CL: 10DH e' hexa 10D");
+    checkOut(mon, "CL 101B", "DEC+ : 5", "CL: sufixo B (binario)");
+    checkOut(mon, "CL 17O", "DEC+ : 15", "CL: sufixo O (octal)");
+    checkOut(mon, "CL -1", "DEC+-: -1", "CL: negativo, com volta de 16 bits");
+    checkOut(mon, "CL !0", "DEC+ : 65535", "CL: NOT");
+    checkOut(mon, "CL 'A'", "DEC+ : 65", "CL: literal ASCII");
+    checkOut(mon, "CL 1/0", "DIVISAO POR ZERO", "CL: divisao por zero");
+    checkOut(mon, "CL 12G", "NUMERO INVALIDO", "CL: numero invalido");
+    checkOut(mon, "CL 6|1&3^2", "DEC+ : 7", "CL: precedencia (& antes de ^ antes de |)");
+
+    // ---- @: as variaveis de debugger ----
+    checkOut(mon, "@0=8000#3-1", "@0 = 8000#3-1", "@0 guarda endereco E alvo");
+    checkOut(mon, "@", "@B = ----", "@ mostra as 7 variaveis");
+    checkOut(mon, "CL @0+1", "HEX  : 8001H", "CL usa so' o numero da variavel");
+    checkOut(mon, "@1=1234", "@1 = 1234", "@1 sem alvo");
+    checkOut(mon, "@Z=1", "SINTAXE", "@ com nome invalido");
+
+    // ---- alvos: sub-slot, slot explicito, VRAM ----
+    checkOut(mon, "XFL 1000#3-1,10FF,AA", "PREENCHIDOS 256 BYTES", "XFL em sub-slot (RAM expandida)");
+    checkOut(mon, "XD 1000#3-1,100F", "1000 AA AA AA AA AA AA AA AA : 50 : ........", "XD de dois enderecos com checksum e alvo");
+    checkOut(mon, "XD 1000,100F", "1000 00 00 00 00 00 00 00 00 : 00 :", "o PAGE continua independente do sub-slot");
+    checkOut(mon, "XFL 0000#0,0003,11", "4 IGNORADOS", "slot 0 vazio nao grava");
+    checkOut(mon, "XFL 0000#V,0003,5A", "PREENCHIDOS 4 BYTES", "XFL na VRAM");
+    checkOut(mon, "XD 0000#V,0003", "00000 5A 5A 5A 5A : 68 : ZZZZ", "XD na VRAM: 5 digitos");
+    checkOut(mon, "XFL 4000#9,4001,00", "SINTAXE", "slot invalido");
+    checkOut(mon, "XD C000,", "C0F8", "XD sem fim: 256 bytes");
+
+    // ---- XD / XA / XI com arquivo e impressora ----
+    Run(mon, "M C000,3E,05,CD,A2,00,C9");
+    const std::string t = TempPath("mamute_sx_");
+    checkOut(mon, "XD C000,C00F," + t + "d.bin", "BYTES CRUS", "XD <ini>,<fim>,<arquivo> salva os bytes");
+    check(ReadAll(t + "d.bin").size() == 16 && ReadAll(t + "d.bin")[0] == 0x3E, "XD: o arquivo tem os 16 bytes");
+    checkOut(mon, "XD C000," + t + "d2.bin", "TAMANHO 0100", "XD <ini>,<arquivo>: o segundo campo que nao e' endereco e' o arquivo (256 bytes)");
+    checkOut(mon, "XA C000,C03F", "C000: >", "XA: 64 bytes por linha em ASCII");
+    checkOut(mon, "XI C000,C005", "C000  3E 05        LD A,05", "XI: disassembly");
+    checkOut(mon, "XI C000,C005", "C002  CD A2 00     CALL", "XI: instrucao de 3 bytes");
+    checkOut(mon, "XI C000,C005," + t + "i.txt", "GRAVADO", "XI <ini>,<fim>,<arquivo> grava a listagem");
+    checkOut(mon, "?XD C000,C03F," + t + "d.pdf", "(PDF)", "?XD manda para a impressora (PDF)");
+    check(mamute::IsPdfName(t + "d.pdf") && ReadAll(t + "d.pdf").size() > 100, "?XD: o PDF foi gravado");
+    checkOut(mon, "?XD C000", "SO' FUNCIONA COM DOIS ENDERECOS", "?XD de um endereco so' nao imprime");
+    checkOut(mon, "?XM C000", "SO' VALE PARA XD, XA E XI", "? so' vale para os que listam");
+    checkOut(mon, "XD C000,C00F,", "SINTAXE", "XD com virgula sobrando depois de um fim explicito");
+    checkOut(mon, "XD C010,C000", "SINTAXE", "XD com fim menor que o inicio");
+
+    // ---- XCS / XTS ----
+    Run(mon, "M D400,01,02,03,FF");
+    checkOut(mon, "XD D401,D404", "D401 02 03 FF 00 : 04 :", "XD: checksum NORMAL");
+    checkOut(mon, "XCS", "+ADDR", "XCS alterna para +ADDR");
+    checkOut(mon, "XD D401,D404", "D401 02 03 FF 00 : 05 :", "XD: checksum +ADDR soma o byte baixo do endereco");
+    checkOut(mon, "XCS", "NORMAL", "XCS volta para NORMAL");
+    checkOut(mon, "XTS D400,D403", "HEX  : 0105H", "XTS: soma de 16 bits");
+    checkOut(mon, "XTS D400,D403", "OCT  : 000405", "XTS: octal");
+
+    // ---- XBT / XCM ----
+    Run(mon, "M C900,01,02,03,04");
+    checkOut(mon, "XBT C900,C903,CA00", "COPIADOS 4 BYTES", "XBT copia");
+    checkOut(mon, "XCM C900,C903,CA00", "0 DIFERENCAS EM 4 BYTES", "XCM: blocos iguais");
+    Run(mon, "M CA02,FF");
+    checkOut(mon, "XCM C900,C903,CA00", "C902: 03 <> CA02: FF", "XCM lista a diferenca");
+    checkOut(mon, "XCM C900,C903,CA00,S", "C900: 01 == CA00: 01", "XCM,S lista os iguais");
+    checkOut(mon, "XCM C900,C903,CA00,S", "3 BYTES IGUAIS", "XCM,S conta os iguais");
+    checkOut(mon, "XBT C900,C903,FFFE", "PASSA DO FIM", "XBT nao da' a volta");
+    checkOut(mon, "XBT C900,C903,0010#V", "COPIADOS 4 BYTES", "XBT para a VRAM (alvos diferentes)");
+    checkOut(mon, "XD 0010#V,0013", "00010 01 02 03 04 : 0A :", "a VRAM recebeu o bloco");
+    checkOut(mon, "XBT C900,C903,2000#3-2", "COPIADOS 4 BYTES", "XBT para um sub-slot");
+    checkOut(mon, "XCM C900,C903,2000#3-2", "0 DIFERENCAS", "XCM entre o PAGE e um sub-slot");
+    checkOut(mon, "XBT C900,C903", "SINTAXE", "XBT com argumento faltando");
+
+    // ---- XRT: relocar ----
+    Run(mon, "M D000,C3,05,D0,00,00,CD,A2,00,18,FB,C9");
+    checkOut(mon, "XRT D000,D00A,E000", "1 ENDERECOS ABSOLUTOS E 0 SALTOS RELATIVOS", "XRT ajusta so' o que aponta para dentro");
+    checkOut(mon, "DM E000", "E000  C3 05 E0 00 00 CD A2 00", "XRT: JP ajustado, CALL da BIOS intocado");
+    checkOut(mon, "DM E008", "E008  18 FB C9", "XRT: JR para dentro do bloco intocado");
+    Run(mon, "M D100,18,1E,00,C9");
+    checkOut(mon, "XRT D100,D103,D110", "1 SALTOS RELATIVOS", "XRT recalcula o JR que sai do bloco");
+    checkOut(mon, "DM D110", "D110  18 0E 00 C9", "XRT: deslocamento do JR recalculado");
+    checkOut(mon, "XRT D100,D103,D400", "RELOCACAO INVALIDA", "XRT: JR que nao alcanca depois do movimento");
+    checkOut(mon, "DM D400", "D400  01 02 03 FF", "XRT invalido nao grava nada");
+
+    // ---- XFD: procurar uma instrucao ----
+    Run(mon, "M D300,CD,12,80,00,00,CD,12,80,00");
+    checkOut(mon, "XFD D300,D308,CALL 8012H", "D300", "XFD acha a primeira");
+    checkOut(mon, "XFD D300,D308,CALL 8012H", "D305", "XFD acha a segunda");
+    checkOut(mon, "XFD D300,D308,CALL 8012H", "2 OCORRENCIAS", "XFD conta");
+    checkOut(mon, "XFD D300,D308,CALL 9000H", "0 OCORRENCIAS", "XFD sem ocorrencias");
+    checkOut(mon, "XFD D300,D308", "SINTAXE", "XFD sem instrucao");
+
+    // ---- XM: a sessao ----
+    checkOut(mon, "XM C100", "SESSAO XM EM C100", "XM abre a sessao");
+    check(mon.Prompt() == "XM C100> " && mon.editing(), "XM: o prompt mostra o endereco");
+    checkOut(mon, "LD A,5", "C100  3E 05", "XM monta e grava uma instrucao");
+    check(mon.Prompt() == "XM C102> ", "XM: o endereco avanca sozinho");
+    checkOut(mon, "LD HL,1234H", "C102  21 34 12", "XM: LD HL,nn");
+    checkOut(mon, ".CD,4DH,00", "C105  CD 4D 00", "XM: dados de 1 byte");
+    checkOut(mon, ":1234", "C108  34 12", "XM: dados de 2 bytes (little-endian)");
+    checkOut(mon, "\"OLA", "C10A  4F 4C 41", "XM: texto cru");
+    checkOut(mon, "DAA", "C10D  27", "XM: DAA sozinho e' a instrucao, nao o endereco 0DAA");
+    checkOut(mon, "C200", "", "XM: um endereco sozinho pula para ele");
+    check(mon.Prompt() == "XM C200> ", "XM: o prompt acompanha o pulo");
+    checkOut(mon, "NOP", "C200  00", "XM: grava no novo endereco");
+    checkOut(mon, "C210 .1,2,3", "C210  01 02 03", "XM: endereco seguido de dados");
+    checkOut(mon, "I 2", "C213  00", "XM: I lista as proximas instrucoes (do endereco atual)");
+    checkOut(mon, "I 2", "C214  00", "XM: I mostra 2 linhas");
+    checkOut(mon, "FOO BAR", "ERRO", "XM: instrucao invalida");
+    Run(mon, "C100 ");
+    checkOut(mon, "I 1", "C100  3E 05", "XM: I a partir do endereco");
+    checkOut(mon, "QUIT", "VOLTA AO MONITOR", "XM: QUIT volta ao monitor");
+    check(mon.Prompt() == "MON(off)> " && !mon.editing(), "XM: depois do QUIT o prompt e' do monitor");
+    checkOut(mon, "XM", "SESSAO XM EM", "XM sem endereco reabre onde ficou");
+    {
+        bool quit = false;
+        mon.Execute("BA", &quit);
+        check(quit && mon.Prompt() == "MON(off)> ", "XM: BA sai de tudo");
+    }
+    checkOut(mon, "XM C100#3-1", "SESSAO XM EM C100#3-1", "XM num sub-slot");
+    checkOut(mon, "LD A,6", "C100  3E 06", "XM no sub-slot");
+    Run(mon, "QUIT");
+    checkOut(mon, "XD C100#3-1,C101", "C100 3E 06", "o sub-slot recebeu o byte");
+    checkOut(mon, "XD C100,C101", "C100 3E 05", "e o PAGE nao");
+
+    // ---- XH ----
+    Run(mon, "M C300,FF,81,81,81,81,81,81,FF");
+    checkOut(mon, "XH C300", "0123456789ABCDEF", "XH mostra a grade");
+    checkOut(mon, "XH C300", "00000000--------  C300 : FF:00 0", "XH: pixels acesos como 0 e a coluna do byte");
+    checkOut(mon, "XH C300", "C301 : 81:00 1", "XH: o byte da linha 1");
+
+    // ---- XRG / XGO / XTR ----
+    Run(mon, "M C800,3E,05,06,03,3C,3C,C9");
+    checkOut(mon, "XRG SP,F000", "SP=F000", "XRG: SP");
+    checkOut(mon, "XRG BP,C804", "BP=C804", "XRG: breakpoint");
+    checkOut(mon, "XGO C800", "PARADO NO BREAKPOINT (C804)", "XGO para no BP");
+    checkOut(mon, "XRG", "AF=05", "o A depois do LD A,5");
+    checkOut(mon, "XRG", "BC=03", "o B depois do LD B,3");
+    checkOut(mon, "XGO", "PROGRAMA TERMINOU (RET NO TOPO DA PILHA)", "XGO sem BP1: roda livre ate' o RET");
+    checkOut(mon, "XRG", "AF=07", "o A depois dos dois INC A");
+    checkOut(mon, "XRG A,99", "AF=99", "XRG: edita um registrador de 1 byte");
+    checkOut(mon, "XRG AF',1234", "AF'=1234", "XRG: o par alternado");
+    checkOut(mon, "XRG IXH,AB", "IX=AB", "XRG: meio registrador");
+    checkOut(mon, "XRG *", "AF=0000 BC=0000", "XRG *: limpa");
+    checkOut(mon, "XRG *", "SP=F002", "XRG *: a pilha fica (o RET do XGO deixou SP=F002)");
+    checkOut(mon, "XRG +", "SP=0000", "XRG +: so' a pilha");
+    checkOut(mon, "XRG BP,-", "BP=----", "XRG BP,-: limpa o breakpoint");
+    checkOut(mon, "XRG ZZ,1", "SINTAXE", "XRG: registrador desconhecido");
+    Run(mon, "XRG SP,F000");
+    checkOut(mon, "XTR C800", "C800  3E 05", "XTR: o primeiro passo");
+    checkOut(mon, "XTR", "C802  06 03", "XTR sem argumento continua do PC");
+    checkOut(mon, "XTR ,2", "C805  3C", "XTR ,n executa n passos");
+    Run(mon, "M C900,76");
+    Run(mon, "XRG SP,F000");
+    checkOut(mon, "XGO C900", "CPU HALTADA (HALT) EM", "XGO para no HALT");
+    Run(mon, "M CA00,18,FE");
+    checkOut(mon, "XGO CA00#3", "LIMITE DE 2000000", "XGO: o teto de instrucoes de um laco infinito");
+
+    // ---- XPP / XPI / XPO e as portas do Z80 ----
+    checkOut(mon, "XPI 60", "PORTA 60 = FF", "XPI cria a porta com Saida FF");
+    checkOut(mon, "XPO 61,5A", "PORTA 61 <- 5A", "XPO");
+    checkOut(mon, "XPP", "61*    5A      FF", "XPP: Entrada, Saida e a marca de alterada");
+    Run(mon, "M CB00,DB,60,D3,62,76");
+    Run(mon, "XRG SP,F000");
+    Run(mon, "XGO CB00");
+    checkOut(mon, "XRG", "AF=FF", "IN A,(60) leu a Saida (FF)");
+    checkOut(mon, "XPP", "62*    FF      FF", "OUT (62),A criou a porta e marcou como alterada");
+    checkOut(mon, "XPI 5G", "SINTAXE", "XPI invalido");
+
+    // ---- XCO ----
+    checkOut(mon, "XCO 15,4,7", "FRENTE: 15 BRANCO   FUNDO: 4 AZUL ESCURO   BORDA: 7 CIANO", "XCO: as tres cores");
+    checkOut(mon, "XCO ,,2", "FRENTE: 15 BRANCO   FUNDO: 4 AZUL ESCURO   BORDA: 2 VERDE", "XCO: vazio mantem o valor");
+    checkOut(mon, "XCO 16", "SINTAXE", "XCO: so' ate' 15");
+
+    // ---- XSD ----
+    checkOut(mon, "XSD " + t + "sd.asm,C000,C005", "GRAVADO", "XSD: listagem assembly");
+    {
+        const std::vector<uint8_t> b = ReadAll(t + "sd.asm");
+        const std::string s(b.begin(), b.end());
+        check(has(s, "ORG C000H") && has(s, "LD A,05") && has(s, "CALL"), "XSD: ORG e as instrucoes decodificadas");
+    }
+    Run(mon, "XSD " + t + "sdb.asm,C000,C005,B");
+    {
+        const std::vector<uint8_t> b = ReadAll(t + "sdb.asm");
+        check(has(std::string(b.begin(), b.end()), "DEFB 3EH,05H,CDH,A2H,00H,C9H"), "XSD,B: DEFB");
+    }
+    Run(mon, "XSD " + t + "sdd.bas,C000,C005,D");
+    {
+        const std::vector<uint8_t> b = ReadAll(t + "sdd.bas");
+        const std::string s(b.begin(), b.end());
+        check(has(s, "10000 DATA &H3E,&H05,&HCD,&HA2,&H00,&HC9") && has(s, "10010 FOR I=&HC000 TO &HC005:READ A:POKE I,A:NEXT I"), "XSD,D: DATA e o laco de carga");
+    }
+    Run(mon, "XSD " + t + "sdx.bas,C000,C005,X");
+    {
+        const std::vector<uint8_t> b = ReadAll(t + "sdx.bas");
+        check(has(std::string(b.begin(), b.end()), "10000 '#&H3E,&H05"), "XSD,X: dados do X-BASIC");
+    }
+    checkOut(mon, "XSD " + t + "sdv.bas,0000#V,0003,D", "NAO SERVE PARA VRAM", "XSD,D recusa a VRAM");
+
+    // ---- XSV / XLD / XS# / XL# ----
+    checkOut(mon, "XSV " + t + "sv.bin,C000,C005", "EXEC C000", "XSV: cabecalho do BSAVE");
+    {
+        const std::vector<uint8_t> b = ReadAll(t + "sv.bin");
+        check(b.size() == 13 && b[0] == 0xFE && b[1] == 0x00 && b[2] == 0xC0 && b[3] == 0x05 && b[4] == 0xC0 && b[5] == 0x00 && b[6] == 0xC0 && b[7] == 0x3E, "XSV: FE ini fim exec + os bytes");
+    }
+    checkOut(mon, "XLD " + t + "sv.bin,E100", "EM E100", "XLD com desloc carrega em outro endereco");
+    checkOut(mon, "DM E100", "E100  3E 05 CD A2 00 C9", "XLD: os bytes chegaram");
+    checkOut(mon, "@B", "@B = E100", "XLD preenche @B");
+    checkOut(mon, "@E", "@E = E105", "XLD preenche @E");
+    checkOut(mon, "@S", "@S = E100", "XLD preenche @S com o EXEC relocado");
+    checkOut(mon, "XSV " + t + "sv2.bin,C000,C005,C000,1000", "CABECALHO DESLOCADO 1000", "XSV: desloc so' no cabecalho");
+    {
+        const std::vector<uint8_t> b = ReadAll(t + "sv2.bin");
+        check(b.size() == 13 && b[1] == 0x00 && b[2] == 0xD0 && b[4] == 0xD0 && b[6] == 0xD0, "XSV: enderecos do cabecalho deslocados");
+    }
+    checkOut(mon, "XSV " + t + "sv3.bin,0000#V,0003", "NUNCA SALVA DA VRAM", "XSV nao salva VRAM");
+    {
+        std::ofstream o(t + "plain.bin", std::ios::binary);
+        o << "nao e' bsave";
+    }
+    checkOut(mon, "XLD " + t + "plain.bin", "ARQUIVO INVALIDO", "XLD recusa o que nao comeca com FE");
+    checkOut(mon, "XS# " + t + "raw.bin,C000,C005", "TAMANHO 0006", "XS#");
+    check(ReadAll(t + "raw.bin").size() == 6, "XS#: so' os bytes, sem cabecalho");
+    checkOut(mon, "XL# " + t + "raw.bin,E200", "EM E200", "XL#");
+    checkOut(mon, "DM E200", "E200  3E 05 CD A2 00 C9", "XL#: os bytes chegaram");
+    checkOut(mon, "XL# " + t + "raw.bin,0100#V", "EM 00100", "XL# na VRAM");
+    checkOut(mon, "XL# " + t + "raw.bin,FFFE", "NAO CABE", "XL# nao da' a volta");
+
+    // ---- disco: XDK XFS XCI XTP XL% XS% ----
+    checkOut(mon, "XFS", "NENHUM DISCO CORRENTE", "XFS sem disco corrente");
+    {
+        std::ofstream o(t + "hello.txt", std::ios::binary);
+        o << "linha1\r\nlinha2\r\n\tcom tab\r\n";
+        o.put('\x1A');
+        o << "depois do fim";
+    }
+    {
+        msxdisk::DiskImage img = msxdisk::DiskImage::CreateBlank();
+        msxdisk::DiskError de = msxdisk::DiskError::None;
+        check(img.AddFile(t + "hello.txt", "HELLO.TXT", msxdisk::kAttrArchive, &de), "disco de teste: AddFile");
+        check(img.Save(t + "disk.dsk", &de), "disco de teste: Save");
+    }
+    checkOut(mon, "XDK " + t + "naoexiste.dsk", "NAO E' UMA IMAGEM", "XDK recusa o que nao e' disco");
+    checkOut(mon, "XDK " + t + "disk.dsk", "DISCO: " + std::string("mamute_sx_disk.dsk"), "XDK escolhe o disco corrente");
+    checkOut(mon, "XDK", "DISCO: mamute_sx_disk.dsk", "XDK sem argumento mostra o corrente");
+    checkOut(mon, "XFS", "HELLO.TXT", "XFS lista o diretorio");
+    checkOut(mon, "XCI", "CLUSTERS LIVRES", "XCI");
+    checkOut(mon, "XTP HELLO.TXT", "linha2", "XTP mostra o texto do arquivo do disco");
+    checkOut(mon, "XTP HELLO.TXT", "        com tab", "XTP expande o TAB");
+    {
+        const std::string out = Run(mon, "XTP HELLO.TXT");
+        check(!has(out, "depois do fim"), "XTP para no 1A (fim de texto)");
+    }
+    checkOut(mon, "XTP NOPE.TXT", "NAO ENCONTRADO", "XTP de arquivo que nao existe");
+    Run(mon, "M D600,DE,AD,BE,EF");
+    checkOut(mon, "XS% 20,D600", "GRAVADOS 1 SETORES (20-20)", "XS% grava um setor");
+    checkOut(mon, "XL% 20,D800", "LIDOS 1 SETORES (20-20)", "XL% le um setor");
+    checkOut(mon, "DM D800", "D800  DE AD BE EF", "XL%: os bytes do setor chegaram");
+    checkOut(mon, "XS% 21,22,D600", "GRAVADOS 2 SETORES", "XS% de dois setores");
+    checkOut(mon, "XL% 5000,D800", "ALEM DO FIM DO DISCO", "XL% alem do disco");
+    checkOut(mon, "XL% 0,FF00", "NAO CABEM", "XL% que nao cabe na memoria");
+    checkOut(mon, "ZAP " + t + "disk.dsk,20", "000  DE AD BE EF", "o ZAP enxerga o que o XS% gravou");
+
+    // ---- notas ----
+    checkOut(mon, "XIC 1234", "NOTA NAO ENCONTRADA", "XIC sem notas");
+    checkOut(mon, "XIM 1234,1,4,Teste de porta", "NOTA ADICIONADA EM 1234 (1 NA MEMORIA)", "XIM");
+    checkOut(mon, "XIM 1234,2,1,Outra no mesmo endereco", "(2 NA MEMORIA)", "XIM: duas notas no mesmo endereco");
+    checkOut(mon, "XIC 1234", "1234 [MAIN/PORT] Teste de porta", "XIC mostra a primeira");
+    checkOut(mon, "XIC 1234", "1234 [SUB/BIOS] Outra no mesmo endereco", "XIC mostra todas");
+    checkOut(mon, "XIM 1234,9,1,x", "SINTAXE", "XIM: slot fora de 0-4");
+    checkOut(mon, "XIM 1234,1,8,x", "SINTAXE", "XIM: tipo fora de 0-7");
+    checkOut(mon, "XIS " + t + "n.notas", "GRAVADO", "XIS");
+    checkOut(mon, "XIL " + t + "n.notas", "(2 NOTAS)", "XIL recarrega o que o XIS gravou");
+#ifdef FWMSX_SOURCE_DIR
+    {
+        const std::string notes = std::string(FWMSX_SOURCE_DIR) + "/dist/SUPER-X-PT.notas";
+        std::ifstream probe(notes);
+        if (probe) {
+            checkOut(mon, "XIL " + notes, "(471 NOTAS)", "XIL: o arquivo de notas traduzido do SUPER-X (471 notas)");
+            checkOut(mon, "XIC 0010", "Extrai um caractere", "XIC: nota da BIOS (RST 10H)");
+            checkOut(mon, "XIR extrai", "0010 [GERAL/BIOS]", "XIR <texto> filtra as notas no console");
+            mamute::SetConfigDir(std::string(FWMSX_SOURCE_DIR) + "/dist");
+            checkOut(mon, "XIL", "(471 NOTAS)", "XIL sem argumento le o arquivo ao lado do executavel");
+            mamute::SetConfigDir("");
+        } else {
+            std::printf("[SKIP] notas do SUPER-X nao encontradas em '%s'\n", notes.c_str());
+        }
+    }
+#endif
+
+    // ---- os paineis (sem terminal: as teclas por nome) ----
+    Run(mon, "@panels on");
+    {
+        std::string r = Run(mon, "XD C400");
+        check(has(r, "action=show panel=mamute title=XD") && has(r, "XD - MEMORIA"), "painel XD abre");
+        Run(mon, "@key c:1");
+        r = Run(mon, "@key c:2");
+        check(has(r, "C400  12 "), "painel XD: dois digitos gravam o byte e o cursor avanca");
+        r = Run(mon, "@key c:\"");
+        check(has(r, "DIGITANDO ASCII"), "painel XD: aspas ligam a digitacao ASCII");
+        Run(mon, "@key c:H");
+        Run(mon, "@key c:i");
+        Run(mon, "@key esc");
+        r = Run(mon, "@key c:@");
+        Run(mon, "@key esc");
+        r = Run(mon, "@key esc");
+        check(has(r, "action=close"), "painel XD: ESC fecha");
+    }
+    Run(mon, "@panels off");
+    checkOut(mon, "DM C400", "C400  12 48 69", "painel XD: 12 gravado em hexa, 'H' e 'i' digitados em ASCII");
+    Run(mon, "@panels on");
+    {
+        Run(mon, "XA C500");
+        Run(mon, "@key c:O");
+        Run(mon, "@key c:K");
+        Run(mon, "@key space");
+        Run(mon, "@key c:!");
+        const std::string r = Run(mon, "@key esc");
+        check(has(r, "action=close"), "painel XA: ESC fecha");
+    }
+    Run(mon, "@panels off");
+    checkOut(mon, "DM C500", "C500  4F 4B 20 21", "painel XA: as teclas viram bytes crus");
+    Run(mon, "@panels on");
+    {
+        Run(mon, "XH C600");
+        Run(mon, "@key space");   // pixel (0,0): bit 7 do byte 0
+        Run(mon, "@key right");
+        Run(mon, "@key space");   // pixel (1,0): bit 6
+        Run(mon, "@key down");
+        Run(mon, "@key c:i");     // inverte o caractere sob o cursor
+        Run(mon, "@key esc");
+    }
+    Run(mon, "@panels off");
+    checkOut(mon, "DM C600", "C600  3F FF FF FF FF FF FF FF", "painel XH: o pixel 0 e 1 acesos e depois invertidos (3F), o resto invertido (FF)");
+    Run(mon, "@panels on");
+    {
+        Run(mon, "XH C600");
+        Run(mon, "@key c:b");     // apaga os 4 caracteres
+        Run(mon, "@key esc");
+    }
+    Run(mon, "@panels off");
+    checkOut(mon, "DM C600", "C600  00 00 00 00 00 00 00 00", "painel XH: B apaga os 4 caracteres");
+    Run(mon, "@panels on");
+    {
+        std::string r = Run(mon, "XI C000");
+        check(has(r, "title=XI") && has(r, "C000  3E 05"), "painel XI abre com o disassembly");
+        r = Run(mon, "@key down");
+        check(has(r, "C001  05"), "painel XI: baixo anda 1 byte (acha o alinhamento)");
+        r = Run(mon, "@key esc");
+        check(has(r, "action=close"), "painel XI: ESC fecha");
+    }
+    {
+        std::string r = Run(mon, "XPP");
+        check(has(r, "title=XPP") && has(r, "62*"), "painel XPP abre com as portas");
+        Run(mon, "@key c:a");
+        Run(mon, "@key c:7");
+        Run(mon, "@key c:0");
+        r = Run(mon, "@key enter");
+        check(has(r, "70 "), "painel XPP: A adiciona uma porta");
+        Run(mon, "@key c:s");
+        Run(mon, "@key c:5");
+        Run(mon, "@key c:A");
+        Run(mon, "@key enter");
+        r = Run(mon, "@key esc");
+        check(has(r, "action=close"), "painel XPP: ESC fecha");
+    }
+    Run(mon, "@panels off");
+    {
+        const std::string p = Run(mon, "XPP");
+        check(has(p, "60     00      5A"), "painel XPP: S definiu a Saida");
+    }
+    Run(mon, "M CC00,DB,60,76");
+    Run(mon, "XRG SP,F000");
+    Run(mon, "XGO CC00");
+    checkOut(mon, "XRG", "AF=5A", "IN A,(60) leu a Saida que o painel definiu");
+    Run(mon, "@panels on");
+    {
+        Run(mon, "XIL " + t + "n.notas");
+        std::string r = Run(mon, "XIR 1234");
+        check(has(r, "title=XIR") && has(r, "ENDERECO: 1234"), "painel XIR abre na nota do endereco");
+        r = Run(mon, "@key c:/");
+        Run(mon, "@key c:o");
+        Run(mon, "@key c:u");
+        Run(mon, "@key c:t");
+        Run(mon, "@key c:r");
+        Run(mon, "@key c:a");
+        r = Run(mon, "@key enter");
+        check(has(r, "Outra no mesmo endereco") || has(r, "NAO ENCONTRADO"), "painel XIR: a busca roda");
+        r = Run(mon, "@key esc");
+        r = Run(mon, "@key esc");
+        check(has(r, "action=close"), "painel XIR: ESC fecha");
+    }
+    {
+        std::string r = Run(mon, "XTP HELLO.TXT");
+        check(has(r, "title=XTP") && has(r, "linha1"), "painel XTP abre com o texto");
+        r = Run(mon, "@key esc");
+        check(has(r, "action=close"), "painel XTP: ESC fecha");
+    }
+    {
+        Run(mon, "XRG SP,F000");
+        std::string r = Run(mon, "XTR C800");
+        check(has(r, "title=XTR") && has(r, "C800  3E 05"), "painel XTR abre e ja' executa o primeiro passo");
+        r = Run(mon, "@key enter");
+        check(has(r, "C802  06 03"), "painel XTR: ENTER executa a proxima instrucao");
+        r = Run(mon, "@key esc");
+        check(has(r, "action=close"), "painel XTR: ESC fecha");
+    }
+    Run(mon, "@panels off");
 }
 
 } // namespace
@@ -555,6 +983,7 @@ int main() {
     TestOffline();
     TestEdit();
     TestScreens();
+    TestSuperX();
     TestOnline();
     std::printf("\n%s (%d falha(s))\n", g_failures ? "FALHOU" : "OK", g_failures);
     return g_failures ? 1 : 0;

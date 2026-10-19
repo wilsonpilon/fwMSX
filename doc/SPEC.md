@@ -192,12 +192,15 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.40.2)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-19, depois da v1.40.3)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.40.2, publicada em `main`):**
+**Funcionando (v1.40.3, publicada em `main`):**
+- [x] **Mamute SUPER-X** (1.40.3, Fase 4): o enderecamento estendido (`#slot-sub`, `#V`, `#S`) e as variaveis `@`; `CL`; `XD XA XI XH XM` (paineis na TUI, telas e listagens no console, `?XD` em PDF); `XBT XRT XFL XCM XFD XTS XCS XSD`; `XRG XGO XTR` com
+  5 breakpoints nomeados; `XPP XPI XPO` (a CPU offline passou a ter portas); `XDK XFS XCI XTP XL% XS% XSV XLD XS# XL#` (disco corrente e arquivos); notas `XIM XIC XIL XIS XIR` (471 notas da BIOS em `SUPER-X-PT.notas`); `XCO`; `man mamute-superx`.
+  Kernels novos em C (`mamute_reloc.c`), Fortran (`mamute_total.f90`) e NASM (`mamute_cmp.asm`). Falta no Mamute: o SCR em pixels na janela ImGui, o TAB do console, o `R` (fita), a "cruz" de troca entre XD/XA/XI/XM/XH, o `CLS`, as cores do `XCO`.
 - [x] **Compatibilidade fwasm x asMSX v1.2.0**: medida 100% (6606 casos + 1 programa real), estimada ~95%; pendencias em `asm-spec.md`.
 - [x] **Mamute telas e PDF** (1.40.2, Fase 3): paineis `DM M S ZAP SCR` na TUI (e versoes de linha no console), `ZAPW`, teclado S configuravel, `P/LP/V/A P/A H` em PDF, `man mamute-screens`.
 - [x] **Mamute EDIT e A** (1.40.1, Fase 2): editor de fonte de linhas numeradas + montagem pelo fwasm (listagem, `O N P I R S D H /desloc`, `MAP`), `man mamute-edit`.

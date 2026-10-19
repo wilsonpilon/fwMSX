@@ -121,6 +121,13 @@ const char *kHelp =
     "  LOAD arq[,slot[,end]] | SAVE arq,ini,fim[,exec[,BIN|ROM|RAW]]   arquivos\n"
     "  EDIT | LIST | A [opcoes] | MAP   editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm (HELP no EDIT)\n"
     "  S end[,teclas] | ZAP arq.dsk,setor[,desloc] | ZAPW arq,setor,byte,b1.. | SCR end,dx,dy[,modo[,zoom]]   telas (paineis na TUI)\n"
+    "  CL expr | @ | @0=end#alvo      calculadora (hexa; D B H O; + - * / % | & ^ !) / variaveis de debugger\n"
+    "  SUPER-X (prefixo X; enderecos aceitam #slot[-sub] | #V | #S; man mamute-superx):\n"
+    "    XD XA XI XH [end] | XM end | XD ini,fim[,arq] | ?XD ini,fim[,arq]   telas / sessao de montagem / listagens (PDF com ?)\n"
+    "    XBT XRT ini,fim,dest | XFL ini,fim,byte | XCM ini,fim,comp[,S] | XFD ini,fim,instr | XTS ini,fim | XCS | XSD arq,ini,fim[,B|D|X]\n"
+    "    XRG [*|+|reg,val] | XGO [end] | XTR [end][,n] | XPP | XPI porta | XPO porta,byte | XCO [f],[b],[r]\n"
+    "    XDK arq.dsk | XFS | XCI | XTP arq | XL% XS% setor[,fim],end | XSV XLD XS# XL# arq,...\n"
+    "    XIL [arq] | XIS arq | XIM end,slot,tipo,texto | XIC end | XIR [end]\n"
     "  CFG [SET s,p,tipo[,arq[,HALF]] | VRAM n | ONLINE 0|1 | DUMP n | SAVE | LOAD]   configuracao inicial\n"
     "  HELP                         esta lista (o manual completo: man mamute)";
 
@@ -130,9 +137,11 @@ Monitor::Monitor(const Config &cfg, std::string config_path)
     : cfg_(cfg), config_path_(std::move(config_path)), offline_(cfg), offline_exec_(offline_), dump_mode_(cfg.dump_mode) {
     // Reconfigure ja' rodou no construtor da memoria; os avisos (arquivo que nao abriu) saem no banner
     load_warnings_ = offline_.Reconfigure(cfg_);
+    offline_exec_.SetPorts(&sx_.ports); // o painel de portas (XPP) e' o que a CPU offline enxerga nas instrucoes IN/OUT
 }
 
 std::string Monitor::Prompt() const {
+    if (sx_.xm_active) return "XM " + FormatSx(sx_.xm_cur) + "> ";
     if (editing_) return "EDIT> ";
     return online() ? "MON(on)> " : "MON(off)> ";
 }
@@ -148,11 +157,37 @@ std::string Monitor::Execute(const std::string &line_in, bool *quit) {
     if (quit) *quit = false;
     const std::string line = Trim(line_in);
     if (line.empty()) return "";
-    if (line[0] == '@') return CmdInternal(line); // comandos do hospedeiro (paineis), nunca do usuario
+    if (line[0] == '@') {
+        // "@", "@0", "@0=8000#3-1": as variaveis de debugger do SUPER-X. "@panels/@key/@panel" sao do hospedeiro (paineis), nunca do usuario.
+        const bool var = line.size() == 1 || (std::isalnum(static_cast<unsigned char>(line[1])) && (line.size() == 2 || line[2] == '=' || std::isspace(static_cast<unsigned char>(line[2]))));
+        return var ? CmdVar(line) : CmdInternal(line);
+    }
+    if (sx_.xm_active) { // a sessao do XM: cada linha e' uma instrucao, dados ou um endereco; QUIT volta ao monitor
+        size_t e = 0;
+        while (e < line.size() && !std::isspace(static_cast<unsigned char>(line[e])) && line[e] != ',') ++e;
+        const std::string w = Upper(line.substr(0, e));
+        if (w == "BA" || w == "XQT") {
+            sx_.xm_active = false;
+            if (quit) *quit = true;
+            return "";
+        }
+        if (w == "QUIT") {
+            sx_.xm_active = false;
+            return "VOLTA AO MONITOR";
+        }
+        return XmExecute(line);
+    }
+    // "?XD 4000,4010": o "?" na frente manda a listagem para a "impressora" (um PDF), como no SUPER-X
+    bool printer = false;
+    std::string body = line;
+    if (line.size() > 1 && line[0] == '?' && std::isalpha(static_cast<unsigned char>(line[1]))) {
+        printer = true;
+        body = line.substr(1);
+    }
     size_t i = 0;
-    while (i < line.size() && !std::isspace(static_cast<unsigned char>(line[i])) && line[i] != ',' && line[i] != '\'' && line[i] != '/' && line[i] != '>') ++i;
-    const std::string cmd = Upper(line.substr(0, i));
-    const std::string rest = Trim(line.substr(i));
+    while (i < body.size() && !std::isspace(static_cast<unsigned char>(body[i])) && body[i] != ',' && body[i] != '\'' && body[i] != '/' && body[i] != '>') ++i;
+    const std::string cmd = Upper(body.substr(0, i));
+    const std::string rest = Trim(body.substr(i));
     const std::vector<std::string> f = Fields(rest);
 
     if (cmd == "BA" || cmd == "XQT" || (cmd == "QUIT" && !editing_)) {
@@ -202,6 +237,11 @@ std::string Monitor::Execute(const std::string &line_in, bool *quit) {
     if (cmd == "LOAD") return CmdLoad(f);
     if (cmd == "SAVE") return CmdSave(f);
     if (cmd == "CFG") return CmdCfg(rest);
+    if (cmd == "CL") return CmdCl(rest);
+    bool handled = false;
+    const std::string sx = CmdSuperX(cmd, rest, printer, handled);
+    if (handled) return sx;
+    if (printer) return "A IMPRESSORA (?) SO' VALE PARA XD, XA E XI";
     return "COMANDO DESCONHECIDO: " + cmd + " (HELP lista os comandos)";
 }
 

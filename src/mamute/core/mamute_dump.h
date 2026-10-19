@@ -17,6 +17,9 @@ int mamute_dump_line(int mode, unsigned addr, const unsigned char *bytes, int n,
 /* Fortran (mamute_sum.f90): soma dos `n` bytes (mais o byte baixo do endereco, se with_addr), modulo 256. */
 int mamute_checksum8(const signed char *buf, int n, int addr_lo, int with_addr);
 
+/* Fortran (mamute_total.f90): soma de TODOS os `n` bytes, modulo 65536 (o checksum agregado do XTS). */
+int mamute_sum16(const signed char *buf, int n);
+
 #ifdef __cplusplus
 }
 #endif

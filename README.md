@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.40.2 "Antarctic Adventure: Mamute, telas", Konami)
+## Estado atual (v1.40.3 "Antarctic Adventure: Mamute, SUPER-X", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -73,7 +73,8 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   </p>
 - **Controle externo e interfaces**: ponte de controle por TCP (`--ctl-port`), console (`fwMSXc.exe --cli`), TUI de menus (`--tui`) e modo
   terminal (`--term`). Ver [control-spec.md](doc/control-spec.md).
-- **Mamute** (`mon` no console/TUI, `fwmsx --mon`): monitor Z80 -- memoria, disassembler, execucao, LOAD/SAVE -- online (a maquina emulada) ou offline (memoria propria). Ver [mamute-spec.md](doc/mamute-spec.md).
+- **Mamute** (`mon` no console/TUI, `fwmsx --mon`): monitor Z80 -- memoria, disassembler, execucao, LOAD/SAVE, editor de fonte e montagem pelo fwasm, telas (paineis na TUI) e os comandos do **SUPER-X**
+  (alvos `#slot-sub`/`#V`, relocar blocos com `XRT`, sessao de montagem `XM`, registradores/breakpoints/trace, portas, disco e notas) -- online (a maquina emulada) ou offline (memoria propria). `man mamute`. Ver [mamute-spec.md](doc/mamute-spec.md).
 - **Montador Z80** (`fwmsx --asm`, compativel com o asMSX 1.2.0; saidas `.z80`/`.sym`/`.txt` -- formatos de ROM ainda por vir). Ver [asm-spec.md](doc/asm-spec.md).
 - **Compatibilidade com o fMSX**: comparacao quadro a quadro com o fMSX original (`tools/fmsxgo_ref/compare.py`): 26 casos, todos aprovados
   (BIOS dos 3 modelos e jogos). Ver [fmsx-compare-spec.md](doc/fmsx-compare-spec.md).
@@ -142,6 +143,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.40.3 Mamute: os comandos do SUPER-X (prefixo X) -- `XD XA XI XH XM`, `XBT XRT XFL XCM XFD`, `XRG XGO XTR`, portas, disco (`XDK XFS XTP XL% XS%`...) e notas, com alvos `#slot-sub`/`#V`; `man mamute-superx`**
 **1.40.2 Mamute: as telas -- `DM`, `M`, `S`, `ZAP` (setores de disco) e `SCR` (memoria como pixels) como paineis interativos na TUI, e listagens em PDF**
 **1.40.1 Mamute: `EDIT` (editor de fonte de linhas numeradas) e `A` (montar pelo fwasm, com listagem, referencia cruzada e gravacao na memoria/maquina)**
 **1.40.0 Mamute: o monitor Z80 do fwMSX (`mon`, `fwmsx --mon`), online na maquina emulada ou offline com memoria propria; `man mamute`**

@@ -15,8 +15,13 @@ chamado **MSX-PoorManOS**. Ainda sem data.
 Este repositorio e' **pessoal**. Midias de terceiros (ROMs, discos, fitas) podem ser versionadas por
 enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver `LICENSE-THIRD-PARTY.md`).
 
-## 2. Onde estamos (2026-10-16)
+## 2. Onde estamos (2026-10-19)
 
+- **1.40.3 "Antarctic Adventure: Mamute, SUPER-X" (publicada)**: **Mamute Fase 4** -- os comandos do SUPER-X (prefixo `X`) mais `CL` e as variaveis `@`: alvos `#slot-sub`/`#V`/`#S` (`Target`, `IMemory::ReadSub/WriteSub`), `XD XA XI XH` (paineis na TUI, telas e
+  listagens no console, `?XD` em PDF), `XM` (sessao de montagem, prompt `XM C100> `), `XBT XRT XFL XCM XFD XTS XCS XSD`, `XRG XGO XTR` (5 breakpoints nomeados), `XPP XPI XPO` (a CPU offline ganhou portas), disco (`XDK XFS XCI XTP XL% XS% XSV XLD XS# XL#`),
+  notas (`XIL XIS XIM XIC XIR`; `dist/SUPER-X-PT.notas` com 471 notas da BIOS) e `XCO`. Kernels novos em C (`mamute_reloc.c`), Fortran (`mamute_total.f90`) e NASM (`mamute_cmp.asm`); `man mamute-superx`. **Achados**: online, `#3` e' o sub-slot que a CPU enxerga
+  (a RAM do slot 3 expandido nao esta' no sub-slot 0); o HALT ficava ligado entre programas (agora `XGO <end>` o reinicia). **Falta no Mamute**: o SCR em pixels na janela ImGui, o TAB do console, o `R` (fita), a "cruz" de troca entre XD/XA/XI/XM/XH, o `CLS`, as cores do
+  `XCO` pintando de fato. **Proximo grande item: o depurador sofisticado** (o usuario o pediu DEPOIS do Mamute).
 - **1.40.2 "Antarctic Adventure: Mamute, telas" (publicada)**: **Mamute Fase 3** -- paineis `DM M S ZAP SCR` na TUI (e versoes de linha no console), `ZAPW`, teclado S (`skeys`), `P/LP/V/A P/A H` em PDF (gerador proprio),
   `man mamute-screens`. O modelo do painel (`mamute_panel.cpp`) recebe teclas por nome e devolve linhas: testado sem terminal; a TUI so' repassa teclas (`mon @key ...`). Proxima: Fase 4 = os 36 comandos do SUPER-X
   (`XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, `XCS XTS`, `XCO XSD XQT`, `XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%`, notas `XIM XIC XIL XIS XIR`, portas `XPP XPI XPO`); depois o depurador sofisticado.

@@ -81,6 +81,9 @@ Copy-Item $msxdiskExe $stageDir
 # Imagem de abertura (ao lado do executavel; doc\splash-spec.md). O icone vai dentro do .exe (src\splashwmsx.rc.in).
 $splashPng = Join-Path $distDir "fwMSX-splash.png"
 if (Test-Path $splashPng) { Copy-Item $splashPng $stageDir }
+# Notas do SUPER-X (monitor Mamute: XIL sem argumento le este arquivo; doc\mamute-spec.md).
+$notasFile = Join-Path $distDir "SUPER-X-PT.notas"
+if (Test-Path $notasFile) { Copy-Item $notasFile $stageDir }
 Copy-Item (Join-Path $root "README.md") $stageDir
 Copy-Item (Join-Path $root "LICENSE") $stageDir
 Copy-Item (Join-Path $root "LICENSE-THIRD-PARTY.md") $stageDir

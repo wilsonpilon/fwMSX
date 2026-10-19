@@ -21,8 +21,8 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 40
-#define FWMSX_VERSION_PATCH 2
+#define FWMSX_VERSION_PATCH 3
 
 #define FWMSX_COMPANY   "Konami"
 #define FWMSX_CODENAME  "Antarctic Adventure"
-#define FWMSX_SUBTITLE  "Mamute: telas"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_SUBTITLE  "Mamute: SUPER-X"  // so' nas versoes X.Y.Z com Z > 0

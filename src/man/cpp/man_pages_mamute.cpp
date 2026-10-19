@@ -34,6 +34,8 @@ COMANDOS (todos em HEXA; man mamute-<grupo> detalha)
   execucao    L LP X G                     man mamute-exec
   arquivos    LOAD SAVE                    man mamute-files
   fonte       EDIT LIST A MAP              man mamute-edit   (editor de linhas numeradas, monta pelo fwasm)
+  SUPER-X     XD XA XI XM XH XBT XRT XFL XCM XFD XTS XCS XSD XRG XGO XTR XPP XPI XPO XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%
+              XIM XIC XIL XIS XIR XCO  +  CL (calculadora) e @ (variaveis)      man mamute-superx
   modos       ONLINE OFFLINE STATUS PUSH PULL    man mamute-modes
   configurar  CFG                          man mamute-config
   sair        BA QUIT XQT
@@ -41,10 +43,10 @@ COMANDOS (todos em HEXA; man mamute-<grupo> detalha)
 DIFERENCAS EM RELACAO AO MAMUTE DO PALEOBASIC
   Sem janelas separadas: na TUI, DM, M, S, ZAP e SCR sao PAINEIS (man mamute-screens); no console sao comandos de linha.
   P, LP e A P/H gravam PDF (Courier, A4) quando o nome termina em .pdf, senao texto. O EDIT/A monta pelo fwasm (nao ha' um
-  segundo montador). Ainda nao existem: R (fita) e os comandos do SUPER-X (prefixo X). Entram nas proximas versoes (doc/mamute-spec.md).
+  segundo montador). Os comandos do SUPER-X (prefixo X) estao em man mamute-superx. Ainda nao existe: R (fita), que no original so' validava a sintaxe.
 
 VER TAMBEM
-  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-edit, mamute-screens, mamute-files, mamute-config, dis, fwasm)MAN";
+  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-edit, mamute-screens, mamute-superx, mamute-files, mamute-config, dis, fwasm)MAN";
 
 const char *const kEdit = R"MAN(EDIT / LIST / A / MAP -- o editor de fonte Z80 e a montagem
 
@@ -248,7 +250,7 @@ EXEMPLO (offline)
   G C100                             ; PARADO EM HALT ... A=77 B=00
 
 VER TAMBEM
-  mamute, mamute-modes, dis, regs, go)MAN";
+  mamute, mamute-modes, mamute-superx (XRG, XGO, XTR: a versao com breakpoints nomeados e trace), dis, regs, go)MAN";
 
 const char *const kFiles = R"MAN(LOAD / SAVE
 
@@ -303,6 +305,103 @@ EXEMPLO (um MSX1: BIOS e BASIC num arquivo de 32 KB, RAM no slot 3)
 VER TAMBEM
   mamute, mamute-modes)MAN";
 
+const char *const kSuperX = R"MAN(OS COMANDOS DO SUPER-X (prefixo X), CL e @
+
+O SUPER-X era um monitor japones de MSX. O Mamute do Paleobasic portou os comandos dele com o prefixo X (para nao colidir com os do
+MegaAssembler). No fwMSX cada um que era uma janela vira um PAINEL na TUI e um comando de LINHA no console. Enderecos em HEXA.
+
+ENDERECAMENTO ESTENDIDO -- depois do endereco, um sufixo escolhe ONDE ler e gravar, sem olhar o PAGE:
+  4000#3      o slot primario 3 (mesmo que nao esteja em pagina nenhuma agora); online, o sub-slot que a CPU enxerga naquele slot
+  4000#3-1    o sub-slot 1 do slot 3 (slot expandido; offline sao 64 KB de RAM por sub-slot, ate' 1 MB)
+  00000#V     a VRAM, plana, com ate' 5 digitos (#4 e' sinonimo);   4000#S   o PAGE corrente de proposito (#5)
+  O <fim> de um bloco e' sempre um endereco PURO, no MESMO alvo do inicio. Ninguem da' a volta: passar do teto do alvo e' erro.
+  Escrever so' funciona onde e' RAM (sub-slots offline 1-3 e a VRAM sempre aceitam; ROM e celula vazia ignoram).
+
+VARIAVEIS DE DEBUGGER -- @0 a @3 e @B @E @S guardam um endereco COM o alvo e valem pelo endereco inteiro:
+  @                 mostra as 7        @0=8000#3-1   define        XD @0   usa
+  XD, XA, XI, XM e XH gravam o endereco aberto em @0. XLD, XL# e XL% preenchem @B (inicio), @E (fim) e @S (execucao ou tamanho).
+
+CL <expressao>   calculadora de 16 bits (HEX, BIN, DEC+ e DEC+-). Numeros em HEXA; sufixos D B H O (10D = decimal 10; 10DH = hexa);
+                 operadores + - * / % | & ^ ! e parenteses (do mais apertado: unarios, * / %, + -, &, ^, |); @0 vale so' o numero;
+                 'A' e "AB" sao literais ASCII.   CL (100H+2ADH)*3-1
+
+TELAS DE MEMORIA (UM endereco = a tela; sem endereco reabre onde ficou)
+  XD [end]            128 bytes em hexa+ASCII; editavel nos dois blocos. Teclas: as do M (dois digitos hexa gravam), " liga a digitacao
+                      ASCII direta (ESC sai), @ repete o byte anterior, + e - o deslocamento do texto, PgUp/PgDn 128 bytes.
+  XA [end]            256 bytes so' em ASCII (16x16): qualquer tecla imprimivel grava o byte cru e avanca.
+  XI [end]            o disassembly rolando (so' leitura): cima/baixo 1 byte, PgDn a proxima tela, PgUp volta a largura da tela.
+  XH [end]            4 caracteres/sprites 8x8 (32 bytes), 2 em cima e 2 embaixo, pixel a pixel: setas, ESPACO inverte o pixel,
+                      I inverte o caractere, L apaga, F preenche, B apaga os 4, PgUp/PgDn 32 bytes; mostra a miniatura em braille.
+  XM end[#alvo]       abre uma SESSAO (o prompt vira XM 4000>): cada linha e' uma instrucao Z80 (montada pelo fwasm e gravada), dados
+                      (.cd,4dh = bytes  :1234 = palavras  ;expr = palavras numericas  [expr = bytes numericos  "texto cru), um endereco
+                      (o alvo continua o mesmo; so' #S volta ao PAGE) ou I [n] (lista n instrucoes). O endereco avanca sozinho.
+                      QUIT volta ao monitor; BA e XQT saem de tudo. DAA e CCF sozinhos sao a instrucao, nao o endereco.
+  No console XD, XA, XI e XH mostram a tela uma vez. Com DOIS ou TRES campos viram listagens:
+  XD ini,fim          8 bytes por linha:  AAAA XX XX .. : YY : ASCII   (YY = checksum de 8 bits; XCS escolhe NORMAL ou +ADDR)
+  XA ini,fim          64 caracteres por linha        XI ini,fim   disassembly, uma instrucao por linha
+  sem fim             256 bytes (ate' o teto do alvo):  XD 4000,   ou   XD 4000,,arq   ou   XD 4000,arq
+  ini,fim,arquivo     XD e XA gravam os bytes crus; XI grava a listagem em texto
+  ?XD ini,fim[,arq]   o "?" manda a listagem para a "impressora": um PDF (Courier, A4) quando o nome termina em .pdf;  vale para XD, XA, XI
+
+BLOCOS
+  XBT ini,fim,dest    copia entre alvos QUAISQUER (slot, sub-slot, VRAM, PAGE); le tudo antes de gravar, entao pode se sobrepor
+  XRT ini,fim,dest    copia relocando: cada JP/CALL/LD com endereco absoluto que aponta para DENTRO do bloco anda junto (CALL 8012H vira
+                      CALL C012H ao mover 8000H para C000H; CALL 004DH, fora do bloco, fica); JR/DJNZ para FORA do bloco sao recalculados e
+                      se nao couberem em -128..127 nada e' gravado (RELOCACAO INVALIDA). Dados no meio do codigo podem confundir.
+  XFL ini,fim,byte    preenche
+  XCM ini,fim,comp[,S]   compara com o bloco de mesmo tamanho em comp: lista os bytes DIFERENTES (,S lista os IGUAIS) e a contagem
+  XFD ini,fim,instr   acha uma INSTRUCAO Z80 (monta instr e procura nos limites de instrucao, nao em bytes soltos):  XFD 4000,7FFF,CALL 8012H
+                      JR e DJNZ so' casam na mesma distancia relativa.
+  XTS ini,fim         UM checksum de 16 bits do bloco inteiro, em HEX, BIN, DEC+, DEC+- e OCT
+  XCS                 alterna o checksum por linha do XD entre NORMAL (so' os bytes) e +ADDR (soma o byte baixo do endereco)
+  XSD arq,ini,fim[,B|D|X]   grava uma listagem assembly (com ORG), ou os bytes crus como DEFB, DATA do BASIC (com o laco FOR/READ/POKE)
+                      ou dados do X-BASIC. O modo D nao serve para a VRAM.
+
+REGISTRADORES, EXECUCAO E PORTAS (a CPU do modo atual: privada offline, a da maquina online)
+  XRG                 AF BC DE HL / IX IY SP / AF' BC' DE' HL' / PC / os 5 breakpoints BP BP1 BP2 BP3 BPF
+  XRG *               limpa tudo, menos a pilha        XRG +   SP=0000       XRG reg,valor   edita (A..L, A'..L', pares, IXH IXL IYH IYL, SP, PC)
+  XRG BP,4000         marca um breakpoint nomeado (XRG BP,- limpa)
+  XGO end[#slot]      executa a partir de end (reinicia o HALT). Para no BP; XGO sem endereco continua e para no BP1, depois BP2, BP3 e BPF
+                      (o que nao existir cai no BPF). Sem breakpoint roda "livre": para no RET que devolve alem da pilha de entrada, no HALT
+                      ou em 2000000 instrucoes. #slot troca o slot da pagina (como o PAGE); VRAM e sub-slot nao: a CPU executa a memoria
+                      mapeada. Online, solta a CPU da maquina (o depurador cuida do resto).
+  XTR [end][,n]       trace: executa n instrucoes (1) e mostra endereco, bytes, mnemonico e os registradores; sem end continua do PC.
+                      Na TUI abre o painel: ENTER executa a proxima, ESC interrompe.
+  XPP                 o painel de portas de E/S monitoradas: ENTRADA (o ultimo byte de um OUT) e SAIDA (o que um IN le); * marca as que sofreram OUT.
+                      Painel: A adiciona, D remove, S define a SAIDA, E a ENTRADA, C limpa as marcas. Nao ha' hardware simulado atras:
+                      quem decide o que o IN le e' voce (o padrao e' FF).
+  XPI porta           le a SAIDA da porta (e a cria no painel)       XPO porta,byte   grava a ENTRADA e marca a porta
+
+DISCO -- o "disco corrente" e' uma imagem .dsk (FAT12 do MSX-DOS)
+  XDK arq.dsk         escolhe o disco corrente (XDK sozinho mostra qual e'). Os outros comandos de disco nao aceitam nome de disco.
+  XFS                 lista o diretorio          XCI   clusters livres / total
+  XTP arquivo         mostra um arquivo DE DENTRO do disco como texto (para no 1A, expande TAB). TUI: painel com rolagem e busca
+                      (/ busca, c liga Case, r liga expressao regular, n proxima)
+  XL% ini[,fim],end   le setor(es) (em hexa, 512 bytes cada) DIRETO para a memoria        XS%   o inverso (grava no disco)
+  Arquivos do COMPUTADOR (nao do disco):
+  XSV arq,ini,fim[,exec[,desloc]]   grava com o cabecalho do BSAVE (FE ini fim exec); desloc soma so' nos enderecos do cabecalho; nao salva VRAM
+  XLD arq[,desloc[#alvo]]           carrega um arquivo do BSAVE (no endereco do cabecalho, ou em desloc); NAO executa (use XGO)
+  XS# arq,ini,fim                   grava so' os bytes (aceita VRAM)        XL# arq,ini   carrega o arquivo inteiro
+
+NOTAS -- um arquivo de texto "AAAA;slot;tipo;texto" que documenta enderecos (o SUPER-X-PT.notas traz 471 da BIOS, do WORK e das portas)
+  XIL [arq]           carrega (sem argumento, o SUPER-X-PT.notas ao lado do executavel); troca TODAS as notas em memoria
+  XIC end             mostra as notas daquele endereco (pode haver mais de uma)       XIM end,slot,tipo,texto   adiciona uma nota
+  XIS arq             grava as notas em memoria
+  XIR [end]           TUI: o painel das notas, uma por vez, com busca (/ c r n). Console: lista as notas (XIR texto filtra)
+  slot: 0 GERAL 1 MAIN 2 SUB 3 FDC 4 RAM    tipo: 0 GERAL 1 BIOS 2 WORK 3 DATA 4 PORT 5 MATH 6 KEY 7 HOOK
+
+XCO [f],[b],[r]     cores do Mamute original (indices 0-15, DECIMAL, vazio mantem); fica no mamute.cfg. Aqui nao ha' janela para pintar:
+                    a escolha so' e' guardada e mostrada.
+
+DIFERENCAS EM RELACAO AO PALEOBASIC
+  Sem janela de arquivo: XFS, XCI, XTP, XL% e XS% pedem o XDK; os nomes de arquivo vao no proprio comando. XFD pede a instrucao no comando.
+  Alem do que o original fazia: os alvos valem tambem em XI, XSD, XFD e XBT; online, #3 e o sub-slot que a CPU enxerga e #V escreve na
+  VRAM da maquina; XRG BP,- limpa um breakpoint; ?XD aceita um nome de arquivo. Ainda nao existem: a "cruz" de troca entre XD/XA/XI/XM/XH
+  (cada um e' aberto pelo seu comando) e o CLS.
+
+VER TAMBEM
+  mamute, mamute-memory, mamute-exec, mamute-screens, mamute-files, mamute-config, dis, fwasm)MAN";
+
 } // namespace
 
 std::vector<Topic> MamuteTopics() {
@@ -316,6 +415,7 @@ std::vector<Topic> MamuteTopics() {
     add("mamute-exec", "L, LP, X, G: disassembler, registradores e execucao", kExec);
     add("mamute-edit", "EDIT, LIST, A, MAP: editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm", kEdit);
     add("mamute-screens", "DM, M, S, ZAP, SCR: paineis interativos na TUI e comandos de linha no console", kScreens);
+    add("mamute-superx", "XD, XM, XBT, XRT, XRG, XGO, XDK, XIM, XPP... (SUPER-X), CL e as variaveis @: o prefixo X", kSuperX);
     add("mamute-files", "LOAD e SAVE: arquivos na memoria", kFiles);
     add("mamute-config", "CFG e o arquivo mamute.cfg: configuracao inicial", kConfig);
     return v;

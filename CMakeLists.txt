@@ -352,8 +352,11 @@ set(FDC_LIB_SOURCES
 # mamute_online.cpp e' o lado ligado a maquina emulada; o resto nao depende dela.
 set(MAMUTE_LIB_SOURCES
         src/mamute/core/mamute_dump.c
+        src/mamute/core/mamute_reloc.c
         src/mamute/fortran/mamute_sum.f90
+        src/mamute/fortran/mamute_total.f90
         src/mamute/asm/mamute_scan.asm
+        src/mamute/asm/mamute_cmp.asm
         src/mamute/cpp/mamute_config.cpp
         src/mamute/cpp/mamute_memory.cpp
         src/mamute/cpp/mamute_exec.cpp
@@ -363,13 +366,31 @@ set(MAMUTE_LIB_SOURCES
         src/mamute/cpp/mamute_pdf.cpp
         src/mamute/cpp/mamute_panel.cpp
         src/mamute/cpp/mamute_screens.cpp
+        src/mamute/cpp/mamute_target.cpp
+        src/mamute/cpp/mamute_calc.cpp
+        src/mamute/cpp/mamute_superx_panels.cpp
+        src/mamute/cpp/mamute_superx_cmds.cpp
+        src/mamute/cpp/mamute_superx_disk.cpp
         src/mamute/cpp/mamute_online.cpp
+)
+
+# O Mamute (comandos XFS/XCI/XTP do SUPER-X) le imagens de disco: so' o nucleo do msxdisk, sem CLI/TUI/GUI dele.
+set(MSXDISK_CORE_SOURCES
+        src/msxdisk/core/geometry.cpp
+        src/msxdisk/core/dir_entry.cpp
+        src/msxdisk/core/disk_image.cpp
+        src/msxdisk/core/msxdos1_boot.cpp
+        src/msxdisk/core/msx_path.cpp
+        src/msxdisk/fat12_c/fat12.c
+        src/msxdisk/asm/name_match.asm
+        src/msxdisk/fortran/geometry_calc.f90
 )
 
 set(CONTROL_LIB_SOURCES
         src/control/command.cpp
         src/control/server.cpp
         ${MAMUTE_LIB_SOURCES}
+        ${MSXDISK_CORE_SOURCES}
 )
 
 # --- Modo terminal do emulador (FTXUI) -- ver doc/term-spec.md. screenshot.cpp usa o miniz (so' o fwMSX linka).

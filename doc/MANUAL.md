@@ -1197,12 +1197,47 @@ MON(off)> g c100          (offline)   ou   online + a o   e, no BASIC, DEFUSR=&H
 ### Configuracao inicial (`mamute.cfg`)
 
 Arquivo de texto `chave=valor` ao lado do executavel, lido quando o monitor abre: `online=0|1`, `vram=16|128|192`, `dump=0..3`,
-`cell.S.P=vazio|ram|rom|basic`, `file.S.P=caminho`, `half.S.P=1`. Sem ele: offline, VRAM de 16 KB, formato 0 e RAM no slot 3. `CFG` mostra e muda
+`cell.S.P=vazio|ram|rom|basic`, `file.S.P=caminho`, `half.S.P=1`, `skeys=` (o teclado S) e `color=F,B,R` (o `XCO`). Sem ele: offline, VRAM de 16 KB, formato 0 e RAM no slot 3. `CFG` mostra e muda
 (`CFG SAVE` grava). Detalhes: `man mamute-config`.
+
+### Os comandos do SUPER-X (prefixo `X`)
+
+O SUPER-X era um monitor japones de MSX; o Mamute traz os comandos dele com o prefixo `X`. O manual completo e' `man mamute-superx`. O que e' janela no original vira **painel na TUI** e **tela de linha** no console.
+
+**Onde ler e gravar** -- depois do endereco, um sufixo escolhe o alvo, sem olhar o `PAGE`: `4000#3` (slot 3), `4000#3-1` (sub-slot 1 do slot 3: RAM expandida), `00000#V` (VRAM, ate' 5 digitos), `4000#S` (o `PAGE`).
+O `<fim>` de um bloco e' sempre um endereco puro no mesmo alvo e nada da a volta. As **variaveis** `@0`-`@3`, `@B`, `@E`, `@S` guardam um endereco com o alvo (`@0=8000#3-1`, depois `XD @0`); `CL` e' a calculadora de 16 bits
+(`CL (100H+2ADH)*3-1`; hexa por padrao, sufixos `D B H O`).
+
+| Comando | O que faz |
+|---|---|
+| `XD` `XA` `XI` `XH [end]` | tela de 128 bytes (hexa+ASCII, editavel) / 256 bytes em ASCII / disassembly rolando / 4 caracteres ou sprites 8x8 pixel a pixel. Com dois ou tres campos listam: `XD 4000,40FF` (8 bytes por linha com checksum), `XD 4000,` (256 bytes), `XD 4000,40FF,arq` (bytes crus); `?XD ...` grava um PDF |
+| `XM end[#alvo]` | sessao de montagem (prompt `XM C100> `): uma instrucao Z80 por linha (montada pelo fwasm), dados `.cd,4dh` `:1234` `;expr` `[expr` `"texto`, um endereco ou `I [n]`; `QUIT` volta |
+| `XBT` `XRT ini,fim,dest` | copia entre qualquer par de alvos / copia **relocando** os `JP`/`CALL`/`LD` que apontam para dentro do bloco |
+| `XFL ini,fim,byte` `XCM ini,fim,comp[,S]` `XFD ini,fim,instrucao` | preenche / compara (diferentes, ou iguais com `,S`) / acha uma instrucao Z80 (`XFD 4000,7FFF,CALL 8012H`) |
+| `XTS ini,fim` `XCS` `XSD arq,ini,fim[,B\|D\|X]` | checksum de 16 bits (HEX BIN DEC OCT) / checksum por linha normal ou +ADDR / listagem assembly, `DEFB`, `DATA` do BASIC ou dados do X-BASIC |
+| `XRG` `XGO` `XTR` | registradores (e `BP BP1 BP2 BP3 BPF`) / executa parando no breakpoint da vez, no RET final ou no HALT / trace (`XTR end,n`; na TUI, ENTER = proxima instrucao) |
+| `XPP` `XPI porta` `XPO porta,byte` | o painel de portas de E/S (Entrada = o ultimo `OUT`, Saida = o que um `IN` le; voce decide a Saida) |
+| `XDK arq.dsk` `XFS` `XCI` `XTP arq` | disco corrente: escolher / diretorio / clusters livres / mostrar um arquivo do disco |
+| `XL%` `XS% setor[,fim],end` | setores (hexa, 512 bytes) direto para / da memoria |
+| `XSV` `XLD` `XS#` `XL#` | `BSAVE`/`BLOAD` e dump/restore cru de arquivos do computador (`XSV arq,ini,fim[,exec[,desloc]]`) |
+| `XIL [arq]` `XIS arq` `XIM end,slot,tipo,texto` `XIC end` `XIR [end]` | notas: carregar (sem argumento, o `SUPER-X-PT.notas` com 471 notas da BIOS) / gravar / adicionar / consultar / navegar e buscar |
+| `XCO [f],[b],[r]` | cores do Mamute original (0-15); ficam guardadas no `mamute.cfg` |
+
+```
+MON(off)> xm c100
+SESSAO XM EM C100: ...
+XM C100> ld hl,1234h
+C100  21 34 12     ld hl,1234h
+XM C103> call 0a2h
+XM C106> quit
+MON(off)> xrt c100,c105,e000       (copia o programa para E000, ajustando os enderecos que apontam para dentro dele)
+MON(off)> xrg sp,f000
+MON(off)> xgo e000                 (executa na CPU offline; XRG mostra os registradores)
+```
 
 ### O que ainda nao existe
 
-`R` (referencia de fita) e os comandos do SUPER-X (prefixo `X`) do Mamute original: ver as fases em [mamute-spec.md](mamute-spec.md).
+`R` (referencia de fita, que no original so' validava a sintaxe), a "cruz" de troca entre `XD`/`XA`/`XI`/`XM`/`XH`, o `CLS` e as cores do `XCO` pintando de fato: ver [mamute-spec.md](mamute-spec.md).
 
 ## Banco de ROMs (`--romdb`)
 

@@ -115,6 +115,12 @@ Dentro do monitor (`mon`), `DM`, `M`, `S`, `ZAP` e `SCR` abrem um painel na TUI:
 `save` para Ctrl+S, `space`, `c:<char>`), enviadas **sem eco no historico** (`SubmitQuiet`); a resposta do monitor e' o painel de novo ou `action=close panel=mamute`. O desenho (`MamuteDialog`, tui_app.cpp) inverte o que esta' entre
 `\x01` e `\x02` (o cursor) e escurece a ultima linha (a ajuda). A `ReplSession` da TUI liga `EnablePanels` e manda `mon @panels on` uma vez por conexao. Detalhes: [mamute-spec.md](mamute-spec.md).
 
+## 6f. Os paineis do SUPER-X (1.40.3)
+
+O mesmo mecanismo de 6e serve aos paineis novos do Mamute: `XD`, `XA`, `XI`, `XH` (telas de memoria), `XIR` (notas), `XPP` (portas), `XTP` (texto de um arquivo do disco) e `XTR` (trace). Nada mudou na TUI: o titulo da caixa vem do
+nome do painel, as teclas seguem os mesmos nomes (`home`/`end` agora tambem sao usados), e as letras viram `c:<char>` (a busca do `XIR`/`XTP` e os atalhos do `XPP`/`XH` sao letras). A sessao do `XM` nao e' painel: o prompt da linha de entrada
+passa a ser `XM C100> ` (o `monitor_prompt` que o console ja' devolve). Detalhes: [mamute-spec.md](mamute-spec.md), 3d.
+
 ## 7. O que falta
 
 - Teclas de atalho por letra nos menus (Alt+letra) e menus com mnemonicos.

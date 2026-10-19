@@ -17,6 +17,30 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.40.3 -- "Antarctic Adventure: Mamute, SUPER-X" (Konami) (2026-10-19)
+
+**Mamute, Fase 4.** Os comandos do SUPER-X (prefixo X) do Mamute original. Especificacao lida na ajuda e no codigo do Mamute do paleobasic (`MamuteHelpData.pbi`, `MamuteAssemblerGui.pbi`, `MamuteSupport.pbi`); o fonte do
+SUPER-X em Z80 (`others/superx/SUPER-X.ASM`) nao foi usado. Decisoes do usuario (Fase 1): paineis na TUI + versao de linha no CLI; offline com memoria privada.
+
+- **Alvo e variaveis**: `Target` (`#slot`, `#slot-sub`, `#V`, `#S`) e `Vars` (`@0`-`@3` `@B` `@E` `@S`); `IMemory` ganhou `ReadSub/WriteSub`. Offline, o sub-slot 0 e' o proprio slot e os sub-slots 1-3 sao 64 KB de RAM cada (alocados
+  quando usados). **Achado (online)**: numa maquina com o slot 3 expandido a RAM nao esta' no sub-slot 0, entao `#3` sem sub-slot passou a valer "o sub-slot que a CPU enxerga naquele slot" (`MachineMemory::Sec`); isso tambem corrige o `LOAD`/`WriteSlot`
+  da Fase 1 nessas maquinas. `MachineMemory::WriteVram` passou a gravar (`Machine::PokeVram`), entao `XFL 0000#V,...` escreve na VRAM da maquina.
+- **Telas e listagens**: `XD XA XI XH` com um endereco = tela (painel na TUI; no console a mesma tela sem cursor); com dois ou tres campos = listagem (fim vazio = 256 bytes, ate' o teto do alvo; terceiro campo = arquivo). `XD` e' uma
+  variante do `GridPanel` (digitacao ASCII com `"`, `@` repete o byte); `XA XI XH XIR XPP XTP XTR` sao paineis novos (`mamute_superx_panels.cpp`). Todos testados por teclas, sem terminal.
+- **`XM`**: uma SESSAO (o prompt vira `XM C100> `), nao uma janela: instrucao Z80 (montada pelo fwasm num `Source` de duas linhas: `ORG` e a linha), dados (`. : ; [ "`, itens pelo `CL`), endereco (o alvo continua; so' `#S` volta ao PAGE) ou `I [n]`.
+  O console passou a tratar `QUIT` como "volta ao monitor" em qualquer sessao (EDIT> e XM), pelo prompt que nao comeca em `MON(`.
+- **`XRT`**: o kernel em C (`mamute_insn_info`) diz o tamanho de cada instrucao e onde esta' o endereco absoluto (`JP`, `CALL`, `LD dd,nn`, `LD (nn),r`, `ED`/`DD`/`FD`) ou o deslocamento (`JR`/`DJNZ`); so' o que aponta para DENTRO do bloco anda.
+  Um `JR` que sai do bloco e' recalculado e, se nao couber em -128..127, nada e' gravado. Limite conhecido: dados no meio do codigo podem ser lidos como instrucao (o original avisa o mesmo).
+- **`XGO`**: o criterio de "fim do programa" (o RET que devolve alem da pilha de entrada) usa a diferenca de 16 bits do SP, nao a comparacao sem sinal do original, que nunca disparava com `SP=0000` (o valor de `XRG +`). **Achado**: o HALT
+  ficava ligado entre programas e o `XGO <end>` seguinte parava na hora; `XGO <end>` e `XTR <end>` agora reiniciam o HALT.
+- **Portas**: a `PortTable` e' ligada ao barramento da CPU OFFLINE (`IN` le a Saida, `OUT` grava a Entrada e marca a porta); online, as instrucoes `IN`/`OUT` sao da maquina e o painel so' guarda o que o usuario digita (`XPI`/`XPO`).
+- **Disco**: o nucleo do msxdisk (geometria, entradas de diretorio, `DiskImage`, FAT12) entrou no `CONTROL_LIB_SOURCES` (so' o nucleo: sem CLI/TUI/GUI dele). `XL%`/`XS%` usam o arquivo da imagem direto. O dialogo de arquivo do original virou
+  argumento; sem disco corrente os comandos pedem o `XDK`.
+- **Notas**: `SUPER-X-PT.notas` (471 notas traduzidas pelo usuario no paleobasic; texto ASCII) fica em `dist/` e entra no pacote (`build.ps1`/`build.sh`); `LoadNotes` aceita BOM e CRLF; o `.TNK` japones nao e' usado.
+- **Kernels**: C `mamute_reloc.c`, Fortran `mamute_total.f90` (`mamute_sum16`), NASM `mamute_cmp.asm` (`mamute_diff`, ABI dupla Win64/SysV).
+- **Nao entrou (registrado)**: a "cruz" de troca entre XD/XA/XI/XM/XH, o `CLS`, o `R` (fita) e as cores do `XCO` pintando de verdade (hoje so' ficam guardadas no `mamute.cfg`).
+- `ctest` 27/27 (Windows e Linux); `mamutetest` 407 checagens.
+
 ## v1.40.2 -- "Antarctic Adventure: Mamute, telas" (Konami) (2026-10-19)
 
 **Mamute, Fase 3.** As janelas do Mamute original (DM, M, S, ZAP, SCR) e o PDF. Decisao do usuario (Fase 1): **paineis na TUI + versao de linha no CLI** (o SCR grafico fica para a janela grafica; aqui vira braille).

@@ -165,6 +165,24 @@ int main() {
             check(!es.monitor_mode(), "BA dentro do EDIT volta ao console");
         }
 
+        // ---- a sessao do XM (SUPER-X): o prompt mostra o endereco; QUIT volta ao monitor, BA sai de tudo ----
+        {
+            repl::ReplSession xs("x");
+            std::ostringstream xo;
+            xs.Execute("mon", xo);
+            xs.Execute("xm c100", xo);
+            check(xs.monitor_mode() && xs.MonitorPrompt() == "XM C100> ", "monitor: XM muda o prompt para XM <endereco>>");
+            xo.str("");
+            xs.Execute("ld a,5", xo);
+            check(Contains(xo.str(), "C100  3E 05") && xs.MonitorPrompt() == "XM C102> ", "XM: monta, grava e avanca o endereco");
+            xo.str("");
+            xs.Execute("quit", xo);
+            check(xs.monitor_mode() && xs.MonitorPrompt() == "MON(off)> ", "QUIT dentro do XM volta ao monitor (nao ao console)");
+            xs.Execute("xm", xo);
+            xs.Execute("ba", xo);
+            check(!xs.monitor_mode(), "BA dentro do XM volta ao console");
+        }
+
         // ---- paineis do Mamute: a TUI liga (EnablePanels), o CLI nao ----
         {
             repl::ReplSession ps("x");

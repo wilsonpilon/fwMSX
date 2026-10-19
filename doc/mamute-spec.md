@@ -1,4 +1,4 @@
-# Mamute -- o monitor Z80 do fwMSX (1.40.0 "Antarctic Adventure"; Fase 2 na 1.40.1; Fase 3 na 1.40.2)
+# Mamute -- o monitor Z80 do fwMSX (1.40.0 "Antarctic Adventure"; Fase 2 na 1.40.1; Fase 3 na 1.40.2; Fase 4 na 1.40.3)
 
 O **Mamute** e' o monitor Z80 do fwMSX: um prompt de linha onde cada comando mexe na memoria, disassembla,
 executa, salva e carrega programas, no estilo dos monitores dos anos 80 (MegaAssembler, SUPER-X). Vem do
@@ -6,7 +6,7 @@ executa, salva e carrega programas, no estilo dos monitores dos anos 80 (MegaAss
 PureBasic, ~60 comandos), reescrito para o fwMSX em C + Fortran + Assembly (NASM) + C++, **sem janela separada**:
 o mesmo monitor serve ao console (CLI), a TUI e a ponte de controle.
 
-Documentacao do usuario: `man mamute` (e `man mamute-modes|memory|dump|exec|files|config`) e a secao "Mamute" do
+Documentacao do usuario: `man mamute` (e `man mamute-modes|memory|dump|exec|edit|screens|superx|files|config`) e a secao "Mamute" do
 [MANUAL](MANUAL.md). Este documento e' o projeto e as decisoes.
 
 ## 1. Pedido e decisoes (2026-10-19)
@@ -33,7 +33,7 @@ Decisoes (perguntadas ao usuario antes de codar, como pede o `CLAUDE.md`):
 | **1** | **1.40.0 "Antarctic Adventure"** | Nucleo (memoria offline/online, CPU offline/online), `mon`/`mamute`, `--mon`, prompt `MON(off)>`/`MON(on)>`, config `mamute.cfg`, `man mamute` (7 paginas) e help. Comandos: `BA QUIT XQT ONLINE OFFLINE STATUS PUSH PULL PAGE DM M SH MS C D P V T F L LP X G LOAD SAVE CFG HELP` |
 | **2** | **1.40.1 "Antarctic Adventure: Mamute, EDIT e A"** | `EDIT`/`LIST`/`A`/`MAP`: editor de linhas do fonte numerado e montagem pelo fwasm (listagem, `O N P I R S D H /desloc`). `R` (fita) so' validava a sintaxe no original e continua pendente |
 | **3** | **1.40.2 "Antarctic Adventure: Mamute, telas"** | Telas: `DM`/`M`/`S` interativos como paineis da TUI (setas, TAB, edicao de byte), `ZAP` (setores de `.dsk`), `SCR` (grafico, em braille), `P`/`LP`/`V`/`A P`/`A H` em PDF |
-| 4 | (a definir) | Comandos do **SUPER-X** (prefixo `X`, 36 comandos): `XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, `XCS XTS`, `XCO XSD`, `XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%`, notas `XIM XIC XIL XIS XIR`, portas `XPP XPI XPO` |
+| **4** | **1.40.3 "Antarctic Adventure: Mamute, SUPER-X"** | Os comandos do **SUPER-X** (prefixo `X`, 36 comandos no original): `XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, `XCS XTS`, `XCO XSD XQT`, `XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%`, notas `XIM XIC XIL XIS XIR`, portas `XPP XPI XPO`; mais o `CL` (calculadora) e as variaveis `@`, que o SUPER-X usa e a Fase 1 nao tinha |
 
 ## 3. Arquitetura (as 4 linguagens)
 
@@ -49,7 +49,35 @@ src/mamute/
   cpp/mamute_monitor.{h,cpp}    C++      Monitor: uma linha entra, o texto do log sai
   cpp/mamute_source.{h,cpp}     C++      (Fase 2) o fonte numerado: Source, traducao para o asMSX, Assemble, listagem e simbolos
   cpp/mamute_edit.cpp           C++      (Fase 2) os comandos EDIT/LIST/A/MAP dentro do Monitor
+  core/mamute_reloc.{h,c}       C        (Fase 4) tamanho de instrucao Z80 e onde fica o endereco absoluto / o salto relativo (base do XRT)
+  fortran/mamute_total.f90      Fortran  (Fase 4) mamute_sum16: o checksum agregado de 16 bits do XTS
+  asm/mamute_cmp.{h,asm}        NASM     (Fase 4) mamute_diff: compara dois blocos e lista os indices que diferem (ou batem); laco quente do XCM
+  cpp/mamute_util.h             C++      (Fase 4) Trim/Upper/Hex/ParseHexN/SplitCommas compartilhados
+  cpp/mamute_target.{h,cpp}     C++      (Fase 4) o enderecamento estendido (#slot-sub, #V, #S) e as variaveis @0-@3 @B @E @S
+  cpp/mamute_calc.{h,cpp}       C++      (Fase 4) o CL: expressoes de 16 bits, hexa por padrao, sufixos D B H O
+  cpp/mamute_superx.h           C++      (Fase 4) o estado do SUPER-X (SuperX), as notas, os paineis e o disassembler sobre um alvo
+  cpp/mamute_superx_cmds.cpp    C++      (Fase 4) XD XA XI XH XM XBT XRT XFL XCM XFD XTS XCS XCO XSD XRG XGO XTR XPP XPI XPO
+  cpp/mamute_superx_disk.cpp    C++      (Fase 4) XDK XFS XCI XTP XL% XS% XSV XLD XS# XL# e as notas XIM XIC XIL XIS XIR
+  cpp/mamute_superx_panels.cpp  C++      (Fase 4) os paineis XA XI XH XIR XPP XTP XTR (o XD e' uma variante do GridPanel)
 ```
+
+### 3d. Os comandos do SUPER-X (Fase 4)
+
+- **Alvo (`Target`)**: `4000#3` (slot 3), `#3-1` (sub-slot 1), `#V` (VRAM), `#S` (o PAGE). `IMemory` ganhou `ReadSub`/`WriteSub`: offline, o sub-slot 0 e' o proprio slot (so' grava onde e' RAM) e os sub-slots 1-3 sao 64 KB de RAM
+  cada, alocados na primeira escrita (ate' 768 KB); online, `PeekSlot/PokeSlot(slot, sub)` da maquina, e **`#3` sem sub-slot vale o sub-slot que a CPU enxerga naquele slot** (numa maquina com o slot 3 expandido a RAM nao esta' no sub-slot 0).
+  `MachineMemory::WriteVram` passou a gravar (`Machine::PokeVram`). `TRead/TWrite/TargetWrap/TargetMax` escondem o alvo; o `<fim>` de um bloco e' sempre um endereco puro no MESMO alvo e nada da a volta.
+- **Variaveis**: `Vars` com 7 posicoes (endereco + alvo). XD/XA/XI/XM/XH gravam o endereco aberto em `@0`; XLD/XL# preenchem `@B` `@E` `@S`. No `CL` a variavel vale so' o numero.
+- **Tela x listagem**: `XD`/`XA`/`XI` com UM endereco abrem a tela (painel na TUI; no console a mesma tela sem cursor); com dois ou tres campos listam (`<fim>` vazio = 256 bytes, ate' o teto do alvo; terceiro campo = arquivo:
+  bytes crus no XD/XA, texto no XI). `?XD` manda a listagem para a "impressora" = PDF. `XD` usa `mamute_checksum8` (Fortran) por linha; `XCM` usa `mamute_diff` (Assembly); `XTS` usa `mamute_sum16` (Fortran); `XRT` usa `mamute_insn_info` (C).
+- **Sessao do XM**: `Monitor::sx_.xm_active` troca o prompt para `XM <end>> `; a linha e' instrucao (montada pelo fwasm no endereco atual, num `Source` de duas linhas), dados (`. : ; [ "`, itens pelo `CL`), um endereco (o alvo continua) ou `I [n]`.
+  `DAA`/`CCF` sozinhos sao a instrucao. A `ReplSession` trata `QUIT` como "volta ao monitor" em qualquer sessao (prompt que nao comeca em `MON(`).
+- **XRG/XGO/XTR**: usam a CPU do modo (`IExec` ganhou `StepOne` e `Halted`). 5 breakpoints nomeados (`BP BP1 BP2 BP3 BPF`) no `SuperX`; `XGO` offline roda ate' o breakpoint da vez, o RET que devolve alem da pilha de entrada (soma de 16 bits, para nao
+  falhar com SP perto de 0000), HALT ou 2.000.000 instrucoes; `XGO <end>` reinicia o HALT. Online, `XGO` solta a CPU da maquina com o breakpoint e `XTR` para a maquina e executa uma instrucao. `XTR` na TUI abre o painel (ENTER = proxima).
+- **Portas**: `PortTable` (256 portas: `mon`, `in`=Entrada, `out`=Saida, `changed`) ligada ao `Bus` da CPU OFFLINE: `IN` le a Saida (FF se a porta nao esta' no painel), `OUT` grava a Entrada, cria a porta e marca. Nao ha' hardware simulado.
+- **Disco**: o "disco corrente" (`XDK`) e' uma imagem `.dsk`; `XFS`/`XCI` usam `msxdisk::DiskImage` (o nucleo do msxdisk entrou em `CONTROL_LIB_SOURCES`), `XTP` extrai o arquivo para um temporario e mostra como texto, `XL%`/`XS%` leem e gravam setores
+  direto no arquivo. Sem o dialogo de arquivo do original, sem disco corrente os comandos pedem o `XDK`.
+- **Notas**: formato de texto `AAAA;slot;tipo;texto` (o `SUPER-X-PT.notas` do paleobasic, 471 notas traduzidas, vai em `dist/` e no pacote ao lado do executavel); `XIL` sem argumento le esse arquivo. O `.TNK` japones original nao e' usado.
+- **XCO**: guarda as cores (indices 0-15 do MSX1) no `mamute.cfg` (`color=F,B,R`) e as mostra; nao ha' janela para pintar.
 
 ### 3c. Os paineis (Fase 3)
 
@@ -78,10 +106,10 @@ src/mamute/
   memoria privada ou a viva; `IExec` o Z80 privado ou o da maquina. O mesmo comando vale nos dois modos.
 - **Offline**: 16 blocos de 16 KB (slot 0-3 x pagina 0-3). Tipos de celula: `VAZIO`, `RAM`, `ROM`, `BASIC` (so' `RAM`
   aceita escrita; escrita em outra celula e' ignorada, sem erro, e o log conta os bytes ignorados). `PAGE` escolhe o slot de
-  cada pagina. A CPU e' o `Z80Cpu` do fwMSX (portas: `IN` le FFh, `OUT` e' ignorado -- o painel de portas fica para a Fase 4).
+  cada pagina. A CPU e' o `Z80Cpu` do fwMSX (portas: `IN` le a "Saida" do painel de portas do `XPP`, ou FFh; `OUT` grava a "Entrada" -- Fase 4).
 - **Online**: leitura/escrita pela vista da CPU da maquina (`ReadMemory`/`WriteMemory`, escrita so' onde a pagina e'
   gravavel), registradores da CPU dela, `G` poe o PC e solta pelo depurador (`AddBreak` + `Resume`). `PAGE` so' mostra
-  (o mapeamento e' o da maquina). A VRAM online e' so' leitura.
+  (o mapeamento e' o da maquina). A VRAM online e' so' leitura nos comandos da Fase 1; `#V` dos comandos do SUPER-X (Fase 4) escreve nela.
 - **Onde o monitor mora**: no `Commander` (comando `mon <linha>`, `mon @prompt`) -- assim vale na TUI, no CLI e pelo TCP; a
   maquina so' e' ligada ao monitor DURANTE cada comando (o host pode recria-la). Sem emulador, a `ReplSession` roda um monitor
   **local** (so' offline). O modo (`mon`, prompt `MON(..)>`, `BA` sai, `!comando` roda um comando do console) e' da `ReplSession`,
@@ -91,6 +119,9 @@ src/mamute/
 
 ## 4. Diferencas em relacao ao Mamute do Paleobasic
 
+- Fase 4: os dialogos de arquivo (`XDK`, `XSV`, `XLD`, `XS#`, `XL#`, `XSD`, `XIL`, `XIS`, `?XD`) viram argumentos; sem disco corrente os comandos de disco pedem o `XDK`; o `XFD` recebe a instrucao no comando;
+  as janelas (`XD XA XI XH XIR XPP XTP` e o trace do `XTR`) viram paineis na TUI e telas de linha no console. Alem do original: os alvos valem tambem no `XI`, `XSD`, `XFD`, `XBT`; `#3` online e' o sub-slot visivel;
+  `#V` escreve na VRAM da maquina; `XRG BP,-` limpa um breakpoint; `?XD` aceita o nome do arquivo; `XGO <end>` reinicia o HALT. Ainda nao existem a "cruz" de troca entre XD/XA/XI/XM/XH e o `CLS`.
 - Fase 2: os dialogos do `SAVE`/`LOAD`/`MERGE`/`A ...I` viram argumentos; `P` e `H` gravam texto (nao PDF); `QUIT` no EDIT volta ao monitor.
 - Sem janelas: `DM`/`M` mostram a grade de 128 bytes no log; `M end,b1,b2...` grava (a edicao interativa e' a Fase 3).
 - `P`/`LP`/`V` gravam um arquivo **texto** (o original gerava PDF A4).
@@ -110,11 +141,14 @@ src/mamute/
   PUSH/PULL, `G C000` faz a CPU da maquina rodar o programa escrito no monitor).
 - `repltest`: modo monitor sem emulador (prompt, `!comando`, `BA`, `mon <linha>`) e **conectado a um emulador** (ONLINE, escrita
   na maquina conferida por `peek`).
-- `mantest`: as 9 paginas do manual do Mamute e a categoria "Mamute" no help.
+- `mantest`: as 10 paginas do manual do Mamute e a categoria "Mamute" no help.
+- Fase 4: `mamutetest` (de 193 para 407 checagens: `CL`, `@`, alvos `#slot-sub`/`#V` offline e online, XD/XA/XI de dois e tres campos e `?XD`, XCS/XTS, XBT/XCM, XRT com JP/CALL/JR dentro e fora do bloco e o caso invalido, XFD, a sessao do XM
+  (instrucao, dados, endereco, `I`, `DAA`, sub-slot), XH, XRG/XGO/XTR com breakpoints, retorno do RET, HALT e teto, portas IN/OUT, XCO, XSD nos 4 modos, XSV/XLD/XS#/XL# com desloc e VRAM, disco (XDK/XFS/XCI/XTP/XL%/XS% sobre um `.dsk` criado
+  no teste), as 471 notas reais, e todos os paineis por teclas) e `repltest` (o prompt `XM <end>>`, `QUIT` volta ao monitor).
 - Fase 3: `mamutetest` (PDF, DM/S/ZAP/SCR de linha, todos os paineis por teclas `@key`, ZAP com arquivo, SCR modos 0 e 1 e a edicao 16x16), `tuitest` (teclas -> `mon @key`) e `repltest` (`EnablePanels`).
 - Fase 2: `mamutetest` (EDIT/A: hexa, B, D, erros por linha, RENUM/DELETE/CHANGE/SEARCH, SAVE/LOAD/MERGE, P/I/R/S/D/H, `/desloc`, e `A O` na maquina real) e `repltest` (QUIT/BA no EDIT).
 
 ## 6. O que falta
 
-Fase 4 acima (as 2 e 3 estao prontas). Tambem: o SCR grafico (pixels de verdade) na janela ImGui; TAB do console com os comandos do monitor. Tambem: completar o TAB do console com os comandos do monitor; `R` (carregar assemblado de fita); `V`/`SCR` com
-escrita na VRAM; ligar as portas de E/S da CPU offline ao painel (Fase 4); e continuar a comparar o disassembler com o do Mamute original.
+As fases 1 a 4 estao prontas. Falta: o SCR grafico (pixels de verdade) na janela ImGui; o TAB do console com os comandos do monitor; o `R` (carregar assemblado de fita, que no original so' validava a sintaxe); a "cruz" de troca entre
+XD/XA/XI/XM/XH e o `CLS`; o `SCR` com escrita na VRAM; comparar o disassembler com o do Mamute original; e as cores do `XCO` valerem de fato (TUI e janela). Depois do Mamute vem o depurador sofisticado.

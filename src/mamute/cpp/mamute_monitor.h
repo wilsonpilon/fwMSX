@@ -19,6 +19,7 @@
 #include "mamute_memory.h"
 #include "mamute_panel.h"
 #include "mamute_source.h"
+#include "mamute_superx.h"
 
 namespace mamute {
 
@@ -50,7 +51,7 @@ public:
 
     // "MON(off)> " ou "MON(on)> "; "EDIT> " dentro do editor de fonte.
     std::string Prompt() const;
-    bool editing() const { return editing_; }
+    bool editing() const { return editing_ || sx_.xm_active; }
     bool online() const { return online_ && online_mem_ != nullptr; }
 
     // Mensagem de abertura (modo, memoria, aviso de arquivos que nao abriram).
@@ -91,6 +92,36 @@ private:
     std::string CmdZapW(const std::vector<std::string> &f);
     std::string CmdScr(const std::vector<std::string> &f);
 
+    // Fase 4: os comandos do SUPER-X (prefixo X, mamute_superx_cmds.cpp). `handled` = false quando `cmd` nao e' um deles.
+    std::string CmdSuperX(const std::string &cmd, const std::string &rest, bool printer, bool &handled);
+    std::string CmdVar(const std::string &line);                  // @, @0=8000#3-1
+    std::string CmdCl(const std::string &rest);                   // a calculadora
+    std::string CmdXview(char which, const std::string &rest, bool printer); // XD, XA, XI
+    std::string CmdXm(const std::string &rest);                   // abre a sessao do XM
+    std::string XmExecute(const std::string &line);               // uma linha da sessao do XM
+    std::string CmdXh(const std::string &rest);
+    std::string CmdXbt(const std::string &rest);
+    std::string CmdXrt(const std::string &rest);
+    std::string CmdXfl(const std::string &rest);
+    std::string CmdXcm(const std::string &rest);
+    std::string CmdXfd(const std::string &rest);
+    std::string CmdXts(const std::string &rest);
+    std::string CmdXco(const std::string &rest);
+    std::string CmdXsd(const std::string &rest);
+    std::string CmdXrg(const std::string &rest);
+    std::string CmdXgo(const std::string &rest);
+    std::string CmdXtr(const std::string &rest);
+    std::string RegsXrg();                                        // o bloco de registradores do XRG/XGO
+    std::string RegsShort();                                      // o bloco compacto do XTR
+    // disco: XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%
+    std::string CmdXdisk(const std::string &cmd, const std::string &rest);
+    std::string NeedDisk(std::string &error);                     // o disco corrente (erro se nao ha')
+    // notas e portas: XIM XIC XIL XIS XIR XPP XPI XPO
+    std::string CmdXnotes(const std::string &cmd, const std::string &rest);
+    std::string CmdXports(const std::string &cmd, const std::string &rest);
+    // um alvo + um fim "puro" (o <fim> de um bloco: sem sufixo, no MESMO alvo do inicio)
+    bool ParseBlock(const std::string &start_tok, const std::string &end_tok, SxAddr &s, uint32_t &e);
+
     // O arquivo de listagem dos comandos P e LP (texto; o PDF do Mamute original nao existe aqui).
     std::string WriteListing(const std::string &path, const std::string &title, const std::string &body);
 
@@ -107,6 +138,9 @@ private:
     bool editing_ = false;
     AsmProduct last_; // a ultima montagem bem-sucedida (MAP)
     bool last_ok_ = false;
+
+    // SUPER-X (Fase 4): variaveis de debugger, breakpoints do XGO, painel de portas, notas, disco corrente
+    SuperX sx_;
 
     // paineis interativos (Fase 3)
     std::unique_ptr<Panel> panel_;

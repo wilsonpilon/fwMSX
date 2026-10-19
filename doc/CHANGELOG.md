@@ -7,6 +7,25 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.40.3] - 2026-10-19 - "Antarctic Adventure: Mamute, SUPER-X" (Konami)
+
+### Adicionado -- Mamute, Fase 4: os comandos do SUPER-X (prefixo X)
+- **Enderecamento estendido**: depois do endereco, `#3` (slot 3), `#3-1` (sub-slot 1 do slot 3: RAM expandida, ate' 1 MB), `#V` (VRAM, 5 digitos) ou `#S` (o PAGE) escolhem onde ler e gravar. As **variaveis** `@0`-`@3`, `@B`, `@E`, `@S`
+  guardam um endereco com o alvo (`@0=8000#3-1`, `XD @0`). Novos tambem: **`CL`**, a calculadora de 16 bits (hexa por padrao, sufixos D B H O, `+ - * / % | & ^ !`, parenteses, `@0`).
+- **Telas**: `XD` (128 bytes, os dois blocos editaveis; `"` digita ASCII, `@` repete o byte), `XA` (256 bytes em ASCII), `XI` (disassembly rolando), `XH` (4 caracteres/sprites 8x8 pixel a pixel, com miniatura) -- paineis na TUI, a tela
+  uma vez no console; com dois ou tres campos viram listagens (`XD 4000,40FF` com checksum por linha, `XD 4000,` = 256 bytes, terceiro campo = arquivo) e `?XD`/`?XA`/`?XI` mandam a listagem para um PDF. **`XM`** abre uma sessao de montagem
+  (`XM C100`, prompt `XM C100> `): instrucoes Z80 montadas pelo fwasm, dados (`.cd,4dh` `:1234` `;expr` `[expr` `"texto`), um endereco ou `I [n]`.
+- **Blocos**: `XBT` (copia entre slots/sub-slots/VRAM), **`XRT` (copia relocando** `JP`/`CALL`/`LD` com endereco absoluto que apontam para dentro do bloco e recalculando `JR`/`DJNZ`), `XFL`, `XCM` (diferentes ou, com `,S`, iguais),
+  `XFD` (acha uma instrucao Z80, nao bytes soltos), `XTS` (checksum de 16 bits em HEX/BIN/DEC/OCT), `XCS` (checksum por linha: normal ou +ADDR), `XSD` (listagem assembly, `DEFB`, `DATA` do BASIC com o laco FOR/READ/POKE ou dados do X-BASIC).
+- **Execucao**: `XRG` (todos os registradores, os alternados, `XRG *`, `XRG +`, `XRG reg,valor` e os 5 breakpoints `BP BP1 BP2 BP3 BPF`), `XGO` (executa; para no breakpoint da vez, no RET que devolve alem da pilha, no HALT ou em 2.000.000
+  instrucoes) e `XTR` (trace passo a passo; na TUI, ENTER = proxima instrucao). **Portas**: `XPP` (painel de portas de E/S), `XPI`, `XPO`; a CPU offline passou a ler e gravar essas portas nas instrucoes `IN`/`OUT`.
+- **Disco**: `XDK` (disco corrente), `XFS` (diretorio), `XCI` (clusters livres), `XTP` (um arquivo do disco como texto, com busca na TUI), `XL%`/`XS%` (setores direto para/da memoria), `XSV`/`XLD` (BSAVE/BLOAD, com deslocamento),
+  `XS#`/`XL#` (so' os bytes). **Notas**: `XIL`/`XIS`/`XIM`/`XIC`/`XIR`; o `SUPER-X-PT.notas` (471 notas da BIOS traduzidas, do paleobasic) vai ao lado do executavel e o `XIL` sem argumento o carrega. `XCO` guarda as cores no `mamute.cfg`.
+- Online: os alvos valem na maquina (`#3` e' o sub-slot que a CPU enxerga; `#V` escreve na VRAM da maquina), `XRG` edita a CPU dela e `XTR` executa uma instrucao nela.
+- Manual: `man mamute-superx` (a 10a pagina do Mamute). Os kernels novos: C (`mamute_reloc.c`, tamanho de instrucao e operandos de endereco), Fortran (`mamute_total.f90`, soma de 16 bits) e Assembly (`mamute_cmp.asm`, comparacao de blocos).
+- Internos: `IMemory::ReadSub/WriteSub`, `IExec::StepOne/Halted`, `PortTable`, `Machine::PokeVram`, o nucleo do msxdisk em `CONTROL_LIB_SOURCES`, `color=` no `mamute.cfg`.
+- Testes: `mamutetest` (de 193 para 407 checagens), `repltest` (a sessao do XM), `mantest` (10 paginas).
+
 ## [1.40.2] - 2026-10-19 - "Antarctic Adventure: Mamute, telas" (Konami)
 
 ### Adicionado -- Mamute, Fase 3: as telas e o PDF

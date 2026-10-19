@@ -257,8 +257,8 @@ bool ReplSession::Execute(const std::string &line, std::ostream &out) {
         while (e < line.size() && !std::isspace(static_cast<unsigned char>(line[e])) && line[e] != ',') ++e;
         std::string word = line.substr(a, e - a);
         for (char &c : word) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
-        // QUIT dentro do editor de fonte (prompt EDIT>) volta ao monitor; BA e XQT saem de tudo
-        const bool in_editor = word == "QUIT" && MonitorPrompt().rfind("EDIT", 0) == 0;
+        // QUIT dentro de uma sessao do monitor (o editor de fonte EDIT> ou o XM) volta ao monitor; BA e XQT saem de tudo
+        const bool in_editor = word == "QUIT" && MonitorPrompt().rfind("MON(", 0) != 0;
         if (word == "BA" || word == "XQT" || (word == "QUIT" && !in_editor)) {
             mon_mode_ = false;
             out << "(volta ao console)\n";

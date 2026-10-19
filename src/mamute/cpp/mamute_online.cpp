@@ -13,9 +13,18 @@ bool MachineMemory::Write(uint16_t addr, uint8_t value) {
 }
 
 bool MachineMemory::WriteSlot(int slot, uint16_t addr, uint8_t value) {
-    m_.memory().PokeSlot(slot & 3, 0, addr, value);
-    return m_.memory().PeekSlot(slot & 3, 0, addr) == value; // PokeSlot ignora o que nao e' gravavel
+    const int sec = Sec(slot);
+    m_.memory().PokeSlot(slot & 3, sec, addr, value);
+    return m_.memory().PeekSlot(slot & 3, sec, addr) == value; // PokeSlot ignora o que nao e' gravavel
 }
+
+bool MachineMemory::WriteSub(int slot, int sub, uint16_t addr, uint8_t value) {
+    const int sec = sub ? (sub & 3) : Sec(slot);
+    m_.memory().PokeSlot(slot & 3, sec, addr, value);
+    return m_.memory().PeekSlot(slot & 3, sec, addr) == value; // ROM/vazio ignoram a escrita: a leitura nao muda
+}
+
+bool MachineMemory::WriteVram(uint32_t addr, uint8_t value) { return m_.PokeVram(addr, value); }
 
 CellType MachineMemory::Cell(int slot, int page) {
     const auto view = m_.memory().CurrentView();

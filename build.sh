@@ -113,6 +113,8 @@ cp "$exe" "$stage_dir/"
 cp "$msxdisk_exe" "$stage_dir/"
 # Imagem de abertura (ao lado do executavel) e icone + atalho do menu de aplicativos (doc/splash-spec.md).
 cp "$dist_dir/fwMSX-splash.png" "$stage_dir/"
+# Notas do SUPER-X (monitor Mamute: XIL sem argumento le este arquivo; doc/mamute-spec.md).
+cp "$dist_dir/SUPER-X-PT.notas" "$stage_dir/"
 cp "$root/packaging/linux/fwmsx.png" "$stage_dir/"
 cp "$root/packaging/linux/fwmsx.desktop" "$stage_dir/"
 cp "$root/README.md" "$stage_dir/"

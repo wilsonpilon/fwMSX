@@ -1,6 +1,9 @@
 // fwMSX -- Mamute: os paineis interativos (DM, M, S, ZAP, SCR) (C++). Codigo ORIGINAL do fwMSX (BSD-3-Clause). Ver mamute_panel.h.
 #include "mamute_panel.h"
 
+#include "mamute_superx.h"
+#include "mamute_target.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
@@ -58,11 +61,14 @@ bool CharKey(const std::string &key, char &c) {
 // ---------------------------------------------------------------------------------------------------------------------
 class GridPanel : public Panel {
 public:
-    enum Kind { DM, M, S, ZAP };
+    enum Kind { DM, M, S, ZAP, XD };
 
     GridPanel(Kind kind, uint32_t base, int shift, std::string skeys) : kind_(kind), base_(base), shift_(shift), skeys_(std::move(skeys)) {
         if (skeys_.size() != 16) skeys_ = kDefaultSKeys;
     }
+
+    // XD: o alvo (slot/sub-slot/VRAM) em que a grade le e escreve
+    void SetTarget(const Target &t) { target_ = t; }
 
     // ZAP: a imagem toda na memoria
     void SetImage(const std::string &path, std::vector<uint8_t> bytes) {
@@ -71,19 +77,22 @@ public:
     }
 
     std::string Name() const override {
-        static const char *const names[] = {"DM", "M", "S", "ZAP"};
+        static const char *const names[] = {"DM", "M", "S", "ZAP", "XD"};
         return names[kind_];
     }
 
     std::vector<std::string> Render(IMemory &mem) override {
+        cur_mem_ = &mem;
         std::vector<std::string> out;
         const bool zap = kind_ == ZAP;
+        const int digits = TargetDigits(target_);
         std::string title;
         switch (kind_) {
         case DM: title = "DM - MEMORIA (" + Upper(mem.Name()) + ")"; break;
         case M: title = "M - EDICAO RAPIDA (" + Upper(mem.Name()) + ")"; break;
         case S: title = "S - EDICAO RAPIDA, TECLADO S (" + Upper(mem.Name()) + ")"; break;
         case ZAP: title = "ZAP - " + BaseName(path_) + (dirty_.empty() ? "" : " *"); break;
+        case XD: title = "XD - MEMORIA" + (TargetSuffix(target_).empty() ? std::string() : " " + TargetSuffix(target_)) + " (" + Upper(mem.Name()) + ")" + (ascii_mode_ ? "  DIGITANDO ASCII" : ""); break;
         }
         out.push_back(title);
         for (int row = 0; row < 16; ++row) {
@@ -104,11 +113,11 @@ public:
                 hex += h + (k < 7 ? " " : "");
                 txt += t;
             }
-            out.push_back((zap ? Hex((base_ + static_cast<uint32_t>(row) * 8) % 512, 3) : Hex(Wrap(base_ + static_cast<uint32_t>(row) * 8), 4)) + "  " + hex + "  " + txt);
+            out.push_back((zap ? Hex((base_ + static_cast<uint32_t>(row) * 8) % 512, 3) : Hex(Wrap(base_ + static_cast<uint32_t>(row) * 8), digits)) + "  " + hex + "  " + txt);
         }
         const uint32_t cur = base_ + static_cast<uint32_t>(cursor_);
         if (zap) out.push_back("SETOR: " + Hex(cur / 512, 3) + "  BYTE: " + Hex(cur % 512, 3) + "  DESLOC.: " + Signed(shift_));
-        else out.push_back("ENDERECO: " + Hex(Wrap(base_), 4) + "  CURSOR: " + Hex(Wrap(cur), 4) + "  DESLOC.: " + Signed(shift_));
+        else out.push_back("ENDERECO: " + Hex(Wrap(base_), digits) + "  CURSOR: " + Hex(Wrap(cur), digits) + "  DESLOC.: " + Signed(shift_));
         if (editing_) out.push_back(std::string("EDITANDO (") + (text_pane_ ? "TEXTO" : "HEXA") + "): " + field_ + "_   ENTER confirma, ESC cancela");
         if (!msg_.empty()) out.push_back(msg_);
         if (kind_ == S) {
@@ -124,15 +133,30 @@ public:
         std::string help = "setas movem  TAB hexa/texto  PgUp/PgDn +-128 bytes  + - desloc.";
         if (kind_ == DM || kind_ == ZAP) help += "  ENTER edita";
         else help += "  digite 2 digitos hexa  ENTER sai";
+        if (kind_ == XD) help += "  \" digita ASCII (ESC sai)  @ repete o byte anterior";
         if (zap) help += "  Ctrl+S grava o setor";
         out.push_back(help + "  ESC sai");
         return out;
     }
 
     bool Key(IMemory &mem, const std::string &key) override {
+        cur_mem_ = &mem;
         msg_.clear();
         char ch = 0;
         const bool is_char = CharKey(key, ch);
+
+        // ---- XD: digitacao ASCII direta (depois de \"): cada tecla impressa grava um byte e o cursor avanca ----
+        if (kind_ == XD && ascii_mode_) {
+            if (key == "esc") {
+                ascii_mode_ = false;
+                return true;
+            }
+            if (is_char) {
+                if (!WriteCell(mem, cursor_, static_cast<uint8_t>((static_cast<unsigned char>(ch) - shift_) & 0xFF))) msg_ = "ROM/VAZIO: SOMENTE LEITURA (NADA FOI GRAVADO)";
+                Advance(1);
+                return true;
+            }
+        }
 
         // ---- campo de edicao aberto (DM e ZAP) ----
         if (editing_) {
@@ -191,7 +215,7 @@ public:
             return true;
         }
         if (key == "enter") {
-            if (kind_ == M || kind_ == S) return false; // M e S: RETURN sempre sai
+            if (kind_ == M || kind_ == S || kind_ == XD) return false; // M, S e XD: RETURN sempre sai
             editing_ = true;
             fresh_ = true;
             const int v = ReadCell(mem, cursor_);
@@ -204,9 +228,20 @@ public:
         if (is_char) {
             if (ch == '+') return AdjustShift(1), true;
             if (ch == '-') return AdjustShift(-1), true;
-            if ((kind_ == M || kind_ == S) && !text_pane_) {
+            if (kind_ == XD && ch == '"') {
+                ascii_mode_ = true;
+                pending_ = -1;
+                return true;
+            }
+            if (kind_ == XD && ch == '@' && !text_pane_) { // repete o byte anterior (o do endereco - 1)
+                const int prev = ReadAbs(mem, static_cast<int64_t>(base_) + cursor_ - 1);
+                if (!WriteCell(mem, cursor_, static_cast<uint8_t>(prev))) msg_ = "ROM/VAZIO: SOMENTE LEITURA (NADA FOI GRAVADO)";
+                Advance(1);
+                return true;
+            }
+            if ((kind_ == M || kind_ == S || kind_ == XD) && !text_pane_) {
                 int d = -1;
-                if (kind_ == M) {
+                if (kind_ == M || kind_ == XD) {
                     d = HexValue(ch);
                 } else {
                     const size_t at = skeys_.find(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
@@ -226,7 +261,9 @@ private:
         const size_t s = p.find_last_of("/\\");
         return s == std::string::npos ? p : p.substr(s + 1);
     }
-    static uint32_t Wrap(uint32_t a) { return a & 0xFFFF; }
+    // dobra o endereco dentro do alvo (modulo 64 KB; na VRAM, modulo o tamanho dela)
+    uint32_t Wrap(uint32_t a) const { return cur_mem_ ? TargetWrap(*cur_mem_, target_, static_cast<int64_t>(a)) : (a & 0xFFFF); }
+    int ReadAbs(IMemory &mem, int64_t addr) { return TRead(mem, target_, TargetWrap(mem, target_, addr)); }
 
     bool IsZap() const { return kind_ == ZAP; }
 
@@ -234,7 +271,7 @@ private:
     int ReadCell(IMemory &mem, int cell) {
         const uint32_t i = base_ + static_cast<uint32_t>(cell);
         if (IsZap()) return i < image_.size() ? image_[i] : -1;
-        return mem.Read(static_cast<uint16_t>(i & 0xFFFF));
+        return TRead(mem, target_, Wrap(i));
     }
 
     bool WriteCell(IMemory &mem, int cell, uint8_t v) {
@@ -247,7 +284,7 @@ private:
             }
             return true;
         }
-        return mem.Write(static_cast<uint16_t>(i & 0xFFFF), v);
+        return TWrite(mem, target_, Wrap(i), v);
     }
 
     void Move(int delta) {
@@ -262,7 +299,7 @@ private:
             if (b < 0 || b >= static_cast<int64_t>(image_.size())) return;
             base_ = static_cast<uint32_t>(b);
         } else {
-            base_ = (base_ + static_cast<uint32_t>(delta + 0x10000)) & 0xFFFF;
+            base_ = TargetWrap(*cur_mem_, target_, static_cast<int64_t>(base_) + delta);
         }
         pending_ = -1;
     }
@@ -342,6 +379,10 @@ private:
     int pending_ = -1;
     std::string msg_;
     bool show_cursor_ = true;
+    // XD: o alvo, e a digitacao ASCII direta
+    Target target_;
+    bool ascii_mode_ = false;
+    IMemory *cur_mem_ = nullptr; // a memoria da chamada em curso (o painel nao guarda o IMemory: o adaptador da maquina e' temporario)
     // ZAP
     std::string path_;
     std::vector<uint8_t> image_;
@@ -498,6 +539,12 @@ private:
 std::unique_ptr<Panel> MakeMemoryGrid(char kind, uint16_t addr, int shift, const std::string &skeys) {
     const GridPanel::Kind k = kind == 'M' ? GridPanel::M : kind == 'S' ? GridPanel::S : GridPanel::DM;
     return std::make_unique<GridPanel>(k, addr, shift, skeys);
+}
+
+std::unique_ptr<Panel> MakeXdPanel(const SxAddr &a, int shift) {
+    auto p = std::make_unique<GridPanel>(GridPanel::XD, a.addr, shift, kDefaultSKeys);
+    p->SetTarget(a.t);
+    return p;
 }
 
 std::unique_ptr<Panel> MakeDiskGrid(const std::string &path, uint32_t sector, int shift, std::string &error) {

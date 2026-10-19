@@ -304,6 +304,13 @@ public:
 
     uint64_t frame_count() const { return frame_count_; }
     const VdpState &vdp_state() const { return startup_.vdp_device->state(); }
+    // Grava direto na VRAM (monitor Mamute, #V): sem passar pelas portas do VDP. false se `addr` passa do fim.
+    bool PokeVram(uint32_t addr, uint8_t value) {
+        VdpState &s = startup_.vdp_device->state();
+        if (addr >= sizeof(s.vram)) return false;
+        s.vram[addr] = value;
+        return true;
+    }
     PpiState &ppi_state() { return startup_.ppi_device->state(); }
     psg::PsgDevice &psg() { return *startup_.psg_device; }
     scc::SccDevice &scc() { return *scc_; }

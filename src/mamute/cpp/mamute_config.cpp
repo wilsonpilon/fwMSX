@@ -2,6 +2,7 @@
 #include "mamute_config.h"
 
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 
@@ -94,6 +95,13 @@ Config LoadConfig(const std::string &path) {
             if (v == 16 || v == 128 || v == 192) cfg.vram_kb = v;
         } else if (key == "skeys") {
             if (val.size() == 16) cfg.skeys = val;
+        } else if (key == "color") {
+            int f = 0, b = 0, r = 0;
+            if (std::sscanf(val.c_str(), "%d,%d,%d", &f, &b, &r) == 3 && f >= 0 && f <= 15 && b >= 0 && b <= 15 && r >= 0 && r <= 15) {
+                cfg.color_fg = f;
+                cfg.color_bg = b;
+                cfg.color_border = r;
+            }
         } else if (key == "dump") {
             const int v = std::atoi(val.c_str());
             if (v >= 0 && v <= 3) cfg.dump_mode = v;
@@ -126,6 +134,7 @@ bool SaveConfig(const std::string &path, const Config &cfg) {
     f << "vram=" << cfg.vram_kb << "\n";
     f << "dump=" << cfg.dump_mode << "\n";
     f << "skeys=" << cfg.skeys << "\n";
+    f << "color=" << cfg.color_fg << "," << cfg.color_bg << "," << cfg.color_border << "\n";
     for (int s = 0; s < 4; ++s) {
         for (int p = 0; p < 4; ++p) {
             std::string name = CellName(cfg.cell[s][p]);
