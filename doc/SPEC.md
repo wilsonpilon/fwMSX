@@ -449,6 +449,13 @@ referencia, sem copia de codigo. Os arquivos TSX/CAS de jogos sao de terceiros: 
 > **Status: so' estudo.** Ideia do usuario (Wilson Pilon), registrada aqui para ir sendo detalhada aos poucos. NADA disto esta' implementado nem sera' comecado agora. Os subtopicos marcados "a detalhar" sao
 > espacos reservados para as conversas seguintes. Levantamento feito em `resource/msxide/*`, `resource/paleobasic/*` e `resource/kizuna/*` (so' leitura; nenhum codigo copiado).
 
+#### 5.3.0 Decisoes do usuario (2026-10-19) -- valem para os topicos 5.3 e 5.4
+
+1. **Um programa so'**: o IDE e' parte do MESMO `fwMSX.exe` (como a TUI e o Mamute sao hoje), nao um executavel a parte. Entra pelos mesmos pontos (janela, `--tui`, console, terminal) e pela mesma ponte de controle.
+2. **Os projetos de origem se aposentam**: o msxIDE (FreeBASIC) e o PaleoBasic (PureBasic) "morrem" quando o fwMSX tiver os recursos deles incorporados. Tudo passa a viver num teto so', em **C / C++ / Assembly (NASM) / Fortran**. Consequencia pratica:
+   nao ha' periodo de dois lados evoluindo em paralelo; os dois viram **fonte de especificacao de comportamento** (manuais, formatos, suites de regressao) e **fonte de migracao de dados** (os arquivos de projeto do usuario).
+3. **Formato do projeto: um unico arquivo `.msxproject` em SQLite** (o usuario quer "mover um unico arquivo e levar tudo": fontes, binarios, sprites, telas, musicas, documentacao, notas...). Recomendacao e detalhes em 5.3.7.
+
 #### 5.3.1 A ideia, nas palavras do usuario (resumo)
 
 Migrar parte do **msxIDE** (e do **PaleoBasic**) para dentro do fwMSX, para ter "algo como o msxIDE e o PaleoBasic em um unico teto usando o emulador embutido":
@@ -526,8 +533,20 @@ a detalhar: dialeto de BASIC "puro" (sem Dignified) como linguagem de primeira c
 
 #### 5.3.7 Projetos e o "Makefile"
 
-- **Formato do projeto** (a decidir): (a) **pasta + manifesto de texto** (diffavel no git, facil de editar a mao; recomendado para o fwMSX); (b) **arquivo unico SQLite**, como `.msxproj` (msxIDE) e `.msxproject` (PaleoBasic: portatil, mas opaco ao git).
-  Em qualquer caso, **importar/exportar** os dois formatos existentes (tabelas `project_meta`, `project_config`, `project_files` no msxIDE; recursos numerados no PaleoBasic).
+- **Formato do projeto: SQLite, um arquivo `.msxproject`** (decisao do usuario, recomendada pelo estudo). O criterio dele -- o projeto inteiro e' UM arquivo portatil, com binarios, sprites, telas, musicas, documentos e notas -- e' exatamente o ponto forte do SQLite
+  (um arquivo, transacoes atomicas, BLOBs, consultas, sem "pasta perdida"); o fwMSX ja' usa SQLite (`romdb`, `tapedb`), entao nao entra dependencia nova. Contra: o arquivo e' opaco ao git e a dois editores ao mesmo tempo. Os **cuidados** que tornam a escolha segura:
+  1. **Tudo e' um "arquivo" dentro do banco**, com o formato nativo da ferramenta (`.asm`, `.bas`/`.dmx`, `.md`, `.alf`, `.spr`, `.mml`, `.bin`, `.cas`...), numa tabela generica `files(path, kind, content BLOB, hash, mtime)`, como no msxIDE (`project_files`), e NAO uma tabela tipada por
+     tipo de recurso como no PaleoBasic (`sprites`, `alphabets`, `psg_sounds`, `mml_songs`, `screen0/1/12_screens`, `graphos_*`...). Motivo: novos editores entram sem migrar o esquema, e qualquer ferramenta (ou o `Obifile`) enxerga o recurso como um arquivo comum.
+     `kind` so' serve para o IDE saber qual editor abrir. Metadados do tipo ficam em colunas/tabelas auxiliares quando precisarem de consulta.
+  2. **Sem "extrair e reimportar"** (o msxIDE extrai para uma pasta de trabalho e reimporta ao salvar -- fonte de dessincronia): o editor trabalha em memoria e grava no banco numa transacao; o **montador le direto do banco** (o `fwasm::FileProvider` ja' e' uma
+     interface: um provedor "do projeto" serve `.include`/`.incbin`). So' ferramentas EXTERNAS (os executaveis Go do Kizuna, o NestorBASIC) recebem uma **pasta temporaria** gerada sob demanda.
+  3. **Porta de saida para o git**: comandos `project export <pasta>` e `project import <pasta>` (arquivos + um manifesto de texto), e opcionalmente "espelhar numa pasta" a cada salvamento. Assim o usuario escolhe: portatil (um arquivo) ou versionado (pasta). O `Obifile` e' sempre
+     um arquivo de TEXTO dentro do banco, entao o diff do que importa e' trivial.
+  4. **Integridade**: modo WAL, uma transacao por salvamento, copia de seguranca antes de migrar o esquema, `PRAGMA integrity_check` ao abrir, versao do esquema em `meta`. Um editor por vez (trava de arquivo); abrir o mesmo projeto em dois processos avisa.
+  5. **Historico opcional**: como o banco ja' e' transacional, uma tabela `revisions` (copia dos fontes a cada "marco" ou a cada build bem-sucedido) da' um desfazer de projeto e uma comparacao entre builds sem git. a detalhar.
+  6. **Migracao**: importar `.msxproject` do PaleoBasic (mapeando cada tabela tipada para `files` no formato nativo do recurso) e `.msxproj` do msxIDE (`project_meta/project_config/project_files` ja' sao quase isso). Ler os dois e gravar o novo; nunca alterar o original.
+  Esquema inicial (rascunho): `meta(key,value)`, `config(key,value)` (inclui o modelo do MSX, slots, discos, opcoes do emulador), `files(id, path UNIQUE, kind, content BLOB, hash, mtime)`, `notes(id, file_id NULL, text, created)`, `builds(id, when, ok, log, outputs...)`, `revisions(...)`.
+  Nao ha' conflito de extensao: `.msxproject` e' a do PaleoBasic; o `.msxproj` do msxIDE passa a ser so' formato de importacao.
 - **O arquivo de receita** (o "Makefile"): a ideia e' reaproveitar o `Obifile` do Kizuna. Campos que o exemplo real do Kizuna usa: `target` (saida), `entry` (rotulo de entrada), `base` (endereco de carga), `resources` (arquivo, banco, simbolo, tamanho),
   `modules` (nome, fonte, `compiler` = `kaji80|dignac|wirth80`, `bank`) e `link` (mapa). Para o fwMSX ele cresceria com compiladores `fwasm`, `dignified` e `basic`, com alvos de **execucao** (`run: cartridge|tape|disk`), dependencias entre alvos e variaveis.
   Manter a MESMA sintaxe permite usar os projetos do Kizuna sem mudanca; o fwMSX seria um orquestrador a mais (nativo, sem Go).
@@ -547,8 +566,8 @@ que o fwMSX ja' emula (MSX2+, mapper de RAM, MSX-DOS 2 como cartucho): da' para 
 - **Editor na TUI**: terminais diferentes tratam teclas (Ctrl+setas, F-keys, Alt) de formas diferentes -- o modo terminal do fwMSX ja' tem essa dor; mouse so' onde o terminal deixar.
 - **Duas bases de usuarios**: quem usa o msxIDE/PaleoBasic hoje (o proprio usuario) precisa de migracao dos projetos `.msxproj/.msxproject` sem perda.
 - **Licenca de tudo que for embutido** (editor de codigo para ImGui, Markdown, PDF): conferir antes de adotar; o projeto e' BSD-3 e nao copia codigo GPL/AGPL.
-- **Perguntas para as proximas conversas**: o IDE e' um **modo** do `fwMSX.exe` (como a TUI) ou um executavel a parte? O projeto e' pasta+manifesto ou SQLite? O `Obifile` e' lido como esta' ou ganha extensoes? Quais atalhos/teclado? O que vem primeiro: o editor em si, o fluxo BASIC,
-  ou o Dignified?
+- **Respondidas pelo usuario (ver 5.3.0)**: o IDE e' um modo do MESMO `fwMSX.exe`; o formato do projeto e' SQLite (`.msxproject`); msxIDE e PaleoBasic serao aposentados quando o fwMSX tiver os recursos deles.
+- **Ainda em aberto**: o `Obifile` e' lido como esta' ou ganha extensoes (variaveis, alvos de execucao)? Quais atalhos/teclado? O que vem primeiro: o editor em si, o fluxo BASIC, ou o Dignified? Qual o conjunto minimo de recursos dos dois projetos para "poder aposenta-los" (lista de paridade)?
 - **Fases sugeridas (sem compromisso)**: (1) nucleo do editor + TUI com Assembly/`asmrun` (o fluxo que ja' existe) e visualizador de texto/MD; (2) GUI do mesmo editor; (3) projetos + receita; (4) MSX-BASIC e tokenizador; (5) Dignified; (6) Kizuna; (7) PDF na GUI.
 
 ---
@@ -611,4 +630,4 @@ Cada ferramenta precisa ler e gravar o formato que o msxIDE/PaleoBasic ja' usam,
 - Tamanho: os editores visuais do PaleoBasic somam ~20 mil linhas de PureBasic (diretorio `visual_editors`, com os dados de ajuda); porta-se o comportamento, nao o codigo, e os GUIs em Windows API/Scintilla nao tem equivalente direto no ImGui/FTXUI.
 - Ferramentas de pixel na TUI sao limitadas pelo terminal; decidir quais valem o esforco.
 - O que o usuario ainda USA de verdade dos dois projetos (para nao portar o que ninguem usa) e a ordem de prioridade dele.
-- Se o PaleoBasic/msxIDE seguem em desenvolvimento em paralelo (risco de dois lados divergirem) ou se o fwMSX passa a ser o destino unico.
+- RESPONDIDO (5.3.0): o fwMSX e' o destino unico; msxIDE e PaleoBasic serao aposentados. Falta so' montar a **lista de paridade** (o que cada um faz hoje, marcando o que ja' existe no fwMSX) para saber quando da' para desliga-los.
