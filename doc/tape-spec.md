@@ -563,3 +563,68 @@ o titulo certo ("teste") sozinho.
 **Fora de escopo (por natureza, nao por falta de tempo):** qualquer
 download automatico (ver acima); importar um indice/torrent de terceiros
 sem antes confirmar os termos de uso por escrito.
+
+
+---
+
+## 12. Fita em todos os pontos (1.40.4, "Mamute: Fita")
+
+Pedido do usuario (2026-10-19): suporte total a fita cassete em todos os pontos do projeto -- emulador, depurador, Mamute e fwasm -- nos formatos
+`.cas`, `.tsx`/`.tzx` e `.wav`, mesmo que isso exigisse comandos novos. Decisoes (AskUserQuestion): patch 1.40.4 (nao um minor novo) e `.wav` incluido
+(ler e gravar).
+
+### 12.1 Uma camada so' para os formatos: `tape_io`
+
+`src/tape/cpp/tape_io.{h,cpp}` escolhe o formato PELA EXTENSAO e e' o unico lugar que sabe ler e gravar fita:
+
+| funcao | o que faz |
+|---|---|
+| `LoadAnyTape(path, img, err)` | `.cas`, `.tsx`/`.tzx` ou `.wav`; o `.wav` passa pelo ripper (tolerancia 25%) e a imagem sai com pulsos sintetizados, como a de um `.cas` |
+| `SaveAnyTape(path, bytes, marks, err)` | `.cas` = bytes crus; `.tsx` = um bloco #4B por marca; `.wav` = PCM 16 bits mono 44100 Hz com os pulsos do MSX, 0,5 s de silencio antes e depois e 0,5 s entre blocos |
+| `ReadTapeFile(img, i, out, err)` | o conteudo do arquivo logico `i` (tipo, nome, dados; para um binario, inicio/fim/exec e EXATAMENTE `fim-inicio+7` bytes, sem o enchimento de alinhamento; para ASCII, todos os blocos de dados ate' o proximo arquivo) |
+| `AppendTapeFile(img, tipo, nome, dados)` | acrescenta cabecalho + dados e gera os pulsos so' do que entrou (como o `FinalizeWrite`) |
+| `MakeBinaryContent(ini, exec, programa)` | o conteudo de um arquivo binario (`ini fim exec` + bytes) |
+| `TruncateAtFile(img, i)` | corta a fita no arquivo `i` |
+
+`cas_tool` (`fwmsx --cas`), o `TapeEngine`, o banco de fitas (`tapedb`) e o Mamute passaram a usar estas funcoes. Efeito colateral bom: `fwmsx --cas pack/rip/list` aceitam `.wav` em qualquer lado.
+
+### 12.2 `TapeDeck`: a fita sem hardware
+
+`src/tape/cpp/tape_deck.{h,cpp}`: a fita inserida, a protecao contra gravacao, o modo de gravacao, o ponto marcado e `Insert/NewBlank/Eject/SeekToFile/AppendFile/ReadFile/FindFile/SaveAs/Persist`, mais `DescribeDeck`/`ListDeck` (o texto
+de `tape` e `tape list`). O `TapeEngine` agora HERDA do `TapeDeck` e acrescenta so' o que e' do emulador (ganchos de BIOS, cursor de pulsos, PPI/PSG, som); os ganchos `OnReplaced()` e `OnPulsesChanged()` religam os cursores quando a fita muda.
+O mesmo corte de UMA VEZ do TAPOON (`CutForWrite`) vale para o CSAVE da maquina e para o `AppendFile`. O Mamute OFFLINE usa um `TapeDeck` puro; o ONLINE usa o da maquina (`IMemory::Tape()`).
+
+### 12.3 Comando `tape` (console, TUI, terminal, ponte TCP)
+
+`tape` (estado) | `tape <arq>` / `tape insert <arq>` | `eject` | `rewind` | `new <arq>` | `list` | `seek <n|nome|->` | `protect on|off` | `write append|overwrite|new` | `mode fast|normal` | `save <arq>` (copia/converte pela extensao) |
+`put <nome> <ini> <fim> [exec]` (grava um bloco da memoria da maquina como arquivo binario) | `load <n|nome>` (carrega um binario da fita na memoria). O menu da TUI (Midia) ganhou os itens; o menu da janela ganhou
+`.wav` nos filtros, "Nova fita (.tsx, .cas ou .wav)" e "Gravar uma copia".
+
+### 12.4 Depurador
+
+As seis entradas da fita na BIOS tem nome: `break tapin`, `until tapoon`, `dis tapion`, `watch`... (`tapion tapin tapiof tapoon tapout tapoof` = 00E1 00E4 00E7 00EA 00ED 00F0), em qualquer comando que receba um endereco. Conferido no `asme2etest`: `break tapin` PARA em 00E4 quando o BASIC le a fita, nos dois modos de carga (rapido, pelo gancho, e normal, pelos pulsos).
+Pegadinha do teste: no modo rapido o `BLOAD` termina dentro dos proprios quadros da tecla ENTER, entao o breakpoint precisa existir ANTES de digitar.
+
+### 12.5 Mamute
+
+`TAPE`, `R`, `TLOAD`, `TSAVE`, `LOAD`/`SAVE` com `.cas/.tsx/.tzx/.wav` e a opcao `T` do `A`. Ver `mamute-spec.md` e `man mamute-fita`. O `R` do original so' validava a sintaxe; aqui carrega de verdade o PROXIMO arquivo binario e avanca o ponto
+(na maquina o `CLOAD` seguinte continua dali).
+
+### 12.6 fwasm
+
+A diretiva `.TSX ["nome"]` (extensao do fwasm; o asMSX nao gera) produz a MESMA fita do `.CAS`, em blocos #4B (`BuildTsx` em `tsx_writer.cpp`, tambem usado pelo escritor de arquivo). O `.CAS`, o `.WAV` e o `.TSX` pedidos no mesmo fonte
+dividem o nome (o primeiro fixa). Os 6606 casos dourados nao mudaram.
+
+### 12.7 Testes
+
+`castooltest` (+32 checagens: `.cas`/`.tsx`/`.wav` ida e volta byte a byte, extracao, `TapeDeck` com protecao/modos/ponto), `mamutetest` (+49: offline e ONLINE na maquina, `R` em sequencia, `TLOAD`, `TSAVE`, ponto, sobrescrever, `A OT>`),
+`controltest` (+17: todos os subcomandos de `tape` e `break tapin`), `asme2etest` (o programa montado pelo fwasm em `.cas`, `.tsx` e `.wav` e' carregado por `BLOAD"CAS:",R` e RODA no emulador; o `.tsx` tambem no modo NORMAL,
+pelos pulsos), `mantest` (as paginas novas).
+
+### 12.8 Limites
+
+- O `.wav` so' carrega o bloco KCS do MSX (como o ripper da secao 9); um sinal muito ruidoso perde o resto do bloco.
+- Gravar numa fita inserida de um `.wav` regrava o `.wav` SINTETIZADO (o audio original se perde); por isso a fita entra protegida.
+- O banco de fitas (`--fitadb scan`) passou a varrer `.wav` tambem (formato `wav`), o que faz o ripper rodar em cada arquivo.
+- Gravacao em "modo normal" (decodificar os pulsos que o programa gera) continua fora de escopo: CSAVE/BSAVE sempre pelo gancho de BIOS.
+- Continuam sem efeito os blocos de TZX fora do #4B (secao 5).

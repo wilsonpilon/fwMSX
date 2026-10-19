@@ -38,8 +38,7 @@ void AppendBlock4B(std::vector<uint8_t> &v, const uint8_t *data, std::size_t siz
 
 } // namespace
 
-bool WriteTsxFromCas(const std::vector<uint8_t> &fast_bytes, const std::vector<TapeMark> &marks, const std::string &path,
-                      std::string &error) {
+std::vector<uint8_t> BuildTsx(const std::vector<uint8_t> &fast_bytes, const std::vector<TapeMark> &marks) {
     std::vector<uint8_t> tsx = {'Z', 'X', 'T', 'a', 'p', 'e', '!', 0x1A, 1, 20};
     // Usa o tamanho EXATO de cada bloco (`marks`), nao "ate' o proximo
     // cabecalho" -- essa busca generica mistura o preenchimento de
@@ -54,7 +53,12 @@ bool WriteTsxFromCas(const std::vector<uint8_t> &fast_bytes, const std::vector<T
         if (content_start + mark.content_length > fast_bytes.size()) continue; // marca invalida -- nunca deveria acontecer
         AppendBlock4B(tsx, fast_bytes.data() + content_start, mark.content_length);
     }
+    return tsx;
+}
 
+bool WriteTsxFromCas(const std::vector<uint8_t> &fast_bytes, const std::vector<TapeMark> &marks, const std::string &path,
+                      std::string &error) {
+    const std::vector<uint8_t> tsx = BuildTsx(fast_bytes, marks);
     std::ofstream f(path, std::ios::binary | std::ios::trunc);
     if (!f || !f.write(reinterpret_cast<const char *>(tsx.data()), static_cast<std::streamsize>(tsx.size()))) {
         error = "nao foi possivel gravar '" + path + "'";

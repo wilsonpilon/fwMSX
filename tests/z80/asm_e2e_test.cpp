@@ -105,35 +105,75 @@ void TestCartridges(const std::string &bios) {
     }
 }
 
-void TestTape(const std::string &bios) {
-    // programa do BASIC (.bin) e a fita .cas: BLOAD"CAS:",R carrega e executa
-    const fwasm::AsmResult r = Assemble(".bios\n.org 0d000h\n.basic\n.cas \"HELLO\"\n ld hl,msg\nlp: ld a,[hl]\n or a\n ret z\n call CHPUT\n inc hl\n jr lp\nmsg: db \"carregado da fita\",0\n");
-    check(r.rc == 0 && r.outs.count("cas") && r.outs.count("bin") && r.outs.count("wav") == 0, "fita: montou o .bin e o .cas");
-    if (r.rc != 0 || !r.outs.count("cas")) return;
-    const std::string path = TempPath("fwasm_e2e.cas");
-    Write(path, r.outs.at("cas"));
+// Insere `path` como fita (qualquer formato), digita BLOAD"CAS:",R e confere que o BASIC achou o arquivo e o programa rodou.
+void RunTapeFile(const std::string &bios, const std::string &path, const std::string &tag, bool normal_mode) {
     machine::MachineConfig cfg;
     cfg.bios_path = bios;
     cfg.tape_path = path;
+    if (normal_mode) cfg.tape_mode = tape::TapeMode::Normal;
     std::string error;
     std::unique_ptr<machine::Machine> m = machine::Machine::Create(cfg, error);
-    check(m != nullptr, "fita: maquina criada " + error);
-    if (m) {
-        for (int i = 0; i < 300; ++i) m->RunFrame();
-        std::vector<control::Commander::TypedKey> keys;
-        std::string kerr;
-        check(control::Commander::ParseTypeSpec(*m, "bload\"cas:\",r{enter}", true, keys, kerr), "fita: digitou BLOAD\"CAS:\",R");
-        for (const auto &tk : keys) {
-            for (const std::string &k : tk.keys) m->KeyDown(k);
-            for (int i = 0; i < 6; ++i) m->RunFrame();
-            for (auto it = tk.keys.rbegin(); it != tk.keys.rend(); ++it) m->KeyUp(*it);
-            for (int i = 0; i < 6; ++i) m->RunFrame();
-        }
-        for (int i = 0; i < 900; ++i) m->RunFrame();
-        check(VramHas(*m, "Found:HELLO"), "fita: o BASIC achou o arquivo HELLO na fita gerada pelo fwasm");
-        check(VramHas(*m, "carregado da fita"), "fita: o programa foi carregado e executado");
+    check(m != nullptr, "fita " + tag + ": maquina criada " + error);
+    if (!m) return;
+    for (int i = 0; i < 300; ++i) m->RunFrame();
+    m->debugger().AddBreak(0x00E4); // antes de digitar: no modo rapido o BLOAD termina dentro dos proprios quadros da tecla ENTER
+    std::vector<control::Commander::TypedKey> keys;
+    std::string kerr;
+    check(control::Commander::ParseTypeSpec(*m, "bload\"cas:\",r{enter}", true, keys, kerr), "fita " + tag + ": digitou BLOAD\"CAS:\",R");
+    for (const auto &tk : keys) {
+        for (const std::string &k : tk.keys) m->KeyDown(k);
+        for (int i = 0; i < 6; ++i) m->RunFrame();
+        for (auto it = tk.keys.rbegin(); it != tk.keys.rend(); ++it) m->KeyUp(*it);
+        for (int i = 0; i < 6; ++i) m->RunFrame();
     }
+    // o depurador para na entrada TAPIN da BIOS (00E4) quando o BASIC pede um byte da fita -- nos dois modos de carga
+    for (int i = 0; i < (normal_mode ? 3000 : 900) && !m->debugger().stopped(); ++i) m->RunFrame();
+    check(m->debugger().stopped() && m->cpu().state().pc.w == 0x00E4, "fita " + tag + ": break em TAPIN (00E4) para quando o BASIC le a fita");
+    m->debugger().RemoveBreak(0x00E4);
+    m->debugger().Resume();
+    for (int i = 0; i < (normal_mode ? 3000 : 900); ++i) m->RunFrame();
+    check(VramHas(*m, "Found:HELLO"), "fita " + tag + ": o BASIC achou o arquivo HELLO na fita gerada pelo fwasm");
+    check(VramHas(*m, "carregado da fita"), "fita " + tag + ": o programa foi carregado e executado");
+}
+
+void TestTape(const std::string &bios) {
+    // programa do BASIC (.bin) e a fita (.cas, .tsx e .wav): BLOAD"CAS:",R carrega e executa
+    const std::string body = ".bios\n.org 0d000h\n.basic\n%s \"HELLO\"\n ld hl,msg\nlp: ld a,[hl]\n or a\n ret z\n call CHPUT\n inc hl\n jr lp\nmsg: db \"carregado da fita\",0\n";
+    auto source = [&](const char *directive) {
+        std::string t = body;
+        t.replace(t.find("%s"), 2, directive);
+        return t;
+    };
+    const fwasm::AsmResult r = Assemble(source(".cas"));
+    check(r.rc == 0 && r.outs.count("cas") && r.outs.count("bin") && r.outs.count("wav") == 0 && r.outs.count("tsx") == 0, "fita: montou o .bin e o .cas");
+    if (r.rc != 0 || !r.outs.count("cas")) return;
+    const std::string path = TempPath("fwasm_e2e.cas");
+    Write(path, r.outs.at("cas"));
+    RunTapeFile(bios, path, ".cas", false);
     std::remove(path.c_str());
+
+    // .TSX: extensao do fwasm; os mesmos blocos do .cas, em blocos #4B. Carrega rapido e tambem pelos PULSOS (modo normal).
+    const fwasm::AsmResult t = Assemble(source(".tsx"));
+    check(t.rc == 0 && t.outs.count("tsx") && !t.outs.count("cas"), "fita: montou o .tsx (so' ele)");
+    if (t.rc == 0 && t.outs.count("tsx")) {
+        const std::vector<uint8_t> &x = t.outs.at("tsx");
+        check(x.size() > 10 && std::string(x.begin(), x.begin() + 7) == "ZXTape!" && x[10] == 0x4B, "fita: o .tsx tem a assinatura ZXTape! e um bloco #4B");
+        const std::string tp = TempPath("fwasm_e2e.tsx");
+        Write(tp, x);
+        RunTapeFile(bios, tp, ".tsx rapido", false);
+        RunTapeFile(bios, tp, ".tsx normal", true);
+        std::remove(tp.c_str());
+    }
+
+    // .WAV: o audio do fwasm volta pelo ripper do emulador e carrega
+    const fwasm::AsmResult w = Assemble(source(".wav"));
+    check(w.rc == 0 && w.outs.count("wav"), "fita: montou o .wav");
+    if (w.rc == 0 && w.outs.count("wav")) {
+        const std::string wp = TempPath("fwasm_e2e.wav");
+        Write(wp, w.outs.at("wav"));
+        RunTapeFile(bios, wp, ".wav", false);
+        std::remove(wp.c_str());
+    }
 }
 
 unsigned Crc32(const std::vector<uint8_t> &d) {

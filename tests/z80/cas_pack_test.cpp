@@ -19,6 +19,8 @@
 #include "../../src/tape/cpp/cas_format.h"
 #include "../../src/tape/cpp/cas_pack.h"
 #include "../../src/tape/cpp/cas_reader.h"
+#include "../../src/tape/cpp/tape_deck.h"
+#include "../../src/tape/cpp/tape_io.h"
 #include "../../src/tape/cpp/tzx_reader.h"
 #include "../../src/tape/cpp/wav_reader.h"
 #include "../../src/tape/cpp/wav_ripper.h"
@@ -113,9 +115,70 @@ void WriteSyntheticWav(const std::string &path, const std::vector<uint32_t> &pul
     WriteFile(path, wav);
 }
 
+
+// Fita por extensao (tape_io): o mesmo conteudo gravado e relido em .cas, .tsx e .wav; extracao de arquivos; o TapeDeck.
+void TestTapeIo() {
+    std::vector<uint8_t> prog;
+    for (int i = 0; i < 300; ++i) prog.push_back(static_cast<uint8_t>(i * 7 + 3));
+    tape::TapeImage img;
+    tape::AppendTapeFile(img, tape::kCasIdBinary, "JOGO", tape::MakeBinaryContent(0x8000, 0x8010, prog));
+    tape::AppendTapeFile(img, tape::kCasIdAscii, "TEXTO", std::vector<uint8_t>{'O', 'L', 'A', 0x1A});
+    check(img.files.size() == 2, "tape_io: duas entradas apos AppendTapeFile");
+
+    check(tape::TapeExtension("a.CAS") == "cas" && tape::TapeExtension("a.tzx") == "tsx" && tape::TapeExtension("a.Wav") == "wav" && tape::TapeExtension("a.bin").empty(),
+          "tape_io: TapeExtension por extensao");
+
+    for (const char *ext : {".cas", ".tsx", ".wav"}) {
+        const std::string path = TempPath((std::string("fwmsx_tapeio_rt") + ext).c_str());
+        std::string error;
+        check(tape::SaveAnyTape(path, img.fast_bytes, img.marks, error), std::string("tape_io: grava ") + ext + " " + error);
+        tape::TapeImage back;
+        check(tape::LoadAnyTape(path, back, error), std::string("tape_io: le ") + ext + " " + error);
+        check(back.files.size() == 2, std::string("tape_io: ") + ext + " tem 2 arquivos");
+        tape::TapeFileData d;
+        const bool got = back.files.size() > 0 && tape::ReadTapeFile(back, 0, d, error);
+        check(got && d.type == tape::TapeFileType::Binary && d.name == "JOGO" && d.bin_start == 0x8000 && d.bin_end == 0x8000 + 299 && d.bin_exec == 0x8010 &&
+                  d.data.size() == 306 && std::equal(prog.begin(), prog.end(), d.data.begin() + 6),
+              std::string("tape_io: ") + ext + " devolve o binario byte a byte");
+        tape::TapeFileData t;
+        const bool got2 = back.files.size() > 1 && tape::ReadTapeFile(back, 1, t, error);
+        check(got2 && t.type == tape::TapeFileType::Ascii && t.data.size() >= 4 && t.data[0] == 'O' && t.data[3] == 0x1A, std::string("tape_io: ") + ext + " devolve o texto");
+        check(!back.pulses.empty(), std::string("tape_io: ") + ext + " tem pulsos para o modo normal");
+    }
+
+    // TapeDeck: protecao, modos de gravacao e ponto
+    tape::TapeDeck deck;
+    std::string error;
+    const std::string dpath = TempPath("fwmsx_tapeio_deck.cas");
+    check(deck.NewBlank(dpath, error) && deck.inserted() && !deck.read_only(), "deck: fita nova entra destravada");
+    check(deck.AppendFile(tape::kCasIdBinary, "A", tape::MakeBinaryContent(0x4000, 0x4000, {1, 2, 3}), error) && deck.files().size() == 1, "deck: grava o 1o arquivo");
+    check(deck.AppendFile(tape::kCasIdBinary, "B", tape::MakeBinaryContent(0x5000, 0x5000, {4, 5}), error) && deck.files().size() == 2, "deck: acrescenta o 2o");
+    check(deck.Insert(dpath, error) && deck.files().size() == 2 && !deck.read_only(), "deck: reinserir a MESMA fita nao a trava de novo");
+    deck.SetReadOnly(true);
+    check(!deck.AppendFile(tape::kCasIdBinary, "C", {0, 0, 0, 0, 0, 0}, error) && error.find("protegida") != std::string::npos, "deck: fita protegida recusa gravar");
+    deck.SetReadOnly(false);
+    std::size_t idx = 99;
+    check(deck.FindFile("b", 0, idx) && idx == 1 && deck.FindFile("0", 0, idx) && idx == 0 && !deck.FindFile("ZZZ", 0, idx), "deck: FindFile por nome (sem caixa) e por numero");
+    check(deck.SeekToFile(1), "deck: marca o ponto no arquivo 1");
+    deck.SetWriteMode(tape::TapeWriteMode::OverwriteAtPoint);
+    check(deck.AppendFile(tape::kCasIdBinary, "NOVO", tape::MakeBinaryContent(0x6000, 0x6000, {9}), error) && deck.files().size() == 2 && deck.files()[1].name == "NOVO" &&
+              deck.files()[0].name == "A" && deck.write_mode() == tape::TapeWriteMode::AppendAtEnd,
+          "deck: sobrescrever no ponto corta o 2o e volta para acrescentar");
+    deck.SetWriteMode(tape::TapeWriteMode::NewTape);
+    check(deck.AppendFile(tape::kCasIdBinary, "SO", tape::MakeBinaryContent(0x7000, 0x7000, {7}), error) && deck.files().size() == 1 && deck.files()[0].name == "SO",
+          "deck: fita nova apaga tudo");
+    const std::string wav_out = TempPath("fwmsx_tapeio_deck_out.wav");
+    check(deck.SaveAs(wav_out, error), "deck: SaveAs em .wav");
+    tape::TapeImage wback;
+    check(tape::LoadAnyTape(wav_out, wback, error) && wback.files.size() == 1 && wback.files[0].name == "SO", "deck: o .wav gravado volta pelo ripper");
+    deck.Eject();
+    check(!deck.inserted() && deck.files().empty(), "deck: ejetar esvazia");
+}
+
 } // namespace
 
 int main() {
+    TestTapeIo();
     // --- AppendCasBlock/AppendCasFile (nivel baixo, sem CLI) ----------------
     {
         std::vector<uint8_t> bytes;

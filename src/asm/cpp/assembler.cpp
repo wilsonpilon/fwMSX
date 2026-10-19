@@ -11,6 +11,7 @@
 #include "expr.h"
 #include "lexer.h"
 #include "preproc.h"
+#include "../../tape/cpp/tsx_writer.h"
 
 namespace fwasm {
 
@@ -230,7 +231,7 @@ private:
     // Formato de saida (.ROM / .BASIC / .MSXDOS): so' um por programa; repetir o mesmo tipo e' permitido.
     enum class Fmt { None, Rom, MegaRom, Basic, MsxDos, Sinclair } fmt_ = Fmt::None;
     // Fita: `.CAS`/`.WAV` pedem o arquivo .cas (para emuladores) e/ou o .wav (para um MSX de verdade); vale o PRIMEIRO nome dado.
-    bool cas_req_ = false, wav_req_ = false;
+    bool cas_req_ = false, wav_req_ = false, tsx_req_ = false; // tsx e' extensao do fwasm: a MESMA fita em .tsx (blocos #4B), que o asMSX nao gera
     bool tape_name_set_ = false; // o PRIMEIRO .CAS/.WAV decide o nome (dos dois arquivos), mesmo sem nome (= o nome-base)
     std::string tape_name_;
     int32_t rom_hdr_addr_ = -1;  // onde o primeiro .ROM gravou o cabecalho (a fita mostra o INIT final)
@@ -441,7 +442,7 @@ void Assembler::RunPass(bool final) {
     has_res_ = false;
     changed_ = false;
     fmt_ = Fmt::None;
-    cas_req_ = wav_req_ = false;
+    cas_req_ = wav_req_ = tsx_req_ = false;
     tape_name_set_ = false;
     tape_name_.clear();
     rom_hdr_addr_ = -1;
@@ -776,7 +777,7 @@ bool Assembler::Directive(const std::string &w, const std::vector<Token> &t, siz
         }
         return true;
     }
-    if (w == "cas" || w == "cassette" || w == "wav") {
+    if (w == "cas" || w == "cassette" || w == "wav" || w == "tsx") {
         // [ "nome" ]: ate' 6 letras para o BLOAD "CAS:" achar o arquivo; sem nome, o nome-base da saida
         std::string name;
         if (i < t.size()) {
@@ -789,6 +790,7 @@ bool Assembler::Directive(const std::string &w, const std::vector<Token> &t, siz
             tape_name_ = name;
         }
         if (w == "wav") wav_req_ = true;
+        else if (w == "tsx") tsx_req_ = true;
         else cas_req_ = true;
         return true;
     }
@@ -1349,7 +1351,7 @@ void Assembler::ApplyFormat() {
         }
         if (has_size_ && size_kb_ > 0) rom.resize(static_cast<size_t>(size_kb_) * 1024, 0); // .SIZE corta ou completa, sem erro
         result_.outs["rom"] = std::move(rom);
-        if (cas_req_ || wav_req_) msgs_.push_back("WARNING: cas file generation is not supported for MEGAROM");
+        if (cas_req_ || wav_req_ || tsx_req_) msgs_.push_back("WARNING: cas file generation is not supported for MEGAROM");
         return;
     }
     const uint32_t base = neg_start_ ? 0u : (has_res_ && res_min_ < min_ ? res_min_ : min_);
@@ -1372,7 +1374,7 @@ void Assembler::ApplyFormat() {
         v.resize(n, 0);
         return v;
     };
-    if (fmt_ == Fmt::Rom && (cas_req_ || wav_req_) && base >= 0x8000 && start_set_ && rom_hdr_addr_ >= 0) {
+    if (fmt_ == Fmt::Rom && (cas_req_ || wav_req_ || tsx_req_) && base >= 0x8000 && start_set_ && rom_hdr_addr_ >= 0) {
         // Com fita pedida o asMSX grava o .START FINAL no INIT do cabecalho da ROM, mesmo que ele venha depois do .ROM (e o arquivo .rom
         // tambem sai assim). Sem fita, o que vem depois do .ROM nao conta.
         const int64_t at = static_cast<int64_t>(rom_hdr_addr_) - static_cast<int64_t>(base) + 2;
@@ -1420,7 +1422,7 @@ void Assembler::ApplyFormat() {
         break;
     case Fmt::MegaRom: break; // tratado acima
     }
-    if (cas_req_ || wav_req_) BuildTape();
+    if (cas_req_ || wav_req_ || tsx_req_) BuildTape();
 }
 
 std::string Assembler::SourceBase() const {
@@ -1479,18 +1481,29 @@ void Assembler::BuildTape() {
     };
     const std::string out_base = OutBase();
 
-    if (cas_req_) {
+    if (cas_req_ || tsx_req_) {
         static const uint8_t kMark[] = {0x1F, 0xA6, 0xDE, 0xBA, 0xCC, 0x13, 0x7D, 0x74};
         std::vector<uint8_t> cas(kMark, kMark + sizeof(kMark));
+        std::vector<tape::TapeMark> marks; // o tamanho EXATO de cada bloco, para o .tsx (um bloco #4B por marca)
         if (bin) {
             cas.insert(cas.end(), 10, 0xD0);
             const std::string n = name6(tape_name_);
             cas.insert(cas.end(), n.begin(), n.end());
+            marks.push_back({0, 0, 16});
+            marks.push_back({cas.size(), 0, body.size()});
             cas.insert(cas.end(), kMark, kMark + sizeof(kMark));
+        } else {
+            marks.push_back({0, 0, body.size()});
         }
         cas.insert(cas.end(), body.begin(), body.end());
-        result_.outs["cas"] = std::move(cas);
-        msgs_.push_back("cas file " + out_base + ".cas");
+        if (tsx_req_) {
+            result_.outs["tsx"] = tape::BuildTsx(cas, marks);
+            msgs_.push_back("tsx file " + out_base + ".tsx");
+        }
+        if (cas_req_) {
+            result_.outs["cas"] = std::move(cas);
+            msgs_.push_back("cas file " + out_base + ".cas");
+        }
     }
     if (wav_req_) {
         std::vector<uint8_t> kinds; // 0 = ciclo curto (2400 Hz), 1 = ciclo longo (1200 Hz)

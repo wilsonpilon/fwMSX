@@ -17,10 +17,16 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-19)
 
+- **1.40.4 "Antarctic Adventure: Mamute, Fita" (publicada)**: **fita cassete em todos os pontos** (pedido do usuario depois de perguntar onde havia suporte). `.cas`, `.tsx`/`.tzx` e `.wav` (ler e gravar) por uma camada so' (`src/tape/cpp/tape_io`) e o `TapeDeck`
+  (`tape_deck`: a fita sem hardware; o `TapeEngine` herda dele). Comando `tape` com `new list seek protect write mode save put load`; `break tapin`/`until tapoon`/`dis tapion` (nomes das 6 entradas da fita na BIOS); Mamute: `TAPE`, `R` (agora de verdade), `TLOAD`, `TSAVE`,
+  `LOAD`/`SAVE` de fita e `A OT>arq.cas` (online usa a fita da MAQUINA via `IMemory::Tape()`, offline um `TapeDeck` proprio; `man mamute-fita`); fwasm: diretiva `.TSX` (extensao nossa); menus da TUI e da janela; banco de fitas varre `.wav`. **Prova de ponta a ponta**
+  (`asme2etest`): o `.cas`/`.tsx`/`.wav` montado pelo fwasm carrega por `BLOAD"CAS:",R` e RODA no emulador (o `.tsx` tambem pelos pulsos, modo normal). **Achado**: o `LOAD` online sem slot usava o slot da pagina 1 (ROM) e nao gravava em C000; agora usa a pagina do
+  endereco. **Pegadinha de ferramenta**: heredocs com `\n` dentro de strings corrompem arquivos C++ (virou quebra de linha real); use Write/Edit para qualquer texto com barra invertida. **Falta**: gravar em "modo normal" decodificando pulsos (CSAVE/BSAVE seguem pelo gancho);
+  conferir o `.wav` gerado num MSX de verdade; os itens de Mamute abaixo e o depurador sofisticado.
 - **1.40.3 "Antarctic Adventure: Mamute, SUPER-X" (publicada)**: **Mamute Fase 4** -- os comandos do SUPER-X (prefixo `X`) mais `CL` e as variaveis `@`: alvos `#slot-sub`/`#V`/`#S` (`Target`, `IMemory::ReadSub/WriteSub`), `XD XA XI XH` (paineis na TUI, telas e
   listagens no console, `?XD` em PDF), `XM` (sessao de montagem, prompt `XM C100> `), `XBT XRT XFL XCM XFD XTS XCS XSD`, `XRG XGO XTR` (5 breakpoints nomeados), `XPP XPI XPO` (a CPU offline ganhou portas), disco (`XDK XFS XCI XTP XL% XS% XSV XLD XS# XL#`),
   notas (`XIL XIS XIM XIC XIR`; `dist/SUPER-X-PT.notas` com 471 notas da BIOS) e `XCO`. Kernels novos em C (`mamute_reloc.c`), Fortran (`mamute_total.f90`) e NASM (`mamute_cmp.asm`); `man mamute-superx`. **Achados**: online, `#3` e' o sub-slot que a CPU enxerga
-  (a RAM do slot 3 expandido nao esta' no sub-slot 0); o HALT ficava ligado entre programas (agora `XGO <end>` o reinicia). **Falta no Mamute**: o SCR em pixels na janela ImGui, o TAB do console, o `R` (fita), a "cruz" de troca entre XD/XA/XI/XM/XH, o `CLS`, as cores do
+  (a RAM do slot 3 expandido nao esta' no sub-slot 0); o HALT ficava ligado entre programas (agora `XGO <end>` o reinicia). **Falta no Mamute**: o SCR em pixels na janela ImGui, o TAB do console, a "cruz" de troca entre XD/XA/XI/XM/XH, o `CLS`, as cores do
   `XCO` pintando de fato. **Proximo grande item: o depurador sofisticado** (o usuario o pediu DEPOIS do Mamute).
 - **1.40.2 "Antarctic Adventure: Mamute, telas" (publicada)**: **Mamute Fase 3** -- paineis `DM M S ZAP SCR` na TUI (e versoes de linha no console), `ZAPW`, teclado S (`skeys`), `P/LP/V/A P/A H` em PDF (gerador proprio),
   `man mamute-screens`. O modelo do painel (`mamute_panel.cpp`) recebe teclas por nome e devolve linhas: testado sem terminal; a TUI so' repassa teclas (`mon @key ...`). Proxima: Fase 4 = os 36 comandos do SUPER-X

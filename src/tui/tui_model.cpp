@@ -47,7 +47,7 @@ const std::vector<std::string> kWords = {
 
 const std::vector<std::string> kRomExts = {"rom", "mx1", "mx2", "bin"};
 const std::vector<std::string> kDskExts = {"dsk"};
-const std::vector<std::string> kTapeExts = {"cas", "tsx", "tzx"};
+const std::vector<std::string> kTapeExts = {"cas", "tsx", "tzx", "wav"};
 const std::vector<std::string> kSstExts = {"sst"};
 
 } // namespace
@@ -177,10 +177,19 @@ std::vector<TuiModel::MenuDef> TuiModel::BuildMenus() const {
                                                             return "newdisk " + Quote(v[0]) + " " + v[1] + "\ndisk A " + Quote(v[0]);
                                                         })},
                   sep(),
-                  {"Inserir fita...", wiz("Inserir fita", {{"Arquivo .cas/.tsx/.tzx", "", true, kTapeExts}},
+                  {"Inserir fita...", wiz("Inserir fita", {{"Arquivo .cas/.tsx/.tzx/.wav", "", true, kTapeExts}},
                                           [](const std::vector<std::string> &v) { return "tape " + Quote(v[0]); })},
+                  {"Nova fita em branco...", wiz("Nova fita", {{"Arquivo .cas/.tsx/.wav a criar", "nova.tsx", false, {}}},
+                                                 [](const std::vector<std::string> &v) { return "tape new " + Quote(v[0]); })},
                   {"Ejetar fita", cmd("tape eject")},
-                  {"Rebobinar fita", cmd("tape rewind")}}});
+                  {"Rebobinar fita", cmd("tape rewind")},
+                  {"Fita: arquivos da fita inserida", cmd("tape list")},
+                  {"Fita: proteger contra gravacao", cmd("tape protect on")},
+                  {"Fita: liberar para gravacao", cmd("tape protect off")},
+                  {"Fita: carregamento rapido (BIOS)", cmd("tape mode fast")},
+                  {"Fita: carregamento normal (pulsos)", cmd("tape mode normal")},
+                  {"Fita: gravar uma copia...", wiz("Copiar fita", {{"Arquivo .cas/.tsx/.wav de destino", "copia.tsx", false, {}}},
+                                                    [](const std::vector<std::string> &v) { return "tape save " + Quote(v[0]); })}}});
 
     m.push_back({"Ferramentas",
                  {{"Banco de ROMs: buscar...", wiz("Buscar ROM", {{"Termo", "", false, {}}},

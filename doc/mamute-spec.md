@@ -1,4 +1,4 @@
-# Mamute -- o monitor Z80 do fwMSX (1.40.0 "Antarctic Adventure"; Fase 2 na 1.40.1; Fase 3 na 1.40.2; Fase 4 na 1.40.3)
+# Mamute -- o monitor Z80 do fwMSX (1.40.0 "Antarctic Adventure"; Fase 2 na 1.40.1; Fase 3 na 1.40.2; Fase 4 na 1.40.3; fita na 1.40.4)
 
 O **Mamute** e' o monitor Z80 do fwMSX: um prompt de linha onde cada comando mexe na memoria, disassembla,
 executa, salva e carrega programas, no estilo dos monitores dos anos 80 (MegaAssembler, SUPER-X). Vem do
@@ -34,6 +34,7 @@ Decisoes (perguntadas ao usuario antes de codar, como pede o `CLAUDE.md`):
 | **2** | **1.40.1 "Antarctic Adventure: Mamute, EDIT e A"** | `EDIT`/`LIST`/`A`/`MAP`: editor de linhas do fonte numerado e montagem pelo fwasm (listagem, `O N P I R S D H /desloc`). `R` (fita) so' validava a sintaxe no original e continua pendente |
 | **3** | **1.40.2 "Antarctic Adventure: Mamute, telas"** | Telas: `DM`/`M`/`S` interativos como paineis da TUI (setas, TAB, edicao de byte), `ZAP` (setores de `.dsk`), `SCR` (grafico, em braille), `P`/`LP`/`V`/`A P`/`A H` em PDF |
 | **4** | **1.40.3 "Antarctic Adventure: Mamute, SUPER-X"** | Os comandos do **SUPER-X** (prefixo `X`, 36 comandos no original): `XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, `XCS XTS`, `XCO XSD XQT`, `XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%`, notas `XIM XIC XIL XIS XIR`, portas `XPP XPI XPO`; mais o `CL` (calculadora) e as variaveis `@`, que o SUPER-X usa e a Fase 1 nao tinha |
+| **+** | **1.40.4 "Antarctic Adventure: Mamute, Fita"** | Fita cassete em todos os pontos: `TAPE`, `R` (agora de verdade), `TLOAD`, `TSAVE`, `LOAD`/`SAVE` de `.cas/.tsx/.tzx/.wav`, `A OT>arq.cas`; online usa a fita da maquina. Ver 3e |
 
 ## 3. Arquitetura (as 4 linguagens)
 
@@ -60,6 +61,21 @@ src/mamute/
   cpp/mamute_superx_disk.cpp    C++      (Fase 4) XDK XFS XCI XTP XL% XS% XSV XLD XS# XL# e as notas XIM XIC XIL XIS XIR
   cpp/mamute_superx_panels.cpp  C++      (Fase 4) os paineis XA XI XH XIR XPP XTP XTR (o XD e' uma variante do GridPanel)
 ```
+
+### 3e. A fita (1.40.4 "Mamute: Fita")
+
+Pedido do usuario (2026-10-19): suporte total a fita cassete em todos os pontos, com comandos novos se preciso. O Mamute do paleobasic nao tinha nada alem da sintaxe do `R`; aqui o `R` carrega de verdade e ha' comandos novos.
+
+- `cpp/mamute_tape.cpp` (C++): `TAPE`, `R`, `TLOAD`, `TSAVE`, `LOAD`/`SAVE` com `.cas/.tsx/.tzx/.wav` e `StoreOnTape` (a opcao `T` do `A`). A logica de formato e' do `src/tape` (`tape_io`, `tape_deck`); aqui so' a sintaxe e a colocacao do bloco na memoria
+  (`ChooseSlot` + `PlaceBlock`, que o `LOAD` tambem usa).
+- **Qual fita**: ONLINE e' a da MAQUINA (`IMemory::Tape()` devolve `&Machine::tape()`): o que o Mamute grava o BASIC enxerga e a posicao e' uma so'; `TAPE MODE FAST|NORMAL` troca o carregamento da maquina. OFFLINE o `Monitor` tem um `tape::TapeDeck` proprio
+  (sem Z80, sem BIOS, sem pulsos). `TAPE` sem argumento diz qual esta' valendo (`[FITA DA MAQUINA]` ou `[FITA DO MONITOR]`).
+- **`R [desloc]`**: carrega o PROXIMO arquivo binario a partir de `tape_next_` no endereco do cabecalho (+ desloc, hexa) e mostra o EXEC (+ desloc); avanca `tape_next_` e o ponto da fita (na maquina o `CLOAD` seguinte continua dali). `TAPE REW|SEEK|NEW|<arq>` zeram/movem `tape_next_`.
+- **`TLOAD n|nome[,slot[,end]]`**: por numero (do `TAPE LIST`) ou nome (sem diferenciar maiusculas). Binario vai para o endereco do cabecalho; com `<end>` vai so' o programa nesse endereco; BASIC e texto so' com `<end>`.
+- **`TSAVE nome,ini,fim[,exec]`**: acrescenta um arquivo binario (cabecalho com o nome de 6 letras + dados) respeitando protecao e `TAPE WRITE`. **`SAVE arq.cas|.tsx|.wav,ini,fim[,exec]`** cria um arquivo de fita; **`LOAD arq.cas|...[,slot[,end]]`** abre o arquivo SEM inseri-lo e carrega o primeiro binario.
+- **`A OT>jogo.cas`**: a opcao `T` grava o codigo-objeto montado na fita (cria `jogo.cas`/`.tsx`/`.wav` se o `>nome` tem essa extensao; senao acrescenta na fita inserida).
+- **Achado**: `ChooseSlot` online sem slot usava `PageMap()[1]` (slot da pagina 1, ROM) e nao gravava em C000; agora usa o slot da pagina do endereco (offline continua: o primeiro slot com RAM).
+- Testes: `mamutetest` de 407 para 455 checagens (offline completo, ONLINE na maquina, `.cas/.tsx/.wav`, `A OT>`).
 
 ### 3d. Os comandos do SUPER-X (Fase 4)
 
@@ -150,5 +166,5 @@ src/mamute/
 
 ## 6. O que falta
 
-As fases 1 a 4 estao prontas. Falta: o SCR grafico (pixels de verdade) na janela ImGui; o TAB do console com os comandos do monitor; o `R` (carregar assemblado de fita, que no original so' validava a sintaxe); a "cruz" de troca entre
+As fases 1 a 4 e a fita (1.40.4) estao prontas. Falta: o SCR grafico (pixels de verdade) na janela ImGui; o TAB do console com os comandos do monitor; a "cruz" de troca entre
 XD/XA/XI/XM/XH e o `CLS`; o `SCR` com escrita na VRAM; comparar o disassembler com o do Mamute original; e as cores do `XCO` valerem de fato (TUI e janela). Depois do Mamute vem o depurador sofisticado.

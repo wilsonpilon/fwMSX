@@ -10,6 +10,7 @@
 #include "../debug/c/dbg_flow.h"
 #include "../mamute/cpp/mamute_monitor.h"
 #include "../mamute/cpp/mamute_online.h"
+#include "../tape/cpp/cas_format.h"
 #include "../z80/debug/z80_disasm.h"
 
 extern "C" void dbg_format_flags(int f, char *buf); // src/debug/fortran/dbg_fmt.f90
@@ -42,7 +43,7 @@ int DriveIndex(const std::string &s) {
 
 const char *kHelp =
     "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] "
-    "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind> "
+    "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
@@ -69,6 +70,107 @@ std::string PcLine(machine::Machine &m) {
 
 // Maximo de ciclos que um comando sincrono (next, until) espera antes de devolver "running": 20 quadros.
 constexpr long kSyncCycles = 20L * machine::Machine::kFrameCycles;
+
+// As entradas da fita na tabela de saltos da BIOS (0000-00FF), para o depurador: "break tapin", "until tapoon", "dis tapion".
+bool TapeBiosAddress(const std::string &name, uint32_t &out) {
+    static const struct {
+        const char *name;
+        uint32_t addr;
+    } kNames[] = {{"tapion", 0x00E1}, {"tapin", 0x00E4}, {"tapiof", 0x00E7}, {"tapoon", 0x00EA}, {"tapout", 0x00ED}, {"tapoof", 0x00F0}};
+    const std::string l = Lower(name);
+    for (const auto &n : kNames)
+        if (l == n.name) {
+            out = n.addr;
+            return true;
+        }
+    return false;
+}
+
+// ---- fita (doc/tape-spec.md, secao 12) -----------------------------------------------------------
+const char *kTapeUsage =
+    "tape: use tape [<arquivo>|insert <arquivo>|eject|rewind|new <arquivo>|list|seek <n|nome|->|protect <on|off>|"
+    "write <append|overwrite|new>|mode <fast|normal>|save <arquivo>|put <nome> <ini> <fim> [exec]|load <n|nome> [fim]]";
+
+Result TapeCommand(machine::Machine &m, const std::vector<std::string> &t) {
+    tape::TapeEngine &tp = m.tape();
+    if (t.size() == 1) return Ok(tape::DescribeDeck(tp));
+    const std::string sub = Lower(t[1]);
+    std::string error;
+
+    if (t.size() == 2 && sub == "eject") {
+        m.EjectTape();
+        return Ok();
+    }
+    if (t.size() == 2 && sub == "rewind") {
+        m.RewindTape();
+        return Ok();
+    }
+    if (t.size() == 2 && sub == "list") return Ok(tape::ListDeck(tp));
+    // qualquer outra palavra solta e' o caminho de uma fita (.cas, .tsx/.tzx, .wav); "insert" serve para um arquivo com nome de comando
+    if (t.size() == 2 || (t.size() == 3 && sub == "insert")) {
+        if (!m.InsertTape(t.back(), error)) return Err(error);
+        return Ok(tape::DescribeDeck(tp));
+    }
+    if (sub == "new" && t.size() == 3) {
+        if (!m.NewBlankTape(t[2], error)) return Err(error);
+        return Ok(tape::DescribeDeck(tp));
+    }
+    if (sub == "seek" && t.size() == 3) {
+        if (t[2] == "-") {
+            tp.ClearMark();
+            tp.Rewind();
+            return Ok("ponto: inicio");
+        }
+        size_t index = 0;
+        if (!tp.FindFile(t[2], 0, index)) return Err("tape seek: arquivo '" + t[2] + "' nao esta' na fita (tape list)");
+        tp.SeekToFile(index);
+        return Ok("ponto: " + std::to_string(index) + " " + tp.files()[index].name);
+    }
+    if (sub == "protect" && t.size() == 3) {
+        const std::string v = Lower(t[2]);
+        if (v != "on" && v != "off") return Err("tape protect: use on ou off");
+        tp.SetReadOnly(v == "on");
+        return Ok(v == "on" ? "fita protegida" : "fita gravavel");
+    }
+    if (sub == "write" && t.size() == 3) {
+        const std::string v = Lower(t[2]);
+        if (v == "append") tp.SetWriteMode(tape::TapeWriteMode::AppendAtEnd);
+        else if (v == "overwrite") tp.SetWriteMode(tape::TapeWriteMode::OverwriteAtPoint);
+        else if (v == "new") tp.SetWriteMode(tape::TapeWriteMode::NewTape);
+        else return Err("tape write: use append, overwrite ou new");
+        return Ok("gravacao: " + v);
+    }
+    if (sub == "mode" && t.size() == 3) {
+        const std::string v = Lower(t[2]);
+        if (v != "fast" && v != "normal" && v != "rapido") return Err("tape mode: use fast ou normal");
+        m.SetTapeMode(v == "normal" ? tape::TapeMode::Normal : tape::TapeMode::Fast);
+        return Ok(std::string("carregamento: ") + (v == "normal" ? "normal (pulsos de verdade)" : "rapido (gancho de BIOS)"));
+    }
+    if (sub == "save" && t.size() == 3) {
+        if (!tp.SaveAs(t[2], error)) return Err(error);
+        return Ok("fita gravada em " + t[2]);
+    }
+    if (sub == "put" && t.size() >= 5 && t.size() <= 6) {
+        uint32_t a = 0, b = 0, e = 0;
+        if (!Commander::ParseNumber(t[3], a) || !Commander::ParseNumber(t[4], b) || a > 0xFFFF || b > 0xFFFF || b < a) return Err("tape put: enderecos invalidos");
+        e = a;
+        if (t.size() == 6 && (!Commander::ParseNumber(t[5], e) || e > 0xFFFF)) return Err("tape put: exec invalido");
+        std::vector<uint8_t> program;
+        for (uint32_t x = a; x <= b; ++x) program.push_back(m.ReadMemory(static_cast<uint16_t>(x)));
+        if (!tp.AppendFile(tape::kCasIdBinary, t[2], tape::MakeBinaryContent(static_cast<uint16_t>(a), static_cast<uint16_t>(e), program), error)) return Err(error);
+        return Ok("gravado '" + t[2] + "' " + Hex(a, 4) + "-" + Hex(b, 4) + " exec " + Hex(e, 4));
+    }
+    if (sub == "load" && (t.size() == 3 || t.size() == 4)) {
+        size_t index = 0;
+        if (!tp.FindFile(t[2], 0, index)) return Err("tape load: arquivo '" + t[2] + "' nao esta' na fita (tape list)");
+        tape::TapeFileData d;
+        if (!tp.ReadFile(index, d, error)) return Err(error);
+        if (d.type != tape::TapeFileType::Binary) return Err("tape load: so' carrega arquivo binario (bin); '" + d.name + "' e' " + tape::FileTypeName(d.type));
+        for (uint32_t i = 6; i < d.data.size(); ++i) m.WriteMemory(static_cast<uint16_t>(d.bin_start + i - 6), d.data[i]);
+        return Ok("carregado '" + d.name + "' " + Hex(d.bin_start, 4) + "-" + Hex(d.bin_end, 4) + " exec " + Hex(d.bin_exec, 4));
+    }
+    return Err(kTapeUsage);
+}
 
 } // namespace
 
@@ -415,20 +517,7 @@ Result Commander::Execute(const std::string &line) {
         return Ok();
     }
 
-    if (cmd == "tape") {
-        if (t.size() != 2) return Err("tape: use tape <arquivo|eject|rewind>");
-        if (t[1] == "eject") {
-            m.EjectTape();
-            return Ok();
-        }
-        if (t[1] == "rewind") {
-            m.RewindTape();
-            return Ok();
-        }
-        std::string error;
-        if (!m.InsertTape(t[1], error)) return Err(error);
-        return Ok();
-    }
+    if (cmd == "tape") return TapeCommand(m, t);
 
     if (cmd == "state") {
         if (t.size() != 3 || (t[1] != "save" && t[1] != "load")) return Err("state: use state <save|load> <arquivo>");
@@ -457,6 +546,10 @@ Result Commander::Execute(const std::string &line) {
     dbg::Debugger &dbgr = m.debugger();
     auto need_addr = [&](size_t idx, uint16_t &out) {
         uint32_t v = 0;
+        if (t.size() > idx && TapeBiosAddress(t[idx], v)) { // break tapin, until tapoon...: as 6 entradas da fita na BIOS
+            out = static_cast<uint16_t>(v);
+            return true;
+        }
         if (t.size() <= idx || !ParseNumber(t[idx], v) || v > 0xFFFF) return false;
         out = static_cast<uint16_t>(v);
         return true;

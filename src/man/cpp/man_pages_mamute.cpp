@@ -33,6 +33,7 @@ COMANDOS (todos em HEXA; man mamute-<grupo> detalha)
   despejo     C D P V                      man mamute-dump
   execucao    L LP X G                     man mamute-exec
   arquivos    LOAD SAVE                    man mamute-files
+  fita        TAPE R TLOAD TSAVE (A OT)    man mamute-fita   (.cas .tsx .wav; online usa a fita da maquina)
   fonte       EDIT LIST A MAP              man mamute-edit   (editor de linhas numeradas, monta pelo fwasm)
   SUPER-X     XD XA XI XM XH XBT XRT XFL XCM XFD XTS XCS XSD XRG XGO XTR XPP XPI XPO XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%
               XIM XIC XIL XIS XIR XCO  +  CL (calculadora) e @ (variaveis)      man mamute-superx
@@ -43,10 +44,10 @@ COMANDOS (todos em HEXA; man mamute-<grupo> detalha)
 DIFERENCAS EM RELACAO AO MAMUTE DO PALEOBASIC
   Sem janelas separadas: na TUI, DM, M, S, ZAP e SCR sao PAINEIS (man mamute-screens); no console sao comandos de linha.
   P, LP e A P/H gravam PDF (Courier, A4) quando o nome termina em .pdf, senao texto. O EDIT/A monta pelo fwasm (nao ha' um
-  segundo montador). Os comandos do SUPER-X (prefixo X) estao em man mamute-superx. Ainda nao existe: R (fita), que no original so' validava a sintaxe.
+  segundo montador). Os comandos do SUPER-X (prefixo X) estao em man mamute-superx. O R (fita), que no original so' validava a sintaxe, agora carrega de verdade, e ha' TAPE, TLOAD e TSAVE (man mamute-fita).
 
 VER TAMBEM
-  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-edit, mamute-screens, mamute-superx, mamute-files, mamute-config, dis, fwasm)MAN";
+  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-edit, mamute-screens, mamute-superx, mamute-fita, mamute-files, mamute-config, dis, fwasm)MAN";
 
 const char *const kEdit = R"MAN(EDIT / LIST / A / MAP -- o editor de fonte Z80 e a montagem
 
@@ -85,6 +86,8 @@ A -- MONTAR
     R   anexa a referencia cruzada (nome, valor e os enderecos das linhas que usam o simbolo)
     S   anexa a lista alfabetica de simbolos;  D   a mesma em ordem de aparicao
     H   grava as listas S e/ou D: NOME_labels.pdf; com >NOME.lst ou >NOME.txt, NOME.sym em texto
+    T   grava o codigo-objeto na FITA como arquivo binario: >NOME.cas, >NOME.tsx ou >NOME.wav cria essa fita; sem isso acrescenta na
+        fita inserida (TAPE); o nome na fita e' o NOME (6 letras). R (TAPE) ou LOAD NOME.cas carregam de volta (man mamute-fita)
   /desloc  soma desloc (hexa) a TODO ORG;  >nome  nome-base de P, I e H (padrao: mamute)
 MAP   inicio e fim do codigo da ultima montagem que deu certo (NEW e qualquer edicao a invalidam)
 
@@ -259,7 +262,7 @@ LOAD arq[,slot[,end]]
   .rom        vai para 4000 (ate' 32 KB); a celula vira ROM (offline)
   FE...       binario com cabecalho BLOAD: carrega no endereco do cabecalho
   outro       sem cabecalho: informe o endereco (LOAD arq,3,C000)
-  .cas        ainda nao e' suportado
+  .cas .tsx .tzx .wav   fita: carrega o primeiro arquivo BINARIO dela no endereco do cabecalho (man mamute-fita)
   Sem slot: o primeiro slot com RAM (offline) ou o slot ativo da pagina 1 (online). Resposta:
   CARREGADO NO SLOT s EM aaaa - TAMANHO tttt - FIM ffff.
 
@@ -268,9 +271,10 @@ SAVE arq,ini,fim[,exec[,BIN|ROM|RAW]]
   BIN   cabecalho BSAVE real: FE + ini + fim + exec (2 bytes cada, exec = ini se omitido)  [padrao]
   ROM   igual, com AB no lugar do FE (formato do Mamute original, nao e' o cabecalho de um cartucho)
   RAW   so' os bytes  [padrao quando o arquivo termina em .rom: uma imagem de cartucho de verdade]
+  Se o arquivo termina em .cas, .tsx, .tzx ou .wav, cria uma FITA com um arquivo binario (o nome de 6 letras sai do nome do arquivo).
 
 VER TAMBEM
-  mamute, mamute-memory)MAN";
+  mamute, mamute-memory, mamute-fita)MAN";
 
 const char *const kConfig = R"MAN(CFG e o arquivo mamute.cfg
 
@@ -402,6 +406,64 @@ DIFERENCAS EM RELACAO AO PALEOBASIC
 VER TAMBEM
   mamute, mamute-memory, mamute-exec, mamute-screens, mamute-files, mamute-config, dis, fwasm)MAN";
 
+const char *const kFita = R"MAN(FITA -- TAPE, R, TLOAD, TSAVE e o LOAD/SAVE de .cas, .tsx e .wav
+
+DESCRICAO
+  O Mamute le e grava fitas cassete nos tres formatos do fwMSX, escolhidos pela EXTENSAO: .cas (imagem crua), .tsx/.tzx (blocos #4B do
+  Kansas City Standard) e .wav (audio de verdade, 44100 Hz, PCM mono: a leitura passa pelo "ripper", a gravacao sintetiza os pulsos).
+  Em ONLINE o toca-fitas e' o da MAQUINA EMULADA: a mesma fita que o CLOAD/CSAVE/BLOAD "CAS:" do MSX usam. O que o Mamute grava, o BASIC
+  enxerga na hora, e a posicao e' uma so'. Em OFFLINE o monitor tem um toca-fitas PROPRIO (sem Z80 nem BIOS). O TAPE (sem argumento) diz qual.
+
+TAPE [arquivo | subcomando]
+  TAPE                       estado: o arquivo, quantos arquivos logicos, protegida ou gravavel, modo de gravacao e o ponto
+  TAPE arq.cas|.tsx|.wav     insere a fita (entra PROTEGIDA contra gravacao); TAPE INSERT arq serve para nomes iguais a comandos
+  TAPE NEW arq               cria uma fita vazia e GRAVAVEL (o arquivo ja' nasce no disco)
+  TAPE LIST                  um arquivo por linha: numero, tipo (BIN/BAS/ASC), nome, inicio-fim, exec e tamanho; ">" marca o ponto
+  TAPE EJECT | TAPE REW      tira a fita / volta ao inicio
+  TAPE SEEK n|nome|-         marca o PONTO (de onde o R e o carregamento da maquina continuam); "-" volta ao inicio
+  TAPE PROT ON|OFF           protege ou libera a gravacao (uma fita de arquivo entra protegida; uma NOVA, liberada)
+  TAPE WRITE APPEND|OVER|NEW o que a PROXIMA gravacao faz: acrescenta no fim, corta no ponto marcado (SEEK), ou apaga tudo. Vale
+                             para UMA gravacao; depois volta para APPEND (fita de verdade e' linear)
+  TAPE SAVE arq              grava uma COPIA da fita em outro arquivo (a extensao converte: .cas -> .tsx -> .wav)
+  TAPE MODE FAST|NORMAL      so' ONLINE: como a maquina le a fita (gancho de BIOS rapido, ou pulsos de verdade, com som)
+
+R [desloc]
+  Carrega o PROXIMO arquivo BINARIO da fita (o que o BLOAD "CAS:" carregaria) no endereco do cabecalho dele, mais o deslocamento
+  (hexa) se houver, e mostra o EXEC. Cada R avanca para o arquivo seguinte; na maquina o ponto tambem avanca. Fim da fita avisa.
+  No original o R so' validava a sintaxe; aqui ele de fato carrega.
+
+TLOAD n|nome[,slot[,end]]
+  Carrega o arquivo n (numero do TAPE LIST) ou de nome dado. Binario vai para o endereco do cabecalho; com <end> vai so' o programa,
+  nesse endereco. BASIC (BAS) e texto (ASC) so' com <end>, porque nao tem endereco proprio.
+
+TSAVE nome,ini,fim[,exec]
+  Acrescenta o bloco ini-fim da memoria na fita inserida como arquivo binario (cabecalho com o nome de ate' 6 letras e os dados,
+  os mesmos dois blocos de um BSAVE "CAS:"). Respeita a protecao e o TAPE WRITE.
+
+LOAD e SAVE por extensao
+  LOAD arq.cas[,slot[,end]]  abre o arquivo de fita (.cas, .tsx, .tzx ou .wav) SEM inseri-lo e carrega o primeiro arquivo binario dele
+  SAVE arq.tsx,ini,fim[,exec] cria um arquivo de fita com UM arquivo binario (o nome de 6 letras sai do nome do arquivo)
+
+A com a opcao T (montar para a fita)
+  A OT>jogo.cas     monta, grava na memoria e cria jogo.cas com o programa (tambem .tsx e .wav)
+  A T               acrescenta o programa montado na fita inserida (o nome e' o do >nome, padrao MAMUTE)
+
+EXEMPLOS
+  TAPE NEW jogo.tsx            fita nova
+  M C000,3E,2A,C9
+  TSAVE JOGO,C000,C002,C000    grava JOGO na fita
+  TAPE REW
+  R                            carrega JOGO de volta (e mostra EXEC C000)
+  TAPE SAVE jogo.wav           a mesma fita como audio, para um MSX de verdade
+
+LIMITES
+  So' o bloco KCS do MSX (pilot + bytes). Do .tsx entram os blocos #4B; ASCII usa varios blocos de dados concatenados. O .wav precisa
+  de um sinal razoavel (o ripper usa um limiar adaptativo). Gravar numa fita inserida de um .wav REGRAVA o .wav sintetizado (perde o
+  audio original): proteja-a (TAPE PROT ON), que e' o padrao.
+
+VER TAMBEM
+  mamute, mamute-files, mamute-edit, tape (o comando do emulador), cas (empacotar e "ripar"), fwasm-formats)MAN";
+
 } // namespace
 
 std::vector<Topic> MamuteTopics() {
@@ -416,6 +478,7 @@ std::vector<Topic> MamuteTopics() {
     add("mamute-edit", "EDIT, LIST, A, MAP: editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm", kEdit);
     add("mamute-screens", "DM, M, S, ZAP, SCR: paineis interativos na TUI e comandos de linha no console", kScreens);
     add("mamute-superx", "XD, XM, XBT, XRT, XRG, XGO, XDK, XIM, XPP... (SUPER-X), CL e as variaveis @: o prefixo X", kSuperX);
+    add("mamute-fita", "TAPE, R, TLOAD, TSAVE: fita cassete (.cas, .tsx, .wav), online na maquina ou offline", kFita);
     add("mamute-files", "LOAD e SAVE: arquivos na memoria", kFiles);
     add("mamute-config", "CFG e o arquivo mamute.cfg: configuracao inicial", kConfig);
     return v;

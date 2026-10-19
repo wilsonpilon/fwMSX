@@ -11,8 +11,7 @@
 #include "../core/kcs_codec.h"
 #include "cas_format.h"
 #include "cas_reader.h"
-#include "tsx_writer.h"
-#include "tzx_reader.h"
+#include "tape_io.h"
 
 namespace tape {
 
@@ -28,22 +27,6 @@ constexpr uint16_t kTapoonAddr = 0x00EA;
 constexpr uint16_t kTapoutAddr = 0x00ED;
 constexpr uint16_t kTapoofAddr = 0x00F0;
 constexpr int kZ80Clock = 3579545;
-
-bool EndsWithCi(const std::string &s, const char *suffix) {
-    const std::size_t n = std::strlen(suffix);
-    if (s.size() < n) return false;
-    return std::equal(s.end() - static_cast<std::ptrdiff_t>(n), s.end(), suffix,
-                       [](char a, char b) { return std::tolower(static_cast<unsigned char>(a)) == b; });
-}
-
-bool WriteRawFile(const std::string &path, const std::vector<uint8_t> &bytes, std::string &error) {
-    std::ofstream f(path, std::ios::binary | std::ios::trunc);
-    if (!f || !f.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()))) {
-        error = "nao foi possivel gravar '" + path + "'";
-        return false;
-    }
-    return true;
-}
 
 void SinkAppendPulses(void *ctx, uint32_t t) { static_cast<std::vector<uint32_t> *>(ctx)->push_back(t); }
 
@@ -86,53 +69,6 @@ void TapeEngine::SetMode(TapeMode mode) {
     ApplyFastReadPatch(mode == TapeMode::Fast);
 }
 
-bool TapeEngine::Insert(const std::string &path, std::string &error) {
-    TapeImage img;
-    const bool is_tsx = EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx");
-    if (!(is_tsx ? LoadTzxImage(path, img, error) : LoadCasImage(path, img, error))) return false;
-    // Reinserir a MESMA fita (ex.: so' para atualizar depois de editar por
-    // fora, ou "rebobinar" ejetando e inserindo de novo) nao trava de novo
-    // uma fita que o usuario ja' tinha destravado -- so' uma fita DIFERENTE
-    // e' protegida por padrao (ver doc/tape-spec.md, secao 6). Sem isso, um
-    // "destravar" anterior se perdia silenciosamente e o proximo CSAVE dava
-    // "Device I/O error" sem nenhuma pista do motivo.
-    const bool same_tape = inserted_ && path_ == path;
-    image_ = std::move(img);
-    path_ = path;
-    inserted_ = true;
-    if (!same_tape) read_only_ = true;
-    write_mode_ = TapeWriteMode::AppendAtEnd;
-    marked_file_ = kNoMark;
-    writing_ = false;
-    Rewind();
-    return true;
-}
-
-bool TapeEngine::NewBlank(const std::string &path, std::string &error) {
-    image_ = TapeImage{};
-    path_ = path;
-    inserted_ = true;
-    read_only_ = false; // fita nova: destravada (e' o motivo de criar uma)
-    write_mode_ = TapeWriteMode::AppendAtEnd;
-    marked_file_ = kNoMark;
-    writing_ = false;
-    Rewind();
-    // Grava o arquivo ja' (so' o cabecalho, sem blocos) para o caminho
-    // existir no disco desde ja' -- mesma logica de Persist().
-    if (EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx")) return WriteTsxFromCas(image_.fast_bytes, image_.marks, path, error);
-    return WriteRawFile(path, image_.fast_bytes, error);
-}
-
-void TapeEngine::Eject() {
-    inserted_ = false;
-    path_.clear();
-    image_ = TapeImage{};
-    read_only_ = true;
-    marked_file_ = kNoMark;
-    writing_ = false;
-    Rewind();
-}
-
 void TapeEngine::Rewind() {
     fast_pos_ = 0;
     tape_cursor_set(&pulse_cursor_, image_.pulses.empty() ? nullptr : image_.pulses.data(),
@@ -142,13 +78,16 @@ void TapeEngine::Rewind() {
 }
 
 bool TapeEngine::SeekToFile(std::size_t index) {
-    if (index >= image_.files.size()) return false;
-    marked_file_ = index;
+    if (!TapeDeck::SeekToFile(index)) return false;
     const TapeFileEntry &f = image_.files[index];
     fast_pos_ = f.fast_byte_offset;
     tape_cursor_seek(&pulse_cursor_, static_cast<uint32_t>(f.pulse_index));
     cassette_in_level_ = pulse_cursor_.level;
     return true;
+}
+
+void TapeEngine::RebindPulses() {
+    tape_cursor_set(&pulse_cursor_, image_.pulses.empty() ? nullptr : image_.pulses.data(), static_cast<uint32_t>(image_.pulses.size()));
 }
 
 void TapeEngine::FinalizeWrite() {
@@ -173,16 +112,6 @@ void TapeEngine::FinalizeWrite() {
     image_.from_tsx = false;
     tape_cursor_set(&pulse_cursor_, image_.pulses.empty() ? nullptr : image_.pulses.data(),
                      static_cast<uint32_t>(image_.pulses.size()));
-}
-
-void TapeEngine::Persist() {
-    if (path_.empty()) return;
-    std::string err; // melhor esforco: uma falha ao gravar no disco nao desfaz a gravacao em memoria
-    if (EndsWithCi(path_, ".tsx") || EndsWithCi(path_, ".tzx")) {
-        WriteTsxFromCas(image_.fast_bytes, image_.marks, path_, err);
-    } else {
-        WriteRawFile(path_, image_.fast_bytes, err);
-    }
 }
 
 void TapeEngine::Advance(int z80_cycles) {
@@ -268,32 +197,7 @@ bool TapeEngine::OnTapoon(uint16_t &af) {
     // marcado" pela janela. Equivale ao comportamento fisico de uma fita de
     // verdade: depois de cortar e comecar a gravar, o que vem a seguir (no
     // mesmo CSAVE ou num CSAVE futuro) so' pode ir para a frente.
-    switch (write_mode_) {
-    case TapeWriteMode::NewTape:
-        image_.fast_bytes.clear();
-        image_.pulses.clear();
-        image_.marks.clear();
-        marked_file_ = kNoMark;
-        write_mode_ = TapeWriteMode::AppendAtEnd;
-        break;
-    case TapeWriteMode::OverwriteAtPoint:
-        if (marked_file_ != kNoMark && marked_file_ < image_.files.size()) {
-            const std::size_t byte_cut = image_.files[marked_file_].fast_byte_offset;
-            const std::size_t pulse_cut = image_.files[marked_file_].pulse_index;
-            if (byte_cut < image_.fast_bytes.size()) image_.fast_bytes.resize(byte_cut);
-            if (pulse_cut < image_.pulses.size()) image_.pulses.resize(pulse_cut);
-            std::vector<TapeMark> kept;
-            for (const auto &mark : image_.marks) {
-                if (mark.fast_byte_offset < byte_cut) kept.push_back(mark);
-            }
-            image_.marks = kept;
-        }
-        marked_file_ = kNoMark;
-        write_mode_ = TapeWriteMode::AppendAtEnd;
-        break;
-    case TapeWriteMode::AppendAtEnd:
-        break; // grava depois do que ja' existe
-    }
+    CutForWrite();
 
     // Alinha a um multiplo de 8 antes do cabecalho -- mesma regra do
     // TAPOON de verdade (ver o comentario no caso #4B de tzx_reader.cpp).

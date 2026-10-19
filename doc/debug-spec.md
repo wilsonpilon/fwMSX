@@ -50,6 +50,9 @@ slots, breaks, watches): ver `doc/control-spec.md`, secao "Respostas de varias l
 | `--watch <end>[:tam[:r\|w\|rw]]` | watchpoint inicial (pode repetir) |
 | `--debug` | comeca PARADA no PC 0000 (use `stepi`/`go` pelo console/TUI/ponte) |
 
+**Nomes de rotina (1.40.4):** onde um comando pede um endereco (`break`, `unbreak`, `watch`, `until`, `go`, `jump`, `dis`, `mem`), as seis entradas da fita na tabela de saltos da BIOS valem pelo nome: `tapion` (00E1),
+`tapin` (00E4), `tapiof` (00E7), `tapoon` (00EA), `tapout` (00ED), `tapoof` (00F0). `break tapin` para quando o programa pede um byte da fita (no modo rapido e no normal); `dis tapoon` mostra o gancho. Ver `tape-spec.md`, secao 12.
+
 Valem tambem depois de trocar o cartucho pela janela (ficam na configuracao). Sem janela (`--frames N`), se a
 maquina parou, o programa imprime `depurador: parado em PC=XXXX (motivo)` e os eventos pendentes.
 

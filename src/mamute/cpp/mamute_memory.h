@@ -13,6 +13,7 @@
 #include <string>
 #include <vector>
 
+#include "../../tape/cpp/tape_deck.h"
 #include "mamute_config.h"
 
 namespace mamute {
@@ -50,6 +51,10 @@ public:
     virtual size_t VramSize() = 0;
     virtual uint8_t ReadVram(uint32_t addr) = 0;
     virtual bool WriteVram(uint32_t addr, uint8_t value) = 0;
+
+    // O toca-fitas desta memoria: online e' o da maquina emulada (a mesma fita que o CLOAD/CSAVE do MSX usam); offline nao tem
+    // (nullptr), e o monitor usa um proprio.
+    virtual tape::TapeDeck *Tape() { return nullptr; }
 };
 
 // Memoria privada do modo offline. Fica viva enquanto o monitor existir; o que se faz aqui nunca toca a

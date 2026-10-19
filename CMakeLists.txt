@@ -371,6 +371,7 @@ set(MAMUTE_LIB_SOURCES
         src/mamute/cpp/mamute_superx_panels.cpp
         src/mamute/cpp/mamute_superx_cmds.cpp
         src/mamute/cpp/mamute_superx_disk.cpp
+        src/mamute/cpp/mamute_tape.cpp
         src/mamute/cpp/mamute_online.cpp
 )
 
@@ -442,6 +443,7 @@ set(FWASM_LIB_SOURCES
         src/asm/cpp/tables.cpp
         src/asm/cpp/preproc.cpp
         src/asm/cpp/assembler.cpp
+        src/tape/cpp/tsx_writer.cpp # a diretiva .TSX do fwasm (o mesmo escritor da fita)
 )
 
 # O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto.
@@ -473,6 +475,8 @@ set(TAPE_LIB_SOURCES
         src/tape/cpp/cas_pack.cpp
         src/tape/cpp/wav_reader.cpp
         src/tape/cpp/wav_ripper.cpp
+        src/tape/cpp/tape_io.cpp
+        src/tape/cpp/tape_deck.cpp
         src/tape/cpp/tape_device.cpp
 )
 
@@ -491,6 +495,8 @@ set(CAS_PACK_SOURCES
         src/tape/cpp/cas_pack.cpp
         src/tape/cpp/wav_reader.cpp
         src/tape/cpp/wav_ripper.cpp
+        src/tape/cpp/tape_io.cpp
+        src/tape/cpp/tape_deck.cpp
 )
 
 # --- Maquina MSX1 completa + janela (fwmsx --msx) -- ver doc/machine-spec.md

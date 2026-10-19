@@ -483,6 +483,87 @@ void TestScreens() {
     check(mon.Execute("@key up") == "action=close panel=mamute", "@key sem painel aberto responde que fechou");
 }
 
+// Fita: TAPE, TSAVE, R, TLOAD, LOAD/SAVE de .cas/.tsx/.wav e a opcao T do A, com o deck PROPRIO do monitor (offline).
+void TestTape() {
+    mamute::Config cfg;
+    mamute::Monitor mon(cfg);
+    const std::string tape_path = TempPath("mamute_tape_test.tsx");
+    std::remove(tape_path.c_str());
+
+    checkOut(mon, "TAPE", "NENHUMA INSERIDA", "fita: sem fita ao abrir");
+    checkOut(mon, "R", "NENHUMA FITA", "fita: R sem fita avisa");
+    checkOut(mon, "TSAVE JOGO,C000,C003", "NAO FOI POSSIVEL GRAVAR NA FITA", "fita: TSAVE sem fita recusa");
+    checkOut(mon, "TAPE NEW " + tape_path, "0 ARQUIVO(S)", "fita: TAPE NEW cria a fita (.tsx) vazia e gravavel");
+    checkOut(mon, "TAPE", "GRAVAVEL", "fita: a fita nova nao e' protegida");
+
+    Run(mon, "M C000,3E,2A,C9,00");
+    Run(mon, "M C100,11,22,33");
+    checkOut(mon, "TSAVE JOGO,C000,C003,C000", "GRAVADO NA FITA 'JOGO' - C000-C003 - TAMANHO 0004 - EXEC C000", "fita: TSAVE grava o 1o arquivo");
+    checkOut(mon, "TSAVE DADOS,C100,C102", "GRAVADO NA FITA 'DADOS'", "fita: TSAVE grava o 2o");
+    std::string r = Run(mon, "TAPE LIST");
+    check(has(r, "0 BIN") && has(r, "JOGO") && has(r, "C000-C003 EXEC C000") && has(r, "1 BIN") && has(r, "DADOS") && has(r, "C100-C102"), "fita: TAPE LIST mostra os 2 arquivos");
+    if (!has(r, "DADOS")) std::printf("    '%s'\n", r.c_str());
+
+    // R carrega em sequencia, no endereco do cabecalho (+ desloc)
+    Run(mon, "F C000,C1FF,00");
+    checkOut(mon, "TAPE REW", "REBOBINADA", "fita: REW");
+    checkOut(mon, "R", "'JOGO'", "fita: R carrega o 1o arquivo");
+    checkOut(mon, "D C000,C003", "C000  3E 2A C9 00", "fita: o 1o arquivo foi para C000");
+    checkOut(mon, "R 100", "EM C200", "fita: R com desloc soma ao endereco do arquivo");
+    checkOut(mon, "D C200,C202", "C200  11 22 33", "fita: o 2o arquivo foi para C100+100");
+    checkOut(mon, "R", "FIM DA FITA", "fita: R no fim avisa");
+
+    // TLOAD por nome e por numero, com endereco explicito
+    Run(mon, "F C000,C1FF,00");
+    checkOut(mon, "TLOAD dados", "EM C100", "fita: TLOAD por nome (sem caixa)");
+    checkOut(mon, "TLOAD 0,3,D000", "EM D000", "fita: TLOAD com endereco explicito poe so' o programa");
+    checkOut(mon, "D D000,D003", "D000  3E 2A C9 00", "fita: TLOAD 0,3,D000 gravou o programa sem o cabecalho");
+    checkOut(mon, "TLOAD ZZZ", "NAO TEM O ARQUIVO", "fita: TLOAD de nome inexistente");
+
+    // protecao, modo de gravacao e ponto
+    Run(mon, "TAPE PROT ON");
+    checkOut(mon, "TSAVE X,C000,C001", "PROTEGIDA", "fita: protegida recusa TSAVE");
+    Run(mon, "TAPE PROT OFF");
+    checkOut(mon, "TAPE SEEK DADOS", "PONTO: 1 DADOS", "fita: SEEK por nome");
+    Run(mon, "TAPE WRITE OVER");
+    checkOut(mon, "TSAVE NOVO,C000,C001", "GRAVADO NA FITA 'NOVO'", "fita: sobrescrever no ponto");
+    r = Run(mon, "TAPE LIST");
+    check(has(r, "JOGO") && has(r, "NOVO") && !has(r, "DADOS"), "fita: o 2o arquivo foi cortado e substituido");
+
+    // reinsere do disco: o que foi gravado esta' no arquivo
+    checkOut(mon, "TAPE EJECT", "EJETADA", "fita: EJECT");
+    r = Run(mon, "TAPE " + tape_path);
+    check(has(r, "2 ARQUIVO(S)") && has(r, "PROTEGIDA"), "fita: reinserir do disco traz os 2 arquivos, protegida");
+
+    // LOAD/SAVE por extensao
+    for (const char *ext : {".cas", ".tsx", ".wav"}) {
+        const std::string f = TempPath(std::string("mamute_tape_save") + ext);
+        std::remove(f.c_str());
+        Run(mon, "M C300,AA,BB,CC,DD");
+        checkOut(mon, std::string("SAVE ") + f + ",C300,C303,C300", std::string("FORMATO ") + (ext + 1 == std::string("cas") ? "CAS" : ext + 1 == std::string("tsx") ? "TSX" : "WAV"), std::string("fita: SAVE ") + ext);
+        Run(mon, "F C300,C3FF,00");
+        checkOut(mon, "LOAD " + f, "EM C300", std::string("fita: LOAD ") + ext + " usa o endereco do cabecalho");
+        checkOut(mon, "D C300,C303", "C300  AA BB CC DD", std::string("fita: LOAD ") + ext + " trouxe os bytes");
+    }
+
+    // A opcao T do montador: cria a fita ou acrescenta na inserida
+    Run(mon, "EDIT NEW");
+    Run(mon, "EDIT 10 ORG 8000H");
+    Run(mon, "EDIT 20 LD A,1");
+    Run(mon, "EDIT 30 RET");
+    const std::string asm_cas = TempPath("mamute_tape_asm.cas");
+    std::remove(asm_cas.c_str());
+    checkOut(mon, "EDIT A OT>" + asm_cas, "GRAVADO " + asm_cas, "fita: A OT>arq.cas cria a fita com o programa montado");
+    checkOut(mon, "LOAD " + asm_cas + ",3", "EM 8000", "fita: o .cas do montador volta pelo LOAD");
+    checkOut(mon, "D 8000,8002", "8000  3E 01 C9", "fita: o programa montado esta' certo");
+    Run(mon, "TAPE PROT OFF");
+    checkOut(mon, "EDIT A T>prog", "GRAVADO NA FITA 'PROG'", "fita: A T acrescenta na fita inserida");
+
+    for (const char *ext : {".tsx", ".cas", ".wav"}) std::remove((TempPath("mamute_tape_save") + ext).c_str());
+    std::remove(tape_path.c_str());
+    std::remove(asm_cas.c_str());
+}
+
 void TestOnline() {
 #ifdef FWMSX_SOURCE_DIR
     const std::string bios = std::string(FWMSX_SOURCE_DIR) + "/resource/fMSX/ROMs/MSX.ROM";
@@ -555,6 +636,26 @@ void TestOnline() {
     checkOut(mon, "XFL 0000#V,0003,5A", "PREENCHIDOS 4 BYTES", "online: XFL na VRAM da maquina");
     check(m->vdp_state().vram[0] == 0x5A && m->vdp_state().vram[3] == 0x5A, "online: a VRAM da maquina recebeu o XFL");
     checkOut(mon, "XTR C000", "C000  3E 2A", "online: XTR executa um passo na CPU da maquina");
+    // Fita no modo ONLINE: o deck e' o da MAQUINA (a mesma fita do CLOAD/CSAVE)
+    {
+        const std::string tp = TempPath("mamute_tape_online.cas");
+        std::remove(tp.c_str());
+        checkOut(mon, "TAPE NEW " + tp, "[FITA DA MAQUINA]", "online: TAPE NEW cria a fita na MAQUINA");
+        check(m->tape().inserted() && m->tape().path() == tp, "online: a maquina emulada tem a fita inserida");
+        Run(mon, "M C400,01,02,03,04");
+        checkOut(mon, "TSAVE ONL,C400,C403,C400", "GRAVADO NA FITA 'ONL'", "online: TSAVE grava na fita da maquina");
+        check(m->tape().files().size() == 1 && m->tape().files()[0].name == "ONL", "online: a maquina enxerga o arquivo gravado pelo Mamute");
+        Run(mon, "F C400,C4FF,00");
+        checkOut(mon, "TAPE REW", "REBOBINADA", "online: REW rebobina a fita da maquina");
+        checkOut(mon, "R", "'ONL'", "online: R le da fita da maquina");
+        check(m->ReadMemory(0xC400) == 1 && m->ReadMemory(0xC403) == 4, "online: o R pos os bytes na memoria da maquina");
+        checkOut(mon, "TAPE MODE NORMAL", "NORMAL", "online: TAPE MODE NORMAL");
+        check(m->tape().mode() == tape::TapeMode::Normal, "online: a maquina passou para o carregamento normal");
+        checkOut(mon, "TAPE MODE FAST", "RAPIDO", "online: TAPE MODE FAST");
+        Run(mon, "TAPE EJECT");
+        check(!m->tape().inserted(), "online: EJECT ejeta da maquina");
+        std::remove(tp.c_str());
+    }
     checkOut(mon, "OFFLINE", "MODO OFFLINE", "OFFLINE volta para a memoria privada");
 #endif
 }
@@ -984,6 +1085,7 @@ int main() {
     TestEdit();
     TestScreens();
     TestSuperX();
+    TestTape();
     TestOnline();
     std::printf("\n%s (%d falha(s))\n", g_failures ? "FALHOU" : "OK", g_failures);
     return g_failures ? 1 : 0;

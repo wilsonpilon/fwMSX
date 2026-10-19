@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.40.3 "Antarctic Adventure: Mamute, SUPER-X", Konami)
+## Estado atual (v1.40.4 "Antarctic Adventure: Mamute, Fita", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -39,8 +39,10 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 
 - **Disco**: MSX-DOS 1.8 a partir de `.dsk`, com leitura e gravacao (e protecao contra gravacao); tambem pela
   controladora por portas (estilo Microsol, driver DDX 3.0/CDX-2), formatos 180/360/720 KB.
-- **Fita** (`.cas`, `.tsx`/`.tzx`): leitura (modo rapido e normal, com som), gravacao (`CSAVE`/`BSAVE "CAS:"`,
-  fita nova, protecao, 3 modos, marcar o ponto, contagiros), janela visual "Fita K7", e a ferramenta de linha
+- **Fita** (`.cas`, `.tsx`/`.tzx`, `.wav`): leitura (modo rapido e normal, com som), gravacao (`CSAVE`/`BSAVE "CAS:"`,
+  fita nova, protecao, 3 modos, marcar o ponto, contagiros), janela visual "Fita K7", o comando `tape` (listar, ponto,
+  protecao, converter entre formatos, gravar um bloco da memoria, carregar um arquivo da fita), `break tapin` no depurador,
+  `TAPE`/`R`/`TLOAD`/`TSAVE` no Mamute (`man mamute-fita`), a diretiva `.TSX` do fwasm, e a ferramenta de linha
   de comando `fwmsx --cas` (empacotar `.BIN`/`.BAS` num `.TSX`, "ripar" uma gravacao `.wav` real, listar o
   conteudo de uma fita). Navegacao completa dos blocos de controle do TZX (grupos/lacos/saltos/chamadas/
   selecao). Banco de fitas com metadados (`fwmsx --fitadb`, titulo/empresa/ano/SHA-1, SEM download). Ver
@@ -143,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.40.4 Mamute: fita cassete em todos os pontos -- `.cas`, `.tsx` e `.wav` (ler e gravar) no emulador (`tape new/list/seek/save/put/load`), no depurador (`break tapin`), no Mamute (`TAPE`, `R`, `TLOAD`, `TSAVE`, `A OT>jogo.cas`) e no fwasm (`.TSX`)**
 **1.40.3 Mamute: os comandos do SUPER-X (prefixo X) -- `XD XA XI XH XM`, `XBT XRT XFL XCM XFD`, `XRG XGO XTR`, portas, disco (`XDK XFS XTP XL% XS%`...) e notas, com alvos `#slot-sub`/`#V`; `man mamute-superx`**
 **1.40.2 Mamute: as telas -- `DM`, `M`, `S`, `ZAP` (setores de disco) e `SCR` (memoria como pixels) como paineis interativos na TUI, e listagens em PDF**
 **1.40.1 Mamute: `EDIT` (editor de fonte de linhas numeradas) e `A` (montar pelo fwasm, com listagem, referencia cruzada e gravacao na memoria/maquina)**

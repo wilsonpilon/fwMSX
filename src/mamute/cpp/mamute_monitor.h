@@ -74,6 +74,24 @@ private:
     std::string CmdF(const std::vector<std::string> &f);
     std::string CmdXfer(const std::vector<std::string> &f, bool push);
     std::string CmdLoad(const std::vector<std::string> &f);
+    int ChooseSlot(const std::string &arg, unsigned addr, std::string &error);
+    std::string PlaceBlock(int slot, unsigned addr, const uint8_t *data, size_t n, CellType kind);
+    // fita (mamute_tape.cpp): TAPE, R, TLOAD, TSAVE e o LOAD/SAVE de .cas/.tsx/.wav
+    tape::TapeDeck &Deck() {
+        tape::TapeDeck *t = Mem().Tape();
+        return t ? *t : offline_tape_;
+    }
+    std::string CmdTape(const std::string &rest);
+    std::string CmdTapeR(const std::vector<std::string> &f);
+    std::string CmdTload(const std::vector<std::string> &f);
+    std::string CmdTsave(const std::vector<std::string> &f);
+    std::string CmdLoadTape(const std::vector<std::string> &f);
+    std::string CmdSaveTape(const std::string &path, unsigned a, unsigned b, unsigned e);
+    std::string PlaceTapeFile(const tape::TapeFileData &d, const std::string &slot_arg, const std::string &end_arg, unsigned displacement, bool &ok);
+    std::string StoreOnTape(const std::string &name, const std::string &tape_file, const AsmProduct &p);
+    // o arquivo da fita que o proximo R le: sobe a cada R e volta ao zero quando a fita muda (TAPE arq, NEW, REW, SEEK)
+    size_t tape_next_ = 0;
+    tape::TapeDeck offline_tape_;
     std::string CmdSave(const std::vector<std::string> &f);
     std::string CmdList(const std::vector<std::string> &f, bool to_file);
     std::string CmdX(const std::vector<std::string> &f);

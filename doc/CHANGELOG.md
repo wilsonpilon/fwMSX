@@ -7,6 +7,22 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.40.4] - 2026-10-19 - "Antarctic Adventure: Mamute, Fita" (Konami)
+
+### Adicionado -- fita cassete em todos os pontos (`.cas`, `.tsx`/`.tzx` e `.wav`)
+- **Uma camada so'** (`tape_io`): o formato vem da extensao em qualquer lugar (motor, `--cas`, banco de fitas, Mamute). O `.wav` passa a ser lido (pelo ripper) e GRAVADO (PCM 16 bits mono, 44100 Hz, pulsos do MSX). `fwmsx --cas pack/rip/list` aceitam `.wav` dos dois lados.
+- **`TapeDeck`**: a fita sem hardware (inserida, protecao, modo de gravacao, ponto, ler/gravar arquivos). O `TapeEngine` herda dele.
+- **Comando `tape`** (console, TUI, terminal e ponte): alem de `<arq>`/`eject`/`rewind`, agora `new`, `list`, `seek`, `protect`, `write`, `mode`, `save` (converte entre formatos), `put` (memoria -> arquivo da fita) e `load` (fita -> memoria). Menu da TUI e da janela com os itens novos e `.wav`.
+- **Depurador**: `break tapin`, `until tapoon`, `dis tapion`... (as 6 entradas da fita na BIOS tem nome).
+- **Mamute**: `TAPE` (inserir, criar, listar, ponto, protecao, modo de gravacao, copiar, modo de carga), **`R`** (agora carrega de verdade o proximo arquivo binario; no original so' validava a sintaxe), `TLOAD`, `TSAVE`, `LOAD`/`SAVE` de `.cas/.tsx/.tzx/.wav`
+  e a opcao `T` do `A` (`A OT>jogo.cas` monta e grava a fita). Online usa a fita da MAQUINA (o que o Mamute grava, o `CLOAD` do BASIC enxerga); offline tem um toca-fitas proprio. `man mamute-fita`.
+- **fwasm**: diretiva `.TSX ["nome"]` (a fita em blocos #4B; extensao nossa).
+- Banco de fitas: tambem varre `.wav`.
+- Testes: `castooltest` (+32), `mamutetest` (+48), `controltest` (+17), `asme2etest` (o `.cas`/`.tsx`/`.wav` do fwasm carrega e RODA no emulador; o `.tsx` tambem pelos pulsos), `mantest`.
+
+### Corrigido
+- O `LOAD`/`R`/`TLOAD` ONLINE sem slot usava o slot da pagina 1 mesmo para enderecos em C000; agora usa o slot que a maquina tem na pagina do ENDERECO.
+
 ## [1.40.3] - 2026-10-19 - "Antarctic Adventure: Mamute, SUPER-X" (Konami)
 
 ### Adicionado -- Mamute, Fase 4: os comandos do SUPER-X (prefixo X)

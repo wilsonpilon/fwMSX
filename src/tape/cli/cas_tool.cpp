@@ -10,6 +10,7 @@
 #include "../cpp/cas_format.h"
 #include "../cpp/cas_pack.h"
 #include "../cpp/cas_reader.h"
+#include "../cpp/tape_io.h"
 #include "../cpp/tsx_writer.h"
 #include "../cpp/tzx_reader.h"
 #include "../cpp/wav_reader.h"
@@ -17,13 +18,6 @@
 
 namespace tape {
 namespace {
-
-bool EndsWithCi(const std::string &s, const char *suffix) {
-    const std::size_t n = std::strlen(suffix);
-    if (s.size() < n) return false;
-    return std::equal(s.end() - static_cast<std::ptrdiff_t>(n), s.end(), suffix,
-                       [](char a, char b) { return std::tolower(static_cast<unsigned char>(a)) == b; });
-}
 
 bool ReadFile(const std::string &path, std::vector<uint8_t> &out, std::string &error) {
     std::ifstream f(path, std::ios::binary | std::ios::ate);
@@ -41,24 +35,12 @@ bool ReadFile(const std::string &path, std::vector<uint8_t> &out, std::string &e
     return true;
 }
 
-bool WriteRaw(const std::string &path, const std::vector<uint8_t> &bytes, std::string &error) {
-    std::ofstream f(path, std::ios::binary | std::ios::trunc);
-    if (!f || !f.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()))) {
-        error = "nao foi possivel gravar '" + path + "'";
-        return false;
-    }
-    return true;
-}
-
-bool LoadAny(const std::string &path, TapeImage &out, std::string &error) {
-    const bool is_tsx = EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx");
-    return is_tsx ? LoadTzxImage(path, out, error) : LoadCasImage(path, out, error);
-}
+// .cas, .tsx/.tzx e .wav pela extensao (tape_io.h) -- o mesmo que o motor e o Mamute usam
+bool LoadAny(const std::string &path, TapeImage &out, std::string &error) { return LoadAnyTape(path, out, error); }
 
 bool SaveAny(const std::string &path, const std::vector<uint8_t> &fast_bytes, const std::vector<TapeMark> &marks,
              std::string &error) {
-    const bool is_tsx = EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx");
-    return is_tsx ? WriteTsxFromCas(fast_bytes, marks, path, error) : WriteRaw(path, fast_bytes, error);
+    return SaveAnyTape(path, fast_bytes, marks, error);
 }
 
 // Valor de uma opcao "--nome valor" (a primeira ocorrencia); vazia se faltar.
@@ -117,7 +99,7 @@ int Fail(const std::string &message) {
 void PrintHelp() {
     std::cout << "fwmsx --cas <comando> [opcoes]\n"
                  "\n"
-                 "pack --tipo bin|bas --nome NOME [opcoes] <entrada> <saida.tsx|.cas>\n"
+                 "pack --tipo bin|bas --nome NOME [opcoes] <entrada> <saida.tsx|.cas|.wav>\n"
                  "  Empacota um arquivo solto (ja no formato BINARIO/tokenizado do MSX) num\n"
                  "  .TSX (ou .CAS) valido, pronto pra BLOAD/CLOAD \"CAS:\" -- sem passar pelo\n"
                  "  emulador. O nome vai pro cabecalho de 6 caracteres (maiusculas, truncado\n"
@@ -133,7 +115,7 @@ void PrintHelp() {
                  "                             arquivo no final, em vez de criar uma fita so'\n"
                  "                             com ele (a saida pode ser o MESMO arquivo)\n"
                  "\n"
-                 "rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas>\n"
+                 "rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas|.wav>\n"
                  "  \"Ripa\" uma gravacao real de fita (.wav PCM mono, 8 ou 16 bits) para um\n"
                  "  .TSX valido -- detecta o piloto e decodifica os bytes do bloco #4B (Kansas\n"
                  "  City Standard), igual o makeTSX (resource/makeTSX/, MIT). So' funciona com\n"
@@ -143,7 +125,7 @@ void PrintHelp() {
                  "                                     suba para gravacoes mais ruidosas\n"
                  "  --anexar <arquivo>                 acrescenta no final de uma fita existente\n"
                  "\n"
-                 "list <arquivo.tsx|.tzx|.cas>\n"
+                 "list <arquivo.tsx|.tzx|.cas|.wav>\n"
                  "  Lista os arquivos de uma fita (indice, tipo, nome, tamanho dos dados) --\n"
                  "  util pra confirmar o resultado do pack/rip sem abrir o emulador.\n"
               << std::endl;
@@ -206,7 +188,7 @@ int RunRip(const std::vector<std::string> &args) {
     const std::string tolerancia_raw = Option(args, "--tolerancia");
     const std::string anexar = Option(args, "--anexar");
     const std::vector<std::string> pos = Positionals(args, 1);
-    if (pos.size() != 2) return Fail("uso: rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas>");
+    if (pos.size() != 2) return Fail("uso: rip [--tolerancia N] [--anexar <arquivo>] <entrada.wav> <saida.tsx|.cas|.wav>");
 
     int tolerance_percent = 25;
     if (!tolerancia_raw.empty()) {
@@ -251,7 +233,7 @@ int RunRip(const std::vector<std::string> &args) {
 
 int RunList(const std::vector<std::string> &args) {
     const std::vector<std::string> pos = Positionals(args, 1);
-    if (pos.size() != 1) return Fail("uso: list <arquivo.tsx|.tzx|.cas>");
+    if (pos.size() != 1) return Fail("uso: list <arquivo.tsx|.tzx|.cas|.wav>");
 
     TapeImage img;
     std::string error;

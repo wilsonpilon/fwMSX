@@ -66,6 +66,7 @@ SAIDAS (a extensao depende do formato; .filename "x" troca o nome-base)
   .com   executavel do MSX-DOS (.msxdos)
   .cas   fita para emuladores (.cas); BLOAD "CAS:",R
   .wav   fita para um MSX de verdade, 44,1 kHz, 8 bits (.wav)
+  .tsx   a mesma fita em blocos #4B do TSX (extensao do fwasm; o asMSX nao gera) (.tsx)
   .tap   fita para o ZX Spectrum (.sinclair)
   .sym   tabela de simbolos (a MegaROM mostra a subpagina: "01h:8000h nome")
   .txt   mensagens de print (so' existe se houver print)
@@ -348,6 +349,7 @@ const char *const kDirectives = R"MAN(DESCRICAO
   calldos X         chama uma funcao do MSX-DOS (so' com .msxdos)
   cas ["nome"]      fita .cas para BLOAD "CAS:",R (cassette e' sinonimo)
   wav ["nome"]      fita .wav para um MSX de verdade
+  tsx ["nome"]      fita .tsx (blocos #4B do TSX), a mesma do .cas; extensao do fwasm
   sinclair          arquivo .tap para o ZX Spectrum
   size X            tamanho do arquivo de saida em KB
   debug "texto"     marcador de texto para o depurador do blueMSX
@@ -413,10 +415,10 @@ const char *const kFormats = R"MAN(DESCRICAO
   Para ROM e MegaROM: gera 31 bytes que descobrem o slot da pagina 2 e a ativam
   (RSLREG, EXPTBL, ENASLT). Use num cartucho que comeca na pagina 1.
 
-.CAS ["nome"]  /  .WAV ["nome"]
+.CAS ["nome"]  /  .WAV ["nome"]  /  .TSX ["nome"]
   Gera tambem a fita. O nome (ate' 6 letras, exatamente como escrito) e' o que o MSX
-  mostra no BLOAD; sem nome vale o nome-base da saida. O PRIMEIRO .cas ou .wav fixa
-  o nome dos dois. Mensagens: "cas file x.cas" e "Audio file x.wav saved [8.55 sec]".
+  mostra no BLOAD; sem nome vale o nome-base da saida. O PRIMEIRO .cas, .wav ou .tsx
+  fixa o nome de todos. Mensagens: "cas file x.cas" e "Audio file x.wav saved [8.55 sec]".
     .basic        fita de arquivo BLOAD: BLOAD"CAS:",R
     .rom na pagina 2 (a partir de 8000h)   idem; o INIT final entra no cabecalho
     sem formato, .msxdos, .sinclair   so' os bytes (precedidos da marca do .cas)

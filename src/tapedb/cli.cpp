@@ -58,7 +58,7 @@ void PrintHelp() {
                  "sem download nenhum (o site de referencia nao publica termos de uso ainda,\n"
                  "ver doc/SPEC.md, secao 5.2, item 7).\n"
                  "\n"
-                 "  scan <pasta> [--origem x]   le e cadastra as fitas de uma pasta (.cas/.tsx/.tzx, pelo SHA-1)\n"
+                 "  scan <pasta> [--origem x]   le e cadastra as fitas de uma pasta (.cas/.tsx/.tzx/.wav, pelo SHA-1)\n"
                  "  add <arquivo> [--titulo t] [--empresa e] [--ano a] [--notas t]\n"
                  "  list                        lista as fitas cadastradas\n"
                  "  search <texto>              busca por titulo, empresa, ano, SHA-1, caminho ou notas\n"

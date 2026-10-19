@@ -17,6 +17,27 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.40.4 -- "Antarctic Adventure: Mamute, Fita" (Konami) (2026-10-19)
+
+**Suporte total a fita cassete** (pedido do usuario depois de perguntar onde a fita existia: emulador sim, Mamute so' um `R` de mentira, fwasm so' gerava). Decisoes (AskUserQuestion): patch 1.40.4 e `.wav` incluido.
+Mapa do que existia e do que faltava: motor completo (leitura rapida/normal, gravacao pela BIOS, TZX, ripper de WAV em ferramenta), fwasm gerava `.cas`/`.wav`, depurador so' mostrava o motor do PSG/PPI, Mamute nada (`R` e `LOAD .cas` recusavam).
+
+- **`tape_io`** (`src/tape/cpp`): `LoadAnyTape`/`SaveAnyTape` por extensao (`.cas`, `.tsx`/`.tzx`, `.wav`), `ReadTapeFile`, `AppendTapeFile`, `MakeBinaryContent`, `TruncateAtFile`, `PulsesFromMarks`, `WriteWavFromPulses`. O `.wav` gravado tem silencio de 0,5 s antes, depois e entre blocos; o ripper o le de
+  volta sem perder um byte (testado `.cas`/`.tsx`/`.wav` ida e volta byte a byte).
+- **`TapeDeck`**: extrai do `TapeEngine` o que nao e' hardware (inserida, protecao, modo de gravacao, ponto, `AppendFile`/`ReadFile`/`FindFile`/`SaveAs`). O motor herda e liga os cursores pelos ganchos `OnReplaced`/`OnPulsesChanged`. O corte de uma vez do TAPOON
+  virou `CutForWrite`, compartilhado com o `AppendFile`. `Rewind` e `SeekToFile` viraram virtuais para o Mamute poder rebobinar/marcar a fita da maquina por um `TapeDeck*`.
+- **Ponte**: `tape` ganhou `new list seek protect write mode save put load` (`TapeCommand` em `command.cpp`); as entradas `tapion tapin tapiof tapoon tapout tapoof` valem como endereco em `break/unbreak/watch/until/go/jump/dis/mem`.
+- **Mamute** (`mamute_tape.cpp`): `TAPE`, `R [desloc]`, `TLOAD`, `TSAVE`, `LOAD`/`SAVE` por extensao, `A` opcao `T`. `IMemory::Tape()` devolve a fita da maquina no ONLINE (nullptr no offline, onde o monitor tem um `TapeDeck` proprio). **Achado**: o `LOAD` online sem slot usava
+  `PageMap()[1]` (o slot da pagina 1, ROM) e entao nao conseguia gravar em C000; `ChooseSlot` agora usa a pagina do endereco. O `R` avanca o ponto da fita da maquina, entao o `CLOAD` seguinte do BASIC continua dali.
+- **fwasm**: `.TSX`. Para nao arrastar o motor, o montador so' ganhou `tsx_writer.cpp` (`BuildTsx`), a mesma funcao do escritor de arquivo. Os 6606 casos dourados passam sem mudanca (o asMSX nao conhece `.tsx`).
+- **Prova de ponta a ponta** (`asme2etest`): o fwasm monta um programa de BASIC com `.cas`, `.tsx` e `.wav`; o emulador carrega cada um por `BLOAD"CAS:",R` e o programa RODA (texto na VRAM). O `.tsx` tambem foi carregado no modo NORMAL, pelos pulsos de verdade.
+  O `.wav` de 8 bits do fwasm passa pelo ripper do emulador sem ajuste (nao conferido num MSX real).
+- **Interfaces**: TUI (Midia: nova fita, listar, proteger/liberar, modo, copia), janela (filtros com `.wav`, "Nova fita", "Gravar uma copia"), `--fita` e `--cas` aceitam `.wav`, banco de fitas varre `.wav`. `man tape` reescrito, `man mamute-fita` novo (11a pagina do Mamute), `man fwasm` com `.tsx`.
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 27/27 nos dois.
+- **Fora de escopo**: gravar em "modo normal" decodificando pulsos (CSAVE/BSAVE sempre pelo gancho); blocos de TZX diferentes do #4B continuam sem efeito.
+
+---
+
 ## v1.40.3 -- "Antarctic Adventure: Mamute, SUPER-X" (Konami) (2026-10-19)
 
 **Mamute, Fase 4.** Os comandos do SUPER-X (prefixo X) do Mamute original. Especificacao lida na ajuda e no codigo do Mamute do paleobasic (`MamuteHelpData.pbi`, `MamuteAssemblerGui.pbi`, `MamuteSupport.pbi`); o fonte do

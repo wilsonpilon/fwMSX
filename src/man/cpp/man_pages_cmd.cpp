@@ -251,18 +251,35 @@ VER TAMBEM
     add("eject", "", "Midia e estado", "eject <A|B>", "tira o disquete da unidade",
         "DESCRICAO\n  Ejeta o disquete da unidade A: ou B:.\n\nVER TAMBEM\n  disk");
 
-    add("tape", "", "Midia e estado", "tape <arq|eject|rewind>", "insere, tira ou rebobina a fita",
+    add("tape", "", "Midia e estado", "tape [<arq>|eject|rewind|new|list|seek|protect|write|mode|save|put|load]", "fita cassete: inserir, listar, gravar, converter",
         R"MAN(DESCRICAO
-  tape <arq>     insere uma fita (.cas, .tsx ou .tzx, pela extensao)
-  tape eject     tira a fita
-  tape rewind    volta ao comeco
+  tape                    estado da fita (arquivo, quantos arquivos, protecao, modo de gravacao, ponto)
+  tape <arq>              insere uma fita: .cas, .tsx/.tzx ou .wav (pela extensao); entra PROTEGIDA. tape insert <arq> se o nome
+                          for igual a um subcomando
+  tape eject              tira a fita
+  tape rewind             volta ao comeco
+  tape new <arq>          cria uma fita vazia e gravavel (.cas, .tsx ou .wav)
+  tape list               os arquivos da fita: numero, tipo (bin/bas/asc), nome, inicio-fim, exec, tamanho
+  tape seek <n|nome|->    marca o ponto: de onde o CLOAD/BLOAD continuam e onde "write overwrite" corta; - = inicio
+  tape protect on|off     protege ou libera a gravacao (CSAVE/BSAVE "CAS:" e tape put)
+  tape write append|overwrite|new   o que a PROXIMA gravacao faz: acrescenta, corta no ponto, ou apaga tudo
+  tape mode fast|normal   carregamento: gancho de BIOS (rapido) ou pulsos de verdade (com o som do gravador)
+  tape save <arq>         grava uma COPIA em outro formato (.cas, .tsx ou .wav, pela extensao)
+  tape put <nome> <ini> <fim> [exec]   grava um bloco da memoria da maquina como arquivo binario na fita
+  tape load <n|nome> [fim]             carrega um arquivo binario da fita na memoria (no endereco do cabecalho)
+
+DEPURADOR
+  As entradas da fita na BIOS tem nome: break tapin, until tapoon, dis tapion... (tapion tapin tapiof tapoon tapout tapoof,
+  00E1 00E4 00E7 00EA 00ED 00F0).
 
 EXEMPLOS
   tape jogo.tsx
   type "bload\"cas:\",r" {enter}
+  tape new gravado.wav
+  tape protect off
 
 VER TAMBEM
-  cas, fitadb)MAN");
+  cas, fitadb, mamute-fita, fwasm-directives)MAN");
 
     add("state", "", "Midia e estado", "state save|load <arq>", "salva ou carrega o estado inteiro da maquina",
         R"MAN(DESCRICAO

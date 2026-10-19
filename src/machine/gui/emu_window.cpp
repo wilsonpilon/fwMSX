@@ -1123,18 +1123,24 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     }
                     if (ImGui::MenuItem("Inserir fita...")) {
                         if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Inserir fita", "Fitas MSX",
-                                                                                  "*.cas;*.tsx;*.tzx")) {
+                                                                                  "*.cas;*.tsx;*.tzx;*.wav")) {
                             std::string tape_error;
                             if (!machine->InsertTape(*chosen, tape_error)) tape_message = tape_error;
                             else tape_message.clear();
                         }
                     }
-                    if (ImGui::MenuItem("Nova fita (.tsx)...")) {
-                        if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Nova fita MSX", "Fitas TSX",
-                                                                                 "*.tsx", "tsx", "")) {
+                    if (ImGui::MenuItem("Nova fita (.tsx, .cas ou .wav)...")) {
+                        if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Nova fita MSX", "Fitas MSX",
+                                                                                 "*.tsx;*.cas;*.wav", "tsx", "")) {
                             std::string tape_error;
                             if (!machine->NewBlankTape(*chosen, tape_error)) tape_message = tape_error;
                             else tape_message.clear();
+                        }
+                    }
+                    if (ImGui::MenuItem("Gravar uma copia (.tsx, .cas ou .wav)...", nullptr, false, machine->tape().inserted())) {
+                        if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Copiar a fita", "Fitas MSX", "*.tsx;*.cas;*.wav", "tsx", "")) {
+                            std::string tape_error;
+                            tape_message = machine->tape().SaveAs(*chosen, tape_error) ? std::string() : tape_error;
                         }
                     }
                     if (ImGui::MenuItem("Ejetar", nullptr, false, machine->tape().inserted())) {

@@ -20,6 +20,9 @@ namespace tape {
 // preenchimento de alinhamento com dado de verdade -- ver
 // doc/tape-spec.md, secao 5). Devolve false com `error` se nao conseguir
 // escrever o arquivo.
+// Os bytes do .TSX (em memoria) -- o que WriteTsxFromCas grava; o fwasm usa direto para a diretiva .TSX.
+std::vector<uint8_t> BuildTsx(const std::vector<uint8_t> &fast_bytes, const std::vector<TapeMark> &marks);
+
 bool WriteTsxFromCas(const std::vector<uint8_t> &fast_bytes, const std::vector<TapeMark> &marks, const std::string &path,
                       std::string &error);
 

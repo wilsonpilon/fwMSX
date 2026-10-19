@@ -27,6 +27,7 @@ public:
     size_t VramSize() override;
     uint8_t ReadVram(uint32_t addr) override;
     bool WriteVram(uint32_t addr, uint8_t value) override;
+    tape::TapeDeck *Tape() override { return &m_.tape(); }
 
 private:
     // O sub-slot de um slot "puro" (#3, sem -sub): o que a CPU enxerga agora naquele slot; 0 se ele nao esta' em nenhuma pagina.

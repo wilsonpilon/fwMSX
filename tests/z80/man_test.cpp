@@ -182,7 +182,7 @@ void TestTopics() {
 
         // o Mamute (monitor Z80)
         {
-            const char *const mp[] = {"mamute", "mamute-modes", "mamute-memory", "mamute-dump", "mamute-exec", "mamute-edit", "mamute-screens", "mamute-superx", "mamute-files", "mamute-config"};
+            const char *const mp[] = {"mamute", "mamute-modes", "mamute-memory", "mamute-dump", "mamute-exec", "mamute-edit", "mamute-screens", "mamute-superx", "mamute-fita", "mamute-files", "mamute-config"};
             bool mall = true;
             for (const char *p : mp) {
                 const man::Topic *tp = man::Find(p);
@@ -191,10 +191,13 @@ void TestTopics() {
                     mall = false;
                 }
             }
-            check(mall, "as 10 paginas do manual do Mamute existem");
+            check(mall, "as 11 paginas do manual do Mamute existem");
             check(man::Find("mon") == man::Find("mamute") && man::Find("mamute")->command && !man::Find("mamute-dump")->command, "mon e' apelido de mamute e so' ele entra no help");
             check(Contains(man::Find("mamute-edit")->page, "A [opcoes][/desloc][>nome]") && Contains(man::Find("mamute-edit")->page, "HEXADECIMAL"), "mamute-edit: formato da linha e opcoes do A");
             check(Contains(man::Find("mamute-superx")->page, "ENDERECAMENTO ESTENDIDO") && Contains(man::Find("mamute-superx")->page, "XRT ini,fim,dest") && Contains(man::Find("mamute-superx")->page, "NOTAS"), "mamute-superx: enderecamento, XRT e notas");
+            check(Contains(man::Find("mamute-fita")->page, "TSAVE nome,ini,fim") && Contains(man::Find("mamute-fita")->page, ".wav") && Contains(man::Find("mamute-edit")->page, "NOME.cas") &&
+                      Contains(man::Find("tape")->page, "tape new") && Contains(man::Find("tape")->page, "break tapin") && Contains(man::Find("fwasm-directives")->page, "tsx"),
+                  "man: mamute-fita, tape (novos subcomandos e break tapin) e a diretiva .tsx do fwasm");
             check(Contains(man::Find("mamute-screens")->page, "TECLADO S") && Contains(man::Find("mamute-screens")->page, "Ctrl+S"), "mamute-screens: teclado S e as teclas dos paineis");
             check(Contains(man::Find("mamute-dump")->page, "F4") && Contains(man::Find("mamute-modes")->page, "DEFUSR=&HC000"), "mamute-dump (checksum) e mamute-modes (DEFUSR) escritos");
             check(Contains(man::HelpTable(100), "mon [linha]"), "o help lista o comando mon");

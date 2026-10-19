@@ -308,7 +308,7 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
         } else if (a == "--disk-interface") {
             config.disk_interface = true;
         } else if (a == "--fita") {
-            const std::string *v = need("um arquivo .cas, .tsx ou .tzx");
+            const std::string *v = need("um arquivo .cas, .tsx, .tzx ou .wav");
             if (!v) return 2;
             config.tape_path = *v;
         } else if (a == "--fita-modo") {

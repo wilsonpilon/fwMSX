@@ -96,6 +96,7 @@ const char *const kAsmHelp =
     "  I  grava o codigo-objeto em NOME.bin no formato BSAVE do MSX (FE inicio fim exec)\n"
     "  R  anexa a referencia cruzada dos simbolos;  S  lista simples (alfabetica);  D  lista em ordem de aparicao\n"
     "  H  grava as listas S e/ou D em NOME.sym\n"
+    "  T  grava o codigo-objeto na FITA (arquivo binario): >nome.cas|.tsx|.wav cria essa fita; sem isso acrescenta na fita inserida (TAPE)\n"
     "  /desloc  soma desloc (hexa) a TODO ORG;  >nome  nome-base de P, I e H (padrao: mamute)\n"
     "  Exemplo: A OPR/8000>jogo";
 
@@ -212,6 +213,7 @@ std::string Monitor::CmdAssemble(const std::string &args_in) {
     // "opcoes[/desloc][>nome]"
     std::string args = Trim(args_in);
     std::string base = "mamute";
+    std::string tape_file; // >nome.cas / .tsx / .wav: com a opcao T, cria essa fita em vez de acrescentar na inserida
     bool text_out = false; // >nome.txt ou >nome.lst: P e H gravam texto; senao PDF, como o Mamute original
     const size_t gt = args.find('>');
     if (gt != std::string::npos) {
@@ -222,6 +224,7 @@ std::string Monitor::CmdAssemble(const std::string &args_in) {
             std::string ext = base.substr(dot);
             for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
             text_out = ext == ".txt" || ext == ".lst";
+            if (ext == ".cas" || ext == ".tsx" || ext == ".tzx" || ext == ".wav") tape_file = base; // o nome inteiro, com a extensao
             base = base.substr(0, dot);
         }
         if (base.empty()) return "SINTAXE: A [opcoes][/desloc][>nome]";
@@ -235,7 +238,7 @@ std::string Monitor::CmdAssemble(const std::string &args_in) {
         args = Trim(args.substr(0, slash));
     }
     const std::string opt = Upper(args);
-    if (opt.find_first_not_of("ONPIRSDH") != std::string::npos) return "OPCAO DESCONHECIDA EM '" + opt + "' (O N P I R S D H) - HELP A";
+    if (opt.find_first_not_of("ONPIRSDHT") != std::string::npos) return "OPCAO DESCONHECIDA EM '" + opt + "' (O N P I R S D H T) - HELP A";
     auto has = [&](char c) { return opt.find(c) != std::string::npos; };
     if (has('H') && !has('S') && !has('D')) return "A OPCAO H EXIGE S OU D";
     if (src_.empty()) return "NENHUM PROGRAMA (use EDIT e digite linhas numeradas)";
@@ -321,6 +324,7 @@ std::string Monitor::CmdAssemble(const std::string &args_in) {
             out += "\nGRAVADO " + base + ".bin (BSAVE " + Hex(static_cast<unsigned>(p.start), 4) + "-" + Hex(static_cast<unsigned>(p.end), 4) + ")";
         }
     }
+    if (has('T')) out += "\n" + StoreOnTape(base, tape_file, p);
     if (has('O')) {
         unsigned ok = 0;
         for (const auto &kv : p.image)

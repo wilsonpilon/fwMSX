@@ -118,7 +118,11 @@ const char *kHelp =
     "  T ini,fim,dest | F ini,fim,byte     copia / preenche\n"
     "  L [ini[,fim]] | LP [ini[,fim]][,arq]   disassembler (log | arquivo texto)\n"
     "  X [reg [valor]] | G [ini[,bp1[,bp2]]]  registradores / executa\n"
-    "  LOAD arq[,slot[,end]] | SAVE arq,ini,fim[,exec[,BIN|ROM|RAW]]   arquivos\n"
+    "  LOAD arq[,slot[,end]] | SAVE arq,ini,fim[,exec[,BIN|ROM|RAW]]   arquivos (.cas .tsx .tzx .wav = fita)\n"
+    "  FITA (cassete; man mamute-fita):\n"
+    "    TAPE [arq | NEW arq | EJECT | REW | LIST | SEEK n|nome | PROT ON|OFF | WRITE APPEND|OVER|NEW | SAVE arq | MODE FAST|NORMAL]\n"
+    "    R [desloc]                 carrega o proximo arquivo binario da fita (no endereco dele + desloc)\n"
+    "    TLOAD n|nome[,slot[,end]]  carrega um arquivo da fita;  TSAVE nome,ini,fim[,exec]   grava um bloco na fita\n"
     "  EDIT | LIST | A [opcoes] | MAP   editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm (HELP no EDIT)\n"
     "  S end[,teclas] | ZAP arq.dsk,setor[,desloc] | ZAPW arq,setor,byte,b1.. | SCR end,dx,dy[,modo[,zoom]]   telas (paineis na TUI)\n"
     "  CL expr | @ | @0=end#alvo      calculadora (hexa; D B H O; + - * / % | & ^ !) / variaveis de debugger\n"
@@ -233,7 +237,10 @@ std::string Monitor::Execute(const std::string &line_in, bool *quit) {
     if (cmd == "LP") return CmdList(f, true);
     if (cmd == "X") return CmdX(f);
     if (cmd == "G") return CmdG(f);
-    if (cmd == "R") return "R: CARREGAR UM ASSEMBLADO DE FITA AINDA NAO EXISTE (use LOAD)";
+    if (cmd == "R") return CmdTapeR(f);
+    if (cmd == "TAPE" || cmd == "TP") return CmdTape(rest);
+    if (cmd == "TLOAD") return CmdTload(f);
+    if (cmd == "TSAVE") return CmdTsave(f);
     if (cmd == "LOAD") return CmdLoad(f);
     if (cmd == "SAVE") return CmdSave(f);
     if (cmd == "CFG") return CmdCfg(rest);
@@ -634,32 +641,51 @@ std::string Monitor::CmdG(const std::vector<std::string> &f) {
     return out;
 }
 
+// O slot onde um LOAD/R/TLOAD grava: o informado; senao o primeiro com RAM (offline) ou o slot ativo da pagina 1 (online).
+int Monitor::ChooseSlot(const std::string &arg, unsigned addr, std::string &error) {
+    if (!arg.empty()) {
+        unsigned s = 0;
+        if (!ParseHex(arg, s, 1) || s > 3) {
+            error = "O SLOT VAI DE 0 A 3";
+            return -1;
+        }
+        return static_cast<int>(s);
+    }
+    IMemory &m = Mem();
+    int slot = m.PageMap()[(addr >> 14) & 3]; // online: o slot que a maquina tem NA PAGINA do endereco (a RAM do BASIC fica em C000)
+    bool found = false;
+    for (int s = 0; s < 4 && !online() && !found; ++s)
+        for (int p = 0; p < 4 && !found; ++p)
+            if (m.Cell(s, p) == CellType::Ram) {
+                slot = s;
+                found = true;
+            }
+    return slot;
+}
+
+// Grava `n` bytes a partir de `addr` no slot e devolve o resumo (o que LOAD, R e TLOAD mostram).
+std::string Monitor::PlaceBlock(int slot, unsigned addr, const uint8_t *data, size_t n, CellType kind) {
+    IMemory &m = Mem();
+    unsigned ok = 0;
+    for (size_t k = 0; k < n; ++k)
+        if (m.WriteSlot(slot, static_cast<uint16_t>(addr + k), data[k])) ++ok;
+    if (!online()) {
+        for (unsigned p = addr >> 14; p <= (addr + (n ? n - 1 : 0)) >> 14 && p < 4; ++p) offline_.SetCell(slot, static_cast<int>(p), kind);
+    }
+    std::string out = "CARREGADO NO SLOT " + std::to_string(slot) + " EM " + Hex(addr, 4) + " - TAMANHO " + Hex(static_cast<unsigned>(n), 4) + " - FIM " +
+                      Hex(static_cast<unsigned>(addr + (n ? n - 1 : 0)) & 0xFFFF, 4);
+    if (ok < n) out += " - " + std::to_string(n - ok) + " IGNORADOS (NAO E' RAM)";
+    return out;
+}
+
 std::string Monitor::CmdLoad(const std::vector<std::string> &f) {
     if (f.empty() || f[0].empty()) return "SINTAXE: LOAD <arquivo>[,<slot 0-3>[,<end>]]";
     const std::string path = f[0];
+    if (!tape::TapeExtension(path).empty()) return CmdLoadTape(f); // .cas, .tsx/.tzx e .wav: o primeiro arquivo binario da fita
     std::ifstream in(path, std::ios::binary);
     if (!in) return "NAO FOI POSSIVEL ABRIR " + path;
     std::vector<uint8_t> data((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
     std::string ext = Upper(path.size() > 4 ? path.substr(path.size() - 4) : path);
-    if (ext == ".CAS") return ".CAS AINDA NAO E' SUPORTADO";
-    // slot: o informado; senao o primeiro com RAM (offline) ou o slot ativo da pagina 1 (online)
-    int slot = -1;
-    if (f.size() > 1 && !f[1].empty()) {
-        unsigned s = 0;
-        if (!ParseHex(f[1], s, 1) || s > 3) return "O SLOT VAI DE 0 A 3";
-        slot = static_cast<int>(s);
-    }
-    IMemory &m = Mem();
-    if (slot < 0) {
-        slot = m.PageMap()[1];
-        bool found = false;
-        for (int s = 0; s < 4 && !online() && !found; ++s)
-            for (int p = 0; p < 4 && !found; ++p)
-                if (m.Cell(s, p) == CellType::Ram) {
-                    slot = s;
-                    found = true;
-                }
-    }
     unsigned addr = 0;
     size_t skip = 0;
     CellType kind = CellType::Ram;
@@ -677,16 +703,10 @@ std::string Monitor::CmdLoad(const std::vector<std::string> &f) {
     }
     const size_t n = data.size() - skip;
     if (addr + n > 0x10000) return "O ARQUIVO PASSA DE FFFF";
-    unsigned ok = 0;
-    for (size_t k = 0; k < n; ++k)
-        if (m.WriteSlot(slot, static_cast<uint16_t>(addr + k), data[skip + k])) ++ok;
-    if (!online()) {
-        for (unsigned p = addr >> 14; p <= (addr + (n ? n - 1 : 0)) >> 14 && p < 4; ++p) offline_.SetCell(slot, static_cast<int>(p), kind);
-    }
-    std::string out = "CARREGADO NO SLOT " + std::to_string(slot) + " EM " + Hex(addr, 4) + " - TAMANHO " + Hex(static_cast<unsigned>(n), 4) + " - FIM " +
-                      Hex(static_cast<unsigned>(addr + (n ? n - 1 : 0)) & 0xFFFF, 4);
-    if (ok < n) out += " - " + std::to_string(n - ok) + " IGNORADOS (NAO E' RAM)";
-    return out;
+    std::string err;
+    const int slot = ChooseSlot(f.size() > 1 ? f[1] : std::string(), addr, err);
+    if (slot < 0) return err;
+    return PlaceBlock(slot, addr, data.data() + skip, n, kind);
 }
 
 std::string Monitor::CmdSave(const std::vector<std::string> &f) {
@@ -695,6 +715,7 @@ std::string Monitor::CmdSave(const std::vector<std::string> &f) {
     e = a;
     if (f.size() > 3 && !f[3].empty() && !ParseHex(f[3], e)) return "SINTAXE: SAVE <arquivo>,<ini>,<fim>[,<exec>[,BIN|ROM|RAW]]";
     const std::string path = f[0];
+    if (!tape::TapeExtension(path).empty()) return CmdSaveTape(path, a, b, e); // .cas, .tsx/.tzx e .wav: um arquivo binario na fita
     // formato: BIN = cabecalho BSAVE (FE ini fim exec); ROM = igual com AB (formato do Mamute original); RAW = so' os bytes.
     // Sem o formato, .ROM vira RAW (uma imagem de cartucho de verdade) e o resto BIN.
     std::string ext = Upper(path.size() > 4 ? path.substr(path.size() - 4) : path);

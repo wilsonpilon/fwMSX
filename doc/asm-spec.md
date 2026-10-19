@@ -68,7 +68,7 @@ O alvo de compatibilidade e' so' o asMSX v1.2.0 (decisao do usuario). Proximos c
   `dw`/`defw`, `ds`/`defs`, `byte`, `word`, `incbin` (`skip`/`size`), `print*`, `filename`, `start`, `size`, `if`/`ifdef`/`ifndef`/
   `else`/`endif`, `include`, macros e repeticao, e -- desde a 1.39.0 -- `rom`, `megarom` (`subpage`, `select`), `basic`, `msxdos`,
   `search`, `callbios`, `calldos`, `cas`/`cassette`, `wav`, `sinclair`, `debug`, `break`/`breakpoint`.
-- **Saidas**: `.z80` (cru), `.rom`, `.bin`, `.com`, `.cas`, `.wav`, `.tap`, `.sym`, `.txt`. `.filename "x"` troca o nome-base (`x.rom`...); o
+- **Saidas**: `.z80` (cru), `.rom`, `.bin`, `.com`, `.cas`, `.wav`, `.tap`, `.sym`, `.txt`, e `.tsx` (extensao do fwasm, 1.40.4: a mesma fita do `.cas` em blocos #4B; o asMSX nao gera). `.filename "x"` troca o nome-base (`x.rom`...); o
   `-o` do CLI tem prioridade. O CLI so' fixa o nome-base quando ha' `-o` (antes fixava sempre e o `.filename` nunca valia).
 - **Particularidades do asMSX reproduzidas** (todas conferidas contra o `asmsx.exe`): `org -1` grava um byte antes do 0; arquivo `.rom` com o tamanho
   arredondado a partir do ULTIMO endereco (8 KB + 1 byte perde o ultimo); `.start` depois do `.rom` e' ignorado no arquivo (mas com fita pedida vale

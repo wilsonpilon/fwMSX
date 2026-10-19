@@ -9,8 +9,7 @@
 
 #include "sqlite3.h"
 #include "../../romdb/core/hash.h"
-#include "../../tape/cpp/cas_reader.h"
-#include "../../tape/cpp/tzx_reader.h"
+#include "../../tape/cpp/tape_io.h"
 
 namespace fs = std::filesystem;
 
@@ -108,8 +107,7 @@ bool EndsWithCi(const std::string &s, const char *suffix) {
 std::string FirstFileNameIn(const std::string &path) {
     tape::TapeImage img;
     std::string error;
-    const bool is_tsx = EndsWithCi(path, ".tsx") || EndsWithCi(path, ".tzx");
-    const bool ok = is_tsx ? tape::LoadTzxImage(path, img, error) : tape::LoadCasImage(path, img, error);
+    const bool ok = tape::LoadAnyTape(path, img, error); // .cas, .tsx/.tzx ou .wav
     if (!ok || img.files.empty()) return std::string();
     return img.files.front().name;
 }
@@ -118,6 +116,7 @@ std::string FormatFor(const std::string &path) {
     if (EndsWithCi(path, ".tsx")) return "tsx";
     if (EndsWithCi(path, ".tzx")) return "tzx";
     if (EndsWithCi(path, ".cas")) return "cas";
+    if (EndsWithCi(path, ".wav")) return "wav";
     return "";
 }
 
@@ -322,7 +321,7 @@ bool TapeDb::ScanDirectory(const std::string &dir, const std::string &root, cons
         if (ec) break;
         if (!it->is_regular_file(ec)) continue;
         const std::string path = it->path().string();
-        if (FormatFor(path).empty()) continue; // so' .cas/.tsx/.tzx
+        if (FormatFor(path).empty()) continue; // so' .cas/.tsx/.tzx/.wav
         std::vector<uint8_t> bytes;
         if (!ReadWholeFile(path, bytes)) continue;
         const std::string sha = romdb::Sha1Hex(bytes.data(), bytes.size());

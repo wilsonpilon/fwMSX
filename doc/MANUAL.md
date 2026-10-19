@@ -123,7 +123,7 @@ Os **menus da janela sao de mouse**. Tudo o que eles fazem tem um equivalente po
 | Maquina > Modelo | `--msx2` / `--msx2p` ao iniciar |
 | Midia > Cartucho | `--cart arq [mapper]` ao iniciar; `cart arq [mapper]` (console/ponte) |
 | Midia > Disco | `--disk` / `--diskb`; `disk A arq`, `eject A`; `--disknew` |
-| Midia > Fita | `--fita`; `tape arq`, `tape eject`, `tape rewind` |
+| Midia > Fita | `--fita`; `tape arq`, `tape eject`, `tape rewind`, `tape new\|list\|seek\|protect\|write\|mode\|save\|put\|load` (ver "Fita cassete") |
 | Sair | `quit` (ponte) ou fechar a janela |
 
 Ou seja: **tudo** pode ser feito pelo console (`fwMSXc.exe --cli`), que e' 100% teclado, com
@@ -500,7 +500,7 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 | `--disk-acesso mem\|porta` | controladora de disco pela memoria (DISK.ROM, padrao) ou pelas portas (sem ROM) |
 | `--disk-porta D0h` | base das 5 portas da controladora por portas (padrao D0h) |
 | `--disk-formato auto\|ss525\|ds525\|ss35\|ds35` | formato dos drives: auto (180/360/720 KB), 5 1/4 face simples (180), 5 1/4 face dupla (360), 3 1/2 face simples (360), 3 1/2 face dupla (720) |
-| `--fita <arquivo>` | insere uma fita (`.cas`, `.tsx` ou `.tzx`, pela extensao) na unidade |
+| `--fita <arquivo>` | insere uma fita (`.cas`, `.tsx`, `.tzx` ou `.wav`, pela extensao) na unidade |
 | `--fita-modo rapido\|normal` | carregamento rapido (gancho de BIOS, sem som, padrao) ou normal (pulsos de verdade, com o barulho do gravador) -- ver `doc/tape-spec.md` |
 | `--frames N` | quadros de boot antes dos comandos seguintes (sem janela) |
 | `--ctl-port N` | liga a ponte de controle em 127.0.0.1:N (0 = porta livre; vai para `fwmsx.port`) -- ver a secao da ponte |
@@ -530,7 +530,7 @@ Os menus do topo da janela (9):
 - **Midia**: agrupa os tres submenus de midia removivel --
   - **Disco**: inserir e ejetar A: e B:; **Novo disco em branco em A:/B:** (cria um disquete
     formatado nos 4 formatos do MSX e ja' o insere -- ver "Disco novo e FORMAT").
-  - **Fita**: inserir ou criar uma **fita nova (.tsx)**, ejetar e rebobinar; trocar entre
+  - **Fita**: inserir (`.cas`, `.tsx`, `.tzx`, `.wav`), criar uma **fita nova (.tsx, .cas ou .wav)**, **gravar uma copia** (converte de formato), ejetar e rebobinar; trocar entre
     carregamento **rapido** (sem som) e **normal** (pulsos de verdade, com o barulho do gravador);
     **destravar/travar contra gravacao** (uma fita de arquivo entra sempre travada; uma fita nova
     entra destravada) e escolher o **modo de gravacao** (incluir no final da fita, sobrescrever o
@@ -1180,7 +1180,7 @@ substitui a linha; so' o numero apaga. `QUIT` volta ao monitor (o programa fica)
 | `A [opcoes][/desloc][>nome]` | monta pelo **fwasm** e lista (linha, endereco, bytes, texto); erro mostra a linha com o cursor `>` |
 | `MAP` | inicio e fim do ultimo codigo montado |
 
-Opcoes do `A` (coladas): `O` grava o codigo na memoria do monitor (offline, ou **na maquina** no modo online), `N` sem a coluna do numero, `P` listagem em `NOME.lst`, `I` objeto em `NOME.bin` (BSAVE),
+Opcoes do `A` (coladas): `O` grava o codigo na memoria do monitor (offline, ou **na maquina** no modo online), `N` sem a coluna do numero, `P` listagem em `NOME.lst`, `I` objeto em `NOME.bin` (BSAVE), `T` objeto na **fita** (`>nome.cas|.tsx|.wav` cria a fita; senao acrescenta na inserida),
 `R` referencia cruzada, `S`/`D` lista de simbolos (alfabetica / em ordem de aparicao), `H` grava as listas em `NOME.sym`, `/desloc` soma a todo `ORG`, `>nome` escolhe o nome-base.
 
 ```
@@ -1274,6 +1274,36 @@ continua tendo prioridade.
 
 **Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
 do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [romdb-spec.md](romdb-spec.md).
+
+## Fita cassete: em todos os pontos (1.40.4)
+
+A fita aceita **tres formatos**, escolhidos pela extensao em qualquer lugar: `.cas` (imagem crua), `.tsx`/`.tzx` (blocos #4B do Kansas City Standard) e `.wav` (audio de verdade, 44100 Hz mono; ler passa pelo "ripper",
+gravar sintetiza os pulsos do MSX). Uma fita de arquivo entra **protegida**; uma fita nova entra liberada. Detalhes em [tape-spec.md](tape-spec.md), secao 12.
+
+**No console, na TUI (menu Midia) e na ponte:**
+
+| Comando | O que faz |
+|---|---|
+| `tape` | estado: arquivo, quantos arquivos, protegida/gravavel, modo de gravacao, ponto |
+| `tape <arq>` / `tape eject` / `tape rewind` | inserir (`.cas .tsx .tzx .wav`) / tirar / voltar ao inicio |
+| `tape new <arq>` | cria uma fita vazia e gravavel |
+| `tape list` | os arquivos da fita (numero, tipo bin/bas/asc, nome, inicio-fim, exec, tamanho) |
+| `tape seek <n\|nome\|->` | marca o ponto (de onde o CLOAD/BLOAD continuam e onde `write overwrite` corta) |
+| `tape protect on\|off` | protege ou libera a gravacao |
+| `tape write append\|overwrite\|new` | o que a proxima gravacao faz (acrescenta, corta no ponto, apaga tudo) |
+| `tape mode fast\|normal` | carregamento pelo gancho de BIOS (rapido) ou pelos pulsos de verdade (com o som do gravador) |
+| `tape save <arq>` | grava uma copia em outro formato (`.cas`, `.tsx` ou `.wav`) |
+| `tape put <nome> <ini> <fim> [exec]` | grava um bloco da memoria da maquina como arquivo binario na fita |
+| `tape load <n\|nome>` | carrega um arquivo binario da fita na memoria |
+
+No **depurador**, as entradas da fita na BIOS tem nome: `break tapin`, `until tapoon`, `dis tapion`... (`tapion tapin tapiof tapoon tapout tapoof`).
+
+No **Mamute** (`man mamute-fita`): `TAPE` (os mesmos subcomandos), `R [desloc]` (carrega o proximo arquivo binario da fita), `TLOAD n|nome[,slot[,end]]`, `TSAVE nome,ini,fim[,exec]`, `LOAD`/`SAVE` com `.cas/.tsx/.tzx/.wav` e a opcao
+`T` do `A` (`A OT>jogo.cas` monta e grava a fita). Online o Mamute usa a fita da MAQUINA (o que ele grava, o `CLOAD` do BASIC enxerga); offline tem um toca-fitas proprio.
+
+No **fwasm**, `.cas "NOME"`, `.wav "NOME"` e `.tsx "NOME"` geram a fita do programa (`BLOAD"CAS:",R` no MSX); o `.tsx` e' extensao do fwasm.
+
+**Limites**: o `.wav` so' carrega o bloco KCS do MSX; gravar numa fita inserida de um `.wav` regrava o `.wav` sintetizado (por isso entra protegida); CSAVE/BSAVE gravam sempre pelo gancho de BIOS.
 
 ## Fita por linha de comando (`fwmsx --cas`)
 

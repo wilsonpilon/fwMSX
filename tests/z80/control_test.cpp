@@ -213,6 +213,41 @@ void TestCommander(const std::string &bios) {
     check(!cmd.Execute("disk A x.dsk").ok && Contains(cmd.Execute("disk A x.dsk").text, "interface"), "disk sem interface de disquete = err explicando");
     check(!cmd.Execute("tape /nao/existe.cas").ok, "tape de arquivo inexistente = err");
     check(cmd.Execute("tape eject").ok && cmd.Execute("tape rewind").ok, "tape eject/rewind");
+
+    // fita: new/list/put/load/seek/protect/write/mode/save (doc/tape-spec.md, secao 12)
+    {
+        const std::string tp = TempPath("fwmsx_control_tape.tsx");
+        const std::string cp = TempPath("fwmsx_control_tape_copy.wav");
+        std::remove(tp.c_str());
+        std::remove(cp.c_str());
+        cmd.Execute("reset");
+        Frames(host, cmd, 250); // a BIOS precisa subir para a RAM aparecer em C000
+        check(Contains(cmd.Execute("tape").text, "nenhuma"), "tape sem argumento: sem fita inserida");
+        check(cmd.Execute("tape new \"" + tp + "\"").ok && Contains(cmd.Execute("tape").text, "gravavel"), "tape new: fita nova e gravavel");
+        check(cmd.Execute("poke 0xC000 0x3E 0x2A 0xC9").ok, "(poe um programa na RAM)");
+        const control::Result put = cmd.Execute("tape put JOGO 0xC000 0xC002 0xC000");
+        check(put.ok && Contains(put.text, "C000-C002"), "tape put: grava um bloco da memoria como arquivo binario");
+        check(Contains(cmd.Execute("tape list").text, "JOGO") && Contains(cmd.Execute("tape list").text, "C000-C002"), "tape list: mostra o arquivo");
+        check(cmd.Execute("poke 0xC000 0 0 0").ok && cmd.Execute("tape load jogo").ok, "tape load: carrega por nome (sem caixa)");
+        {
+            const std::string pk = cmd.Execute("peek 0xC000 3").text;
+            check(pk == "3E 2A C9", "tape load: a RAM recebeu o programa");
+            if (pk != "3E 2A C9") std::printf("    peek => '%s'\n", pk.c_str());
+        }
+        check(!cmd.Execute("tape load ZZZ").ok && !cmd.Execute("tape seek ZZZ").ok, "tape load/seek de arquivo inexistente = err");
+        check(cmd.Execute("tape seek JOGO").ok && cmd.Execute("tape seek -").ok, "tape seek por nome e '-'");
+        check(cmd.Execute("tape protect on").ok && !cmd.Execute("tape put X 0xC000 0xC001").ok, "tape protect on: recusa gravar");
+        check(cmd.Execute("tape protect off").ok && cmd.Execute("tape write overwrite").ok && cmd.Execute("tape write append").ok && !cmd.Execute("tape write foo").ok, "tape protect/write");
+        check(cmd.Execute("tape mode normal").ok && cmd.Execute("tape mode fast").ok && !cmd.Execute("tape mode xx").ok, "tape mode fast/normal");
+        check(cmd.Execute("tape save \"" + cp + "\"").ok, "tape save: copia a fita para .wav");
+        check(cmd.Execute("tape eject").ok && cmd.Execute("tape \"" + cp + "\"").ok && Contains(cmd.Execute("tape list").text, "JOGO"), "tape: o .wav copiado volta com o arquivo JOGO");
+        check(!cmd.Execute("tape bogus x y z").ok, "tape: subcomando invalido = err");
+        check(cmd.Execute("break tapin").ok && Contains(cmd.Execute("breaks").text, "00E4") && cmd.Execute("unbreak TAPIN").ok, "depurador: break/unbreak pelo nome da rotina de fita (tapin = 00E4)");
+        check(Contains(cmd.Execute("dis tapoon 1").text, "00EA"), "depurador: dis tapoon desassembla a partir de 00EA");
+        cmd.Execute("tape eject");
+        std::remove(tp.c_str());
+        std::remove(cp.c_str());
+    }
     check(!cmd.Execute("cart /nao/existe.rom").ok, "cart inexistente = err");
     check(!cmd.Execute("cart x.rom naoexiste").ok, "cart com mapper desconhecido = err");
 

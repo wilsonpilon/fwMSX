@@ -23,7 +23,7 @@ struct TapeRecord {
     int64_t id = 0;
     std::string sha1;    // minusculo, 40 caracteres; chave unica (do ARQUIVO, nao do conteudo do bloco #4B)
     int64_t size = 0;
-    std::string format;  // "cas", "tsx" ou "tzx" (pela extensao)
+    std::string format;  // "cas", "tsx", "tzx" ou "wav" (pela extensao)
     std::string title;   // nome do jogo/programa (TOSEC) -- auto-preenchido do 1o arquivo dentro da fita, se vazio
     std::string company; // TOSEC: empresa/publisher -- so' manual, nao vem da fita
     std::string year;    // TOSEC: ano -- so' manual, nao vem da fita
