@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-19, apos a 1.40.5 "Antarctic Adventure: Montador na TUI")
+fwMSX -- como retomar (atualizado em 2026-10-19, ao encerrar o dia: ultima release 1.40.5 "Antarctic Adventure: Montador na TUI"; depois dela so' documentacao)
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
@@ -40,6 +40,9 @@ linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo
 - Antes disso: 1.37.x depurador basico + janela Z80 Debugger + splash + TUI/terminal; 1.38.x man/help (BIOS, livros, MSX-DOS, fwasm...); 1.39.x fwasm completo.
 - Git: nada pendente alem do que e' de proposito fora do git (abaixo).
 
+- Depois da 1.40.5 (sem release, so' doc/SPEC.md, OUTLINE.md e este arquivo): registradas as VISOES 5.3 (o IDE do fwMSX) e 5.4 (editores e utilitarios do msxIDE/PaleoBasic) com as decisoes do usuario
+  acima (ver "Proximos passos", item 1). O ultimo commit de codigo/release e' o da 1.40.5 (tag 1.40.5); o HEAD de main pode estar alguns commits de documentacao a frente.
+
 == Regras de release (CLAUDE.md tem o texto completo; resumo do que ja' deu retrabalho) ==
 - Versao X.Y.Z: X = empresa (1 = Konami), Y = jogo NOVO de MSX (proximo: Hyper Sports 1.41, depois a lista do CLAUDE.md), Z = patch com subtitulo. Na duvida: patch.
 - Bumpar src/common/version.h ANTES do primeiro build de qualquer rodada (o build nomeia o pacote em dist/ pela versao do header).
@@ -67,21 +70,28 @@ linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo
 resource/menu.alf (fonte binaria sem relacao), tools/asmdiff/__pycache__, binarios de teste soltos em dist/ (asmtest, controltest, mamutetest, ... o usuario
 ainda nao respondeu se quer remove-los do git), resource/asmsx.exe (oraculo do montador; *.exe e' ignorado), resource/Amazonia64kV5/ (nao rastreado), dist/roms/.
 
-== Proximos passos (ordem sugerida; nada em andamento) ==
-00. VISOES REGISTRADAS (estudo, nada a implementar agora): IDE do fwMSX com editor de textos TUI/GUI, executar no MSX, Markdown/ASCII/PDF, projetos com receita estilo Obifile do Kizuna (doc/SPEC.md secao 5.3) e a galeria de editores
-   e utilitarios do msxIDE/PaleoBasic (secao 5.4). Decisoes ja' tomadas (5.3.0): IDE no MESMO fwMSX.exe; projeto = um arquivo SQLite .msxproject (tabela generica files; export/import de pasta para o git); msxIDE e PaleoBasic serao aposentados quando houver paridade. Os subtopicos "a detalhar" serao preenchidos aos poucos, nas proximas conversas. Fontes de consulta: resource/msxide, resource/paleobasic, resource/kizuna (so' leitura).
-0. A IDEIA NOVA DO USUARIO: ele avisou que tem uma ideia para implementar ANTES do depurador avancado e que a conta no proximo passo. Perguntar.
-1. DEPURADOR SOFISTICADO (o usuario pediu DEPOIS do Mamute e da ideia nova): por partes, inspirado em openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS.
-   Ver doc/debug-spec.md secoes 7 e 8.7 (o que ja foi feito e o que falta: condicionais, E/S, trace, passo por linha, MegaROM por subpagina). Perguntar por onde comecar (AskUserQuestion).
-2. Itens pequenos do Mamute (nenhum pedido): SCR em pixels reais na janela ImGui; TAB do console com os comandos do monitor; a "cruz" de troca entre
-   XD/XA/XI/XM/XH; CLS; cores do XCO pintando de fato (hoje so' vao para mamute.cfg `color=`); comparar o disassembler com o do Mamute original.
-3. Fita: gravar em "modo normal" decodificando pulsos (hoje CSAVE/BSAVE sempre pelo gancho de BIOS); conferir o .wav gerado num MSX de verdade; blocos de TZX
-   fora do #4B (grupos, laco, salto sao navegados; gravacao direta/CSW/generalizado nao).
-4. fwasm: mais programas reais, CLI/.sym/.txt por golden, fuzz diferencial (o BOM, o "Montar e rodar" e o .debug/.break no depurador ja foram feitos na 1.40.5).
-5. Pendencias antigas: baixador de ROMs do fMSX + navegador do file-hunter (planejados, nao iniciados), --cmd, GameMaster2, MSX-MUSIC com BIOS propria,
-   CALL VOICECOPY, teste do usuario da TUI/terminal num terminal de verdade (1.34/1.35), lentidao/perda de letras no `--cli` (relato do usuario, NAO
-   reproduzida; perguntar terminal, --cli x --tui, foco), decisao sobre binarios de teste em dist/.
-6. Midia: tests/media tem 19 ROMs de jogo PROVISORIAS (acervo local do usuario, D:\msx\archive\download.file-hunter.com - 24-06-2026\Games); a versao final NAO leva midia.
+== Proximos passos (ordem; nada em andamento, o trabalho de 2026-10-19 terminou na 1.40.5 + estudos no SPEC) ==
+0. A IDEIA PROPRIA DO USUARIO: ele avisou que tem uma ideia para implementar ANTES do depurador avancado e que a conta na proxima sessao. PERGUNTAR (AskUserQuestion) antes de codar.
+1. O IDE DO fwMSX (estudo de viabilidade ja' registrado em doc/SPEC.md secoes 5.3 e 5.4; NADA implementado). Decisoes do usuario (5.3.0):
+   - o IDE e' o MESMO fwMSX.exe (janela, --tui, console, terminal; mesma ponte de comandos);
+   - projeto = UM arquivo SQLite `.msxproject` (tabela generica `files` com o formato nativo de cada recurso; o montador le direto do banco pelo FileProvider;
+     `project export/import <pasta>` para o git; WAL + transacao por salvamento; migracao dos .msxproject do PaleoBasic e .msxproj do msxIDE);
+   - msxIDE (FreeBASIC) e PaleoBasic (PureBasic) serao APOSENTADOS quando o fwMSX tiver os recursos deles (falta montar a LISTA DE PARIDADE); tudo em C/C++/NASM/Fortran;
+   - o `Obifile` do Kizuna (receita de build) PODE ganhar extensoes; depois devolvem-se ao Kizuna ou o Kizuna e' integrado;
+   - atalhos IGUAIS na TUI e na GUI; prioridade ao que funciona no CONSOLE (terminal), a GUI herda as mesmas teclas;
+   - EM PRIMEIRO LUGAR VEM O EDITOR (nucleo sem interface + TUI, depois GUI); depois projetos, BASIC, Dignified, Kizuna, PDF.
+   - Fontes de consulta (so' leitura): resource/msxide, resource/paleobasic, resource/kizuna. Os subtopicos "a detalhar" do SPEC serao preenchidos aos poucos.
+2. DEPURADOR AVANCADO (o usuario o quer DEPOIS da ideia propria): por partes, inspirado em openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS.
+   Ja' feito na 1.40.5: simbolos, arquivo:linha, marcadores .break/.debug, asmrun. Falta (doc/debug-spec.md secoes 7 e 8.7): breakpoints condicionais e em E/S, trace/log,
+   passo por linha de fonte, simbolos de MegaROM por subpagina, breakpoints que sobrevivem a troca de cartucho (o asmrun recria a maquina), painel com fonte+simbolos, --cmd/scripts.
+3. Itens pequenos do Mamute (nenhum pedido): SCR em pixels reais na janela ImGui; TAB do console com os comandos do monitor; a "cruz" de troca entre XD/XA/XI/XM/XH; CLS;
+   cores do XCO pintando de fato (hoje so' vao para mamute.cfg `color=`); comparar o disassembler com o do Mamute original.
+4. Fita: gravar em "modo normal" decodificando pulsos (hoje CSAVE/BSAVE sempre pelo gancho de BIOS); conferir o .wav gerado num MSX de verdade; blocos de TZX fora do #4B.
+5. fwasm: mais programas reais, CLI/.sym/.txt por golden, fuzz diferencial. A CONFERIR NO BLUEMSX: o `.debug "texto"` do asMSX gera `JR (tamanho+4)`, que salta 4 bytes ALEM do texto
+   (o fwasm reproduz byte a byte, golden); nos testes pus 4 NOPs depois de cada .debug.
+6. Pendencias antigas: baixador de ROMs do fMSX + navegador do file-hunter, --cmd, GameMaster2, MSX-MUSIC com BIOS propria, CALL VOICECOPY, teste do usuario da TUI/terminal num
+   terminal de verdade, lentidao/perda de letras no `--cli` (relato do usuario, NAO reproduzida; perguntar terminal, --cli x --tui, foco), decisao sobre binarios de teste em dist/.
+7. Midia: tests/media tem 19 ROMs de jogo PROVISORIAS (acervo local do usuario, D:\msx\archive\download.file-hunter.com - 24-06-2026\Games); a versao final NAO leva midia.
 
 == Mapa rapido do codigo ==
 src/z80 (CPU + depurador de sessao) | src/memmap (slots/mappers) | src/vdp, ppi, psg, scc, fm, fdc, rtc | src/tape + src/tapedb (fita) | src/machine (maquina + janela ImGui)

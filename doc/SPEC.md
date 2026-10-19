@@ -455,6 +455,10 @@ referencia, sem copia de codigo. Os arquivos TSX/CAS de jogos sao de terceiros: 
 2. **Os projetos de origem se aposentam**: o msxIDE (FreeBASIC) e o PaleoBasic (PureBasic) "morrem" quando o fwMSX tiver os recursos deles incorporados. Tudo passa a viver num teto so', em **C / C++ / Assembly (NASM) / Fortran**. Consequencia pratica:
    nao ha' periodo de dois lados evoluindo em paralelo; os dois viram **fonte de especificacao de comportamento** (manuais, formatos, suites de regressao) e **fonte de migracao de dados** (os arquivos de projeto do usuario).
 3. **Formato do projeto: um unico arquivo `.msxproject` em SQLite** (o usuario quer "mover um unico arquivo e levar tudo": fontes, binarios, sprites, telas, musicas, documentacao, notas...). Recomendacao e detalhes em 5.3.7.
+4. **O `Obifile` do Kizuna PODE sofrer extensoes** no fwMSX (variaveis, alvos de execucao, compiladores novos). Depois as extensoes sao DEVOLVIDAS ao Kizuna ou o proprio Kizuna e' integrado ao fwMSX (as duas rotas ficam abertas; ver 5.3.8).
+5. **Atalhos de teclado iguais na TUI e na GUI**, sempre que possivel. Regra de prioridade: vale o que FUNCIONA NO CONSOLE (terminal) e nao na janela do Windows -- o conjunto de teclas e' limitado pelo terminal (Ctrl+setas, Alt, F-keys variam), entao o editor e' desenhado
+   primeiro para o terminal e a GUI herda as MESMAS teclas (a GUI pode ter extras, nunca o contrario). Isso ja' e' o padrao dos paineis do Mamute e do Z80 Debugger: recebem teclas por NOME, iguais nas duas interfaces.
+6. **Ordem: em primeiro lugar vem o EDITOR** (nucleo sem interface + TUI; depois a GUI), antes do fluxo BASIC, do Dignified, dos projetos e dos visualizadores.
 
 #### 5.3.1 A ideia, nas palavras do usuario (resumo)
 
@@ -507,7 +511,9 @@ NestorBASIC e MSXBAS2ROM como ferramentas externas; e os **editores visuais** (v
 - **Ponte de controle como espinha dorsal**: todo comando do IDE tambem e' um comando do `Commander` (`asmrun` ja' e'), entao console, TUI, terminal e janela compartilham o mesmo fluxo de "construir e executar".
 - **Regra das 4 linguagens** (CLAUDE.md): C para o tokenizador/lexer de linha, Fortran/NASM onde houver laco numerico quente (busca, medicao de colunas), C++ para o resto. A cada fase pelo menos um modulo em cada.
 - **Emulador embutido**: o painel do MSX ao lado do editor (divisao de tela) ou o emulador em janela propria, como hoje; "Executar" carrega e comeca a rodar, "Parar no .break" usa o depurador.
-- a detalhar: modelo de janelas/abas na TUI (o msxIDE usa MDI), atalhos de teclado (Scintilla/Windows x estilo EDIT/QuickBasic), temas, configuracao por projeto.
+- **Atalhos**: UM conjunto so' para TUI e GUI, limitado ao que o terminal entrega (decisao 5 em 5.3.0); o editor e' testado por teclas NOMEADAS (`Key(nome)`), como os paineis do Mamute. a detalhar: a tabela de teclas (candidatas: estilo EDIT/QuickBasic do msxIDE,
+  Ctrl+S/F/H/G do PaleoBasic, F-keys para compilar/executar/depurar) e o que fazer onde o terminal nao distingue uma tecla.
+- a detalhar: modelo de janelas/abas na TUI (o msxIDE usa MDI), temas, configuracao por projeto.
 
 #### 5.3.5 Os fluxos "digitar e executar"
 
@@ -549,7 +555,7 @@ a detalhar: dialeto de BASIC "puro" (sem Dignified) como linguagem de primeira c
   Nao ha' conflito de extensao: `.msxproject` e' a do PaleoBasic; o `.msxproj` do msxIDE passa a ser so' formato de importacao.
 - **O arquivo de receita** (o "Makefile"): a ideia e' reaproveitar o `Obifile` do Kizuna. Campos que o exemplo real do Kizuna usa: `target` (saida), `entry` (rotulo de entrada), `base` (endereco de carga), `resources` (arquivo, banco, simbolo, tamanho),
   `modules` (nome, fonte, `compiler` = `kaji80|dignac|wirth80`, `bank`) e `link` (mapa). Para o fwMSX ele cresceria com compiladores `fwasm`, `dignified` e `basic`, com alvos de **execucao** (`run: cartridge|tape|disk`), dependencias entre alvos e variaveis.
-  Manter a MESMA sintaxe permite usar os projetos do Kizuna sem mudanca; o fwMSX seria um orquestrador a mais (nativo, sem Go).
+  Manter a MESMA sintaxe permite usar os projetos do Kizuna sem mudanca; o fwMSX seria um orquestrador a mais (nativo, sem Go). **Decidido (5.3.0, item 4): o `Obifile` pode ganhar extensoes**; depois elas voltam para o Kizuna ou o Kizuna e' integrado.
 - **Compatibilidade**: ler `Obifile` e, se o usuario quiser, tambem produzir um (para o `obi build` do Kizuna continuar valendo).
 - a detalhar: o que e' "o projeto aberto" na TUI/GUI (arvore de arquivos, aba de saida do build, lista de erros clicavel que pula para a linha do fonte -- o fwasm ja' devolve arquivo e linha), configuracao do emulador por projeto (modelo MSX1/2/2+, slots, discos),
   versionamento do manifesto, projetos de exemplo.
@@ -567,8 +573,10 @@ que o fwMSX ja' emula (MSX2+, mapper de RAM, MSX-DOS 2 como cartucho): da' para 
 - **Duas bases de usuarios**: quem usa o msxIDE/PaleoBasic hoje (o proprio usuario) precisa de migracao dos projetos `.msxproj/.msxproject` sem perda.
 - **Licenca de tudo que for embutido** (editor de codigo para ImGui, Markdown, PDF): conferir antes de adotar; o projeto e' BSD-3 e nao copia codigo GPL/AGPL.
 - **Respondidas pelo usuario (ver 5.3.0)**: o IDE e' um modo do MESMO `fwMSX.exe`; o formato do projeto e' SQLite (`.msxproject`); msxIDE e PaleoBasic serao aposentados quando o fwMSX tiver os recursos deles.
-- **Ainda em aberto**: o `Obifile` e' lido como esta' ou ganha extensoes (variaveis, alvos de execucao)? Quais atalhos/teclado? O que vem primeiro: o editor em si, o fluxo BASIC, ou o Dignified? Qual o conjunto minimo de recursos dos dois projetos para "poder aposenta-los" (lista de paridade)?
-- **Fases sugeridas (sem compromisso)**: (1) nucleo do editor + TUI com Assembly/`asmrun` (o fluxo que ja' existe) e visualizador de texto/MD; (2) GUI do mesmo editor; (3) projetos + receita; (4) MSX-BASIC e tokenizador; (5) Dignified; (6) Kizuna; (7) PDF na GUI.
+- **Tambem respondidas (5.3.0)**: o `Obifile` pode ganhar extensoes; atalhos iguais na TUI e na GUI com prioridade ao que funciona no console; o EDITOR vem primeiro.
+- **Ainda em aberto**: a tabela de teclas do editor; a **lista de paridade** (o minimo dos dois projetos para "poder aposenta-los"); onde o editor mora no codigo (`src/editor/` ou `src/ide/`); como o editor da TUI convive com o painel do MSX (divisao de tela ou alternancia).
+- **Fases sugeridas (sem compromisso)**: (1) **o editor** -- nucleo sem interface + TUI (o que funciona no console), ja' com Assembly/`asmrun` (o fluxo que ja' existe) e visualizador de texto/MD; (2) a GUI do mesmo editor, com as mesmas teclas; (3) projetos `.msxproject` + receita (`Obifile` estendido);
+  (4) MSX-BASIC e tokenizador; (5) Dignified; (6) Kizuna (devolver as extensoes do `Obifile` ou integrar); (7) PDF na GUI.
 
 ---
 
