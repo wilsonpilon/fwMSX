@@ -300,6 +300,8 @@ public:
     // Memoria como o Z80 enxerga agora (slots/paginas atuais). Usado pela ponte de controle
     // (peek/poke) -- ver doc/control-spec.md. A escrita respeita ROM (nao grava em ROM).
     uint8_t ReadMemory(uint16_t addr) { return startup_.slot_bus->read(addr); }
+    // Marcadores .BREAK/.DEBUG do fonte (ver Debugger::markers()); chamado antes de cada instrucao quando ligado. true = parou.
+    bool CheckMarkers();
     void WriteMemory(uint16_t addr, uint8_t value) { startup_.slot_bus->write(addr, value); }
 
     uint64_t frame_count() const { return frame_count_; }

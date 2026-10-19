@@ -17,6 +17,11 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-19)
 
+- **1.40.5 "Antarctic Adventure: Montador na TUI" (publicada)**: pedido do usuario -- integrar o asm ao painel TUI, seguir `.debug`/`.break` rumo ao depurador avancado, conferir BOM/UTF-8 e levar a fita para a TUI (ja' estava). `asmrun [-z] [-n] [--dos-disk]` monta e CARREGA
+  (ROM/MegaROM = cartucho; `.basic` = fita montada na hora + `BLOAD"CAS:",R` digitado; `.msxdos` = copia do `msxdos1.dsk` com o `.com` + ENTER da data + nome); `dbg::Symbols` (src/debug/cpp/symbols.*) guarda simbolos e arquivo:linha no `Debugger`: `break loop`, `break jogo.asm:42`, `sym`, `src`, eventos com `sym=`/`src=`,
+  `dis` com rotulos, painel Z80 Debugger; marcadores `.break`/`.debug` no Z80 (`Machine::CheckMarkers`, `markers on|off`, desligado por padrao: custa uma leitura por instrucao); menu **Montador** na TUI (8 menus; Ajuda e' o 8o) e item na janela; BOM/UTF-8 no fwasm (o asMSX para em silencio com BOM).
+  **Achados**: o `.debug` do asMSX salta 4 bytes alem do texto (`JR tamanho+4`; reproduzido; conferir no blueMSX); depois de um `asmrun` de ROM com loop a maquina nunca chega ao BASIC (o teste do BASIC precisa de `cart -`); o MSX-DOS 1 pergunta a data na partida (o `asmrun` digita o ENTER).
+  **Proximo**: a ideia nova do usuario (ele avisa no proximo passo), depois o depurador avancado (breakpoints condicionais e em E/S, trace, passo por linha de fonte, simbolos de MegaROM por subpagina, breakpoints que sobrevivem a troca de cartucho).
 - **1.40.4 "Antarctic Adventure: Mamute, Fita" (publicada)**: **fita cassete em todos os pontos** (pedido do usuario depois de perguntar onde havia suporte). `.cas`, `.tsx`/`.tzx` e `.wav` (ler e gravar) por uma camada so' (`src/tape/cpp/tape_io`) e o `TapeDeck`
   (`tape_deck`: a fita sem hardware; o `TapeEngine` herda dele). Comando `tape` com `new list seek protect write mode save put load`; `break tapin`/`until tapoon`/`dis tapion` (nomes das 6 entradas da fita na BIOS); Mamute: `TAPE`, `R` (agora de verdade), `TLOAD`, `TSAVE`,
   `LOAD`/`SAVE` de fita e `A OT>arq.cas` (online usa a fita da MAQUINA via `IMemory::Tape()`, offline um `TapeDeck` proprio; `man mamute-fita`); fwasm: diretiva `.TSX` (extensao nossa); menus da TUI e da janela; banco de fitas varre `.wav`. **Prova de ponta a ponta**

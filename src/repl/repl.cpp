@@ -47,7 +47,7 @@ const std::vector<std::string> kCompletions = {
     "help", "exit", "quit", "emu start", "emu attach", "emu detach", "emu stop", "emu status", "newdisk", "romdb", "cas",
     "fitadb", "msxdisk", "version", "status", "reset", "pause", "resume", "step", "type", "peek", "poke", "regs", "cart",
     "disk", "eject", "tape", "state save", "state load", "screenshot", "man", "break", "unbreak", "breaks", "watch", "unwatch",
-    "watches", "stepi", "next", "until", "go", "stop", "jump", "dis", "mem", "stack", "reg", "slots", "events", "dbgui", "wait", "asm", "mon", "mamute"};
+    "watches", "stepi", "next", "until", "go", "stop", "jump", "dis", "mem", "stack", "reg", "slots", "events", "dbgui", "wait", "asm", "asmrun", "sym", "src", "markers", "mon", "mamute"};
 
 // Tamanho do terminal em colunas x linhas; tty = false quando a saida foi redirecionada (sem paginar).
 struct TermSize {

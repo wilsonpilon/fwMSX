@@ -5,11 +5,17 @@
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
+#include <optional>
+#include <filesystem>
+#include <fstream>
 
+#include "../asm/cpp/cli.h"
 #include "../common/version.h"
 #include "../debug/c/dbg_flow.h"
 #include "../mamute/cpp/mamute_monitor.h"
 #include "../mamute/cpp/mamute_online.h"
+#include "../msxdisk/core/disk_image.h"
 #include "../tape/cpp/cas_format.h"
 #include "../z80/debug/z80_disasm.h"
 
@@ -47,6 +53,7 @@ const char *kHelp =
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
+    "montador e simbolos: asmrun [-z] [-n] [--dos-disk <arq>] <fonte.asm> sym [load <arq.sym>|clear|list [txt]|<nome|end>] src [n] markers <on|off> | "
     "monitor Mamute: mon [linha] (ver doc/mamute-spec.md)";
 
 std::string DisasmLine(machine::Machine &m, uint16_t addr, uint16_t *length = nullptr) {
@@ -65,7 +72,10 @@ std::string PcLine(machine::Machine &m) {
     uint16_t len = 0;
     const z80::debug::DisasmResult d = z80::debug::Disassemble([&](uint16_t a) { return m.ReadMemory(a); }, pc);
     (void)len;
-    return "pc=" + Hex(pc, 4) + "  " + d.text;
+    std::string where = m.debugger().symbols().Describe(pc);
+    const std::string src = m.debugger().symbols().DescribeLine(pc);
+    if (!src.empty()) where += (where.empty() ? "" : " ") + src;
+    return "pc=" + Hex(pc, 4) + (where.empty() ? "" : " <" + where + ">") + "  " + d.text;
 }
 
 // Maximo de ciclos que um comando sincrono (next, until) espera antes de devolver "running": 20 quadros.
@@ -550,9 +560,19 @@ Result Commander::Execute(const std::string &line) {
             out = static_cast<uint16_t>(v);
             return true;
         }
-        if (t.size() <= idx || !ParseNumber(t[idx], v) || v > 0xFFFF) return false;
-        out = static_cast<uint16_t>(v);
-        return true;
+        if (t.size() > idx && ParseNumber(t[idx], v) && v <= 0xFFFF) {
+            out = static_cast<uint16_t>(v);
+            return true;
+        }
+        if (t.size() <= idx) return false;
+        // um rotulo do fonte ("loop", "loop+4") ou uma linha dele ("jogo.asm:42"): ver `sym` e `asmrun`
+        if (dbgr.symbols().Resolve(t[idx], out)) return true;
+        const size_t colon = t[idx].rfind(':');
+        if (colon != std::string::npos && colon > 0) {
+            uint32_t ln = 0;
+            if (ParseNumber(t[idx].substr(colon + 1), ln) && dbgr.symbols().AddressOfLine(t[idx].substr(0, colon), static_cast<int>(ln), out)) return true;
+        }
+        return false;
     };
 
     // dbgui open|show|key <tecla>|char <c>: o painel Z80 Debugger (src/debug/cpp/debug_view) como TEXTO, para a TUI e
@@ -606,6 +626,89 @@ Result Commander::Execute(const std::string &line) {
         return Ok(out);
     }
 
+    // ---- simbolos, linhas do fonte, marcadores e o montar-e-rodar (doc/debug-spec.md, secao 8) -----------------------
+    if (cmd == "markers") {
+        if (t.size() == 1) return Ok(std::string("marcadores .break/.debug: ") + (dbgr.markers() ? "ligados" : "desligados"));
+        const std::string v = Lower(t[1]);
+        if (t.size() != 2 || (v != "on" && v != "off")) return Err("markers: use markers <on|off>");
+        dbgr.set_markers(v == "on");
+        return Ok(std::string("marcadores .break/.debug: ") + (v == "on" ? "ligados" : "desligados"));
+    }
+
+    if (cmd == "sym") {
+        dbg::Symbols &sy = dbgr.symbols();
+        if (t.size() == 1) {
+            return Ok(std::to_string(sy.symbol_count()) + " simbolos, " + std::to_string(sy.line_count()) + " linhas de fonte, marcadores " + (dbgr.markers() ? "ligados" : "desligados"));
+        }
+        const std::string sub = Lower(t[1]);
+        if (sub == "clear" && t.size() == 2) {
+            sy.Clear();
+            return Ok();
+        }
+        if (sub == "load" && t.size() == 3) {
+            std::ifstream in(t[2], std::ios::binary);
+            if (!in) return Err("sym load: nao foi possivel abrir '" + t[2] + "'");
+            const std::string text((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+            const size_t n = sy.ParseSym(text);
+            return Ok(std::to_string(n) + " simbolos carregados de " + t[2]);
+        }
+        if (sub == "list" && t.size() <= 3) {
+            std::vector<dbg::Symbol> all = sy.symbols();
+            std::stable_sort(all.begin(), all.end(), [](const dbg::Symbol &a, const dbg::Symbol &b) { return a.addr < b.addr; });
+            const std::string filter = t.size() == 3 ? Lower(t[2]) : std::string();
+            std::string out;
+            int shown = 0;
+            for (const dbg::Symbol &s : all) {
+                if (!filter.empty() && Lower(s.name).find(filter) == std::string::npos) continue;
+                if (++shown > 200) {
+                    out += "\n... (mais; use um filtro: sym list <texto>)";
+                    break;
+                }
+                if (!out.empty()) out += '\n';
+                out += Hex(s.addr, 4) + "  " + s.name + (s.is_label ? "" : "  (constante)");
+            }
+            return Ok(out.empty() ? "nenhum simbolo" : out);
+        }
+        if (t.size() == 2) { // sym <nome|endereco>: nome -> endereco, endereco -> rotulo mais proximo
+            uint16_t a = 0;
+            uint32_t v = 0;
+            if (ParseNumber(t[1], v) && v <= 0xFFFF) {
+                const std::string d = sy.Describe(static_cast<uint16_t>(v), 0xFFFF);
+                return d.empty() ? Err("nenhum simbolo abaixo de " + Hex(v, 4)) : Ok(Hex(v, 4) + " = " + d);
+            }
+            if (sy.Resolve(t[1], a)) return Ok(t[1] + " = " + Hex(a, 4));
+            return Err("sym: '" + t[1] + "' nao e' um simbolo (sym list)");
+        }
+        return Err("sym: use sym [load <arq.sym>|clear|list [texto]|<nome|endereco>]");
+    }
+
+    if (cmd == "src") {
+        uint32_t around = 4;
+        uint16_t a = m.cpu().state().pc.w;
+        if (t.size() > 1 && !ParseNumber(t[1], around)) return Err("src: use src [linhas em volta]");
+        if (around > 40) around = 40;
+        std::string file;
+        int line = 0;
+        if (!dbgr.symbols().LineAt(a, file, line)) return Err("sem linha de fonte para " + Hex(a, 4) + " (monte com asmrun)");
+        std::ifstream in(file);
+        if (!in) return Err("src: nao foi possivel abrir '" + file + "'");
+        std::string out = file + ":" + std::to_string(line) + "  " + Hex(a, 4);
+        std::string text;
+        int n = 0;
+        while (std::getline(in, text)) {
+            ++n;
+            if (n + static_cast<int>(around) < line) continue;
+            if (n > line + static_cast<int>(around)) break;
+            if (!text.empty() && text.back() == '\r') text.pop_back();
+            char num[16];
+            std::snprintf(num, sizeof(num), "%5d", n);
+            out += std::string("\n") + (n == line ? ">" : " ") + num + "  " + text;
+        }
+        return Ok(out);
+    }
+
+    if (cmd == "asmrun") return AsmRun(t);
+
     if (cmd == "events") {
         // A assinatura e' feita pelo servidor TCP (por conexao); aqui so' valida a sintaxe.
         if (t.size() != 2 || (Lower(t[1]) != "on" && Lower(t[1]) != "off")) return Err("events: use events <on|off>");
@@ -632,7 +735,7 @@ Result Commander::Execute(const std::string &line) {
         std::string out;
         for (const dbg::Breakpoint &b : dbgr.breaks()) {
             if (!out.empty()) out += '\n';
-            out += "#" + std::to_string(b.id) + "  " + Hex(b.addr, 4) + "  hits=" + std::to_string(b.hits);
+            out += "#" + std::to_string(b.id) + "  " + Hex(b.addr, 4) + "  hits=" + std::to_string(b.hits) + dbgr.Where(b.addr);
         }
         return Ok(out);
     }
@@ -756,6 +859,11 @@ Result Commander::Execute(const std::string &line) {
             for (const dbg::Breakpoint &b : dbgr.breaks()) {
                 if (b.addr == a) mark = '*';
             }
+            std::string label;
+            if (dbgr.symbols().LabelAt(a, label)) {
+                if (!out.empty()) out += '\n';
+                out += label + ":";
+            }
             if (!out.empty()) out += '\n';
             out += mark + line;
             a = static_cast<uint16_t>(a + len);
@@ -854,6 +962,141 @@ Result Commander::Execute(const std::string &line) {
 }
 
 std::vector<std::string> Commander::TakeEvents() { return host_.machine().debugger().TakeEvents(); }
+
+// asmrun [-z] [-n] [--dos-disk <arq.dsk>] <fonte.asm>
+Result Commander::AsmRun(const std::vector<std::string> &t) {
+    bool run = true;
+    fwasm::AsmOptions opts;
+    opts.want_listing = true; // o mapa endereco -> arquivo:linha do depurador
+    opts.want_tape = true;    // um programa .BASIC carrega por uma fita montada na hora
+    std::string source, dos_disk;
+    for (size_t i = 1; i < t.size(); ++i) {
+        const std::string &a = t[i];
+        if (a == "-z") opts.zilog = true;
+        else if (a == "-n" || a == "--no-run") run = false;
+        else if (a == "--dos-disk" && i + 1 < t.size()) dos_disk = t[++i];
+        else if (!a.empty() && a[0] == '-') return Err("asmrun: opcao desconhecida '" + a + "'");
+        else if (source.empty()) source = a;
+        else return Err("asmrun: so' um fonte por vez");
+    }
+    if (source.empty()) return Err("asmrun: use asmrun [-z] [-n] [--dos-disk <arq.dsk>] <fonte.asm>   (-n = so' montar, sem carregar)");
+
+    fwasm::AsmResult r;
+    std::string dir, base, error;
+    if (!fwasm::AssembleFile(source, opts, r, dir, base, error)) return Err("asmrun: " + error);
+    std::string out;
+    for (const std::string &msg : r.msgs) out += msg + "\n";
+    if (r.rc != 0) {
+        while (!out.empty() && out.back() == '\n') out.pop_back();
+        return Err(out.empty() ? "asmrun: a montagem falhou (codigo " + std::to_string(r.rc) + ")" : out);
+    }
+
+    // O .cas que o proprio fonte pediu (.cas "NOME") sai ao lado dele; o que so' montamos para carregar um programa BASIC vai para a pasta temporaria.
+    bool tape_requested = false;
+    for (const std::string &msg : r.msgs) tape_requested = tape_requested || msg.rfind("cas file ", 0) == 0;
+    std::vector<std::string> skip;
+    if (!tape_requested) skip.push_back("cas");
+    std::vector<std::string> written;
+    if (!fwasm::SaveOutputs(dir, base, r, skip, written, error)) return Err("asmrun: " + error);
+    for (const std::string &w : written) out += "gerado: " + w + "\n";
+
+    auto find_out = [&](const char *ext, std::string &path) {
+        for (const auto &kv : r.outs) {
+            const std::string &k = kv.first;
+            if (k == ext) {
+                path = base + "." + ext;
+                return true;
+            }
+            if (k.size() > std::strlen(ext) + 1 && k.compare(k.size() - std::strlen(ext) - 1, std::string::npos, std::string(".") + ext) == 0) {
+                path = dir + k;
+                return true;
+            }
+        }
+        return false;
+    };
+    auto pause_frames = [&](int entries) {
+        for (int i = 0; i < entries; ++i) typing_.push_back(TypedKey{}); // cada entrada vazia espera 6 quadros: a BIOS precisa subir antes de digitar
+    };
+    const std::string stem = std::filesystem::path(base).filename().string();
+
+    if (run) {
+        if (r.format == "rom" || r.format == "megarom") {
+            std::string rom;
+            if (!find_out("rom", rom)) return Err("asmrun: o montador nao gerou o .rom");
+            std::string mapper;
+            if (r.format == "megarom") mapper = r.mapper == "konami" ? "konami4" : r.mapper == "konamiscc" ? "konami5" : r.mapper;
+            if (!host_.LoadCartridge(rom, mapper, error)) return Err("asmrun: " + error);
+            out += "cartucho " + rom + (mapper.empty() ? "" : " (mapper " + mapper + ")") + " inserido; maquina reiniciada\n";
+        } else if (r.format == "basic") {
+            std::string cas;
+            if (tape_requested) {
+                find_out("cas", cas);
+            } else {
+                cas = (std::filesystem::temp_directory_path() / (stem + "_asmrun.cas")).string();
+                std::ofstream f(cas, std::ios::binary | std::ios::trunc);
+                const std::vector<uint8_t> &bytes = r.outs.at("cas");
+                f.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+                if (!f) return Err("asmrun: nao foi possivel gravar a fita temporaria '" + cas + "'");
+            }
+            machine::Machine &mm = host_.machine();
+            if (!mm.InsertTape(cas, error)) return Err("asmrun: " + error);
+            mm.Reset();
+            pause_frames(60);
+            const Result typed = Execute("type \"bload\\\"cas:\\\",r\" {enter}");
+            if (!typed.ok) return Err("asmrun: " + typed.text);
+            out += "fita " + cas + " inserida; maquina reiniciada; BLOAD\"CAS:\",R sera digitado sozinho\n";
+        } else if (r.format == "msxdos") {
+            machine::Machine &mm = host_.machine();
+            if (!mm.has_disk_interface()) return Err("asmrun: este programa e' do MSX-DOS e a maquina nao tem interface de disquete (inicie o emulador com --disk)");
+            std::string com;
+            if (!find_out("com", com)) return Err("asmrun: o montador nao gerou o .com");
+            std::string sys = dos_disk;
+            if (sys.empty()) {
+                for (const char *c : {"msxdos1.dsk", "dos/msxdos1.dsk", "disks/msxdos1.dsk"})
+                    if (std::filesystem::exists(c)) {
+                        sys = c;
+                        break;
+                    }
+            }
+            if (sys.empty()) return Err("asmrun: nao achei um disco de sistema do MSX-DOS (msxdos1.dsk); use --dos-disk <arquivo.dsk>");
+            msxdisk::DiskError derr;
+            std::optional<msxdisk::DiskImage> img = msxdisk::DiskImage::Load(sys, &derr);
+            if (!img) return Err("asmrun: nao foi possivel abrir o disco de sistema '" + sys + "'");
+            std::string name = stem;
+            for (char &c : name) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            if (name.size() > 8) name.resize(8);
+            const std::string msx_name = name + ".COM";
+            img->DeleteFile(msx_name); // se ja' estava no disco de sistema, troca
+            if (!img->AddFile(com, msx_name, 0x20, &derr)) return Err("asmrun: nao foi possivel copiar o .com para o disco");
+            const std::string tmp = (std::filesystem::temp_directory_path() / (stem + "_asmrun.dsk")).string();
+            if (!img->Save(tmp, &derr)) return Err("asmrun: nao foi possivel gravar o disco temporario '" + tmp + "'");
+            if (!mm.InsertDisk(0, tmp, error)) return Err("asmrun: " + error);
+            mm.Reset();
+            // o MSX-DOS 1 pergunta a data na partida ("Enter date (M-D-Y):"): um ENTER a pula; depois digita o nome do programa
+            pause_frames(70);
+            Execute("type {enter}");
+            pause_frames(25);
+            const Result typed = Execute("type \"" + name + "\" {enter}");
+            if (!typed.ok) return Err("asmrun: " + typed.text);
+            out += "disco " + tmp + " (copia de " + sys + " com " + msx_name + ") em A:; maquina reiniciada; o ENTER da data e o nome " + name + " serao digitados sozinhos\n";
+        } else {
+            out += "formato '" + (r.format.empty() ? std::string("cru") : r.format) + "': montado, nada para carregar na maquina\n";
+        }
+    }
+
+    // Simbolos e linhas do fonte: na maquina de AGORA (a troca do cartucho a recriou), para break/dis/src e as paradas.
+    dbg::Debugger &dbgr = host_.machine().debugger();
+    dbgr.symbols().Clear();
+    for (const fwasm::SymbolRec &s : r.symbols) dbgr.symbols().Add(s.name, static_cast<uint16_t>(s.value & 0xFFFF), s.is_label);
+    for (const fwasm::ListEntry &e : r.listing)
+        if (!e.bytes.empty() && !e.is_const) dbgr.symbols().AddLine(static_cast<uint16_t>(e.addr & 0xFFFF), e.file, e.line);
+    out += std::to_string(dbgr.symbols().symbol_count()) + " simbolos, " + std::to_string(dbgr.symbols().line_count()) + " linhas de fonte para o depurador";
+    if (r.uses_markers) {
+        dbgr.set_markers(true);
+        out += "; o fonte tem .break/.debug: marcadores ligados";
+    }
+    return Ok(out);
+}
 
 void Commander::Tick() {
     machine::Machine &m = host_.machine();

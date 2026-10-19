@@ -303,13 +303,75 @@ EXEMPLOS
   [evento]; na TUI abre o painel). Tambem pela linha de comando: emu start
   --break 0x4010.
 
+  O endereco pode ser um numero, o nome de uma rotina de fita da BIOS (tapin,
+  tapoon...), um rotulo do fonte montado com asmrun (break loop, break loop+4) ou
+  uma linha do fonte (break jogo.asm:42). Ver sym e asmrun.
+
 EXEMPLOS
   break 0x4010
   go
   wait 30
 
 VER TAMBEM
-  unbreak, breaks, go, watch)MAN");
+  unbreak, breaks, go, watch, asmrun, sym)MAN");
+    add("asmrun", "", "Depurador", "asmrun [-z] [-n] [--dos-disk <arq.dsk>] <fonte.asm>", "monta um fonte, carrega na maquina e entrega simbolos e linhas ao depurador",
+        R"MAN(DESCRICAO
+  Monta o fonte com o fwasm (as saidas .rom, .bin, .com, .sym... saem ao lado dele, como o comando asm), CARREGA o resultado na maquina emulada e
+  entrega ao depurador os simbolos (rotulos e constantes) e o mapa endereco -> arquivo:linha. Depois disso valem break loop, dis meu_rotulo,
+  break jogo.asm:42, src e as paradas mostram "parou em loop+2  jogo.asm:42". Precisa de um emulador em execucao (emu start).
+
+  O que "carregar" quer dizer depende do formato que o fonte pede:
+    .rom / .megarom   insere como cartucho (megarom: mapper konami->konami4, konamiscc->konami5, ascii8, ascii16) e reinicia
+    .basic            monta uma fita na hora (mesmo sem a diretiva .cas), insere, reinicia e digita BLOAD"CAS:",R sozinho
+    .msxdos           copia o .com para uma COPIA do disco de sistema (msxdos1.dsk na pasta atual, ou --dos-disk), insere em A:, reinicia,
+                      pula a pergunta da data e digita o nome do programa. Exige a maquina com interface de disquete (emu start --disk)
+    outros            so' monta
+  Se o fonte usa .break ou .debug, os marcadores do depurador sao ligados sozinhos (markers on).
+
+OPCOES
+  -z                sintaxe Zilog padrao        -n   so' monta: nada e' carregado, mas simbolos e linhas entram no depurador
+  --dos-disk <arq>  disco de sistema do MSX-DOS 1 para o .msxdos
+
+EXEMPLOS
+  asmrun jogo.asm
+  asmrun -n -z jogo.asm
+  break loop
+  go
+
+NOTA
+  O .debug "texto" do asMSX gera LD D,D / JR (tamanho+4) / texto: o salto passa 4 bytes DEPOIS do texto. Ponha algo inofensivo (4 NOPs) depois dele,
+  ou confira no seu depurador de referencia se o asMSX gera mesmo esse deslocamento.
+
+VER TAMBEM
+  sym, src, markers, break, asm, tape)MAN");
+    add("sym", "", "Depurador", "sym [load <arq.sym>|clear|list [texto]|<nome|end>]", "simbolos do fonte (rotulos e constantes)",
+        R"MAN(DESCRICAO
+  sym                     resumo: quantos simbolos, quantas linhas de fonte, se os marcadores estao ligados
+  sym load <arq.sym>      acrescenta os simbolos de um .sym do fwasm/asMSX ("4010h nome"; MegaROM: "01h:8000h nome")
+  sym clear               esquece simbolos e linhas
+  sym list [texto]        os simbolos por endereco (ate' 200), filtrados por texto
+  sym <nome>              o endereco do simbolo (aceita nome+4)
+  sym <endereco>          o rotulo mais proximo abaixo do endereco
+
+  Os simbolos entram sozinhos com asmrun. Com eles, qualquer comando que pede um endereco aceita o NOME do rotulo (break loop, until loop+4,
+  dis inicio, mem tabela) e arquivo:linha (break jogo.asm:42). O comando dis mostra "rotulo:" antes da instrucao, e os eventos de parada trazem
+  sym=loop+2 e src=jogo.asm:42.
+
+VER TAMBEM
+  asmrun, src, break, dis)MAN");
+    add("src", "", "Depurador", "src [linhas]", "linhas do fonte em volta do PC", "DESCRICAO\n  Mostra o fonte (arquivo:linha) que gerou a instrucao no PC, com algumas linhas em volta (padrao 4 de cada lado) e um > na atual. Precisa do mapa de linhas do asmrun.\n\nVER TAMBEM\n  asmrun, sym, stepi");
+    add("markers", "", "Depurador", "markers [on|off]", "liga ou desliga os marcadores .break/.debug do fonte",
+        R"MAN(DESCRICAO
+  Os marcadores do depurador do blueMSX que o asMSX/fwasm colocam no codigo:
+    .break              LD B,B / JR 0               para a maquina neste ponto ("! break marker pc=... sym=... src=...")
+    .break <end>        LD B,B / JR 2 / DW <end>    cria um breakpoint em <end> (nao para agora)
+    .debug "texto"      LD D,D / JR n / texto       imprime o texto como evento ("! debug pc=... text=...") e continua
+  Sao instrucoes de verdade (LD B,B e LD D,D nao fazem nada), entao o programa roda igual com os marcadores desligados. Ligados, a maquina olha o
+  byte em PC antes de cada instrucao (um pouco mais lento); por isso o padrao e' desligado. O asmrun os liga sozinho se o fonte os usa.
+  markers sem argumento mostra o estado.
+
+VER TAMBEM
+  asmrun, break)MAN");
     add("unbreak", "", "Depurador", "unbreak <end|all>", "remove um breakpoint (ou todos)", "DESCRICAO\n  Remove o breakpoint de <end>; \"all\" remove todos.\n\nVER TAMBEM\n  break, breaks");
     add("breaks", "", "Depurador", "breaks", "lista os breakpoints (id, endereco, paradas)", "DESCRICAO\n  Lista os breakpoints: id, endereco e quantas vezes pararam.\n\nVER TAMBEM\n  break, unbreak");
     add("watch", "", "Depurador", "watch <end> [tam] [r|w|rw]", "watchpoint: para ao ler/escrever na memoria",

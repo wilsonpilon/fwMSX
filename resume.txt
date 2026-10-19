@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-19, apos a 1.40.4 "Antarctic Adventure: Mamute, Fita")
+fwMSX -- como retomar (atualizado em 2026-10-19, apos a 1.40.5 "Antarctic Adventure: Montador na TUI")
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
@@ -22,8 +22,11 @@ fwMSX: emulador de MSX1/MSX2/MSX2+ de ESTUDO (Wilson Pilon), em C, C++, Assembly
 linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo: integrar ao msxide num utilitario "MSX-PoorManOS".
 
 == Estado ao encerrar (2026-10-19) ==
-- Ultima versao publicada: 1.40.4 "Antarctic Adventure: Mamute, Fita" (Konami). main == origin/main; tags 1.36.0 a 1.40.4, branches v1.36.x a v1.40.4;
+- Ultima versao publicada: 1.40.5 "Antarctic Adventure: Montador na TUI" (Konami). main == origin/main; tags 1.36.0 a 1.40.5, branches v1.36.x a v1.40.5;
   releases do GitHub com zip + tar.gz. ctest 27/27 em Windows (build.ps1) e Linux/WSL (build.sh).
+- 1.40.5: MONTADOR NA TUI + base do depurador avancado. `asmrun [-z] [-n] [--dos-disk]` (monta e CARREGA: ROM/MegaROM = cartucho, .basic = fita montada na hora + BLOAD digitado, .msxdos = copia do msxdos1.dsk + ENTER da data + nome);
+  src/debug/cpp/symbols.* (simbolos e arquivo:linha no Debugger): `break loop`, `break jogo.asm:42`, `sym`, `src`, eventos `sym=`/`src=`; marcadores .break/.debug no Z80 (`Machine::CheckMarkers`, `markers on|off`); menu Montador na TUI (8 menus) e item na janela;
+  fwasm ignora o BOM UTF-8 (o asMSX para em silencio) e UTF-8 em comentario/string passa cru. Achado: o .debug do asMSX salta 4 bytes alem do texto (conferir no blueMSX). Ver doc/debug-spec.md secao 8.
 - 1.40.4: FITA EM TODOS OS PONTOS. `.cas`, `.tsx`/`.tzx`, `.wav` (ler e gravar) por uma camada so' (src/tape/cpp/tape_io); TapeDeck (tape_deck: a fita sem
   hardware; o TapeEngine herda dele); comando `tape` (new list seek protect write mode save put load); `break tapin`/`until tapoon`/`dis tapion` (nomes das 6
   entradas da fita na BIOS); Mamute TAPE R TLOAD TSAVE, LOAD/SAVE de fita e `A OT>x.cas` (online usa a fita da MAQUINA via IMemory::Tape(), offline um deck
@@ -65,13 +68,14 @@ resource/menu.alf (fonte binaria sem relacao), tools/asmdiff/__pycache__, binari
 ainda nao respondeu se quer remove-los do git), resource/asmsx.exe (oraculo do montador; *.exe e' ignorado), resource/Amazonia64kV5/ (nao rastreado), dist/roms/.
 
 == Proximos passos (ordem sugerida; nada em andamento) ==
-1. DEPURADOR SOFISTICADO (o usuario pediu DEPOIS do Mamute): por partes, inspirado em openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS.
-   Ver doc/debug-spec.md secao 7. Perguntar ao usuario por onde comecar (AskUserQuestion) antes de codar.
+0. A IDEIA NOVA DO USUARIO: ele avisou que tem uma ideia para implementar ANTES do depurador avancado e que a conta no proximo passo. Perguntar.
+1. DEPURADOR SOFISTICADO (o usuario pediu DEPOIS do Mamute e da ideia nova): por partes, inspirado em openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS.
+   Ver doc/debug-spec.md secoes 7 e 8.7 (o que ja foi feito e o que falta: condicionais, E/S, trace, passo por linha, MegaROM por subpagina). Perguntar por onde comecar (AskUserQuestion).
 2. Itens pequenos do Mamute (nenhum pedido): SCR em pixels reais na janela ImGui; TAB do console com os comandos do monitor; a "cruz" de troca entre
    XD/XA/XI/XM/XH; CLS; cores do XCO pintando de fato (hoje so' vao para mamute.cfg `color=`); comparar o disassembler com o do Mamute original.
 3. Fita: gravar em "modo normal" decodificando pulsos (hoje CSAVE/BSAVE sempre pelo gancho de BIOS); conferir o .wav gerado num MSX de verdade; blocos de TZX
    fora do #4B (grupos, laco, salto sao navegados; gravacao direta/CSW/generalizado nao).
-4. fwasm: mais programas reais, CLI/.sym/.txt por golden, fuzz diferencial, integrar ao menu ("Montar e rodar"), usar .debug/.break no depurador.
+4. fwasm: mais programas reais, CLI/.sym/.txt por golden, fuzz diferencial (o BOM, o "Montar e rodar" e o .debug/.break no depurador ja foram feitos na 1.40.5).
 5. Pendencias antigas: baixador de ROMs do fMSX + navegador do file-hunter (planejados, nao iniciados), --cmd, GameMaster2, MSX-MUSIC com BIOS propria,
    CALL VOICECOPY, teste do usuario da TUI/terminal num terminal de verdade (1.34/1.35), lentidao/perda de letras no `--cli` (relato do usuario, NAO
    reproduzida; perguntar terminal, --cli x --tui, foco), decisao sobre binarios de teste em dist/.

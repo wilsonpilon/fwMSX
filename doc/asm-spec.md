@@ -39,7 +39,13 @@ montador, escrito em `src/man/cpp/man_pages_fwasm.cpp` a partir de `resource/asm
 5. **Fuzz diferencial**: mutar os goldens existentes e comparar com o oraculo.
 6. **`.wav` num MSX de verdade** (hoje so' igual ao do asMSX byte a byte).
 7. **Divergencias conhecidas**: mensagens "Redefining output name..." do `-o`; `.org` abaixo do inicio da subpagina (o asMSX trava, o fwasm da' erro 36); codigo em 0000h antes de `.sinclair`.
-8. **BOM UTF-8** no inicio do fonte: o fwasm da' erro de sintaxe; conferir o que o asMSX faz e alinhar.
+8. **BOM UTF-8** no inicio do fonte: RESOLVIDO na 1.40.5. O asMSX para em silencio (rc=0, sem saida, deixa `~tmppre.4`) e o fwasm agora IGNORA o BOM (fonte e `.include`); UTF-8 em comentario e string passa cru, igual ao asMSX; acento em rotulo e' erro de sintaxe nos dois.
+
+## Para o depurador e a TUI (1.40.5)
+
+- `AsmResult` ganhou `symbols` (`SymbolRec`: nome, valor, subpagina, rotulo ou constante), `format` ("rom", "megarom", "basic", "msxdos", "sinclair"), `mapper` (MegaROM) e `uses_markers` (o fonte tem `.debug`/`.break`); `AsmOptions::want_tape` monta o `.cas` de um `.basic` sem a diretiva.
+- `fwasm::AssembleFile` (monta um arquivo do disco, includes relativos) e `fwasm::SaveOutputs` (grava as saidas ao lado do fonte) em `cli.cpp`, usados pelo comando `asmrun` (`debug-spec.md`, secao 8).
+- **Achado**: `.debug "texto"` gera `LD D,D / JR (tamanho+4) / texto`, e o salto passa 4 bytes DEPOIS do texto (o asMSX e o fwasm iguais, golden). O depurador do fwMSX le `d-4` caracteres a partir de `pc+3`. Conferir no blueMSX.
 
 ## Para o Mamute (1.40.1)
 

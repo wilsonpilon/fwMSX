@@ -481,6 +481,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     // Fita (ver doc/tape-spec.md): ultimo erro ao inserir, e se a janela
     // visual (K7) esta' aberta.
     std::string tape_message;
+    std::string asm_message; // resultado do ultimo "Montar e rodar" (menu Depurador)
     bool show_tape_window = false;
     int state_slot = 1; // slot de save-state atual (1 a kStateSlots)
     // Aviso temporario no canto da tela (salvou/carregou/captura): texto, validade e se e' aviso/erro.
@@ -1267,6 +1268,20 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 if (ImGui::MenuItem("Continuar a execucao", nullptr, false, machine->debugger().stopped())) {
                     if (dbg_open) close_debugger(false);
                     machine->debugger().Resume();
+                }
+                ImGui::Separator();
+                if (ImGui::MenuItem("Montar e rodar um fonte .asm...")) {
+                    if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Montar e rodar", "Fonte Z80 (asMSX/fwasm)", "*.asm;*.s;*.z80")) {
+                        const control::Result res = ctl_commander.Execute("asmrun \"" + *chosen + "\"");
+                        asm_message = (res.ok ? std::string() : std::string("ERRO: ")) + res.text;
+                    }
+                }
+                if (ImGui::MenuItem("Marcadores .break/.debug do fonte", nullptr, machine->debugger().markers()))
+                    machine->debugger().set_markers(!machine->debugger().markers());
+                ImGui::TextDisabled("%zu simbolos, %zu linhas de fonte", machine->debugger().symbols().symbol_count(), machine->debugger().symbols().line_count());
+                if (!asm_message.empty()) {
+                    ImGui::Separator();
+                    ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "%s", asm_message.c_str());
                 }
                 ImGui::Separator();
                 ImGui::TextDisabled("No painel: ENTER passo, setas, G, D, M, S, J, R, C, B, Q");

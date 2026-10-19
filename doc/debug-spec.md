@@ -163,8 +163,7 @@ Ideias a misturar, do que o usuario citou:
 - **openMSX**: breakpoints com condicao (`if` sobre registradores/memoria), pontos de parada em E/S (`in`/`out`)
   e em interrupcoes, visualizacao de VDP/PSG/slots/mapper, simbolos (`.sym`), `trace` / `log` de instrucoes,
   paineis de memoria/registradores/desmontagem em tempo real.
-- **Compass / Konpass, Mega Assembler, Super-X**: depurador integrado ao montador (quando o `fwasm` gerar
-  `.sym`/mapa, `dis` e `break` aceitarem rotulos), montagem em linha de instrucoes, edicao de memoria em tela cheia.
+- **Compass / Konpass, Mega Assembler, Super-X**: depurador integrado ao montador (FEITO na 1.40.5: `asmrun`, rotulos e arquivo:linha; ver a secao 8), montagem em linha de instrucoes, edicao de memoria em tela cheia.
 - **DEBUG do MS-DOS**: comandos curtos (`a` montar, `s` procurar, `f` preencher, `m` mover, `c` comparar, `t`/`p`
   passo/proc, `g` go, `r` registradores) como apelidos dos comandos atuais.
 - Painel do depurador tambem na TUI (registradores + desmontagem + pilha atualizados a cada parada) e atalhos de teclado
@@ -172,3 +171,67 @@ Ideias a misturar, do que o usuario citou:
 - Breakpoint que sobrevive a troca de cartucho pela janela ja' sobrevive quando vem de `--break`; os criados pelos
   comandos se perdem (a maquina e' recriada) -- guardar na configuracao.
 - `fwmsx --cmd "..."` e scripts (`source`) para automatizar sessoes.
+
+## 8. Montador na TUI, simbolos, linhas do fonte e marcadores (1.40.5, "Montador na TUI")
+
+Pedido do usuario (2026-10-19): integrar o montador ao painel TUI, seguir `.debug`/`.break` para chegar o mais perto possivel do depurador avancado, garantir que o BOM/UTF-8 funcione bem, e levar a fita para a TUI
+se preciso. Decisoes (AskUserQuestion): "montar e rodar" cobre TUDO, inclusive MSX-DOS; entram os marcadores no Z80, os rotulos do `.sym` e o arquivo:linha do fonte.
+
+### 8.1 O comando `asmrun` (ponte, console, TUI, terminal, janela)
+
+`asmrun [-z] [-n] [--dos-disk <arq.dsk>] <fonte.asm>` roda no processo do emulador (precisa de `emu start`). Monta com o fwasm (`fwasm::AssembleFile`, includes relativos ao fonte, `want_listing` e `want_tape` ligados), grava as
+saidas ao lado do fonte (`fwasm::SaveOutputs`; o `.cas` que so' montamos para carregar vai para a pasta temporaria) e CARREGA conforme o formato:
+
+| formato | o que acontece |
+|---|---|
+| `.rom` / `.megarom` | `Host::LoadCartridge` (mapper do fwasm: konami -> `konami4`, konamiscc -> `konami5`, ascii8, ascii16) e a maquina reinicia |
+| `.basic` | monta a fita em memoria (mesmo sem `.cas`), insere, reinicia, espera o BASIC subir e digita `BLOAD"CAS:",R` |
+| `.msxdos` | copia `msxdos1.dsk` (pasta atual, `dos/`, `disks/` ou `--dos-disk`) para uma copia temporaria, grava `NOME.COM` nela (`msxdisk::DiskImage`), insere em A:, reinicia, digita o ENTER da pergunta da data e o nome do programa. Sem interface de disquete: erro explicando (`emu start --disk`) |
+| outros | so' monta |
+
+A espera do boot e' uma fila de teclas VAZIAS (cada uma segura 6 quadros) na mesma fila do comando `type`. `-n` so' monta (nada e' carregado), mas simbolos e linhas entram no depurador.
+
+### 8.2 Simbolos e linhas (`dbg::Symbols`, `src/debug/cpp/symbols.{h,cpp}`)
+
+O `Debugger` ganhou uma `Symbols`: nome <-> endereco (rotulos e constantes, vindos de `AsmResult::symbols` ou de um `.sym` por `sym load`) e endereco -> arquivo:linha (de `AsmResult::listing`, so' as linhas que geraram bytes).
+`Resolve("loop+4")`, `Nearest`/`Describe` ("loop+2"), `AddressOfLine("jogo.asm", 42)`, `ParseSym` (aceita o `.sym` do asMSX/fwasm, inclusive `01h:8000h nome` da MegaROM, e separa rotulos de constantes pelos comentarios do arquivo).
+Onde um comando pede um ENDERECO (`break unbreak watch unwatch until go jump dis mem`): numero, nome de rotina de fita da BIOS (secao 12 do `tape-spec.md`), rotulo (`break loop`, `until loop+4`) ou `arquivo:linha` (`break jogo.asm:42`).
+Os eventos de parada trazem ` sym=loop+2 src=jogo.asm:42`; `breaks`, a linha de `stepi`/`next` (`pc=4012 <loop+2> LD A,B`), o `dis` (`rotulo:` antes da instrucao) e o painel Z80 Debugger (rotulo na coluna da direita) tambem mostram.
+Comandos: `sym` (resumo), `sym load <arq.sym>`, `sym clear`, `sym list [texto]`, `sym <nome|endereco>`, `src [n]` (as linhas do fonte em volta do PC, lidas do arquivo), `markers [on|off]`.
+
+### 8.3 Marcadores `.break` e `.debug` no Z80
+
+Sao os marcadores do depurador do blueMSX que o asMSX/fwasm colocam no codigo; instrucoes de verdade (`LD B,B`, `LD D,D` nao fazem nada):
+
+| fonte | bytes | efeito no fwMSX |
+|---|---|---|
+| `.break` | `40 18 00` | para a maquina ali: evento `! break marker pc=... sym=... src=...`, `last_stop` = `marker` |
+| `.break <end>` | `40 18 02 <end>` | cria um breakpoint em `<end>` (evento `! marker break-set ...`); nao para |
+| `.debug "texto"` | `52 18 n <texto>` (n = tamanho+4) | evento `! debug pc=... text=texto`; continua |
+
+`Machine::CheckMarkers()` olha o byte em PC antes de cada instrucao SO' quando `Debugger::markers()` esta ligado (custa uma leitura por instrucao; o padrao e' desligado; o `asmrun` liga quando `AsmResult::uses_markers`).
+Depois de um `go` o MESMO marcador nao para de novo (`Debugger::TakeMarkerSkip`, no lugar do `skip_once_`, que so' vale quando ha' breakpoints armados).
+**Achado**: o `.debug` do asMSX emite `JR (tamanho+4)`, que salta 4 bytes ALEM do texto (o `.debug "ab"` seguido de `nop` salta o `nop` e mais tres bytes); o fwasm reproduz byte a byte o asMSX (golden). Nao mudei: pus 4 NOPs
+depois do `.debug` nos testes. Vale conferir no blueMSX se esse deslocamento e' intencional (aparentemente o texto vem seguido de 4 bytes que o depurador espera).
+
+### 8.4 BOM e UTF-8 no fwasm
+
+O asMSX com um fonte que comeca com BOM UTF-8 (o Bloco de Notas do Windows grava assim) PARA em silencio depois de "Assembling source file", sem gerar nada e deixando um `~tmppre.4`; o fwasm dava "syntax error". Agora o BOM e'
+ignorado no fonte principal e nos `.include` (`Preprocessor::Read`). UTF-8 dentro de comentarios e strings passa cru, byte a byte, igual ao asMSX (conferido com o `asmsx.exe`: `db "cafe"` com acento, comentarios e `.printtext`); acento em
+rotulo e' erro de sintaxe nos dois. Testes: `asmtest` (`ExtraChecks`: BOM, BOM no include, UTF-8 cru, simbolos, formato/mapper, `uses_markers`, `want_tape`, `listing`) e `controltest` (o `asmrun` de um fonte com BOM e UTF-8 no comentario).
+
+### 8.5 Interfaces
+
+TUI: menu **Montador** (Montar e rodar, Montar so', Montar arquivos sem a maquina, Simbolos resumo/listar/procurar/carregar/limpar, Breakpoint em rotulo ou arquivo:linha, Fonte em volta do PC, Marcadores ligar/desligar) e a
+fita ja' estava no menu Midia (1.40.4). Janela: menu Depurador ganhou "Montar e rodar um fonte .asm...", o interruptor dos marcadores e o resumo de simbolos. Modo terminal: itens no menu de midia.
+
+### 8.6 Testes
+
+`controltest` (+33: `asmrun` ROM com `.break`/`.debug`, parada por marcador, evento com `sym=`/`src=`, `src`, `dis` com rotulo, `break` por rotulo e por arquivo:linha, `go` que nao para de novo, `sym load/list/clear`, `markers`, programa BASIC por fita
+montada na hora, programa MSX-DOS com disco de sistema real que RODA, erros), `asmtest` (+10), `tuitest` (o menu Montador), `mantest` (as paginas novas).
+
+### 8.7 O que ainda falta (para o depurador avancado)
+
+Breakpoints condicionais e em E/S, trace/log de instrucoes, passo "sobre"/"fora" por linha de fonte, observar variaveis do fonte por nome, simbolos de MegaROM por subpagina (hoje o endereco e' o da janela da CPU), guardar breakpoints ao trocar de cartucho,
+painel do depurador com o fonte e os simbolos em duas colunas, `--cmd`/scripts.
+

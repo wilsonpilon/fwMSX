@@ -319,6 +319,9 @@ void DebugView::Render(machine::Machine &m, Grid &grid) const {
             if (HasBreak(m, a)) grid.Put(0, y, "*", kBreakMark);
             if (a == pc) grid.Put(1, y, ">", kPc);
             grid.Put(2, y, Hex(a, 4) + ": " + bytes + " " + d.text, kNormal);
+            // o rotulo do fonte (asmrun / sym load) na coluna da direita, se couber: "loop" ao lado da instrucao
+            std::string label;
+            if (d.text.size() <= 14 && m.debugger().symbols().LabelAt(a, label)) grid.Put(36, y, label.substr(0, kCols - 36), kDim);
             if (a == cursor_) grid.PaintRow(y, kCursor);
             da = Sum(a, len);
         } else if (mode_ == ViewMode::Memory) {

@@ -89,6 +89,8 @@ public:
     static bool ParseTypeSpec(machine::Machine &m, const std::string &spec, bool literal, std::vector<TypedKey> &out, std::string &error);
 
 private:
+    // asmrun: monta um fonte .asm do disco, grava as saidas ao lado dele, carrega o resultado na maquina e entrega os simbolos e as linhas ao depurador.
+    Result AsmRun(const std::vector<std::string> &t);
 
     Host &host_;
     // O monitor Mamute (comando `mon`): criado na primeira vez que alguem o usa; a maquina so' e' ligada a ele DURANTE

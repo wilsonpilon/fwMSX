@@ -39,6 +39,8 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `regs` | registradores do Z80 |
 | `cart <arq\|-> [mapper]` | troca o cartucho (reinicia); `-` retira; mapper: auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2 |
 | `disk <A\|B> <arq>` / `eject <A\|B>` | insere / ejeta disco |
+| `asmrun [-z] [-n] [--dos-disk <arq>] <fonte.asm>` | monta, grava as saidas e carrega na maquina (cartucho, fita ou disco); entrega simbolos e linhas ao depurador (debug-spec.md, secao 8) |
+| `sym [load <arq.sym>\|clear\|list [texto]\|<nome\|end>]` / `src [n]` / `markers [on\|off]` | simbolos do fonte, linhas do fonte em volta do PC, marcadores .break/.debug |
 | `tape` / `tape <arq>` / `eject` / `rewind` / `new <arq>` / `list` / `seek <n\|nome\|->` / `protect on\|off` / `write append\|overwrite\|new` / `mode fast\|normal` / `save <arq>` / `put <nome> <ini> <fim> [exec]` / `load <n\|nome>` | fita (`.cas`, `.tsx`/`.tzx`, `.wav`); `break tapin` etc. valem em qualquer comando com endereco |
 | `state save <arq>` / `state load <arq>` | save-state (`ok aviso: ...` se a BIOS/cartucho mudou) |
 | `screenshot <arq>` | grava a tela (PNG na janela) |

@@ -72,7 +72,7 @@ bool Debugger::CheckPc(uint16_t pc) {
         stopped_ = true;
         until_active_ = false;
         last_stop_ = "until";
-        PostEvent("! until pc=" + Hex(pc, 4));
+        PostEvent("! until pc=" + Hex(pc, 4) + Where(pc));
         return true;
     }
     for (Breakpoint &b : breaks_) {
@@ -81,7 +81,7 @@ bool Debugger::CheckPc(uint16_t pc) {
             stopped_ = true;
             until_active_ = false;
             last_stop_ = "break";
-            PostEvent("! break id=" + std::to_string(b.id) + " pc=" + Hex(pc, 4) + " hits=" + std::to_string(b.hits));
+            PostEvent("! break id=" + std::to_string(b.id) + " pc=" + Hex(pc, 4) + " hits=" + std::to_string(b.hits) + Where(pc));
             return true;
         }
     }
@@ -111,9 +111,27 @@ bool Debugger::TakeWatchHit(uint16_t pc_after) {
     until_active_ = false;
     last_stop_ = "watch";
     PostEvent("! watch id=" + std::to_string(watch_id_) + " addr=" + Hex(watch_addr_, 4) + " rw=" + (watch_write_ ? "w" : "r") +
-              " value=" + Hex(watch_value_, 2) + " pc=" + Hex(watch_pc_, 4) + " next=" + Hex(pc_after, 4));
+              " value=" + Hex(watch_value_, 2) + " pc=" + Hex(watch_pc_, 4) + " next=" + Hex(pc_after, 4) + Where(watch_pc_));
     return true;
 }
+
+std::string Debugger::Where(uint16_t pc) const {
+    std::string s;
+    const std::string sym = symbols_.Describe(pc);
+    if (!sym.empty()) s += " sym=" + sym;
+    const std::string src = symbols_.DescribeLine(pc);
+    if (!src.empty()) s += " src=" + src;
+    return s;
+}
+
+void Debugger::MarkerBreak(uint16_t pc) {
+    stopped_ = true;
+    until_active_ = false;
+    last_stop_ = "marker";
+    PostEvent("! break marker pc=" + Hex(pc, 4) + Where(pc));
+}
+
+void Debugger::MarkerText(uint16_t pc, const std::string &text) { PostEvent("! debug pc=" + Hex(pc, 4) + " text=" + text); }
 
 void Debugger::PostEvent(const std::string &line) {
     if (events_.size() >= kMaxEvents) events_.erase(events_.begin());
@@ -131,6 +149,7 @@ void Debugger::Reset() {
     watches_.clear();
     stopped_ = false;
     skip_once_ = false;
+    marker_skip_ = false;
     until_active_ = false;
     watch_hit_ = false;
     events_.clear();

@@ -54,7 +54,8 @@ struct Pre {
         int block = 0;
         int block_line = 0;
         int no = 0;
-        size_t pos = 0;
+        // BOM UTF-8 no inicio do arquivo (o Bloco de Notas do Windows o grava): o asMSX para sem gerar nada, o fwasm o ignora
+        size_t pos = (text.size() >= 3 && text.compare(0, 3, "\xEF\xBB\xBF") == 0) ? 3 : 0;
         while (pos <= text.size() && out.rc == 0) {
             size_t nl = text.find('\n', pos);
             const bool last = nl == std::string::npos;

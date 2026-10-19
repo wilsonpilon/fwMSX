@@ -128,6 +128,66 @@ bool Check(const asmtest::GoldenCase &c, std::string &why) {
     return true;
 }
 
+
+// Extensoes do fwasm que o asMSX nao tem (nao ha' golden): BOM UTF-8 e UTF-8 em comentarios/strings, a tabela de simbolos e o mapa de linhas,
+// o formato/mapper e o aviso de marcadores para o depurador. Conferidos contra o asMSX a mao: sem BOM os bytes de UTF-8 saem crus, iguais.
+int ExtraChecks() {
+    int bad = 0;
+    auto check = [&](bool ok, const char *what) {
+        std::printf("[%s] %s\n", ok ? "PASS" : "FAIL", what);
+        if (!ok) ++bad;
+    };
+    MemFiles none;
+    fwasm::AsmOptions o;
+
+    const std::string body = ".org 4000h\n db \"caf\xC3\xA9\"\n; \xC3\xA7 comentario\nnop ; \xC3\xA7\n";
+    const fwasm::AsmResult plain = fwasm::Assemble("x.asm", body, o, &none);
+    const fwasm::AsmResult bom = fwasm::Assemble("x.asm", std::string("\xEF\xBB\xBF") + body, o, &none);
+    check(plain.rc == 0 && plain.outs.count("z80") && plain.outs.at("z80") == std::vector<uint8_t>({'c', 'a', 'f', 0xC3, 0xA9, 0x00}), "UTF-8 em string e comentario: os bytes saem crus (igual ao asMSX)");
+    check(bom.rc == 0 && bom.outs == plain.outs, "BOM UTF-8 no inicio do fonte e' ignorado (o asMSX para sem gerar nada)");
+
+    // BOM tambem no arquivo incluido
+    MemFiles inc;
+    inc.files["inc.asm"] = FromHex("EFBBBF6E6F700A"); // BOM + "nop\n"
+    const fwasm::AsmResult with_inc = fwasm::Assemble("x.asm", ".org 4000h\n.include \"inc.asm\"\n", o, &inc);
+    check(with_inc.rc == 0 && with_inc.outs.count("z80") && with_inc.outs.at("z80") == std::vector<uint8_t>({0x00}), "BOM no arquivo .include tambem e' ignorado");
+
+    // simbolos, formato, mapper e marcadores
+    const std::string rom = ".page 1\n.rom\n.start inicio\ninicio:\n ld a,1\nK .equ 5\n.debug \"x\"\nloop: jr loop\n";
+    const fwasm::AsmResult r = fwasm::Assemble("x.asm", rom, o, &none);
+    bool has_inicio = false, has_loop = false, has_k = false;
+    for (const fwasm::SymbolRec &sy : r.symbols) {
+        has_inicio = has_inicio || (sy.name == "inicio" && sy.is_label && sy.value == 0x4010);
+        has_loop = has_loop || (sy.name == "loop" && sy.is_label);
+        has_k = has_k || (sy.name == "K" && !sy.is_label && sy.value == 5);
+    }
+    check(r.rc == 0 && r.format == "rom" && has_inicio && has_loop && has_k, "AsmResult::symbols (rotulos e constantes) e format");
+    check(r.uses_markers, "AsmResult::uses_markers quando o fonte tem .debug");
+    const fwasm::AsmResult clean = fwasm::Assemble("x.asm", ".org 4000h\n nop\n", o, &none);
+    check(!clean.uses_markers && clean.symbols.empty() && clean.format.empty(), "sem marcadores/simbolos/formato: tudo vazio");
+    const fwasm::AsmResult mega = fwasm::Assemble("x.asm", ".megarom ascii8\n.page 1\n.subpage 0 at 4000h\n.start 4010h\n nop\n", o, &none);
+    check(mega.format == "megarom" && mega.mapper == "ascii8", "AsmResult::format/mapper de uma MegaROM");
+
+    // .BASIC sem .CAS: want_tape monta a fita assim mesmo
+    o.want_tape = true;
+    const fwasm::AsmResult bas = fwasm::Assemble("x.asm", ".bios\n.org 0d000h\n.basic\n ret\n", o, &none);
+    check(bas.rc == 0 && bas.outs.count("cas") && bas.msgs.empty(), "want_tape: gera o .cas de um .BASIC sem a diretiva, sem mensagem extra");
+    o.want_tape = false;
+    const fwasm::AsmResult bas2 = fwasm::Assemble("x.asm", ".bios\n.org 0d000h\n.basic\n ret\n", o, &none);
+    check(bas2.rc == 0 && !bas2.outs.count("cas"), "sem want_tape e sem .CAS: nenhuma fita");
+
+    // listagem: arquivo e linha de cada endereco (base do `src` do depurador)
+    o.want_listing = true;
+    const fwasm::AsmResult lst = fwasm::Assemble("x.asm", ".org 4000h\n nop\n ld a,1\n", o, &none);
+    bool l2 = false, l3 = false;
+    for (const fwasm::ListEntry &e : lst.listing) {
+        l2 = l2 || (e.line == 2 && e.addr == 0x4000 && e.bytes.size() == 1);
+        l3 = l3 || (e.line == 3 && e.addr == 0x4001 && e.bytes.size() == 2);
+    }
+    check(l2 && l3, "listing: endereco e linha de cada instrucao");
+    return bad;
+}
+
 } // namespace
 
 int main() {
@@ -175,6 +235,7 @@ int main() {
         }
         std::printf("%-14s %d/%d casos passaram (%d ignorados)\n", file, st.passed, st.total, st.skipped);
     }
+    bad += ExtraChecks();
     if (bad) std::printf("\nFALHOU: %d caso(s)\n", bad);
     else std::printf("\nOK\n");
     return bad ? 1 : 0;

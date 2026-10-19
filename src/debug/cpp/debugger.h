@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include "symbols.h"
+
 namespace dbg {
 
 struct Breakpoint {
@@ -64,6 +66,7 @@ public:
     void Resume() {
         stopped_ = false;
         skip_once_ = true;
+        marker_skip_ = true;
     }
     const std::string &last_stop() const { return last_stop_; }
 
@@ -81,6 +84,28 @@ public:
     void OnAccess(uint16_t addr, uint8_t value, bool write);
     // Depois de cada instrucao: true se um watchpoint disparou durante ela (a maquina para).
     bool TakeWatchHit(uint16_t pc_after);
+
+    // ---- simbolos e linhas do fonte (doc/debug-spec.md, secao 8) ------------------------------
+    Symbols &symbols() { return symbols_; }
+    const Symbols &symbols() const { return symbols_; }
+    // " sym=loop+2 src=jogo.asm:42" (so' o que se sabe) para anexar a um evento; "" sem nada.
+    std::string Where(uint16_t pc) const;
+
+    // ---- marcadores .BREAK / .DEBUG do fonte (blueMSX) -----------------------------------------
+    // Ligados, a maquina olha o byte em PC antes de cada instrucao: LD B,B + JR 0 = parar aqui; LD B,B + JR 2 + word = pontos de
+    // parada no endereco; LD D,D + JR n + texto = imprimir o texto. Desligados por padrao (custa uma leitura por instrucao).
+    bool markers() const { return markers_; }
+    void set_markers(bool on) { markers_ = on; }
+    // Depois de um Resume() a primeira instrucao NAO pode parar de novo no mesmo marcador: devolve (e limpa) esse pedido.
+    bool TakeMarkerSkip() {
+        const bool s = marker_skip_;
+        marker_skip_ = false;
+        return s;
+    }
+    // O marcador .BREAK em `pc`: para a maquina e enfileira "! break marker pc=...".
+    void MarkerBreak(uint16_t pc);
+    // O marcador .DEBUG em `pc`: so' enfileira "! debug pc=... text=...", a maquina continua.
+    void MarkerText(uint16_t pc, const std::string &text);
 
     // ---- eventos ------------------------------------------------------------------------------
     void PostEvent(const std::string &line);
@@ -102,6 +127,9 @@ private:
     int next_id_ = 1;
     bool stopped_ = false;
     bool skip_once_ = false;
+    bool marker_skip_ = false;
+    bool markers_ = false;
+    Symbols symbols_;
     bool until_active_ = false;
     uint16_t until_addr_ = 0;
     uint16_t inst_pc_ = 0;

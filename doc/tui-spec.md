@@ -17,7 +17,7 @@ espera (ver `doc/repl-spec.md`).
 ## 2. A tela
 
 ```
- Emulador  Arquivo  Maquina  Midia  Ferramentas Depurador Ajuda           F10 menus  F1 ajuda   <- barra de menus
+ Emulador  Arquivo  Maquina  Midia  Ferramentas Depurador Montador Ajuda           F10 menus  F1 ajuda   <- barra de menus
  (historico: o que voce mandou, as respostas do emulador e a saida das ferramentas)
  Emulador conectado :51607 | SCREEN 0 | quadro 4210 | PAUSADO | slot 1                   <- status
  > peek 0xC000 16_                                                                       <- linha de comando
@@ -38,6 +38,7 @@ historico.
 | **Maquina** | Reiniciar - Pausar/Retomar - Avancar 1 / 10 quadros - Registradores - Ler memoria... - Gravar memoria... - Digitar texto no MSX... |
 | **Depurador** | **Painel Z80 Debugger** (visual, mesmas teclas da janela) - Registradores - Desmontar (PC / em...) - Passo - Passo sobre - Executar ate... - Continuar - Parar - Ir para... - Breakpoint/Watchpoint em... / Remover / Listar - Memoria (hexdump)... - Pilha - Mudar registrador... - Mapa de slots (ver [debug-spec.md](debug-spec.md)) |
 | **Midia** | Inserir / Retirar cartucho (com mapper) - Inserir / Ejetar disco A: e B: - Novo disco em branco... - Novo disco e inserir em A:... - Inserir (.cas .tsx .tzx .wav) / Nova / Ejetar / Rebobinar fita - listar arquivos - proteger / liberar gravacao - carregamento rapido / normal - gravar uma copia (1.40.4) |
+| **Montador** (1.40.5) | Montar e rodar... (`asmrun`) - Montar so' (carrega simbolos)... (`asmrun -n`) - Montar arquivos sem a maquina... (`asm`) - Simbolos: resumo / listar / procurar / carregar um .sym / limpar - Breakpoint em rotulo ou arquivo:linha - Fonte em volta do PC (`src`) - Marcadores .break/.debug ligar / desligar |
 | **Ferramentas** | Banco de ROMs (buscar, mostrar, verificar SHA-1, identificar, estatisticas, baixar fMSX, comando livre) - Fita: listar / comando livre - Banco de fitas (listar, buscar, estatisticas) - Utilitario de discos (msxdisk) |
 | **Ajuda** | Teclas e uso - Comandos do console - Versao |
 

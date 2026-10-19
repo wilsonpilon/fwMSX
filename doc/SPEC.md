@@ -192,12 +192,14 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-19, depois da v1.40.4)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-19, depois da v1.40.5)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.40.4, publicada em `main`):**
+**Funcionando (v1.40.5, publicada em `main`):**
+- [x] **Montador na TUI e base do depurador avancado** (1.40.5): `asmrun` (monta e CARREGA: ROM/MegaROM como cartucho, `.basic` por fita montada na hora, `.msxdos` num disco de sistema), menu Montador na TUI e item na janela; simbolos e arquivo:linha no depurador (`break loop`, `break jogo.asm:42`,
+  `sym`, `src`, eventos com `sym=`/`src=`, `dis` com rotulos, painel Z80 Debugger); marcadores `.break`/`.debug` do fonte funcionando no Z80 (`markers`); BOM/UTF-8 no fwasm. Ver `debug-spec.md`, secao 8.
 - [x] **Fita em todos os pontos** (1.40.4): `.cas`, `.tsx`/`.tzx` e `.wav` (ler e gravar) por uma camada so' (`tape_io`) e o `TapeDeck` (a fita sem hardware; o `TapeEngine` herda dele); comando `tape` com `new list seek protect write mode save put load`;
   `break tapin`/`until tapoon`/`dis tapion` (as 6 entradas da fita na BIOS tem nome); Mamute `TAPE R TLOAD TSAVE`, `LOAD`/`SAVE` de fita e `A OT>arq.cas` (online usa a fita da MAQUINA, offline um deck proprio; `man mamute-fita`); fwasm `.TSX`;
   menus da TUI e da janela; banco de fitas varre `.wav`. O `.cas`/`.tsx`/`.wav` montado pelo fwasm carrega por `BLOAD"CAS:",R` e RODA no emulador (`asme2etest`; o `.tsx` tambem pelos pulsos). Ver `tape-spec.md`, secao 12.

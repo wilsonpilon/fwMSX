@@ -16,6 +16,7 @@ struct AsmOptions {
     bool verbose = false;  // -vv
     std::string out_base;  // -o: nome-base (sem extensao) das saidas; vazio = nome do fonte
     bool want_listing = false; // preenche AsmResult::listing (usado pelo monitor Mamute para montar a listagem)
+    bool want_tape = false;    // monta tambem o .cas de um programa .BASIC mesmo sem a diretiva .CAS (o "montar e rodar" da TUI carrega por fita)
 };
 
 // Acesso a arquivos de .INCLUDE / .INCBIN (o teste usa um provedor em memoria).
@@ -37,6 +38,14 @@ struct ListEntry {
     int32_t value = 0;
 };
 
+// Um simbolo da tabela final: rotulo (is_label) ou constante/EQU. `page` = subpagina da MegaROM (0 nos outros formatos).
+struct SymbolRec {
+    std::string name;
+    int32_t value = 0;
+    int page = 0;
+    bool is_label = false;
+};
+
 struct AsmResult {
     int rc = 0;                       // codigo de saida (0 = ok)
     std::vector<std::string> msgs;    // erros e avisos, formatados ("x.asm, line 3: ...")
@@ -44,6 +53,10 @@ struct AsmResult {
     std::map<std::string, std::vector<uint8_t>> outs;
     std::string base_name;            // nome-base das saidas (sem extensao)
     std::vector<ListEntry> listing;   // so' com want_listing; na ordem do fonte (as linhas depois de um erro nao entram)
+    std::vector<SymbolRec> symbols;   // a tabela de simbolos (a mesma do .sym), para o depurador
+    std::string format;               // "rom", "megarom", "basic", "msxdos", "sinclair" ou "" (so' os bytes)
+    std::string mapper;               // MegaROM: "konami", "konamiscc", "ascii8" ou "ascii16"
+    bool uses_markers = false;        // o fonte usa .DEBUG/.BREAK (marcadores do depurador do blueMSX no codigo)
 };
 
 // true se `name` (sem diferenciar maiusculas) e' o nome de uma diretiva (org, start, print, size...): nao pode ser rotulo. Quem gera fonte

@@ -636,6 +636,8 @@ int RunTerm(const TermOptions &options) {
         m.push_back({"Inserir fita...", [&] { input = "tape "; mode = Mode::Command; }});
         m.push_back({"Ejetar fita", [&] { run_and_report("tape eject"); }});
         m.push_back({"Rebobinar fita", [&] { run_and_report("tape rewind"); }});
+        m.push_back({"Montar e rodar um fonte .asm...", [&] { input = "asmrun "; mode = Mode::Command; }});
+        m.push_back({"Simbolos do fonte (sym)", [&] { run_and_report("sym"); }});
         m.push_back({four_three ? "Proporcao: 4:3 (alternar para pixels originais)" : "Proporcao: pixels originais (alternar para 4:3)",
                      [&] { four_three = !four_three; set_toast(four_three ? "proporcao 4:3" : "pixels originais"); }});
         m.push_back({"Linha de comando  (F11)", [&] { mode = Mode::Command; }});

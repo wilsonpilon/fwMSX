@@ -143,3 +143,5 @@ A formatacao de uma linha de tabela mais larga que a tela mantem as colunas: a c
 - O modo janela (`--term`, F11) ainda tem a ajuda antiga; o `man` la' e' o proximo passo.
 - Completar o TAB do console com os nomes dos topicos (`man <TAB>`); busca por assunto (`man -k cor`).
 - Exemplos executaveis ("copiar e colar" para o `type`/`asm`).
+
+- 1.40.5: paginas `asmrun`, `sym`, `src` e `markers` (categoria Depurador) e o `break` com rotulos e arquivo:linha; `mantest` confere.

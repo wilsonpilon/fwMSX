@@ -28,6 +28,8 @@ typedef int sock_t;
 static void sock_close(sock_t s) { close(s); }
 #endif
 
+#include <filesystem>
+
 #include "../../src/control/command.h"
 #include "../../src/control/server.h"
 #include "../../src/debug/cpp/debug_view.h"
@@ -336,6 +338,128 @@ void TestServer(const std::string &bios) {
 
 
 // ---- depurador (doc/debug-spec.md) -----------------------------------------------------------------
+// ---- asmrun, sym, src e markers (doc/debug-spec.md, secao 8) --------------------------------------
+void WriteText(const std::string &path, const std::string &text) {
+    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+    f << text;
+}
+
+void TestAsmRun(const std::string &bios) {
+    // Um cartucho ROM com rotulos, um .break e um .debug (apos o .debug vao 4 NOPs: o JR do marcador salta tamanho+4 bytes)
+    const std::string dir = TempPath("fwmsx_asmrun_dir");
+    std::filesystem::create_directories(dir);
+    const std::string rom_src = dir + "/jogo.asm";
+    WriteText(rom_src,
+              "\xEF\xBB\xBF" // BOM UTF-8, como o Bloco de Notas grava; o fwasm o ignora
+              ".bios\n.page 1\n.rom\n.start inicio\n; acentua\xC3\xA7\xC3\xA3o em comentario UTF-8\ninicio:\n ld a,1\n"
+              ".debug \"ola\"\n nop\n nop\n nop\n nop\n"
+              ".break\nloop:\n inc a\n jr loop\n");
+
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine para o teste do asmrun");
+        return;
+    }
+    control::Commander cmd(host);
+
+    check(!cmd.Execute("asmrun").ok && !cmd.Execute("asmrun /nao/existe.asm").ok, "asmrun: sem fonte e fonte inexistente = err");
+    check(!cmd.Execute("asmrun -x a.asm").ok, "asmrun: opcao desconhecida = err");
+
+    // so' montar (-n): nada e' carregado, mas os simbolos e as linhas entram no depurador
+    const control::Result only = cmd.Execute("asmrun -n \"" + rom_src + "\"");
+    check(only.ok && Contains(only.text, "gerado:"), "asmrun -n: monta e grava as saidas ao lado do fonte (sem carregar)");
+    check(std::filesystem::exists(dir + "/jogo.rom") && std::filesystem::exists(dir + "/jogo.sym"), "asmrun: gerou o .rom e o .sym");
+    check(Contains(only.text, "marcadores ligados") && host.machine().debugger().markers(), "asmrun: o fonte tem .break/.debug -> marcadores ligados");
+    check(Contains(cmd.Execute("sym").text, "simbolos") && Contains(cmd.Execute("sym inicio").text, "inicio = 40"), "sym: resumo e consulta por nome");
+    uint16_t addr = 0;
+    check(host.machine().debugger().symbols().Find("loop", addr) && addr > 0x4000, "sym: o rotulo 'loop' veio do .sym");
+
+    // montar e rodar: o cartucho entra, a maquina reinicia, o .debug aparece como evento e o .break para
+    const control::Result go = cmd.Execute("asmrun \"" + rom_src + "\"");
+    check(go.ok && Contains(go.text, "cartucho") && Contains(go.text, "marcadores ligados"), "asmrun: ROM inserida como cartucho, maquina reiniciada, marcadores ligados");
+    cmd.TakeEvents();
+    Frames(host, cmd, 400);
+    machine::Machine &m = host.machine();
+    check(m.debugger().stopped() && m.debugger().last_stop() == "marker", "o .break do fonte parou a maquina");
+    const std::vector<std::string> ev = cmd.TakeEvents();
+    bool saw_debug = false, saw_break = false;
+    for (const std::string &e : ev) {
+        saw_debug = saw_debug || (Contains(e, "! debug") && Contains(e, "text=ola"));
+        saw_break = saw_break || (Contains(e, "! break marker") && Contains(e, "src=jogo.asm:") && Contains(e, "sym="));
+    }
+    check(saw_debug, "o .debug \"ola\" virou o evento '! debug ... text=ola'");
+    check(saw_break, "o evento do .break traz sym= e src=jogo.asm:linha");
+    check(Contains(cmd.Execute("src").text, "jogo.asm:") && Contains(cmd.Execute("src").text, ".break"), "src: mostra as linhas do fonte em volta do PC");
+    check(Contains(cmd.Execute("dis inicio 3").text, "inicio:"), "dis: mostra o rotulo antes da instrucao");
+    check(Contains(cmd.Execute("stepi").text, "<inicio"), "stepi: a linha do PC traz o rotulo <loop...>");
+
+    // continuar: o marcador nao para duas vezes no mesmo lugar; break pelo nome do rotulo e por arquivo:linha
+    check(cmd.Execute("break loop").ok && Contains(cmd.Execute("breaks").text, "sym=loop"), "break <rotulo>: aceita o nome e o breaks mostra sym=");
+    check(cmd.Execute("unbreak loop").ok, "unbreak <rotulo>");
+    check(cmd.Execute("break jogo.asm:9").ok || cmd.Execute("break jogo.asm:10").ok || cmd.Execute("break jogo.asm:11").ok, "break arquivo:linha (uma linha com codigo)");
+    cmd.Execute("unbreak all");
+    check(cmd.Execute("go").ok, "go depois do .break");
+    Frames(host, cmd, 20);
+    check(!host.machine().debugger().stopped(), "depois do go, o programa corre (o mesmo marcador nao para de novo)");
+
+    check(cmd.Execute("markers off").ok && !host.machine().debugger().markers() && Contains(cmd.Execute("markers").text, "desligados"), "markers off/status");
+    check(!cmd.Execute("markers talvez").ok, "markers: argumento invalido = err");
+    check(cmd.Execute("sym clear").ok && Contains(cmd.Execute("sym").text, "0 simbolos"), "sym clear");
+    check(Contains(cmd.Execute("sym load \"" + dir + "/jogo.sym\"").text, "simbolos carregados") && cmd.Execute("sym loop").ok, "sym load do .sym gerado + consulta por nome");
+    check(Contains(cmd.Execute("sym list loo").text, "loop") && !cmd.Execute("sym nao_existe_mesmo").ok, "sym list com filtro; nome inexistente = err");
+
+    // um programa BASIC: monta a fita na hora, insere, reinicia e digita BLOAD"CAS:",R sozinho
+    const std::string bas_src = dir + "/ola.asm";
+    WriteText(bas_src, ".bios\n.org 0d000h\n.basic\n ld hl,msg\nlp: ld a,[hl]\n or a\n ret z\n call CHPUT\n inc hl\n jr lp\nmsg: db \"asmrun carregou\",0\n");
+    check(cmd.Execute("cart -").ok, "(tira o cartucho: senao a maquina nunca chega ao BASIC)");
+    const control::Result bas = cmd.Execute("asmrun \"" + bas_src + "\"");
+    check(bas.ok && Contains(bas.text, "BLOAD") && Contains(bas.text, "fita"), "asmrun: programa BASIC -> fita inserida e BLOAD digitado sozinho");
+    Frames(host, cmd, 2400);
+    check(VramHas(host.machine(), "asmrun carregou"), "asmrun: o programa BASIC carregou da fita montada na hora e RODOU");
+
+    // MSX-DOS sem interface de disquete: erro claro
+    const std::string dos_src = dir + "/dos.asm";
+    WriteText(dos_src, ".msxdos\n.org 0100h\n ret\n");
+    const control::Result dos = cmd.Execute("asmrun \"" + dos_src + "\"");
+    check(!dos.ok && Contains(dos.text, "interface de disquete"), "asmrun: .msxdos sem interface de disquete = erro explicando");
+
+    std::filesystem::remove_all(dir);
+}
+
+// asmrun de um programa do MSX-DOS: monta o .com, copia para uma copia do disco de sistema, boota e roda sozinho
+void TestAsmRunDos(const std::string &src_dir, const std::string &bios) {
+    const std::string dos_disk = src_dir + "/msxdos1.dsk";
+    {
+        std::ifstream probe(dos_disk, std::ios::binary);
+        if (!probe) {
+            std::printf("[SKIP] msxdos1.dsk nao encontrado em '%s'\n", dos_disk.c_str());
+            return;
+        }
+    }
+    const std::string dir = TempPath("fwmsx_asmrun_dos");
+    std::filesystem::create_directories(dir);
+    const std::string src = dir + "/hello.asm";
+    WriteText(src, ".msxdos\n.org 0100h\n ld de,msg\n ld c,9\n call 5\n ret\nmsg: db \"asmrun dos ok$\"\n");
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    config.disk_interface = true;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine com interface de disquete para o asmrun DOS");
+        return;
+    }
+    control::Commander cmd(host);
+    const control::Result r = cmd.Execute("asmrun --dos-disk \"" + dos_disk + "\" \"" + src + "\"");
+    check(r.ok && Contains(r.text, "HELLO.COM"), "asmrun DOS: o .com foi copiado para uma copia do disco de sistema (HELLO.COM em A:)");
+    if (!r.ok) std::printf("    %s\n", r.text.c_str());
+    Frames(host, cmd, 4000);
+    check(VramHas(host.machine(), "asmrun dos ok"), "asmrun DOS: o MSX-DOS bootou da copia do disco e o programa montado RODOU");
+    check(!cmd.Execute("asmrun --dos-disk /nao/existe.dsk \"" + src + "\"").ok, "asmrun DOS: disco de sistema inexistente = err");
+    std::filesystem::remove_all(dir);
+}
+
 void TestDebugger(const std::string &bios) {
     machine::MachineConfig config;
     config.bios_path = bios;
@@ -909,6 +1033,8 @@ int main() {
     TestCommander(bios);
     TestServer(bios);
     TestDebugger(bios);
+    TestAsmRun(bios);
+    TestAsmRunDos(FWMSX_SOURCE_DIR, bios);
     TestDebugView(bios);
     TestDbgUiCommand(bios);
     TestKeyboard(FWMSX_SOURCE_DIR, bios);

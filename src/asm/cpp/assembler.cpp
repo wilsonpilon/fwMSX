@@ -231,6 +231,7 @@ private:
     // Formato de saida (.ROM / .BASIC / .MSXDOS): so' um por programa; repetir o mesmo tipo e' permitido.
     enum class Fmt { None, Rom, MegaRom, Basic, MsxDos, Sinclair } fmt_ = Fmt::None;
     // Fita: `.CAS`/`.WAV` pedem o arquivo .cas (para emuladores) e/ou o .wav (para um MSX de verdade); vale o PRIMEIRO nome dado.
+    bool markers_used_ = false; // .DEBUG/.BREAK emitidos (AsmResult::uses_markers)
     bool cas_req_ = false, wav_req_ = false, tsx_req_ = false; // tsx e' extensao do fwasm: a MESMA fita em .tsx (blocos #4B), que o asMSX nao gera
     bool tape_name_set_ = false; // o PRIMEIRO .CAS/.WAV decide o nome (dos dois arquivos), mesmo sem nome (= o nome-base)
     std::string tape_name_;
@@ -443,6 +444,7 @@ void Assembler::RunPass(bool final) {
     changed_ = false;
     fmt_ = Fmt::None;
     cas_req_ = wav_req_ = tsx_req_ = false;
+    markers_used_ = false;
     tape_name_set_ = false;
     tape_name_.clear();
     rom_hdr_addr_ = -1;
@@ -864,6 +866,7 @@ bool Assembler::Directive(const std::string &w, const std::vector<Token> &t, siz
         // marcador para o depurador do blueMSX: LD D,D / JR (tamanho+4) / texto (sem terminador)
         if (i >= t.size() || t[i].kind != Token::String || i + 1 != t.size() || t[i].text.empty()) SyntaxError();
         if (dry_) return true;
+        markers_used_ = true;
         Emit(0x52);
         Emit(0x18);
         Emit(static_cast<uint8_t>((t[i].text.size() + 4) & 0xFF));
@@ -881,6 +884,7 @@ bool Assembler::Directive(const std::string &w, const std::vector<Token> &t, siz
             has = true;
         }
         if (dry_) return true;
+        markers_used_ = true;
         Emit(0x40);
         Emit(0x18);
         if (has) {
@@ -1422,7 +1426,7 @@ void Assembler::ApplyFormat() {
         break;
     case Fmt::MegaRom: break; // tratado acima
     }
-    if (cas_req_ || wav_req_ || tsx_req_) BuildTape();
+    if (cas_req_ || wav_req_ || tsx_req_ || (opts_.want_tape && fmt_ == Fmt::Basic)) BuildTape();
 }
 
 std::string Assembler::SourceBase() const {
@@ -1481,7 +1485,7 @@ void Assembler::BuildTape() {
     };
     const std::string out_base = OutBase();
 
-    if (cas_req_ || tsx_req_) {
+    if (cas_req_ || tsx_req_ || opts_.want_tape) {
         static const uint8_t kMark[] = {0x1F, 0xA6, 0xDE, 0xBA, 0xCC, 0x13, 0x7D, 0x74};
         std::vector<uint8_t> cas(kMark, kMark + sizeof(kMark));
         std::vector<tape::TapeMark> marks; // o tamanho EXATO de cada bloco, para o .tsx (um bloco #4B por marca)
@@ -1500,9 +1504,9 @@ void Assembler::BuildTape() {
             result_.outs["tsx"] = tape::BuildTsx(cas, marks);
             msgs_.push_back("tsx file " + out_base + ".tsx");
         }
-        if (cas_req_) {
+        if (cas_req_ || opts_.want_tape) {
             result_.outs["cas"] = std::move(cas);
-            msgs_.push_back("cas file " + out_base + ".cas");
+            if (cas_req_) msgs_.push_back("cas file " + out_base + ".cas");
         }
     }
     if (wav_req_) {
@@ -1668,6 +1672,20 @@ AsmResult Assembler::Run() {
     result_.rc = rc_;
     result_.msgs = msgs_;
     result_.listing = std::move(listing_);
+    for (const LabelRec &r : label_order_) result_.symbols.push_back({r.display, r.value, r.page, true});
+    for (const std::string &n : const_order_) result_.symbols.push_back({n, table_[n].value, 0, false});
+    switch (fmt_) {
+    case Fmt::Rom: result_.format = "rom"; break;
+    case Fmt::MegaRom: result_.format = "megarom"; break;
+    case Fmt::Basic: result_.format = "basic"; break;
+    case Fmt::MsxDos: result_.format = "msxdos"; break;
+    case Fmt::Sinclair: result_.format = "sinclair"; break;
+    default: break;
+    }
+    if (fmt_ == Fmt::MegaRom) {
+        result_.mapper = mapper_ == Mapper::KonamiScc ? "konamiscc" : mapper_ == Mapper::Ascii8 ? "ascii8" : mapper_ == Mapper::Ascii16 ? "ascii16" : "konami";
+    }
+    result_.uses_markers = markers_used_;
     if (rc_ != 0 && rc_ != 25) result_.outs.clear();
     return result_;
 }

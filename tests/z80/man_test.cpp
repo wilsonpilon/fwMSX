@@ -198,6 +198,9 @@ void TestTopics() {
             check(Contains(man::Find("mamute-fita")->page, "TSAVE nome,ini,fim") && Contains(man::Find("mamute-fita")->page, ".wav") && Contains(man::Find("mamute-edit")->page, "NOME.cas") &&
                       Contains(man::Find("tape")->page, "tape new") && Contains(man::Find("tape")->page, "break tapin") && Contains(man::Find("fwasm-directives")->page, "tsx"),
                   "man: mamute-fita, tape (novos subcomandos e break tapin) e a diretiva .tsx do fwasm");
+            check(man::Find("asmrun") && Contains(man::Find("asmrun")->page, "BLOAD") && Contains(man::Find("asmrun")->page, "msxdos") && man::Find("sym") && man::Find("src") && man::Find("markers") &&
+                      Contains(man::Find("markers")->page, "LD B,B") && Contains(man::Find("break")->page, "jogo.asm:42"),
+                  "man: asmrun, sym, src, markers e o break com rotulo/arquivo:linha");
             check(Contains(man::Find("mamute-screens")->page, "TECLADO S") && Contains(man::Find("mamute-screens")->page, "Ctrl+S"), "mamute-screens: teclado S e as teclas dos paineis");
             check(Contains(man::Find("mamute-dump")->page, "F4") && Contains(man::Find("mamute-modes")->page, "DEFUSR=&HC000"), "mamute-dump (checksum) e mamute-modes (DEFUSR) escritos");
             check(Contains(man::HelpTable(100), "mon [linha]"), "o help lista o comando mon");

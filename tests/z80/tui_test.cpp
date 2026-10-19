@@ -79,9 +79,9 @@ int main() {
         const auto menus = r.model.BuildMenus();
         std::vector<std::string> titles;
         for (const auto &m : menus) titles.push_back(m.title);
-        check(titles == std::vector<std::string>({"Emulador", "Arquivo", "Maquina", "Midia", "Ferramentas", "Depurador", "Ajuda"}), "barra de menus: 7 menus");
+        check(titles == std::vector<std::string>({"Emulador", "Arquivo", "Maquina", "Midia", "Ferramentas", "Depurador", "Montador", "Ajuda"}), "barra de menus: 8 menus");
         const auto spans = r.model.TitleSpans();
-        check(spans.size() == 7 && spans[0].first == 0 && spans[1].first == spans[0].second, "TitleSpans: titulos contiguos");
+        check(spans.size() == 8 && spans[0].first == 0 && spans[1].first == spans[0].second, "TitleSpans: titulos contiguos");
     }
 
     // ---- F10, setas e comandos diretos ----
@@ -94,7 +94,7 @@ int main() {
         check(r.model.open_menu() == 1, "seta direita vai para o menu Arquivo");
         r.K(Key::Left);
         r.K(Key::Left);
-        check(r.model.open_menu() == 6, "seta esquerda no primeiro menu volta ao ultimo (Ajuda)");
+        check(r.model.open_menu() == 7, "seta esquerda no primeiro menu volta ao ultimo (Ajuda)");
         r.K(Key::Escape);
         check(r.model.mode() == TuiModel::Mode::Normal, "Esc fecha o menu");
 
@@ -318,6 +318,34 @@ int main() {
         r.K(Key::Enter); // arquivo (padrao novo.dsk)
         r.K(Key::Enter); // formato (padrao ds35)
         check(r.sent.size() == 2 && r.sent[0] == "newdisk \"novo.dsk\" ds35" && r.sent[1] == "disk A \"novo.dsk\"", "novo disco + inserir envia dois comandos");
+    }
+
+    // ---- Montador (menu 6): montar e rodar, simbolos, marcadores ----
+    {
+        Rig r(dir);
+        r.PickL(6, "Simbolos: resumo");
+        check(r.sent.back() == "sym", "Montador > Simbolos: resumo -> 'sym'");
+        r.PickL(6, "Marcadores .break/.debug: ligar");
+        check(r.sent.back() == "markers on", "Montador > Marcadores: ligar -> 'markers on'");
+        r.PickL(6, "Fonte em volta do PC (src)");
+        check(r.sent.back() == "src", "Montador > Fonte em volta do PC -> 'src'");
+        r.PickL(6, "Montar e rodar...");
+        check(r.model.mode() == TuiModel::Mode::Browser, "Montar e rodar: abre o navegador de arquivos (.asm)");
+        Key t;
+        t.type = Key::Char;
+        t.text = "t";
+        r.model.HandleKey(t);
+        r.Type("jogo.asm");
+        r.K(Key::Enter); // o caminho
+        r.K(Key::Enter); // as opcoes (vazio)
+        check(r.sent.back().rfind("asmrun \"", 0) == 0 && r.sent.back().find("jogo.asm\"") != std::string::npos, "Montar e rodar -> " + r.sent.back());
+        r.PickL(6, "Montar so' (carrega simbolos, nao roda)...");
+        r.model.HandleKey(t);
+        r.Type("x.asm");
+        r.K(Key::Enter);
+        r.Type("-z");
+        r.K(Key::Enter);
+        check(r.sent.back().rfind("asmrun -n -z \"", 0) == 0 && r.sent.back().find("x.asm\"") != std::string::npos, "Montar so' com -z -> " + r.sent.back());
     }
 
     // ---- ferramentas ----

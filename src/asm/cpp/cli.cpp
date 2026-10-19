@@ -2,6 +2,7 @@
 // do asMSX 1.2.0 (secao 1.5.1).
 #include "cli.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -116,6 +117,35 @@ int RunAsmCommand(const std::vector<std::string> &tokens) {
         if (!opts.silent) std::cout << "gerado: " << path << " (" << kv.second.size() << " bytes)\n";
     }
     return 0;
+}
+
+bool AssembleFile(const std::string &source, const AsmOptions &opts, AsmResult &result, std::string &dir, std::string &base, std::string &error) {
+    std::vector<uint8_t> raw;
+    if (!ReadAll(source, raw)) {
+        error = "nao foi possivel ler '" + source + "'";
+        return false;
+    }
+    const size_t slash = LastSlash(source);
+    dir = slash == std::string::npos ? "" : source.substr(0, slash + 1);
+    base = StripExt(source);
+    DiskFiles files(dir);
+    AsmOptions o = opts;
+    result = Assemble(source, std::string(raw.begin(), raw.end()), o, &files);
+    return true;
+}
+
+bool SaveOutputs(const std::string &dir, const std::string &base, const AsmResult &r, const std::vector<std::string> &skip,
+                 std::vector<std::string> &written, std::string &error) {
+    for (const auto &kv : r.outs) {
+        if (std::find(skip.begin(), skip.end(), kv.first) != skip.end()) continue;
+        const std::string path = kv.first.find('.') == std::string::npos ? base + "." + kv.first : dir + kv.first;
+        if (!WriteAll(path, kv.second)) {
+            error = "nao foi possivel gravar '" + path + "'";
+            return false;
+        }
+        written.push_back(path);
+    }
+    return true;
 }
 
 } // namespace fwasm

@@ -43,10 +43,12 @@ std::vector<std::string> SplitLines(const std::string &text) {
 const std::vector<std::string> kWords = {
     "help", "exit", "quit", "clear", "emu start", "emu attach", "emu detach", "emu stop", "emu status", "newdisk", "romdb",
     "cas", "fitadb", "msxdisk", "version", "status", "reset", "pause", "resume", "step", "type", "peek", "poke", "regs",
-    "cart", "disk", "eject", "tape", "state save", "state load", "screenshot"};
+    "cart", "disk", "eject", "tape", "state save", "state load", "screenshot", "asm", "asmrun", "sym", "src", "markers"};
 
 const std::vector<std::string> kRomExts = {"rom", "mx1", "mx2", "bin"};
 const std::vector<std::string> kDskExts = {"dsk"};
+const std::vector<std::string> kAsmExts = {"asm", "z80", "s"};
+const std::vector<std::string> kSymExts = {"sym"};
 const std::vector<std::string> kTapeExts = {"cas", "tsx", "tzx", "wav"};
 const std::vector<std::string> kSstExts = {"sst"};
 
@@ -250,6 +252,28 @@ std::vector<TuiModel::MenuDef> TuiModel::BuildMenus() const {
                   {"Mudar registrador...", wiz("Registrador", {{"Nome (a, hl, pc, sp...)", "hl", false, {}}, {"Valor", "0", false, {}}},
                                                [](const std::vector<std::string> &v) { return "reg " + v[0] + " " + v[1]; })},
                   {"Mapa de slots", cmd("slots")}}});
+
+    m.push_back({"Montador",
+                 {{"Montar e rodar...", wiz("Montar e rodar", {{"Fonte .asm", "", true, kAsmExts}, {"Opcoes (-z = sintaxe Zilog; vazio = padrao)", "", false, {}}},
+                                            [](const std::vector<std::string> &v) { return "asmrun " + (v[1].empty() ? std::string() : v[1] + " ") + Quote(v[0]); })},
+                  {"Montar so' (carrega simbolos, nao roda)...", wiz("Montar sem rodar", {{"Fonte .asm", "", true, kAsmExts}, {"Opcoes (-z = sintaxe Zilog; vazio = padrao)", "", false, {}}},
+                                                                     [](const std::vector<std::string> &v) { return "asmrun -n " + (v[1].empty() ? std::string() : v[1] + " ") + Quote(v[0]); })},
+                  {"Montar arquivos (sem a maquina)...", wiz("Montar", {{"Fonte .asm", "", true, kAsmExts}},
+                                                             [](const std::vector<std::string> &v) { return "asm " + Quote(v[0]); })},
+                  sep(),
+                  {"Simbolos: resumo", cmd("sym")},
+                  {"Simbolos: listar", cmd("sym list")},
+                  {"Simbolo: procurar...", wiz("Procurar simbolo", {{"Nome ou endereco", "", false, {}}},
+                                               [](const std::vector<std::string> &v) { return "sym " + v[0]; })},
+                  {"Carregar um .sym...", wiz("Carregar simbolos", {{"Arquivo .sym", "", true, kSymExts}},
+                                              [](const std::vector<std::string> &v) { return "sym load " + Quote(v[0]); })},
+                  {"Limpar simbolos", cmd("sym clear")},
+                  sep(),
+                  {"Breakpoint em rotulo ou arquivo:linha...", wiz("Breakpoint no fonte", {{"Rotulo (loop, loop+4) ou arquivo:linha (jogo.asm:42)", "", false, {}}},
+                                                                 [](const std::vector<std::string> &v) { return "break " + v[0]; })},
+                  {"Fonte em volta do PC (src)", cmd("src")},
+                  {"Marcadores .break/.debug: ligar", cmd("markers on")},
+                  {"Marcadores .break/.debug: desligar", cmd("markers off")}}});
 
     m.push_back({"Ajuda",
                  {{"Teclas e uso (F1)", [self] { self->mode_ = Mode::Help; }},

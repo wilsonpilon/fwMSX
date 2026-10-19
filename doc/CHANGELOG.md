@@ -7,6 +7,22 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.40.5] - 2026-10-19 - "Antarctic Adventure: Montador na TUI" (Konami)
+
+### Adicionado -- o montador na TUI e a base do depurador avancado
+- **`asmrun [-z] [-n] [--dos-disk <arq.dsk>] <fonte.asm>`** (ponte, console, TUI, terminal e janela): monta com o fwasm, grava as saidas ao lado do fonte e CARREGA na maquina: ROM/MegaROM como cartucho (mapper certo) e reinicia; `.basic` por uma fita montada na hora
+  (`BLOAD"CAS:",R` digitado sozinho); `.msxdos` num disco de sistema (copia do `msxdos1.dsk`, ENTER da data e o nome do programa digitados sozinhos). `-n` so' monta.
+- **Simbolos e linhas do fonte no depurador** (`dbg::Symbols`): `break loop`, `until loop+4`, `dis inicio`, `break jogo.asm:42`; `sym` (resumo, `load`, `clear`, `list`, consulta por nome ou endereco), `src` (as linhas do fonte em volta do PC). Os eventos de parada, `breaks`, `stepi`/`next`, `dis` e o painel Z80
+  Debugger mostram o rotulo (`sym=loop+2 src=jogo.asm:42`).
+- **Marcadores `.break` e `.debug` do fonte** (blueMSX) funcionando no Z80: `.break` para a maquina, `.break <end>` cria um breakpoint, `.debug "texto"` imprime como evento; `markers on|off` (o `asmrun` liga sozinho quando o fonte os usa).
+- **Menu Montador na TUI** (Montar e rodar, Montar so', Montar arquivos, simbolos, breakpoint em rotulo/arquivo:linha, fonte em volta do PC, marcadores); a janela ganhou "Montar e rodar um fonte .asm..." no menu Depurador.
+- **fwasm**: o BOM UTF-8 do inicio do fonte (e dos `.include`) e' ignorado -- o asMSX para sem gerar nada e o fwasm dava erro de sintaxe; UTF-8 em comentarios e strings passa cru (igual ao asMSX). `AsmResult` ganhou `symbols`, `format`, `mapper`, `uses_markers`; `AsmOptions::want_tape`.
+- Manual: `man asmrun`, `man sym`, `man src`, `man markers`; `break` explica rotulos e arquivo:linha.
+- Testes: `controltest` (+33, inclusive um programa MSX-DOS que RODA num disco de sistema real), `asmtest` (+10), `tuitest` (+9), `mantest`.
+
+### Achado
+- O `.debug "texto"` do asMSX emite `JR (tamanho+4)`, que salta 4 bytes ALEM do texto (o fwasm reproduz byte a byte). Vale conferir no blueMSX se esse deslocamento e' intencional. Detalhes em `doc/debug-spec.md`, secao 8.3.
+
 ## [1.40.4] - 2026-10-19 - "Antarctic Adventure: Mamute, Fita" (Konami)
 
 ### Adicionado -- fita cassete em todos os pontos (`.cas`, `.tsx`/`.tzx` e `.wav`)

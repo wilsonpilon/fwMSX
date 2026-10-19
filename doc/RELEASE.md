@@ -17,6 +17,25 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.40.5 -- "Antarctic Adventure: Montador na TUI" (Konami) (2026-10-19)
+
+**Pedido do usuario**: integrar o montador (asm) ao painel TUI, seguir `.debug`/`.break` para chegar perto do depurador avancado, garantir BOM/UTF-8 no fwasm e levar a fita para a TUI se preciso (ja' estava, 1.40.4). Decisoes (AskUserQuestion):
+"montar e rodar" cobre TUDO, inclusive MSX-DOS; entram os marcadores no Z80, os rotulos do `.sym` e o arquivo:linha do fonte. O fonte do asMSX nao foi lido; o `resource/asmsx.exe` serviu de oraculo para o BOM/UTF-8 e para os bytes de `.debug`/`.break`.
+
+- **BOM/UTF-8**: com BOM o asMSX nao gera nada (para em silencio apos "Assembling source file", `rc=0`, deixando `~tmppre.4`); o fwasm agora ignora o BOM (fonte e `.include`). UTF-8 em comentario e string sai cru, byte a byte, igual ao asMSX; acento em rotulo e' erro nos dois.
+- **fwasm**: `AsmResult::symbols` (rotulos e constantes), `format`, `mapper` (MegaROM), `uses_markers`; `AsmOptions::want_tape` (monta o `.cas` de um `.basic` sem a diretiva); `fwasm::AssembleFile`/`SaveOutputs` (cli.cpp, agora tambem no `FWASM_LIB_SOURCES`) para montar do disco com includes relativos.
+- **`dbg::Symbols`**: simbolos + mapa endereco -> arquivo:linha no `Debugger`; `Resolve` (`nome+4`), `Describe`, `AddressOfLine`, `ParseSym` (`.sym` do asMSX/fwasm, incl. `01h:8000h`). `need_addr` da ponte aceita rotulos e `arquivo:linha`.
+- **Marcadores**: `Machine::CheckMarkers()` antes de cada instrucao quando ligado (`LD B,B`+`JR 0` = parar; `+JR 2 +word` = breakpoint em endereco; `LD D,D`+`JR n`+texto = evento de texto). `Debugger::TakeMarkerSkip` evita parar de novo no mesmo marcador depois do `go`
+  (o `skip_once_` so' funciona com breakpoints armados). Desligados por padrao: custam uma leitura de memoria por instrucao.
+- **`asmrun`** (`Commander::AsmRun`): ROM/MegaROM (`Host::LoadCartridge`; konami -> `konami4`, konamiscc -> `konami5`), `.basic` (fita temporaria + `type`), `.msxdos` (copia do disco de sistema com `msxdisk::DiskImage` + ENTER da data + nome). A espera do boot e' uma fila de teclas vazias.
+  **Achado de teste**: depois de um `asmrun` de ROM com loop infinito a maquina nunca chega ao BASIC; o teste do `.basic` precisa de `cart -` antes. **Achado de teste 2**: o MSX-DOS 1 pergunta a data na partida; sem o ENTER o nome do programa vai parar no prompt de data.
+- **Interfaces**: menu Montador na TUI (8 menus; `Ajuda` virou o 8o), janela (menu Depurador), modo terminal, `kWords` do console, painel Z80 Debugger com o rotulo na coluna da direita. `man asmrun/sym/src/markers`.
+- **Achado de ferramenta**: o `.debug` do asMSX gera `JR (tamanho+4)`: salta 4 bytes alem do texto. Reproduzido byte a byte (golden); para o depurador imprimir o texto basta ler `d-4` caracteres a partir de `pc+3`.
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 27/27 nos dois.
+- **Fora de escopo / proximos**: breakpoints condicionais e em E/S, trace, passo por linha de fonte, simbolos de MegaROM por subpagina, breakpoints que sobrevivem a troca de cartucho (`asmrun` recria a maquina e os breakpoints criados antes se perdem).
+
+---
+
 ## v1.40.4 -- "Antarctic Adventure: Mamute, Fita" (Konami) (2026-10-19)
 
 **Suporte total a fita cassete** (pedido do usuario depois de perguntar onde a fita existia: emulador sim, Mamute so' um `R` de mentira, fwasm so' gerava). Decisoes (AskUserQuestion): patch 1.40.4 e `.wav` incluido.

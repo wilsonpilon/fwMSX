@@ -1,6 +1,7 @@
 #include "machine.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <cstddef>
 #include <cstring>
 #include <fstream>
@@ -911,6 +912,7 @@ void Machine::RunFrame() {
     int budget = kFrameCycles;
     while (budget > 0) {
         if (debugger_.armed() && debugger_.CheckPc(cpu_->pc())) return; // para ANTES da instrucao em PC
+        if (debugger_.markers() && CheckMarkers()) return;
         budget -= StepInstruction();
         if (debugger_.TakeWatchHit(cpu_->pc())) return;
     }
@@ -922,10 +924,52 @@ bool Machine::RunUntilStop(long max_cycles) {
     while (budget > 0) {
         if (debugger_.stopped()) return true;
         if (debugger_.armed() && debugger_.CheckPc(cpu_->pc())) return true;
+        if (debugger_.markers() && CheckMarkers()) return true;
         budget -= StepInstruction();
         if (debugger_.TakeWatchHit(cpu_->pc())) return true;
     }
     return debugger_.stopped();
+}
+
+// Os marcadores do depurador do blueMSX que o asMSX/fwasm colocam no codigo (doc/debug-spec.md, secao 8):
+//   .BREAK            LD B,B / JR 0               parar aqui
+//   .BREAK <end>      LD B,B / JR 2 / DW <end>    pontos de parada no endereco (nao para agora)
+//   .DEBUG "texto"    LD D,D / JR n / texto       imprime o texto (JR salta n = tamanho+4); a maquina continua
+// Sao instrucoes de verdade (LD B,B e LD D,D sao NOPs): sem esta checagem o programa roda igual.
+bool Machine::CheckMarkers() {
+    const bool skip = debugger_.TakeMarkerSkip();
+    const uint16_t pc = cpu_->pc();
+    const uint8_t op = ReadMemory(pc);
+    if (op != 0x40 && op != 0x52) return false;
+    if (ReadMemory(static_cast<uint16_t>(pc + 1)) != 0x18) return false;
+    const uint8_t d = ReadMemory(static_cast<uint16_t>(pc + 2));
+    if (op == 0x40) {
+        if (d == 0x00) {
+            if (skip) return false; // acabamos de continuar PARADOS neste mesmo marcador
+            debugger_.MarkerBreak(pc);
+            return true;
+        }
+        if (d == 0x02) {
+            const uint16_t addr = static_cast<uint16_t>(ReadMemory(static_cast<uint16_t>(pc + 3)) | (ReadMemory(static_cast<uint16_t>(pc + 4)) << 8));
+            bool known = false;
+            for (const dbg::Breakpoint &b : debugger_.breaks()) known = known || b.addr == addr;
+            if (!known) {
+                debugger_.AddBreak(addr);
+                char buf[48];
+                std::snprintf(buf, sizeof(buf), "! marker break-set addr=%04X pc=%04X", addr, pc);
+                debugger_.PostEvent(buf);
+            }
+        }
+        return false;
+    }
+    if (d < 5 || d > 0x7F) return false; // texto de 1 a 123 caracteres
+    std::string text;
+    for (int i = 0; i < d - 4; ++i) {
+        const uint8_t c = ReadMemory(static_cast<uint16_t>(pc + 3 + i));
+        text += (c >= 0x20 && c < 0x7F) ? static_cast<char>(c) : '.';
+    }
+    debugger_.MarkerText(pc, text);
+    return false;
 }
 
 int Machine::StepInstruction() {

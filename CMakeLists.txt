@@ -443,6 +443,7 @@ set(FWASM_LIB_SOURCES
         src/asm/cpp/tables.cpp
         src/asm/cpp/preproc.cpp
         src/asm/cpp/assembler.cpp
+        src/asm/cpp/cli.cpp # AssembleFile/SaveOutputs: o comando asmrun da ponte monta fontes do disco
         src/tape/cpp/tsx_writer.cpp # a diretiva .TSX do fwasm (o mesmo escritor da fita)
 )
 
@@ -517,6 +518,7 @@ set(SPLASH_LIB_SOURCES
 set(MACHINE_LIB_SOURCES
         src/machine/machine.cpp
         src/debug/cpp/debugger.cpp
+        src/debug/cpp/symbols.cpp
         src/debug/cpp/debug_view.cpp
         src/debug/c/dbg_flow.c
         src/debug/fortran/dbg_fmt.f90

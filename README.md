@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.40.4 "Antarctic Adventure: Mamute, Fita", Konami)
+## Estado atual (v1.40.5 "Antarctic Adventure: Montador na TUI", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.40.5 o montador na TUI: `asmrun` monta e CARREGA (ROM, fita ou disco), simbolos e linhas do fonte no depurador (`break loop`, `break jogo.asm:42`, `sym`, `src`), marcadores `.break`/`.debug` funcionando no Z80, BOM/UTF-8 no fwasm**
 **1.40.4 Mamute: fita cassete em todos os pontos -- `.cas`, `.tsx` e `.wav` (ler e gravar) no emulador (`tape new/list/seek/save/put/load`), no depurador (`break tapin`), no Mamute (`TAPE`, `R`, `TLOAD`, `TSAVE`, `A OT>jogo.cas`) e no fwasm (`.TSX`)**
 **1.40.3 Mamute: os comandos do SUPER-X (prefixo X) -- `XD XA XI XH XM`, `XBT XRT XFL XCM XFD`, `XRG XGO XTR`, portas, disco (`XDK XFS XTP XL% XS%`...) e notas, com alvos `#slot-sub`/`#V`; `man mamute-superx`**
 **1.40.2 Mamute: as telas -- `DM`, `M`, `S`, `ZAP` (setores de disco) e `SCR` (memoria como pixels) como paineis interativos na TUI, e listagens em PDF**

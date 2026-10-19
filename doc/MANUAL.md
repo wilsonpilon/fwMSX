@@ -1275,6 +1275,20 @@ continua tendo prioridade.
 **Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
 do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [romdb-spec.md](romdb-spec.md).
 
+## Montador no emulador e depurador com simbolos (1.40.5)
+
+O montador **fwasm** agora monta e carrega pelo proprio emulador. Com o emulador em execucao (`emu start`), na TUI use o menu **Montador** (ou, no console, `asmrun`; na janela, Depurador > Montar e rodar):
+
+| Comando | O que faz |
+|---|---|
+| `asmrun jogo.asm` | monta, grava `jogo.rom`/`.sym`/... ao lado do fonte e **carrega**: ROM e MegaROM entram como cartucho (a maquina reinicia); `.basic` vira uma fita montada na hora e o `BLOAD"CAS:",R` e' digitado sozinho; `.msxdos` e' copiado para uma copia do disco de sistema (`msxdos1.dsk` na pasta atual, ou `--dos-disk arq.dsk`; exige `emu start --disk`) e o programa e' executado |
+| `asmrun -n jogo.asm` | so' monta (nada e' carregado), mas os simbolos entram no depurador |
+| `asmrun -z jogo.asm` | sintaxe Zilog |
+
+Depois do `asmrun` o depurador conhece o fonte: `break loop`, `until loop+4`, `dis inicio`, `break jogo.asm:42` (arquivo:linha); `sym` (resumo; `sym list [texto]`, `sym load arq.sym`, `sym clear`, `sym <nome|endereco>`); `src` mostra as linhas do fonte em volta do PC; os eventos de parada e o painel Z80 Debugger mostram
+`loop+2` e `jogo.asm:42`. Os marcadores `.break` (para a maquina), `.break <end>` (cria um breakpoint) e `.debug "texto"` (imprime como evento `! debug ...`) do fonte funcionam no Z80 e sao ligados sozinhos quando o fonte os usa (`markers on|off`).
+Um fonte salvo com **BOM UTF-8** (Bloco de Notas do Windows) monta normalmente, e acentos em comentarios e strings passam crus (iguais ao asMSX). Detalhes: [debug-spec.md](debug-spec.md), secao 8.
+
 ## Fita cassete: em todos os pontos (1.40.4)
 
 A fita aceita **tres formatos**, escolhidos pela extensao em qualquer lugar: `.cas` (imagem crua), `.tsx`/`.tzx` (blocos #4B do Kansas City Standard) e `.wav` (audio de verdade, 44100 Hz mono; ler passa pelo "ripper",
