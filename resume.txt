@@ -1,76 +1,90 @@
-fwMSX -- como retomar (atualizado em 2026-10-19, apos a 1.40.4)
+fwMSX -- como retomar (atualizado em 2026-10-19, apos a 1.40.4 "Antarctic Adventure: Mamute, Fita")
 
-== Em OUTRO computador (o caminho que importa) ==
-1. git clone / git pull de origin main (traz tudo: codigo, docs, ROMs de teste, dist/).
-2. Abrir o Claude Code na pasta do repositorio: ele le o CLAUDE.md sozinho (regras fixas de release).
-3. Pedir: "leia o OUTLINE.md e me diga onde paramos". O OUTLINE.md (secao 2) e' o "onde paramos" oficial.
-   `claude --resume` NAO funciona em outra maquina (so' na mesma onde a sessao rodou).
+Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
+as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
+
+== Em OUTRO computador / outra IA (o caminho que importa) ==
+1. git clone / git pull de origin main (traz codigo, docs, dist/ rastreado e ROMs de teste).
+2. Abrir o Claude Code (ou outra IA) NA PASTA do repositorio. O Claude Code le o CLAUDE.md sozinho. Outra IA: peca para ler, nesta ordem,
+   CLAUDE.md -> OUTLINE.md -> este arquivo -> doc/SPEC.md secao 5.0.
+3. Pedir: "leia o OUTLINE.md e me diga onde paramos".
+   `claude --resume <id>` NAO funciona em outra maquina (so' onde a sessao rodou). A memoria do Claude (C:\Users\<usuario>\.claude\projects\...\memory)
+   tambem e' local; o que importa dela esta' repetido aqui e no OUTLINE.
+4. Idioma: conversar em PORTUGUES. Texto de UI/docs/comentarios SEM ACENTO (ASCII puro; "e'" em vez de "e", "nao", "secao"). Comentarios de codigo
+   explicam o PORQUE.
 
 == Na MESMA maquina ==
-claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: montador, comparacao com o fMSX, 1.36.x)
-(sessao anterior: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
+claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao das fases 1-4 do Mamute e da fita, 2026-10-19)
+(sessoes anteriores: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
-== Estado ao encerrar (2026-10-13) ==
-- Ultima versao publicada: 1.40.4 "Antarctic Adventure: Mamute, Fita" (fita em todos os pontos) (Konami). main == origin/main; tags 1.36.0 a 1.40.4, branches v1.36.x/v1.37.x,
-  releases do GitHub com zip + tar.gz.
-- fwasm x asMSX v1.2.0: medido 100% (6606 casos + 1 programa real), estimado ~95%; pendencias em doc/asm-spec.md.
-- ctest 27/27 em Windows (build.ps1) e Linux/WSL (build.sh).
-- 1.40.4: fita .cas/.tsx/.wav em todos os pontos (tape_io, TapeDeck, comando tape, break tapin, Mamute TAPE/R/TLOAD/TSAVE/A OT, fwasm .TSX); ver doc/tape-spec.md secao 12.
-- 1.36.0: montador Z80 fwasm (fwmsx --asm, comando asm do console); C + Fortran + C++. Saidas .z80/.sym/.txt.
-- 1.36.1: texto de 40 colunas/TEXT80 comeca no pixel 9 (como o fMSX).
-- 1.36.2: R-Type inicia (MegaROM de bancos nao potencia de 2 completada para 2^n; AB no fim = comeca nas ultimas paginas).
-- 1.39.0: fwasm completo (rom/megarom/basic/msxdos/cas/wav/sinclair/size/search/callbios/calldos/debug/break); formats.golden (382 casos, oraculo asmsx.exe); tools/asmdiff/gen_formats.py; src/asm/asm/wav_synth.asm.
-- 1.38.5: man fwasm (manual do nosso montador; manter fwasm-directives em dia), NestorBASIC, SEE Tracker, MSXBAS2ROM (tools/paleobasic/import_tools_help.py).
-- 1.38.4: man com MSX-DOS 2 partido (dos2-<cmd>, dos2-fn-XXh), MSX-DOS 1, CP/M, Z80, R800, FM-PAC, Turbo-Basic, CALL de firmware e ref-* (tools/paleobasic/import_manuals_help.py).
-- 1.38.3: man com Red Book (973), MSX2 Technical Handbook (1356) e Basic Dignified (21) (tools/paleobasic/import_books_help.py -> man_pages_books.cpp); links -> VER TAMBEM.
-- 1.38.2: man com 554 topicos de BIOS/BDOS/RAM + 33 de hardware (paleobasic -> tools/paleobasic/import_bios_help.py -> man_pages_msxbios.cpp); man -l e man -k.
-- 1.38.1: man/help com 172 palavras do MSX-BASIC + 23 topicos do manual (paleobasic -> tools/paleobasic/import_basic_help.py -> man_pages_basic.cpp).
-  Proximo: BiosCallsHelpData/BiosDocHelpData/HardwareHelpData do paleobasic.
-- 1.38.0: help agrupado + help <cmd> + man <topico> (src/man: C++/C/Fortran/Asm; referencia do MSX conferida contra as BIOS; doc/man-spec.md).
-  BUILD: gfortran 16.2 so' compila no PowerShell (Git Bash da' segfault no f951); iachar derruba o f951 (usar ichar).
-- 1.37.8: --keys usa o mesmo ParseTypeSpec (modo literal).
-- 1.37.7: type com {tecla}, {ctrl}+{c} (juntas), {ctrl}{c} (sequencia), {enter*3}; ParseTypeSpec le a linha crua.
-- 1.37.6: TUI: saida de comandos capturada por thread (ThreadCaptureBuf); antes redesenhos viravam codigos ANSI no historico.
-- 1.37.5: TUI redesenha so' quando muda. ABERTO: lentidao/perda de letras ao digitar no --cli (relato do usuario) NAO reproduzida em medicao
-  (tools/conperf); pedir detalhes (terminal, foco, --cli x --tui). Ver OUTLINE.
-- 1.37.4: type/--keys/modo terminal digitam a pontuacao pelo layout da BIOS (byte 002Ch; japones x internacional). F10 (Z80 Debugger) e
-  splash CONFERIDOS em tela com tools/wincap/wincap.ps1 (manda teclas por PostMessage e captura so' a janela).
-- 1.37.3: painel Z80 Debugger tambem na TUI (menu Depurador; abre sozinho em break/watch/until) via comando novo `dbgui` da ponte
-  (mesmo modelo da janela, calculado no emulador). README/MANUAL/specs atualizados ao estado do dia.
-- 1.37.2: Z80 DEBUGGER VISUAL NA JANELA (F10/menu Depurador; abre sozinho em break/watch/until/--debug): registradores no topo, ENDERECO: bytes
-  instrucao, ENTER/setas/G/D/M/S/J/R/C/B/Q, dump de 8 bytes com os caracteres do MSX, tudo com a FONTE DA BIOS (CGTABL). Modelo em
-  src/debug/cpp/debug_view (testado em controltest). AINDA NAO conferido a olho com o teclado real na janela.
-- 1.37.1: splash de abertura (3 s; --splash/--no-splash; menu Ferramentas>Interface; terminal so' com --splash; --cmd NUNCA, ainda nao existe),
-  icone do aplicativo (recurso do Windows + janela Linux + .desktop) e fwmsx.cfg (tema/letra/moldura/splash). Assets: tools/assets/make_assets.py.
-  Ver doc/splash-spec.md. MANUAL com o depurador passo a passo.
-- 1.37.0: DEPURADOR BASICO + eventos assincronos (doc/debug-spec.md): break/watch/stepi/next/until/go/stop/jump/dis/mem/stack/reg/slots
-  na ponte, console, TUI (menu Depurador) e modo terminal; eventos "! break ..." por conexao (events on); --break/--watch/--debug.
-  PROXIMO pedido do usuario: depurador sofisticado, por partes (openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do
-  MS-DOS) -- ver debug-spec.md secao 7.
-- tests/media/: 19 ROMs de jogo PROVISORIAS do acervo D:\msx\archive\download.file-hunter.com - 24-06-2026\Games (o usuario
-  liberou o uso; saem na versao final, que nao leva midia nenhuma nem as ROMs do fMSX -- havera um baixador de ROMs do site
-  do fMSX e um navegador do file-hunter, planejados mas nao iniciados). Comparacao com o fMSX: 26/26 casos.
-- Ferramenta nova (fora do ctest): tools/fmsxgo_ref/compare.py compara quadros do fwMSX com o fMSX ORIGINAL
-  (resource/fMSX compilado sem janela por tools/fmsx_ref/Headless.c; --ref fmsxgo usa o port em Go como 2a opiniao).
-  26 casos aprovados (19 em tests/media + 7 com ROMs do fmsxgo). Precisa de gcc (MSYS2 UCRT64) no PATH, Go so' para --ref fmsxgo, e das ROMs de jogo
-  de E:\fmsxgo\media (se nao existirem no outro PC, os casos de jogo sao ignorados). Ver doc/fmsx-compare-spec.md.
+== O projeto em duas linhas ==
+fwMSX: emulador de MSX1/MSX2/MSX2+ de ESTUDO (Wilson Pilon), em C, C++, Assembly (NASM, ABI dupla Win64/SysV) e Fortran; cada fase relevante exercita as 4
+linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo: integrar ao msxide num utilitario "MSX-PoorManOS".
+
+== Estado ao encerrar (2026-10-19) ==
+- Ultima versao publicada: 1.40.4 "Antarctic Adventure: Mamute, Fita" (Konami). main == origin/main; tags 1.36.0 a 1.40.4, branches v1.36.x a v1.40.4;
+  releases do GitHub com zip + tar.gz. ctest 27/27 em Windows (build.ps1) e Linux/WSL (build.sh).
+- 1.40.4: FITA EM TODOS OS PONTOS. `.cas`, `.tsx`/`.tzx`, `.wav` (ler e gravar) por uma camada so' (src/tape/cpp/tape_io); TapeDeck (tape_deck: a fita sem
+  hardware; o TapeEngine herda dele); comando `tape` (new list seek protect write mode save put load); `break tapin`/`until tapoon`/`dis tapion` (nomes das 6
+  entradas da fita na BIOS); Mamute TAPE R TLOAD TSAVE, LOAD/SAVE de fita e `A OT>x.cas` (online usa a fita da MAQUINA via IMemory::Tape(), offline um deck
+  proprio; `man mamute-fita`); fwasm `.TSX`; menus da TUI/janela; banco de fitas varre .wav. Prova de ponta a ponta: asme2etest (o .cas/.tsx/.wav montado
+  pelo fwasm carrega por BLOAD"CAS:",R e RODA; o .tsx tambem pelos pulsos). Ver doc/tape-spec.md secao 12.
+- 1.40.0 a 1.40.3: MAMUTE, o monitor Z80 portado do projeto paleobasic (PureBasic, resource/paleobasic/src/editor/assemblers/Mamute*.pbi). Fases: 1 (nucleo,
+  online/offline, `mon`/`--mon`, mamute.cfg), 2 (EDIT/LIST/A/MAP, monta pelo fwasm), 3 (paineis DM M S ZAP SCR na TUI, PDF), 4 (SUPER-X: comandos X*, CL, variaveis
+  @, alvos #slot-sub/#V/#S, disco, notas dist/SUPER-X-PT.notas). Decisoes do usuario: entrega por fases; EDIT/A traduzido para o fwasm; offline = memoria
+  privada de 16 blocos + Z80 do fwMSX; janelas viram paineis da TUI e versoes de linha no CLI. Detalhes: doc/mamute-spec.md.
+- fwasm x asMSX v1.2.0: medido 100% (6606 casos dourados + 2 programas reais), estimado ~95%; pendencias em doc/asm-spec.md. NAO ler o fonte do asMSX (fwasm e' clean-room).
+- Antes disso: 1.37.x depurador basico + janela Z80 Debugger + splash + TUI/terminal; 1.38.x man/help (BIOS, livros, MSX-DOS, fwasm...); 1.39.x fwasm completo.
+- Git: nada pendente alem do que e' de proposito fora do git (abaixo).
+
+== Regras de release (CLAUDE.md tem o texto completo; resumo do que ja' deu retrabalho) ==
+- Versao X.Y.Z: X = empresa (1 = Konami), Y = jogo NOVO de MSX (proximo: Hyper Sports 1.41, depois a lista do CLAUDE.md), Z = patch com subtitulo. Na duvida: patch.
+- Bumpar src/common/version.h ANTES do primeiro build de qualquer rodada (o build nomeia o pacote em dist/ pela versao do header).
+- Build Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1` (de preferencia pela ferramenta PowerShell) e Linux: `wsl -e bash -lc 'cd /mnt/e/fwMSX && ./build.sh'`;
+  os DOIS precisam fechar com ctest 100% (27 suites). Matar fwMSX.exe/fwMSXc.exe/mamutetest antes de recompilar.
+- Docs vivos no MESMO commit da feature: doc/SPEC.md (5.0), CHANGELOG, RELEASE, o doc/*-spec.md da area, README, MANUAL, OUTLINE, este resume.txt.
+- `git add` com caminhos explicitos (nunca -A/.); commit termina com `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`;
+  `git tag X.Y.Z` (SEM "v") + `git branch vX.Y.Z`; `git push origin main X.Y.Z vX.Y.Z`;
+  `gh release create X.Y.Z dist/fwMSX-X.Y.Z.zip dist/fwMSX-X.Y.Z-linux.tar.gz --title "<Jogo>: <Subtitulo> (Konami) - fwMSX X.Y.Z" --notes ...`.
+- Pesquisar e PERGUNTAR (AskUserQuestion) antes de implementar item pendente cuja premissa possa ter mudado.
+- Smoke test de CLI com estado persistente: SEMPRE num diretorio temporario isolado, nunca contra dist/roms/roms.db.
+- Nao fotografar a area de trabalho do usuario (para conferir a janela use tools/wincap/wincap.ps1, que captura so' a janela).
+
+== Pegadinhas de ferramenta (aprendidas na dor) ==
+- Heredocs/`python -` com barra invertida corrompem arquivos: um `\\n` dentro de string C++ virou QUEBRA DE LINHA REAL. Para qualquer texto com `\` use as
+  ferramentas Write/Edit (ou grave um .py com Write e rode-o). Confira com `awk` se ha' aspas abertas apos editar por script.
+- gfortran so' compila no PowerShell (no Git Bash o f951 da' segfault); `iachar` derruba o f951 (use `ichar`).
+- Build do WSL pode ser morto por falta de memoria; se acontecer, rode `./build.sh` de novo (e' incremental).
+- Rodar build.ps1 pelo bash gera build velho; use a ferramenta PowerShell.
+- Em teste de ponta a ponta no modo RAPIDO de fita, o BLOAD termina dentro dos quadros da tecla ENTER: ponha o breakpoint ANTES de digitar.
+- fwasm: dentro de `namespace fwasm { namespace {` um nome `tape::` pode resolver errado e causar "undefined reference"; inclua headers no topo, fora do namespace.
+- Estilo: `git status` mostra dist/*.exe e binarios de teste modificados -- NAO commitar (dist/fwMSX.exe e' rastreado e e' regenerado a cada release).
+
+== Fora do git de proposito ==
+resource/menu.alf (fonte binaria sem relacao), tools/asmdiff/__pycache__, binarios de teste soltos em dist/ (asmtest, controltest, mamutetest, ... o usuario
+ainda nao respondeu se quer remove-los do git), resource/asmsx.exe (oraculo do montador; *.exe e' ignorado), resource/Amazonia64kV5/ (nao rastreado), dist/roms/.
+
+== Proximos passos (ordem sugerida; nada em andamento) ==
+1. DEPURADOR SOFISTICADO (o usuario pediu DEPOIS do Mamute): por partes, inspirado em openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS.
+   Ver doc/debug-spec.md secao 7. Perguntar ao usuario por onde comecar (AskUserQuestion) antes de codar.
+2. Itens pequenos do Mamute (nenhum pedido): SCR em pixels reais na janela ImGui; TAB do console com os comandos do monitor; a "cruz" de troca entre
+   XD/XA/XI/XM/XH; CLS; cores do XCO pintando de fato (hoje so' vao para mamute.cfg `color=`); comparar o disassembler com o do Mamute original.
+3. Fita: gravar em "modo normal" decodificando pulsos (hoje CSAVE/BSAVE sempre pelo gancho de BIOS); conferir o .wav gerado num MSX de verdade; blocos de TZX
+   fora do #4B (grupos, laco, salto sao navegados; gravacao direta/CSW/generalizado nao).
+4. fwasm: mais programas reais, CLI/.sym/.txt por golden, fuzz diferencial, integrar ao menu ("Montar e rodar"), usar .debug/.break no depurador.
+5. Pendencias antigas: baixador de ROMs do fMSX + navegador do file-hunter (planejados, nao iniciados), --cmd, GameMaster2, MSX-MUSIC com BIOS propria,
+   CALL VOICECOPY, teste do usuario da TUI/terminal num terminal de verdade (1.34/1.35), lentidao/perda de letras no `--cli` (relato do usuario, NAO
+   reproduzida; perguntar terminal, --cli x --tui, foco), decisao sobre binarios de teste em dist/.
+6. Midia: tests/media tem 19 ROMs de jogo PROVISORIAS (acervo local do usuario, D:\msx\archive\download.file-hunter.com - 24-06-2026\Games); a versao final NAO leva midia.
+
+== Mapa rapido do codigo ==
+src/z80 (CPU + depurador de sessao) | src/memmap (slots/mappers) | src/vdp, ppi, psg, scc, fm, fdc, rtc | src/tape + src/tapedb (fita) | src/machine (maquina + janela ImGui)
+src/control (ponte de comandos: command.cpp) | src/repl, src/tui, src/term (console, TUI de menus, modo terminal) | src/mamute (monitor) | src/asm (fwasm) |
+src/man (man/help) | src/debug (depurador) | src/msxdisk, src/diskfmt, src/romdb | tests/z80, tests/asm, tests/tapedb | tools/ (assets, asmdiff, wincap, compare com o fMSX)
+Referencias de terceiros so' para estudo: resource/ (fMSX, openMSX, makeTSX, fmsxgo, paleobasic...). Por subsistema: doc/<nome>-spec.md.
+
+== Comparacoes e ferramentas fora do ctest ==
+- tools/fmsxgo_ref/compare.py compara quadros do fwMSX com o fMSX ORIGINAL (26 casos aprovados; precisa de gcc MSYS2 UCRT64 no PATH; ver doc/fmsx-compare-spec.md).
   Armadilha: o fMSX grava CMOS.ROM e le na partida seguinte (o compare.py apaga entre os casos).
-
-== Proximos passos sugeridos ==
-00. (feito na 1.37.4: o bug do teclado japones.)
-    Capturas do README: python tools/assets/make_screenshots.py (precisa de tests/media e do build).
-0. (F10 e splash: conferidos em tela na 1.37.4.) Agora: depurador sofisticado (doc/debug-spec.md secao 7), --cmd, baixador de ROMs do fMSX + navegador do file-hunter.
-1. Montador: formatos rom/megarom/basic/msxdos/cas/wav, select/subpage/search, debug/break e o modulo em ASSEMBLY (a regra
-   das 4 linguagens por fase ainda nao esta' cumprida no fwasm). Ver doc/asm-spec.md.
-2. Comparacao com o fMSX: casos com disco (MSX-DOS), teclas digitadas (inclusive TEXT80, ainda sem caso), SCREEN 5-8 de
-   jogo, audio; ROMs pendentes (Parodius, Mega Chase, F-1 Spirit 3D) nao estao no acervo local.
-3. Pendencias antigas (OUTLINE secao 7): GameMaster2, MSX-MUSIC com BIOS propria, CALL VOICECOPY, depurador como comandos,
-   eventos assincronos, teste do usuario da TUI/terminal (1.34/1.35) num terminal de verdade.
-
-== Lembretes de workflow (CLAUDE.md tem o resto) ==
-- Bumpar src/common/version.h ANTES do primeiro build de qualquer rodada nova.
-- Build Windows E Linux, ctest 100% nos dois; docs vivos no mesmo commit; git add com caminhos explicitos;
-  git tag X.Y.Z + git branch vX.Y.Z; push de main + tag + branch; release do GitHub com zip e tar.gz.
-- Fora do git de proposito: resource/menu.alf (fonte binaria sem relacao), tools/asmdiff/__pycache__, binarios de teste
-  soltos em dist/ e resource/asmsx.exe (oraculo do montador; *.exe e' ignorado -- copie de outro lugar se precisar
-  regerar os golden com tools/asmdiff).
+- Capturas do README: python tools/assets/make_screenshots.py (precisa de tests/media e do build).
+- O E:\fmsxgo (port do fMSX em Go) serve de referencia para quadros de MSX1/MSX2 (ver memoria "reference-emulator-fmsxgo").
