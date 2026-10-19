@@ -197,6 +197,9 @@ acompanhamento manual do autor a cada build):
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
+**Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
+e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
+
 **Funcionando (v1.40.5, publicada em `main`):**
 - [x] **Montador na TUI e base do depurador avancado** (1.40.5): `asmrun` (monta e CARREGA: ROM/MegaROM como cartucho, `.basic` por fita montada na hora, `.msxdos` num disco de sistema), menu Montador na TUI e item na janela; simbolos e arquivo:linha no depurador (`break loop`, `break jogo.asm:42`,
   `sym`, `src`, eventos com `sym=`/`src=`, `dis` com rotulos, painel Z80 Debugger); marcadores `.break`/`.debug` do fonte funcionando no Z80 (`markers`); BOM/UTF-8 no fwasm. Ver `debug-spec.md`, secao 8.
@@ -439,3 +442,173 @@ referencia, sem copia de codigo. Os arquivos TSX/CAS de jogos sao de terceiros: 
       trocar de modo de carregamento, travar/destravar gravacao, modo de gravacao, janela visual "Fita K7"
       com os rolos girando, contagiros e a lista de arquivos clicavel para marcar o ponto).
 
+---
+
+### 5.3 Visao registrada (estudo de viabilidade, 2026-10-19) -- TOPICO 1: o IDE do fwMSX (editor, projetos e build sob o mesmo teto)
+
+> **Status: so' estudo.** Ideia do usuario (Wilson Pilon), registrada aqui para ir sendo detalhada aos poucos. NADA disto esta' implementado nem sera' comecado agora. Os subtopicos marcados "a detalhar" sao
+> espacos reservados para as conversas seguintes. Levantamento feito em `resource/msxide/*`, `resource/paleobasic/*` e `resource/kizuna/*` (so' leitura; nenhum codigo copiado).
+
+#### 5.3.1 A ideia, nas palavras do usuario (resumo)
+
+Migrar parte do **msxIDE** (e do **PaleoBasic**) para dentro do fwMSX, para ter "algo como o msxIDE e o PaleoBasic em um unico teto usando o emulador embutido":
+- um **editor de textos** que serve a **GUI** (janela ImGui) e a **TUI** (FTXUI);
+- digitar um programa **MSX-BASIC** e ja' **executar no MSX** embutido;
+- digitar um programa **Basic Dignified Suite** e ja' **compilar e executar**;
+- editar **Assembly (asMSX/fwasm)** e ja' **compilar e executar**;
+- criar arquivos **`.MD`** e **visualizar** arquivos ASCII e MD na TUI/GUI, e **PDF na GUI**;
+- **projetos** que reunem todos os fontes, com uma especie de **Makefile** (mesma sintaxe/ideia do **Kizuna**: o `Obifile` do orquestrador OBI);
+- com o tempo, as linguagens do Kizuna (**BASIC, PASCAL e ASSEMBLY**) e outros tipos de editores, alguns so' para a TUI, outros so' para a GUI, outros para as duas.
+O usuario viu projetos parecidos para ZX81 e ZX Spectrum (a pesquisar como referencia de interface: nao analisados).
+
+#### 5.3.2 O que o fwMSX JA' tem para sustentar isto (mapa de reuso)
+
+| Peca | Onde | Serve para |
+|---|---|---|
+| Montador Z80 compativel com o asMSX (fwasm) | `src/asm` | compilar o Assembly do editor; `AsmResult` ja' devolve simbolos, formato, mapper, listagem e se ha' marcadores (1.40.5) |
+| `asmrun` | `src/control/command.cpp` | "montar e executar": ROM/MegaROM = cartucho, `.basic` = fita montada na hora + `BLOAD"CAS:",R`, `.msxdos` = disco de sistema + o programa. E' o motor do botao "Executar" |
+| Depurador com simbolos e linhas | `src/debug`, `sym`, `src`, `markers` | parar no `.break` do fonte, `break jogo.asm:42`, mostrar a linha do fonte na parada |
+| Fita `.cas/.tsx/.wav` e `TapeDeck` | `src/tape` | entregar programas BASIC ao MSX sem disco; gravar o resultado |
+| Discos (`msxdisk`, `diskfmt`, `DiskImage`) | `src/msxdisk`, `src/diskfmt` | disco de projeto, MSX-DOS 1/2, criar/ler `.dsk` |
+| Console / TUI / terminal / janela | `src/repl`, `src/tui`, `src/term`, `src/machine/gui` | os dois front-ends (FTXUI e ImGui) e a ponte de controle (`Commander`) que todos usam |
+| `man` / `help` com BIOS, Red Book, Handbook, MSX-DOS, fwasm, Basic Dignified (21 topicos) | `src/man` | a "Ajuda/Referencia" do IDE ja' existe e e' pesquisavel (`man`) |
+| Mamute (monitor Z80) e gerador de PDF | `src/mamute` | `mamute_pdf` ja' escreve PDF (Courier, A4) de listagens |
+| Camada de plataforma | CMake, 4 linguagens, Windows + Linux | o IDE nasce multiplataforma |
+
+#### 5.3.3 O que existe nos projetos de origem (levantamento)
+
+**msxIDE** (`resource/msxide`, FreeBASIC, ~29 mil linhas; `editor.bas` sozinho tem ~22,5 mil): IDE em TUI (Windows Console API ou newt), multi-documento com janelas MDI (arrastar, redimensionar, maximizar), rolagem e mouse;
+**editor de Markdown** `.md` (F7 alterna edicao / dividido com preview ao vivo / so' leitura; o mesmo motor renderiza toda a ajuda); editor de fontes (`.alf/.fnt/.chr`) e de sprites (`.spr`); compilacao de MSX BASIC / Basic Dignified
+(gera `.amx/.bmx`, monta `.dsk` com boot MSX-DOS e lanca o openMSX); Assembly via asMSX (`.asm` com "Hello ASM World", compilar+executar, oferece inserir o binario num BASIC aberto: `BLOAD`, loader `DATA/POKE+DEFUSR` ou `.inc`);
+**projetos `.msxproj`** (um SQLite que empacota fontes, binarios e config; abrir extrai para uma pasta de trabalho, salvar reimporta); ajuda integrada e menu Referencia (10 documentos tecnicos); Mamute Assembler (monitor/assembler Z80 nativo,
+SUPER-X, impressora virtual em PDF).
+
+**PaleoBasic** (`resource/paleobasic`, PureBasic, v8.8.0): editor com Scintilla (lexers para Dignified e Z80/N80), abas, temas, auto-completar e auto-indentacao; **pre-processador Dignified nativo** (`DignifiedPreprocessor.pbi`, 2,9 mil linhas: labels, `DEFINE`,
+`FUNC/RET`, `INCLUDE` com namespaces, remtags) e **tokenizador MSX-BASIC** (`MsxTokenizer.pbi`, 1,2 mil linhas, conferido byte a byte contra o original em Python); gerenciador de disco (`MSXDisk.pbi`); leitor/editor de Markdown (`MdViewerGui.pbi`);
+sistema de projeto em SQLite (`ProjectDB.pbi`, 2,2 mil linhas, `.msxproject`, recursos numerados e indice do projeto); ponte com o openMSX; montador Z80 proprio + linker + biblioteca `.REL` + sub-projetos de Assembly (`Z80Asm/Z80Link/Z80Lib/Z80SubProject`);
+NestorBASIC e MSXBAS2ROM como ferramentas externas; e os **editores visuais** (ver o TOPICO 2).
+
+**Kizuna** (`resource/kizuna`, Go, v4.11.0): toolchain de 3 linguagens para MSX2+ / MSX-DOS 2 / mapper: `KAJI80` (assembler Z80 modular, estilo asMSX), `WIRTH80` (Pascal tipo Turbo Pascal 4, units), `DIGNAC` (MSX-BASIC Dignified compilado para Z80),
+`MUSUBI` (linker com smart-linking e trampolins de troca de banco), `HAKO` (bibliotecario `.hlib`), `MOBDUMP`, `MSXLIB` (biblioteca padrao) e `OBI` (o "make": le o `Obifile`). Objeto relocavel proprio `.MOB`.
+
+#### 5.3.4 Arquitetura proposta (para discutir)
+
+- **Nucleo do editor sem interface** (`src/ide/` ou `src/editor/`): buffer de texto (gap buffer ou piece table), desfazer/refazer, selecao, busca/substituicao, multiplos cursores no futuro, e **realce de sintaxe** como uma funcao
+  `Tokenize(linha, estado) -> spans` (MSX-BASIC, Dignified, Z80/asMSX, Markdown, Pascal, Obifile). Nada de FTXUI/ImGui dentro: testavel como o resto do projeto (`tests/`).
+- **Dois front-ends finos**: TUI (componente FTXUI proprio: o `Input` do FTXUI nao serve para arquivos grandes) e GUI (widget ImGui proprio, ou uma biblioteca de editor de codigo para ImGui -- a avaliar, inclusive a licenca).
+  Mesmo modelo que o painel do Mamute e o Z80 Debugger ja' usam: o modelo calcula, a interface so' desenha e repassa teclas.
+- **Ponte de controle como espinha dorsal**: todo comando do IDE tambem e' um comando do `Commander` (`asmrun` ja' e'), entao console, TUI, terminal e janela compartilham o mesmo fluxo de "construir e executar".
+- **Regra das 4 linguagens** (CLAUDE.md): C para o tokenizador/lexer de linha, Fortran/NASM onde houver laco numerico quente (busca, medicao de colunas), C++ para o resto. A cada fase pelo menos um modulo em cada.
+- **Emulador embutido**: o painel do MSX ao lado do editor (divisao de tela) ou o emulador em janela propria, como hoje; "Executar" carrega e comeca a rodar, "Parar no .break" usa o depurador.
+- a detalhar: modelo de janelas/abas na TUI (o msxIDE usa MDI), atalhos de teclado (Scintilla/Windows x estilo EDIT/QuickBasic), temas, configuracao por projeto.
+
+#### 5.3.5 Os fluxos "digitar e executar"
+
+| Linguagem | O que falta alem do editor | Como executar no MSX embutido | Dificuldade |
+|---|---|---|---|
+| **Assembly (asMSX/fwasm)** | nada de compilador: o fwasm e' o compilador | `asmrun` (ja' feito na 1.40.5) | baixa |
+| **MSX-BASIC** (numerado) | tokenizador MSX-BASIC (texto -> binario tokenizado); `MsxTokenizer.pbi` e o original em Python sao a referencia | tokenizado em `.bas` numa fita virtual (`CLOAD`/`RUN`) ou num disco; alternativa sem tokenizador: digitar o texto no BASIC do MSX pelo `type` (lento, mas valido para programas pequenos) | media |
+| **Basic Dignified Suite** | pre-processador Dignified (`DignifiedPreprocessor.pbi`, 100% do escopo do `badig.py`) + o mesmo tokenizador | igual ao MSX-BASIC, depois de `.dmx -> .amx -> .bmx` | media/alta (porte de ~4 mil linhas de PureBasic, com a suite de regressao `teste.dmx` ja' existente) |
+| **Basic Dignified via Kizuna (`DIGNAC`)** | chamar `dignac` (Go) ou portar | gera `.COM` para MSX-DOS 2: disco + `asmrun`-like | media |
+| **Pascal (`WIRTH80`)** e **Assembly Kizuna (`KAJI80`)** | chamar os executaveis Go do Kizuna, ou portar para C++ | `.COM` no disco de sistema (MSX2+ e MSX-DOS 2 obrigatorios; mapper) | alta |
+| **Markdown / texto** | nada | so' visualizar | baixa |
+
+a detalhar: dialeto de BASIC "puro" (sem Dignified) como linguagem de primeira classe: numeracao automatica, renumeracao, `LIST` do que o MSX tem na memoria (ler de volta o programa do emulador).
+
+#### 5.3.6 Visualizadores: ASCII, Markdown (TUI e GUI) e PDF (GUI)
+
+- **ASCII** (e texto em geral): trivial nas duas interfaces (modo somente leitura do mesmo editor).
+- **Markdown**: renderizar cabecalhos, listas, codigo, links e tabelas. TUI: estilos do FTXUI. GUI: render proprio sobre o ImGui ou uma biblioteca de Markdown para ImGui (a avaliar licenca; md4c e' MIT). O msxIDE tem tres modos (edicao / dividido com preview /
+  leitura) e o PaleoBasic um leitor; ambos servem de referencia de comportamento. O `man` do fwMSX ja' e' um corpus grande de texto para testar o visualizador.
+- **PDF (so' na GUI)**: o ponto mais caro. Licencas importam num projeto BSD-3: **MuPDF e' AGPL-3.0** e **poppler e' GPL** (nao servem); **PDFium** (BSD/Apache) serve mas e' grande de compilar e embarcar. Alternativa barata e honesta:
+  um **visualizador minimo so' dos PDFs que o proprio fwMSX gera** (`mamute_pdf`: Courier, A4, texto puro), sem tentar abrir PDF qualquer; e abrir os demais no visualizador do sistema. a decidir com o usuario.
+- a detalhar: imagens (PNG ja' lido pelo splash), `.CHM`/ajuda externa, busca no documento, indice clicavel gerado dos cabecalhos.
+
+#### 5.3.7 Projetos e o "Makefile"
+
+- **Formato do projeto** (a decidir): (a) **pasta + manifesto de texto** (diffavel no git, facil de editar a mao; recomendado para o fwMSX); (b) **arquivo unico SQLite**, como `.msxproj` (msxIDE) e `.msxproject` (PaleoBasic: portatil, mas opaco ao git).
+  Em qualquer caso, **importar/exportar** os dois formatos existentes (tabelas `project_meta`, `project_config`, `project_files` no msxIDE; recursos numerados no PaleoBasic).
+- **O arquivo de receita** (o "Makefile"): a ideia e' reaproveitar o `Obifile` do Kizuna. Campos que o exemplo real do Kizuna usa: `target` (saida), `entry` (rotulo de entrada), `base` (endereco de carga), `resources` (arquivo, banco, simbolo, tamanho),
+  `modules` (nome, fonte, `compiler` = `kaji80|dignac|wirth80`, `bank`) e `link` (mapa). Para o fwMSX ele cresceria com compiladores `fwasm`, `dignified` e `basic`, com alvos de **execucao** (`run: cartridge|tape|disk`), dependencias entre alvos e variaveis.
+  Manter a MESMA sintaxe permite usar os projetos do Kizuna sem mudanca; o fwMSX seria um orquestrador a mais (nativo, sem Go).
+- **Compatibilidade**: ler `Obifile` e, se o usuario quiser, tambem produzir um (para o `obi build` do Kizuna continuar valendo).
+- a detalhar: o que e' "o projeto aberto" na TUI/GUI (arvore de arquivos, aba de saida do build, lista de erros clicavel que pula para a linha do fonte -- o fwasm ja' devolve arquivo e linha), configuracao do emulador por projeto (modelo MSX1/2/2+, slots, discos),
+  versionamento do manifesto, projetos de exemplo.
+
+#### 5.3.8 As linguagens do Kizuna dentro do IDE (para depois)
+
+BASIC (Dignified/`DIGNAC`), PASCAL (`WIRTH80`) e ASSEMBLY (`KAJI80`) + linker `MUSUBI` (smart-linking, bancos) + `HAKO`. Duas rotas, a escolher quando chegar a hora: **(a) chamar os executaveis** (Go; o IDE so' orquestra e mostra erros: a mais barata, depende de o
+usuario ter os binarios); **(b) portar** o que valer a pena para C++ (a mais cara; so' faz sentido para o que o fwMSX precisa embutir, como o assembler, que o fwasm ja' cobre quase todo). O alvo do Kizuna e' **MSX2+ / MSX-DOS 2 / mapper de memoria**,
+que o fwMSX ja' emula (MSX2+, mapper de RAM, MSX-DOS 2 como cartucho): da' para testar de ponta a ponta no mesmo emulador. a detalhar: formato `.MOB`/`.hlib`, mapa de bancos, depuracao com o mapa do `MUSUBI` (simbolos e linhas, na linha do `sym`/`src`).
+
+#### 5.3.9 Riscos e perguntas em aberto
+
+- **Escopo**: o `editor.bas` do msxIDE tem 22,5 mil linhas; nao se porta, reescreve-se por partes, sempre a partir do COMPORTAMENTO (os manuais e o MANUAL.md de cada projeto sao a especificacao).
+- **Editor na TUI**: terminais diferentes tratam teclas (Ctrl+setas, F-keys, Alt) de formas diferentes -- o modo terminal do fwMSX ja' tem essa dor; mouse so' onde o terminal deixar.
+- **Duas bases de usuarios**: quem usa o msxIDE/PaleoBasic hoje (o proprio usuario) precisa de migracao dos projetos `.msxproj/.msxproject` sem perda.
+- **Licenca de tudo que for embutido** (editor de codigo para ImGui, Markdown, PDF): conferir antes de adotar; o projeto e' BSD-3 e nao copia codigo GPL/AGPL.
+- **Perguntas para as proximas conversas**: o IDE e' um **modo** do `fwMSX.exe` (como a TUI) ou um executavel a parte? O projeto e' pasta+manifesto ou SQLite? O `Obifile` e' lido como esta' ou ganha extensoes? Quais atalhos/teclado? O que vem primeiro: o editor em si, o fluxo BASIC,
+  ou o Dignified?
+- **Fases sugeridas (sem compromisso)**: (1) nucleo do editor + TUI com Assembly/`asmrun` (o fluxo que ja' existe) e visualizador de texto/MD; (2) GUI do mesmo editor; (3) projetos + receita; (4) MSX-BASIC e tokenizador; (5) Dignified; (6) Kizuna; (7) PDF na GUI.
+
+---
+
+### 5.4 Visao registrada (estudo de viabilidade, 2026-10-19) -- TOPICO 2: editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto
+
+> **Status: so' estudo**, como o topico anterior. Aqui o foco nao e' o editor de texto, e sim a **galeria de ferramentas** que os dois projetos ja' tem e que podem ser reincorporadas ao fwMSX, cada uma na TUI, na GUI ou nas duas.
+> Vantagem de estar dentro do fwMSX: elas deixam de ser programas isolados que "geram um arquivo" e passam a ter **preview e teste no emulador embutido** (o VDP, o PSG e o Z80 ja' estao aqui).
+
+#### 5.4.1 Inventario do que existe
+
+| Ferramenta | Origem | Tamanho (linhas) | Formato | Equivalente hoje no fwMSX | Interface sugerida |
+|---|---|---|---|---|---|
+| Editor de fontes MSX | msxIDE; PaleoBasic (`CharsetEditorGui`, Graphos III `.ALF`; Aquarela `.FNT`) | 2,4 mil (PaleoBasic) | `.alf/.fnt/.chr` (256 x 8 bytes, BSAVE) | nenhum (so' o `XH` do Mamute edita 4 caracteres/sprites 8x8) | **TUI e GUI** (grade 8x8 funciona bem em texto) |
+| Editor de sprites | msxIDE (`.spr`); PaleoBasic (`SpriteEditorGui`) | 2,0 mil | bancos 8x8/16x16, cor MSX1 (1/sprite) ou MSX2 (1/linha) | nenhum | **TUI e GUI** (preview com o VDP real do fwMSX) |
+| Editores de tela pixel a pixel | PaleoBasic ("Pixelossauro": Screen 0, 1, 2, 1+2; `Screen2EditorGui` 1,5 mil, `Screen12EditorGui` 1,1 mil) | ~5 mil | VRAM de cada modo, `BSAVE` | `SCR` do Mamute so' VE a memoria como pixels | **GUI** (pixels reais); versao simplificada na TUI |
+| Graphos III (tela / alfabeto) | PaleoBasic (`GraphosScreenGui` 3,0 mil, `GraphosNativeIO`) | ~3 mil | arquivos do Graphos III | nenhum | **GUI** |
+| Editor de som PSG | PaleoBasic (`PsgEditorGui`/`PsgSynth`) | 0,7 mil + sintese | passos por canal, gera BASIC | o nucleo do PSG ja' sintetiza (`src/psg`) | **TUI e GUI** |
+| SEE Tracker (efeitos) | PaleoBasic (`SeeTrackerEditorGui` 1,3 mil + driver Z80 + sintese) | ~2 mil | formato do SEE Tracker; gera um driver de replay Z80 | nenhum | **GUI** (e uma tela de tracker na TUI) |
+| Editor de musica MML | PaleoBasic (`MmlEditorGui`/`MmlSynth`) | 0,7 mil + sintese | MML -> `PLAY` | nenhum | **TUI e GUI** |
+| Editor hexadecimal | PaleoBasic (`HexEditorGui` 1,6 mil) | 1,6 mil | qualquer arquivo | `DM`/`M`/`XD` do Mamute (memoria, nao arquivo) | **TUI e GUI** |
+| Gerenciador de disco | PaleoBasic (`DiskManagerGui` + `MSXDisk`); msxIDE | 1,3 mil | `.dsk` FAT12 | **`msxdisk`** (CLI, TUI e GUI, ja' feito) | ja' tem |
+| Leitor/editor de Markdown | msxIDE (3 modos, F7); PaleoBasic (`MdViewerGui`) | ~0,2 mil + motor da ajuda | `.md` | `man` (texto) | **TUI e GUI** (ver 5.3.6) |
+| Ajuda e Referencia (Red Book, Handbook, BIOS, MSX-DOS, Basic Dignified, asMSX, NestorBASIC, SEE Tracker...) | ambos | enorme (dados `.pbi`) | dicionarios de referencia | **`man`** (importado do paleobasic nas versoes 1.38.x) | ja' tem |
+| Mamute (monitor Z80, SUPER-X) | ambos | 5 mil+ (so' a GUI do PaleoBasic) | - | **Mamute** (fases 1-4 e fita, versoes 1.40.x) | ja' tem |
+| Ponte com o openMSX / console remoto | ambos | 1,2 mil + console | Tcl/XML | **desnecessaria**: o emulador e' o proprio fwMSX | nao se porta |
+| Montador/linker Z80 proprio (`Z80Asm` 4,3 mil, `Z80Link`, `Z80Lib`, `Z80SubProject`, formato `.REL`) | PaleoBasic | ~7 mil | `.REL`, bibliotecas, sub-projetos | **fwasm** (compativel com o asMSX); sem linker de `.REL` | avaliar se o `.REL`/linker entra (o Kizuna tem `MUSUBI`/`.MOB`) |
+| NestorBASIC / MSXBAS2ROM | PaleoBasic | 1,2 mil + 0,9 mil | ferramentas externas | so' a ajuda (`man`) | integrar a chamada externa, no projeto |
+| Indice de recursos do projeto; associacao de arquivos; temas; botoes tematizados | PaleoBasic | - | - | - | acompanham o IDE (5.3) |
+
+#### 5.4.2 Como uma ferramenta visual se encaixa no fwMSX (padrao proposto)
+
+O mesmo padrao dos paineis do Mamute e do Z80 Debugger: um **modelo sem interface** (`Render(grade)` + `Key(nome)`; testavel sem terminal) e dois desenhistas finos. Para as ferramentas de **pixels** (telas, sprites) o modelo trabalha em
+memoria de VRAM e usa o **proprio renderizador do VDP** para o preview; as de **som** usam o nucleo do PSG; o resultado pode ser **enviado ao emulador embutido** ("testar agora": escrever nos registradores/VRAM, ou gerar o `.bin` e rodar com o `asmrun`).
+Cada ferramenta entra com um **comando da ponte** (como `asmrun`), para console/TUI/terminal/janela, mais um item de menu.
+
+#### 5.4.3 Classificacao preliminar (a rever com o usuario)
+
+- **TUI e GUI**: fontes, sprites, PSG, MML, hexadecimal, Markdown (ver acima).
+- **So' GUI**: telas pixel a pixel, Graphos III, SEE Tracker, PDF.
+- **So' TUI**: assistentes de texto (ex.: criar projeto, gerar `Obifile`), navegador de projeto.
+- a detalhar: o que o terminal consegue desenhar de verdade (blocos Unicode meia-altura para pixels, cores de 24 bits quando o terminal deixa) para decidir quais ferramentas de pixel valem na TUI.
+
+#### 5.4.4 Formatos e compatibilidade
+
+Cada ferramenta precisa ler e gravar o formato que o msxIDE/PaleoBasic ja' usam, para nao perder o acervo do usuario: `.ALF` (Graphos III) e `.FNT` (Aquarela) de alfabetos (o `docs/reference/aquarela.md` do PaleoBasic tem a engenharia reversa), `.spr`, dumps de tela por modo, MML, o formato do SEE Tracker
+(`man seetracker` ja' documenta o programa), e os recursos numerados dos projetos (`.msxproj/.msxproject`). a detalhar: tabela de formatos com tamanho e cabecalho, geradores de codigo (BASIC `DATA/POKE`, `.inc` de Assembly, `BSAVE`).
+
+#### 5.4.5 Ordem de incorporacao sugerida (sem compromisso)
+
+1. As que **reaproveitam o que o fwMSX ja' tem**: editor hexadecimal de arquivo (como o `DM` do Mamute), visualizador Markdown/ASCII (5.3.6).
+2. **Fontes e sprites** (TUI e GUI; preview no VDP).
+3. **PSG e MML** (preview no nucleo de som; gerar `PLAY`/BASIC).
+4. **Telas pixel a pixel** e Graphos III (GUI).
+5. **SEE Tracker** (GUI; precisa do driver Z80, que o fwasm monta).
+6. O resto (linker `.REL`, NestorBASIC/MSXBAS2ROM no projeto) conforme a necessidade do usuario.
+
+#### 5.4.6 Riscos e perguntas em aberto
+
+- Tamanho: os editores visuais do PaleoBasic somam ~20 mil linhas de PureBasic (diretorio `visual_editors`, com os dados de ajuda); porta-se o comportamento, nao o codigo, e os GUIs em Windows API/Scintilla nao tem equivalente direto no ImGui/FTXUI.
+- Ferramentas de pixel na TUI sao limitadas pelo terminal; decidir quais valem o esforco.
+- O que o usuario ainda USA de verdade dos dois projetos (para nao portar o que ninguem usa) e a ordem de prioridade dele.
+- Se o PaleoBasic/msxIDE seguem em desenvolvimento em paralelo (risco de dois lados divergirem) ou se o fwMSX passa a ser o destino unico.

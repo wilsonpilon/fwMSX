@@ -68,6 +68,8 @@ resource/menu.alf (fonte binaria sem relacao), tools/asmdiff/__pycache__, binari
 ainda nao respondeu se quer remove-los do git), resource/asmsx.exe (oraculo do montador; *.exe e' ignorado), resource/Amazonia64kV5/ (nao rastreado), dist/roms/.
 
 == Proximos passos (ordem sugerida; nada em andamento) ==
+00. VISOES REGISTRADAS (estudo, nada a implementar agora): IDE do fwMSX com editor de textos TUI/GUI, executar no MSX, Markdown/ASCII/PDF, projetos com receita estilo Obifile do Kizuna (doc/SPEC.md secao 5.3) e a galeria de editores
+   e utilitarios do msxIDE/PaleoBasic (secao 5.4). Os subtopicos "a detalhar" serao preenchidos aos poucos, nas proximas conversas. Fontes de consulta: resource/msxide, resource/paleobasic, resource/kizuna (so' leitura).
 0. A IDEIA NOVA DO USUARIO: ele avisou que tem uma ideia para implementar ANTES do depurador avancado e que a conta no proximo passo. Perguntar.
 1. DEPURADOR SOFISTICADO (o usuario pediu DEPOIS do Mamute e da ideia nova): por partes, inspirado em openMSX + Compass/Konpass + Mega Assembler + Super-X + DEBUG do MS-DOS.
    Ver doc/debug-spec.md secoes 7 e 8.7 (o que ja foi feito e o que falta: condicionais, E/S, trace, passo por linha, MegaROM por subpagina). Perguntar por onde comecar (AskUserQuestion).
