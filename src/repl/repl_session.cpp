@@ -195,7 +195,23 @@ void ReplSession::Emu(const std::vector<std::string> &t, std::ostream &out) {
 ReplSession::~ReplSession() = default;
 
 // Uma linha do Mamute: com emulador conectado vai para o monitor dele (`mon <linha>`); sem emulador, o local.
+void ReplSession::SyncPanels() {
+    // o monitor do emulador e' compartilhado por quem se conecta: cada console diz se sabe desenhar paineis (a TUI sabe, o CLI nao)
+    const std::string cmd = panels_ ? "@panels on" : "@panels off";
+    const int where = (link_.connected() ? link_.port() : 0) * 2 + (panels_ ? 1 : 0);
+    if (panels_sent_ == where) return;
+    panels_sent_ = where;
+    if (link_.connected()) {
+        std::string reply, error;
+        link_.Send("mon " + cmd, reply, error);
+    } else {
+        if (!local_mon_) local_mon_ = std::make_unique<mamute::Monitor>(mamute::LoadConfig(mamute::DefaultConfigPath()), mamute::DefaultConfigPath());
+        local_mon_->Execute(cmd);
+    }
+}
+
 void ReplSession::Monitor(const std::string &line, std::ostream &out) {
+    SyncPanels();
     if (link_.connected()) {
         Forward("mon " + line, out);
         return;
@@ -248,7 +264,9 @@ bool ReplSession::Execute(const std::string &line, std::ostream &out) {
             out << "(volta ao console)\n";
             return true;
         }
-        Monitor(line.substr(a), out);
+        std::string mline = line.substr(a);
+        if (mline.rfind("mon @", 0) == 0) mline = mline.substr(4); // as teclas dos paineis chegam como "mon @key ..."
+        Monitor(mline, out);
         return true;
     }
     std::string error;

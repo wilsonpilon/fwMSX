@@ -23,6 +23,7 @@ struct Config {
     bool start_online = false;
     int vram_kb = 16;
     int dump_mode = 0;
+    std::string skeys = "1234qwerasdfzxcv"; // as teclas do comando S: os digitos 1 2 3 4 5 6 7 8 9 A B C D E F 0
     CellType cell[4][4];   // [slot][pagina]
     std::string file[4][4];
     bool half[4][4];

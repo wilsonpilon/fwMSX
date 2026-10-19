@@ -360,6 +360,9 @@ set(MAMUTE_LIB_SOURCES
         src/mamute/cpp/mamute_monitor.cpp
         src/mamute/cpp/mamute_source.cpp
         src/mamute/cpp/mamute_edit.cpp
+        src/mamute/cpp/mamute_pdf.cpp
+        src/mamute/cpp/mamute_panel.cpp
+        src/mamute/cpp/mamute_screens.cpp
         src/mamute/cpp/mamute_online.cpp
 )
 

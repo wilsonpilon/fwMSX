@@ -15,7 +15,7 @@
 namespace tui {
 
 struct Key {
-    enum Type { Char, Enter, Escape, Up, Down, Left, Right, Home, End, Backspace, Delete, Tab, PageUp, PageDown, F1, F10 };
+    enum Type { Char, Enter, Escape, Up, Down, Left, Right, Home, End, Backspace, Delete, Tab, PageUp, PageDown, F1, F10, CtrlS };
     Type type = Char;
     std::string text; // so' para Char (um caractere UTF-8)
 };
@@ -33,7 +33,7 @@ struct EmuStatus {
 
 class TuiModel {
 public:
-    enum class Mode { Normal, Menu, Prompt, Browser, Help, Debugger, Man };
+    enum class Mode { Normal, Menu, Prompt, Browser, Help, Debugger, Man, Mamute };
 
     struct MenuItem {
         std::string label;
@@ -70,6 +70,11 @@ public:
     void OpenPanel();
     void SetPanel(const std::string &reply);
     bool panel_prompt() const { return panel_prompt_; }
+    // Paineis do Mamute (DM, M, S, ZAP, SCR): o monitor devolve "action=show panel=mamute title=NOME" e as linhas (o cursor entre  e ), ou
+    // "action=close panel=mamute". As teclas voltam como `mon @key <nome>` (sem eco no historico). Ver doc/mamute-spec.md.
+    void SetMamutePanel(const std::string &reply);
+    const std::string &mamute_title() const { return mamute_title_; }
+    const std::vector<std::string> &mamute_lines() const { return mamute_lines_; }
     // Janelinha do `man <topico>`: abre com o texto pronto (ja' quebrado na largura do terminal); setas, PgUp/PgDn, Home/End rolam.
     void OpenMan(const std::string &title, const std::string &text);
     const std::string &man_title() const { return man_title_; }
@@ -114,6 +119,8 @@ public:
 
 private:
     void Submit(const std::string &line);
+    void SubmitQuiet(const std::string &line) { if (submit_) submit_(line); } // sem eco no historico (as teclas dos paineis)
+    void KeyMamute(const Key &key);
     void StartWizard(const std::string &title, std::vector<Step> steps,
                      std::function<std::string(const std::vector<std::string> &)> builder);
     void AdvanceWizard(const std::string &value);
@@ -138,6 +145,8 @@ private:
 
     std::vector<std::string> panel_;  // linhas do painel Z80 Debugger (com a letra de estilo na frente)
     bool panel_prompt_ = false;       // o painel esta' perguntando um endereco (G)
+    std::string mamute_title_;        // painel do Mamute
+    std::vector<std::string> mamute_lines_;
 
     std::string man_title_;
     std::vector<std::string> man_lines_;

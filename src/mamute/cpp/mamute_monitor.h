@@ -17,6 +17,7 @@
 #include "mamute_config.h"
 #include "mamute_exec.h"
 #include "mamute_memory.h"
+#include "mamute_panel.h"
 #include "mamute_source.h"
 
 namespace mamute {
@@ -81,6 +82,14 @@ private:
     std::string ExecuteEdit(const std::string &line); // o editor de fonte (mamute_edit.cpp)
     std::string CmdAssemble(const std::string &args);
     std::string CmdMap();
+    // Fase 3: telas. Com paineis ligados (a TUI) DM/M/S/ZAP/SCR abrem um painel interativo; sem eles sao comandos de linha.
+    std::string CmdInternal(const std::string &line);         // @panels on|off, @key <tecla>, @panel
+    std::string OpenPanel(std::unique_ptr<Panel> panel);
+    std::string PanelText();                                   // a resposta do painel aberto (protocolo da TUI ou texto simples)
+    std::string CmdS(const std::vector<std::string> &f);
+    std::string CmdZap(const std::vector<std::string> &f);
+    std::string CmdZapW(const std::vector<std::string> &f);
+    std::string CmdScr(const std::vector<std::string> &f);
 
     // O arquivo de listagem dos comandos P e LP (texto; o PDF do Mamute original nao existe aqui).
     std::string WriteListing(const std::string &path, const std::string &title, const std::string &body);
@@ -98,6 +107,12 @@ private:
     bool editing_ = false;
     AsmProduct last_; // a ultima montagem bem-sucedida (MAP)
     bool last_ok_ = false;
+
+    // paineis interativos (Fase 3)
+    std::unique_ptr<Panel> panel_;
+    bool panels_ = false; // true quando o hospedeiro sabe desenhar paineis (a TUI)
+    int dm_last_ = -1;    // onde o ultimo DM de linha parou (DM sozinho continua 128 bytes depois)
+    int dm_shift_ = 0;
 
     int dump_mode_ = 0;
     int last_find_ = -1;       // onde o ultimo SH achou (o proximo, sem endereco, continua em +1)

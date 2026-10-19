@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-16, apos a 1.40.1)
+fwMSX -- como retomar (atualizado em 2026-10-16, apos a 1.40.2)
 
 == Em OUTRO computador (o caminho que importa) ==
 1. git clone / git pull de origin main (traz tudo: codigo, docs, ROMs de teste, dist/).
@@ -11,7 +11,7 @@ claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao de 2026-10-13: 
 (sessao anterior: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
 == Estado ao encerrar (2026-10-13) ==
-- Ultima versao publicada: 1.40.1 "Antarctic Adventure: Mamute, EDIT e A" (Mamute, Fase 2) (Konami). main == origin/main; tags 1.36.0 a 1.40.1, branches v1.36.x/v1.37.x,
+- Ultima versao publicada: 1.40.2 "Antarctic Adventure: Mamute, telas" (Mamute, Fase 3) (Konami). main == origin/main; tags 1.36.0 a 1.40.2, branches v1.36.x/v1.37.x,
   releases do GitHub com zip + tar.gz.
 - fwasm x asMSX v1.2.0: medido 100% (6606 casos + 1 programa real), estimado ~95%; pendencias em doc/asm-spec.md.
 - ctest 23/23 em Windows (build.ps1) e Linux/WSL (build.sh).

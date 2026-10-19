@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include "mamute_monitor.h"
+#include "mamute_pdf.h"
 
 namespace mamute {
 
@@ -211,12 +212,18 @@ std::string Monitor::CmdAssemble(const std::string &args_in) {
     // "opcoes[/desloc][>nome]"
     std::string args = Trim(args_in);
     std::string base = "mamute";
+    bool text_out = false; // >nome.txt ou >nome.lst: P e H gravam texto; senao PDF, como o Mamute original
     const size_t gt = args.find('>');
     if (gt != std::string::npos) {
         base = Trim(args.substr(gt + 1));
         args = Trim(args.substr(0, gt));
         const size_t dot = base.rfind('.');
-        if (dot != std::string::npos) base = base.substr(0, dot);
+        if (dot != std::string::npos) {
+            std::string ext = base.substr(dot);
+            for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            text_out = ext == ".txt" || ext == ".lst";
+            base = base.substr(0, dot);
+        }
         if (base.empty()) return "SINTAXE: A [opcoes][/desloc][>nome]";
     }
     int offset = 0;
@@ -267,17 +274,33 @@ std::string Monitor::CmdAssemble(const std::string &args_in) {
     for (const std::string &w : p.warnings) out += "\nAVISO " + w;
 
     if (has('P')) {
-        std::ofstream f(base + ".lst", std::ios::trunc);
-        if (!f) return out + "\nNAO FOI POSSIVEL GRAVAR " + base + ".lst";
-        f << JoinLines(listing) << "\n";
-        if (!extra.empty()) f << "\n" << JoinLines(extra) << "\n";
-        out += "\nGRAVADO " + base + ".lst";
+        std::vector<std::string> all = listing;
+        if (!extra.empty()) {
+            all.push_back("");
+            all.insert(all.end(), extra.begin(), extra.end());
+        }
+        const std::string file = base + (text_out ? ".lst" : ".pdf");
+        if (text_out) {
+            std::ofstream f(file, std::ios::trunc);
+            if (!f) return out + "\nNAO FOI POSSIVEL GRAVAR " + file;
+            f << JoinLines(all) << "\n";
+        } else {
+            std::string err;
+            if (!WritePdf(file, "MAMUTE - LISTAGEM", all, err)) return out + "\n" + err;
+        }
+        out += "\nGRAVADO " + file + (text_out ? "" : " (PDF)");
     }
     if (has('H')) {
-        std::ofstream f(base + ".sym", std::ios::trunc);
-        if (!f) return out + "\nNAO FOI POSSIVEL GRAVAR " + base + ".sym";
-        f << JoinLines(labels) << "\n";
-        out += "\nGRAVADO " + base + ".sym";
+        const std::string file = text_out ? base + ".sym" : base + "_labels.pdf";
+        if (text_out) {
+            std::ofstream f(file, std::ios::trunc);
+            if (!f) return out + "\nNAO FOI POSSIVEL GRAVAR " + file;
+            f << JoinLines(labels) << "\n";
+        } else {
+            std::string err;
+            if (!WritePdf(file, "MAMUTE - SIMBOLOS", labels, err)) return out + "\n" + err;
+        }
+        out += "\nGRAVADO " + file + (text_out ? "" : " (PDF)");
     }
     if (has('I')) {
         if (!p.has_code) {

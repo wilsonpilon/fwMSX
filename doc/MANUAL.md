@@ -1127,6 +1127,7 @@ O **Mamute** e' o monitor Z80 do fwMSX: um prompt de linha onde cada comando mex
 | Memoria | `PAGE [?\|a,b,c,d]` `DM end[,desloc]` `M end[,b1,b2..]` `SH [end],b1,,b3` / `SH [end],'texto` `MS end,[desloc],'texto` `T ini,fim,dest` `F ini,fim,byte` |
 | Despejo | `C modo` (0 = 4 B/linha, 1 = 16 B, 2 = 8 B + checksum, 3 = idem sem o endereco) `D ini[,fim]` `P ini[,fim][,arq]` (texto) `V ini[,fim]` (VRAM) |
 | Execucao | `L [ini[,fim]]` `LP` (disassembler) `X [reg [valor]]` `G [ini[,bp1[,bp2]]]` |
+| Telas | `DM` `M` `S` `ZAP arq.dsk,setor` `SCR end,dx,dy` - paineis na TUI, comandos de linha no console - ver "Telas" abaixo |
 | Fonte Z80 | `EDIT` (editor de linhas numeradas) `LIST` `A [opcoes][/desloc][>nome]` (monta pelo fwasm) `MAP` - ver "Editor de fonte e montagem" abaixo |
 | Arquivos | `LOAD arq[,slot[,end]]` `SAVE arq,ini,fim[,exec[,BIN\|ROM\|RAW]]` |
 | Modos | `ONLINE` `OFFLINE` `STATUS` `PUSH` `PULL` |
@@ -1145,6 +1146,25 @@ MON(off)> online
 MODO ONLINE: o monitor agora le e escreve na MAQUINA EMULADA
 MON(on)> push c100,c107            (so' vale do offline para a maquina: ver man mamute-modes)
 ```
+
+### Telas (`DM`, `M`, `S`, `ZAP`, `SCR`)
+
+Na **TUI** (`fwMSXc.exe --tui`, e depois `mon`) estes cinco comandos abrem **paineis interativos**; no console (`--cli`), em scripts e pela ponte de controle sao **comandos de linha** (a grade uma vez, as mudancas por argumentos).
+
+| Comando | O que mostra |
+|---|---|
+| `DM end[,desloc]` | 128 bytes (16 linhas de 8) em hexa e texto; `DM` sozinho continua 128 bytes depois (so' linha) |
+| `M end` / `M end,b1,b2..` | a grade de edicao rapida / grava bytes |
+| `S end[,teclas]` | como o `M`, digitando com o **teclado S** (`1234 qwer asdf zxcv` = `1234 5678 9ABC DEF0`; `skeys=` no `mamute.cfg`, `CFG SKEYS`) |
+| `ZAP arq.dsk,setor[,desloc]` / `ZAPW arq,setor,byte,b1..` | um setor de uma imagem de disco (512 bytes; o rotulo e' o deslocamento no setor) / grava direto |
+| `SCR end,dx,dy[,modo[,zoom]]` | a memoria como uma tela de 256x192 pixels (32x24 caracteres de 8 bytes) em braille; `dx,dy` e' o azulejo; modo 0 le por linha, 1 por coluna; zoom 1 = 128x48 colunas, 2 = 64x24 |
+
+Teclas dos paineis: **setas** movem; **TAB** alterna hexa/texto; **PgUp/PgDn** pulam 128 bytes; **+ / -** ajustam o deslocamento do texto (nao mudam a memoria: so' como o texto e' lido e escrito); no `DM`/`ZAP` o **ENTER**
+abre o campo de edicao (confirma com ENTER, cancela com ESC); no `M`/`S` dois digitos hexa gravam direto; no `ZAP` **Ctrl+S** grava so' o setor do cursor (o titulo mostra `*` ate' salvar). No `SCR`: setas mexem o endereco base
+(1 byte / 1 azulejo), **TAB** a moldura 2x2, **E** o endereco, **Z** o zoom, **ENTER** a edicao dos 16x16 pixels (espaco inverte, I inverte tudo, L apaga, ENTER sai, ESC desfaz tudo). **ESC** fecha o painel.
+Escrever em ROM ou celula vazia nao grava e o painel avisa. Manual completo: `man mamute-screens`.
+
+**PDF**: `P`, `LP`, `V ...,arq`, `A P` e `A H` gravam um **PDF A4 em Courier** quando o nome termina em `.pdf` (padroes `mamute.pdf`, `mamute-dis.pdf`, `NOME.pdf`, `NOME_labels.pdf`); com outro nome (ou `>nome.lst` no `A`) saem em texto.
 
 ### Editor de fonte e montagem (`EDIT`, `A`)
 
@@ -1182,7 +1202,7 @@ Arquivo de texto `chave=valor` ao lado do executavel, lido quando o monitor abre
 
 ### O que ainda nao existe
 
-`ZAP`, `SCR`, `S`, `R` (referencia de fita) e os comandos do SUPER-X (prefixo `X`) do Mamute original: ver as fases em [mamute-spec.md](mamute-spec.md).
+`R` (referencia de fita) e os comandos do SUPER-X (prefixo `X`) do Mamute original: ver as fases em [mamute-spec.md](mamute-spec.md).
 
 ## Banco de ROMs (`--romdb`)
 

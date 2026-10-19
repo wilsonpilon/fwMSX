@@ -53,6 +53,9 @@ public:
     // Modo monitor (comando `mon`): enquanto ligado, cada linha digitada e' um comando do Mamute. Com emulador conectado
     // a linha vai para o monitor DELE (modo online disponivel); sem emulador roda um monitor local, so' offline.
     bool monitor_mode() const { return mon_mode_; }
+    // A TUI sabe desenhar os paineis do monitor (DM, M, S, ZAP, SCR): liga antes de usar o monitor. Os comandos dos paineis voltam como
+    // "action=show panel=mamute ..." (ver doc/mamute-spec.md) em vez de texto; sem isto os comandos sao as versoes de linha.
+    void EnablePanels(bool on) { panels_ = on; }
     // O prompt do monitor ("MON(off)> "), ou vazio fora do modo monitor.
     std::string MonitorPrompt();
 
@@ -86,6 +89,9 @@ private:
     std::map<std::string, ToolEntry> tools_;
     std::unique_ptr<mamute::Monitor> local_mon_; // monitor local (sem emulador): so' offline
     bool mon_mode_ = false;
+    bool panels_ = false;
+    int panels_sent_ = -1; // a porta do emulador para a qual ja' mandamos "@panels on" (0 = o monitor local)
+    void SyncPanels();
 };
 
 } // namespace repl

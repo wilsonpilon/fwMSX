@@ -17,6 +17,9 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.40.2 "Antarctic Adventure: Mamute, telas" (publicada)**: **Mamute Fase 3** -- paineis `DM M S ZAP SCR` na TUI (e versoes de linha no console), `ZAPW`, teclado S (`skeys`), `P/LP/V/A P/A H` em PDF (gerador proprio),
+  `man mamute-screens`. O modelo do painel (`mamute_panel.cpp`) recebe teclas por nome e devolve linhas: testado sem terminal; a TUI so' repassa teclas (`mon @key ...`). Proxima: Fase 4 = os 36 comandos do SUPER-X
+  (`XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, `XCS XTS`, `XCO XSD XQT`, `XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%`, notas `XIM XIC XIL XIS XIR`, portas `XPP XPI XPO`); depois o depurador sofisticado.
 - **1.40.1 "Antarctic Adventure: Mamute, EDIT e A" (publicada)**: **Mamute Fase 2** -- `EDIT` (editor de fonte de linhas numeradas, hexa por padrao), `A` (monta pelo fwasm: o fonte e' traduzido para o asMSX linha a linha;
   listagem, `O N P I R S D H /desloc`, `MAP`), `man mamute-edit`. O fwasm ganhou `want_listing` (endereco e bytes por linha) e `IsDirectiveName`. Proximas fases: 3 = telas (`DM`/`M`/`S` interativos na TUI, `ZAP`, `SCR`);
   4 = os 36 comandos do SUPER-X. O `R` (fita) so' validava a sintaxe no original e continua pendente.

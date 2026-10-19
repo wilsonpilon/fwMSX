@@ -92,6 +92,8 @@ Config LoadConfig(const std::string &path) {
         } else if (key == "vram") {
             const int v = std::atoi(val.c_str());
             if (v == 16 || v == 128 || v == 192) cfg.vram_kb = v;
+        } else if (key == "skeys") {
+            if (val.size() == 16) cfg.skeys = val;
         } else if (key == "dump") {
             const int v = std::atoi(val.c_str());
             if (v >= 0 && v <= 3) cfg.dump_mode = v;
@@ -123,6 +125,7 @@ bool SaveConfig(const std::string &path, const Config &cfg) {
     f << "online=" << (cfg.start_online ? 1 : 0) << "\n";
     f << "vram=" << cfg.vram_kb << "\n";
     f << "dump=" << cfg.dump_mode << "\n";
+    f << "skeys=" << cfg.skeys << "\n";
     for (int s = 0; s < 4; ++s) {
         for (int p = 0; p < 4; ++p) {
             std::string name = CellName(cfg.cell[s][p]);

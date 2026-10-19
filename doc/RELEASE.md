@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.40.2 -- "Antarctic Adventure: Mamute, telas" (Konami) (2026-10-19)
+
+**Mamute, Fase 3.** As janelas do Mamute original (DM, M, S, ZAP, SCR) e o PDF. Decisao do usuario (Fase 1): **paineis na TUI + versao de linha no CLI** (o SCR grafico fica para a janela grafica; aqui vira braille).
+Especificacao lida no manual do Mamute original (DM, M e S, ZAP, SCR).
+
+- **Modelo sem tela**: `Panel` (mamute_panel.h) recebe teclas por NOME (`up`, `tab`, `enter`, `esc`, `bs`, `plus`, `minus`, `space`, `save` = Ctrl+S, `c:<char>`) e devolve as linhas; o cursor vem entre `\x01` e `\x02` (a TUI
+  inverte as cores). Por isso o mesmo codigo e' testado por teclas, sem terminal, e a TUI so' desenha e repassa teclas.
+- **Protocolo**: o hospedeiro liga os paineis (`mon @panels on`, a `ReplSession` da TUI faz sozinha, uma vez por conexao); `DM`/`M`/`S`/`ZAP`/`SCR` devolvem `action=show panel=mamute title=NOME` + as linhas; cada tecla e' `mon @key <nome>`
+  e a resposta e' o painel de novo ou `action=close panel=mamute`. Sem `@panels on` (console, scripts, TCP) os mesmos comandos sao as versoes de linha.
+- **Achado -- o espaco**: as camadas de cima aparam espacos das pontas da linha, entao a tecla espaco ganhou nome (`space`); sem isso o ESPACO do SCR (inverter pixel) chegava como `c:` e sumia.
+- **Achado -- bug de teste**: um `std::string(ReadAll(x).begin(), ReadAll(x).end())` (iteradores de dois vetores temporarios) abortava o `mamutetest` em ~50% das execucoes (`length_error`); apareceu so' em repeticao (25 execucoes).
+- **PDF proprio** (`mamute_pdf.cpp`): PDF 1.4, A4, Courier 9 pt, cabecalho com a pagina de cada folha, parenteses escapados, `xref` correto; ~68 linhas por folha.
+- **ZAP**: a imagem inteira vai para a memoria; as alteracoes ficam em um conjunto de setores sujos; Ctrl+S grava so' o setor do cursor (`*` no titulo ate' salvar). **SCR**: azulejos de dx x dy caracteres, modo 0 (linha) e 1 (coluna);
+  zoom 1 (128x48 colunas) e zoom 2 (64x24, cada ponto e' um bloco 2x2); moldura 16x16 e edicao com desfazer total pelo snapshot dos 32 bytes.
+- `ctest` 27/27 (Windows e Linux).
+
 ## v1.40.1 -- "Antarctic Adventure: Mamute, EDIT e A" (Konami) (2026-10-19)
 
 **Mamute, Fase 2.** O `EDIT` (editor de linhas numeradas do MegaAssembler) e o `A` (montar). Decisao do usuario (Fase 1): o `A` monta pelo fwasm, nao pelo `Z80Asm.pbi` do paleobasic.

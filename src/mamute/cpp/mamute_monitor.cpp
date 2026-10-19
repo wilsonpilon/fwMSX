@@ -12,6 +12,7 @@
 #include "../../z80/debug/z80_disasm.h"
 #include "../asm/mamute_scan.h"
 #include "../core/mamute_dump.h"
+#include "mamute_pdf.h"
 
 namespace mamute {
 
@@ -119,6 +120,7 @@ const char *kHelp =
     "  X [reg [valor]] | G [ini[,bp1[,bp2]]]  registradores / executa\n"
     "  LOAD arq[,slot[,end]] | SAVE arq,ini,fim[,exec[,BIN|ROM|RAW]]   arquivos\n"
     "  EDIT | LIST | A [opcoes] | MAP   editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm (HELP no EDIT)\n"
+    "  S end[,teclas] | ZAP arq.dsk,setor[,desloc] | ZAPW arq,setor,byte,b1.. | SCR end,dx,dy[,modo[,zoom]]   telas (paineis na TUI)\n"
     "  CFG [SET s,p,tipo[,arq[,HALF]] | VRAM n | ONLINE 0|1 | DUMP n | SAVE | LOAD]   configuracao inicial\n"
     "  HELP                         esta lista (o manual completo: man mamute)";
 
@@ -146,6 +148,7 @@ std::string Monitor::Execute(const std::string &line_in, bool *quit) {
     if (quit) *quit = false;
     const std::string line = Trim(line_in);
     if (line.empty()) return "";
+    if (line[0] == '@') return CmdInternal(line); // comandos do hospedeiro (paineis), nunca do usuario
     size_t i = 0;
     while (i < line.size() && !std::isspace(static_cast<unsigned char>(line[i])) && line[i] != ',' && line[i] != '\'' && line[i] != '/' && line[i] != '>') ++i;
     const std::string cmd = Upper(line.substr(0, i));
@@ -179,6 +182,10 @@ std::string Monitor::Execute(const std::string &line_in, bool *quit) {
     if (cmd == "PAGE") return CmdPage(f);
     if (cmd == "DM") return CmdDm(f);
     if (cmd == "M") return CmdM(f);
+    if (cmd == "S") return CmdS(f);
+    if (cmd == "ZAP") return CmdZap(f);
+    if (cmd == "ZAPW") return CmdZapW(f);
+    if (cmd == "SCR") return CmdScr(f);
     if (cmd == "SH") return CmdSh(rest);
     if (cmd == "MS") return CmdMs(rest);
     if (cmd == "C") return CmdC(f);
@@ -203,6 +210,7 @@ std::string Monitor::CmdHelp() { return kHelp; }
 std::string Monitor::CmdMode(bool online) {
     if (online && !has_machine()) return "SEM MAQUINA: ligue o emulador (no console: emu start) para usar ONLINE";
     online_ = online;
+    panel_.reset(); // o painel aberto era da memoria anterior
     return std::string("MODO ") + (online ? "ONLINE: o monitor agora le e escreve na MAQUINA EMULADA" : "OFFLINE: memoria e CPU privadas do monitor");
 }
 
@@ -264,7 +272,16 @@ std::string Monitor::CmdPage(const std::vector<std::string> &f) {
 std::string Monitor::CmdDm(const std::vector<std::string> &f) {
     unsigned a = 0;
     int shift = 0;
-    if (f.empty() || !ParseHex(f[0], a) || (f.size() > 1 && !ParseShift(f[1], shift))) return "SINTAXE: DM <end>[,<desloc>]  (desloc de -7F a +80)";
+    if (f.empty()) { // DM sozinho continua 128 bytes depois do ultimo (a versao de linha do "proxima pagina")
+        if (dm_last_ < 0) return "SINTAXE: DM <end>[,<desloc>]  (desloc de -7F a +80; DM sozinho continua o anterior)";
+        a = (static_cast<unsigned>(dm_last_) + 128) & 0xFFFF;
+        shift = dm_shift_;
+    } else if (!ParseHex(f[0], a) || (f.size() > 1 && !ParseShift(f[1], shift))) {
+        return "SINTAXE: DM <end>[,<desloc>]  (desloc de -7F a +80; DM sozinho continua o anterior)";
+    }
+    dm_last_ = static_cast<int>(a);
+    dm_shift_ = shift;
+    if (panels_) return OpenPanel(MakeMemoryGrid('D', static_cast<uint16_t>(a), shift, cfg_.skeys));
     IMemory &m = Mem();
     std::string out;
     for (int row = 0; row < 16; ++row) {
@@ -284,7 +301,7 @@ std::string Monitor::CmdDm(const std::vector<std::string> &f) {
 std::string Monitor::CmdM(const std::vector<std::string> &f) {
     unsigned a = 0;
     if (f.empty() || !ParseHex(f[0], a)) return "SINTAXE: M <end>[,<byte>[,<byte>...]]";
-    if (f.size() == 1) return CmdDm(f);
+    if (f.size() == 1) return panels_ ? OpenPanel(MakeMemoryGrid('M', static_cast<uint16_t>(a), 0, cfg_.skeys)) : CmdDm(f);
     std::vector<uint8_t> bytes;
     for (size_t k = 1; k < f.size(); ++k) {
         unsigned v = 0;
@@ -411,10 +428,23 @@ std::string Monitor::CmdC(const std::vector<std::string> &f) {
 }
 
 std::string Monitor::WriteListing(const std::string &path, const std::string &title, const std::string &body) {
+    const size_t lines = static_cast<size_t>(std::count(body.begin(), body.end(), '\n')) + 1;
+    if (IsPdfName(path)) { // .pdf: uma listagem A4 em Courier, como o Mamute original
+        std::vector<std::string> v;
+        size_t pos = 0;
+        while (pos <= body.size()) {
+            const size_t nl = body.find('\n', pos);
+            v.push_back(body.substr(pos, nl == std::string::npos ? std::string::npos : nl - pos));
+            if (nl == std::string::npos) break;
+            pos = nl + 1;
+        }
+        std::string err;
+        if (!WritePdf(path, title, v, err)) return err;
+        return "GRAVADO " + path + " (PDF) - " + std::to_string(lines) + " LINHAS";
+    }
     std::ofstream f(path, std::ios::trunc);
     if (!f) return "NAO FOI POSSIVEL GRAVAR " + path;
     f << title << "\n\n" << body << "\n";
-    const size_t lines = static_cast<size_t>(std::count(body.begin(), body.end(), '\n')) + 1;
     return "GRAVADO " + path + " - " + std::to_string(lines) + " LINHAS";
 }
 
@@ -442,9 +472,10 @@ std::string Monitor::CmdDump(const std::vector<std::string> &f, bool vram, bool 
         if (!out.empty()) out += '\n';
         out += line;
     }
-    if (!to_file) return out;
-    std::string path = "mamute.txt";
-    if (f.size() > 2 && !f[2].empty()) path = f[2];
+    const bool named = f.size() > 2 && !f[2].empty();
+    if (!to_file && !(vram && named)) return out; // V com um arquivo vai para o arquivo, como o P (o original gerava PDF)
+    std::string path = vram ? "mamute-vram.pdf" : "mamute.pdf";
+    if (named) path = f[2];
     return WriteListing(path, std::string("MAMUTE - DESPEJO ") + Hex(a, digits) + "-" + Hex(b, digits) + " (MODO " + std::to_string(dump_mode_) + ")", out);
 }
 
@@ -506,7 +537,7 @@ std::string Monitor::CmdList(const std::vector<std::string> &f, bool to_file) {
     }
     last_list_ = static_cast<int>(x & 0xFFFF);
     if (!to_file) return out;
-    std::string path = "mamute.lst";
+    std::string path = "mamute-dis.pdf";
     if (f.size() > 2 && !f[2].empty()) path = f[2];
     return WriteListing(path, "MAMUTE - DISASSEMBLY A PARTIR DE " + Hex(a, 4), out);
 }
@@ -697,6 +728,11 @@ std::string Monitor::CmdCfg(const std::string &rest) {
         cfg_.dump_mode = static_cast<int>(m);
         dump_mode_ = cfg_.dump_mode;
         return "FORMATO INICIAL DE DESPEJO " + std::to_string(m);
+    }
+    if (sub == "SKEYS" && f.size() > 1) {
+        if (f[1].size() != 16) return "SKEYS: 16 CARACTERES (as teclas dos digitos 1 2 3 4 5 6 7 8 9 A B C D E F 0)";
+        cfg_.skeys = f[1];
+        return "TECLADO S: " + f[1] + " (CFG SAVE grava)";
     }
     if (sub == "SET") {
         unsigned s = 0, p = 0;

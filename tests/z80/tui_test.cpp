@@ -159,6 +159,39 @@ int main() {
         r.K(Key::Enter);
         check(r.sent.back() == "dbgui key enter", "ENTER na pergunta confirma");
 
+        // ---- painel do Mamute (DM, M, S, ZAP, SCR): as teclas viram "mon @key <nome>" (sem eco no historico) ----
+        {
+            Rig m(dir);
+            m.model.SetMamutePanel("action=show panel=mamute title=DM\nDM - MEMORIA (OFFLINE)\nC000  3E 2A\nENDERECO: C000");
+            check(m.model.mode() == TuiModel::Mode::Mamute && m.model.mamute_title() == "DM" && m.model.mamute_lines().size() == 3, "SetMamutePanel: abre o painel com o titulo e as linhas");
+            const size_t log_before = m.model.log().size();
+            m.K(Key::Right);
+            check(m.sent.back() == "mon @key right", "Direita -> 'mon @key right'");
+            m.K(Key::Tab);
+            check(m.sent.back() == "mon @key tab", "Tab -> 'mon @key tab'");
+            m.K(Key::PageDown);
+            check(m.sent.back() == "mon @key pgdn", "PageDown -> 'mon @key pgdn'");
+            m.K(Key::CtrlS);
+            check(m.sent.back() == "mon @key save", "Ctrl+S -> 'mon @key save'");
+            m.K(Key::Enter);
+            check(m.sent.back() == "mon @key enter", "ENTER -> 'mon @key enter'");
+            m.Type("F");
+            check(m.sent.back() == "mon @key c:F", "um caractere -> 'mon @key c:F'");
+            m.Type(" ");
+            check(m.sent.back() == "mon @key space", "o espaco tem nome (as camadas de cima aparam espacos)");
+            m.Type("+");
+            check(m.sent.back() == "mon @key c:+", "'+' vai como caractere (o painel decide)");
+            check(m.model.log().size() == log_before, "as teclas do painel nao poluem o historico");
+            m.K(Key::F1);
+            check(m.model.mode() == TuiModel::Mode::Mamute, "F1 nao abre a ajuda dentro do painel");
+            m.K(Key::Escape);
+            check(m.sent.back() == "mon @key esc" && m.model.mode() == TuiModel::Mode::Mamute, "Esc pede 'mon @key esc' (o painel fecha quando o monitor responde)");
+            m.model.SetMamutePanel("action=close panel=mamute");
+            check(m.model.mode() == TuiModel::Mode::Normal && m.model.mamute_lines().empty(), "action=close: sai do painel");
+            m.model.SetMamutePanel("COMANDO DESCONHECIDO: X");
+            check(m.model.mode() == TuiModel::Mode::Normal && m.model.log().back() == "COMANDO DESCONHECIDO: X", "uma resposta que nao e' painel vai para o historico");
+        }
+
         // Esc e F10 fecham (pedem esc ao emulador); a resposta action=close sai do modo
         r.model.SetPanel("action=none prompt=0 mode=disasm\nTZ80 Debugger");
         r.K(Key::Escape);

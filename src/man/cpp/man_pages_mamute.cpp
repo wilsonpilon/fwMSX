@@ -29,6 +29,7 @@ DOIS MODOS
 
 COMANDOS (todos em HEXA; man mamute-<grupo> detalha)
   memoria     PAGE DM M SH MS T F          man mamute-memory
+  telas       DM M S ZAP SCR               man mamute-screens   (paineis na TUI, comandos de linha no console)
   despejo     C D P V                      man mamute-dump
   execucao    L LP X G                     man mamute-exec
   arquivos    LOAD SAVE                    man mamute-files
@@ -38,12 +39,12 @@ COMANDOS (todos em HEXA; man mamute-<grupo> detalha)
   sair        BA QUIT XQT
 
 DIFERENCAS EM RELACAO AO MAMUTE DO PALEOBASIC
-  Sem janelas separadas: DM, M e S (grade de 128 bytes) mostram a grade no log; a edicao e' por comando (M end,b1,b2...).
-  P e LP gravam um arquivo TEXTO (nao PDF). O EDIT/A monta pelo fwasm (nao ha' um segundo montador). Ainda nao existem: ZAP,
-  SCR, S, R (fita) e os comandos do SUPER-X (prefixo X). Entram nas proximas versoes (doc/mamute-spec.md).
+  Sem janelas separadas: na TUI, DM, M, S, ZAP e SCR sao PAINEIS (man mamute-screens); no console sao comandos de linha.
+  P, LP e A P/H gravam PDF (Courier, A4) quando o nome termina em .pdf, senao texto. O EDIT/A monta pelo fwasm (nao ha' um
+  segundo montador). Ainda nao existem: R (fita) e os comandos do SUPER-X (prefixo X). Entram nas proximas versoes (doc/mamute-spec.md).
 
 VER TAMBEM
-  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-edit, mamute-files, mamute-config, dis, fwasm)MAN";
+  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-edit, mamute-screens, mamute-files, mamute-config, dis, fwasm)MAN";
 
 const char *const kEdit = R"MAN(EDIT / LIST / A / MAP -- o editor de fonte Z80 e a montagem
 
@@ -77,11 +78,11 @@ A -- MONTAR
   Opcoes, coladas e em qualquer ordem:
     O   grava o codigo-objeto na memoria do monitor (no endereco do ORG; so' onde for RAM -- ONLINE escreve na maquina)
     N   sem a coluna do numero da linha
-    P   tambem grava a listagem em NOME.lst (texto)
+    P   tambem grava a listagem: NOME.pdf (PDF A4); com >NOME.lst ou >NOME.txt, texto
     I   grava o codigo-objeto em NOME.bin no formato BSAVE do MSX (FE inicio fim exec); LOAD NOME.bin carrega de volta
     R   anexa a referencia cruzada (nome, valor e os enderecos das linhas que usam o simbolo)
     S   anexa a lista alfabetica de simbolos;  D   a mesma em ordem de aparicao
-    H   grava as listas S e/ou D em NOME.sym
+    H   grava as listas S e/ou D: NOME_labels.pdf; com >NOME.lst ou >NOME.txt, NOME.sym em texto
   /desloc  soma desloc (hexa) a TODO ORG;  >nome  nome-base de P, I e H (padrao: mamute)
 MAP   inicio e fim do codigo da ultima montagem que deu certo (NEW e qualquer edicao a invalidam)
 
@@ -103,6 +104,52 @@ EXEMPLO
 
 VER TAMBEM
   mamute, mamute-exec, fwasm, fwasm-syntax)MAN";
+
+const char *const kScreens = R"MAN(DM / M / S / ZAP / SCR -- as telas do Mamute
+
+No Mamute do Paleobasic eram janelas separadas. Aqui:
+  * na TUI (fwmsx --tui) cada uma abre um PAINEL interativo, com as teclas de verdade;
+  * no console (--cli), em scripts e pelo TCP sao comandos de LINHA: mostram a grade/tela uma vez e as mudancas vao por argumentos.
+
+DM end[,desloc]      128 bytes (16 linhas de 8) em hexa e ASCII. DM sozinho continua 128 bytes depois do ultimo (o "proxima pagina" da linha).
+M end[,b1,b2..]      sem bytes: a grade; com bytes: grava.            M C000,3E,2A,C9
+S end[,teclas]       como o M, mas digitando com o teclado S (abaixo). S D010,1q  grava 15 (as teclas 1 e q sao os digitos 1 e 5).
+ZAP arq,setor[,desloc]   a grade de um setor de uma imagem .dsk (512 bytes por setor; o rotulo da linha e' o deslocamento no setor).
+ZAPW arq,setor,byte,b1..  grava bytes no setor direto no arquivo (so' linha).   ZAPW disco.dsk,1,10,DE,AD
+SCR end,dx,dy[,modo[,zoom]]   a memoria como uma tela de 256x192 pixels (32x24 caracteres de 8 bytes), em braille (U+2800).
+  dx,dy (hexa, >= 1) e' o AZULEJO: a tela e' ladrilhada com blocos de dx x dy caracteres; modo 0 le o azulejo por linha, 1 por coluna
+  (a ordem real dos sprites do MSX). zoom 1 = 128x48 colunas (um ponto por pixel), 2 = 64x24 (cada ponto e' um bloco 2x2; padrao).
+
+TECLAS DOS PAINEIS (TUI)
+  DM e ZAP                          M e S
+    setas      movem o cursor          setas, TAB, PgUp/PgDn, + e - iguais ao DM
+    TAB        hexa <-> texto          dois digitos hexa gravam direto (o 1o fica como 3_) e o cursor avanca;
+    PgUp/PgDn  pulam 128 bytes         o bloco de texto e' so' leitura;  ENTER sempre sai;  ESC cancela o digito
+    + e -      deslocamento do texto
+    ENTER      abre o campo de edicao; ENTER confirma, ESC cancela
+               (hexa: 1 ou 2 digitos, o 1o digito troca o valor mostrado; texto: cada caractere vira (caractere - desloc))
+    Ctrl+S     (ZAP) grava so' o setor do cursor; o titulo mostra * enquanto ha' alteracao; ESC com alteracao pede ESC de novo
+    ESC        fecha (com um campo aberto, so' cancela o campo)
+  O desloc (-7F a +80) nao muda a memoria: so' como o texto e' lido/escrito.
+  Escrever em ROM ou celula vazia nao grava e o painel avisa. No ZAP todo byte da imagem e' editavel.
+
+TECLADO S (padrao de mamute.cfg: skeys=1234qwerasdfzxcv)
+    1 2 3 4        1 2 3 4
+    Q W E R   =>   5 6 7 8        as 16 teclas valem os digitos 1 2 3 4 5 6 7 8 9 A B C D E F 0;
+    A S D F        9 A B C        CFG SKEYS <16 caracteres> troca (CFG SAVE grava)
+    Z X C V        D E F 0
+
+SCR NA TUI
+    esquerda/direita  mexem o endereco base 1 byte           cima/baixo  1 azulejo inteiro (dx x dy x 8 bytes)
+    TAB   liga/desliga a moldura de 2x2 caracteres (16x16 pixels) no canto superior esquerdo
+    E     mostra/oculta o endereco base            Z   alterna o zoom
+    ENTER entra na edicao dos 16x16 pixels da moldura (ampliados abaixo da tela)
+      setas movem o cursor de pixel, ESPACO inverte o pixel, I inverte tudo, L apaga tudo,
+      ENTER sai (o que foi feito fica), ESC cancela TUDO desde que entrou;  celula que nao e' RAM: nada e' gravado
+    ESC   fecha
+
+VER TAMBEM
+  mamute, mamute-memory, mamute-config)MAN";
 
 const char *const kModes = R"MAN(ONLINE / OFFLINE / STATUS / PUSH / PULL
 
@@ -140,12 +187,13 @@ PAGE            offline: poe as 4 paginas no primeiro slot com RAM (o estado de 
 PAGE ?          mostra o slot ativo de cada pagina, com o tipo da celula (RAM, ROM, BASIC, VAZIO)
 PAGE X,Y,Z,W    offline: pagina 0 no slot X, 1 no Y, 2 no Z, 3 no W (0-3, sempre os 4)
 
-DM end[,desloc]
+DM end[,desloc]   (DM sozinho continua 128 bytes depois; na TUI abre o painel: man mamute-screens)
   128 bytes (16 linhas de 8) em hexa e ASCII lado a lado, mais ENDERECO e DESLOC. O deslocamento (-7F a +80, hexa com
   sinal) nao muda a memoria: so' a leitura do texto, somando-o ao byte (para ler texto "cifrado" por um deslocamento fixo).
 
 M end[,b1,b2,...]
-  sem bytes, e' o DM; com bytes, grava os bytes a partir de end. M C000,3E,2A,C9
+  sem bytes, e' o DM (na TUI, o painel de edicao rapida); com bytes, grava os bytes a partir de end. M C000,3E,2A,C9
+S end[,teclas]   como o M, com o teclado S (man mamute-screens);  ZAP / SCR: telas de disco e de pixels (man mamute-screens)
 
 SH [end],b1,b2,...        procura bytes; um campo VAZIO e' curinga:  SH 4000,2A,,0C
 SH [end],'texto           procura um texto (o apostrofo abre, nada fecha), em TODOS os deslocamentos de -7F a +80:
@@ -169,8 +217,8 @@ C modo   escolhe o formato dos comandos D, P e V (vale ate' CFG DUMP mudar o ini
   3   igual ao 2, mas o checksum e' so' a soma dos bytes
 
 D ini[,fim]           despejo no log. Sem fim, 16 bytes. O fim nao pode ser menor que o inicio nem passar de FFFF.
-P ini[,fim][,arq]     igual ao D, mas grava um arquivo TEXTO (padrao mamute.txt)
-V ini[,fim]           igual ao D, mas da VRAM (enderecos de ate' 5 digitos; o limite e' o tamanho da VRAM)
+P ini[,fim][,arq]     igual ao D, mas grava um arquivo: PDF (A4, Courier) quando arq termina em .pdf (padrao mamute.pdf), senao texto
+V ini[,fim][,arq]     igual ao D, mas da VRAM (enderecos de ate' 5 digitos; o limite e' o tamanho da VRAM); com arq, grava como o P
 
 EXEMPLO
   C 2
@@ -184,7 +232,7 @@ const char *const kExec = R"MAN(L / LP / X / G
 L [ini[,fim]]
   Disassembla a memoria no log: endereco, ate' 4 bytes e o mnemonico (JR e DJNZ mostram o destino absoluto).
   Com ini e fim, ate' passar de fim; so' com ini, 10 instrucoes; sem nada, continua de onde o ultimo L/LP parou.
-LP [ini[,fim]][,arq]  igual ao L, mas grava um arquivo texto (padrao mamute.lst).
+LP [ini[,fim]][,arq]  igual ao L, mas grava um arquivo: PDF quando arq termina em .pdf (padrao mamute-dis.pdf), senao texto.
 
 X                     mostra AF BC DE HL IX IY SP PC e os alternados
 X reg                 mostra um registrador (AF BC DE HL IX IY SP PC AF' BC' DE' HL' ou A F B C D E H L)
@@ -234,6 +282,7 @@ CHAVES
   cell.S.P=vazio|ram|rom|basic   tipo da celula do slot S (0-3), pagina P (0-3)
   file.S.P=caminho            arquivo carregado na celula (rom e basic)
   half.S.P=1                  usa os ULTIMOS 16 KB do arquivo (BIOS+BASIC de 32 KB repartidos em duas celulas)
+  skeys=1234qwerasdfzxcv      o teclado S (16 caracteres = os digitos 1 2 3 4 5 6 7 8 9 A B C D E F 0); CFG SKEYS muda
 
 COMANDOS
   CFG                                 mostra a configuracao e a tabela das 16 celulas
@@ -266,6 +315,7 @@ std::vector<Topic> MamuteTopics() {
     add("mamute-dump", "C, D, P, V: despejo formatado (4/16 bytes, checksum)", kDump);
     add("mamute-exec", "L, LP, X, G: disassembler, registradores e execucao", kExec);
     add("mamute-edit", "EDIT, LIST, A, MAP: editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm", kEdit);
+    add("mamute-screens", "DM, M, S, ZAP, SCR: paineis interativos na TUI e comandos de linha no console", kScreens);
     add("mamute-files", "LOAD e SAVE: arquivos na memoria", kFiles);
     add("mamute-config", "CFG e o arquivo mamute.cfg: configuracao inicial", kConfig);
     return v;

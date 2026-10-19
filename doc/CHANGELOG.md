@@ -7,6 +7,22 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.40.2] - 2026-10-19 - "Antarctic Adventure: Mamute, telas" (Konami)
+
+### Adicionado -- Mamute, Fase 3: as telas e o PDF
+- **Paineis na TUI** (`fwmsx --tui`, comando `mon`): `DM`, `M`, `S`, `ZAP` e `SCR` abrem um painel interativo, com as teclas de verdade (setas, TAB hexa/texto, PgUp/PgDn +-128 bytes, `+`/`-` deslocamento do texto,
+  ENTER abre o campo de edicao, `M`/`S` gravam digitando dois digitos hexa, Ctrl+S grava o setor no ZAP). No console e em scripts sao **comandos de linha** (a grade uma vez; as mudancas por argumentos).
+- **`S end[,teclas]`**: o teclado numerico configuravel do Mamute (`1234 qwer asdf zxcv` = `1234 5678 9ABC DEF0`); `skeys=` no `mamute.cfg` e `CFG SKEYS`.
+- **`ZAP arq.dsk,setor[,desloc]`**: editor de setores de uma imagem de disco (512 bytes por setor, rotulo = deslocamento no setor, `*` no titulo ate' salvar, Ctrl+S grava so' o setor do cursor, ESC pede confirmacao se houver
+  alteracao). `ZAPW arq,setor,byte,b1..` grava direto (versao de linha).
+- **`SCR end,dx,dy[,modo[,zoom]]`**: a memoria como uma tela de 256x192 pixels em braille (azulejos de dx x dy caracteres, leitura horizontal ou vertical), moldura 2x2, endereco base e a **edicao 16x16 pixel a pixel**
+  (espaco inverte, I inverte tudo, L apaga, ESC desfaz tudo).
+- **PDF**: `P`, `LP`, `V arq`, `A P` e `A H` gravam um **PDF A4 em Courier** quando o nome termina em `.pdf` (padroes `mamute.pdf`, `mamute-dis.pdf`, `NOME.pdf`, `NOME_labels.pdf`); `>nome.lst` no `A` e qualquer outro nome
+  nos demais continuam texto. Gerador proprio, sem biblioteca (`mamute_pdf.cpp`).
+- `DM` sozinho continua 128 bytes depois do ultimo. Manual: `man mamute-screens` (a 9a pagina do Mamute).
+- Internos: `mamute_panel.cpp` (o modelo dos paineis: recebe teclas por nome e devolve linhas, sem tela), protocolo `mon @panels|@key|@panel`, `Mode::Mamute` no modelo da TUI.
+- Testes: `mamutetest` (de 128 para 193 checagens: PDF, DM/S/ZAP de linha, todos os paineis por teclas, ZAP com arquivo, SCR com os dois modos de azulejo e a edicao), `tuitest` (as teclas do painel) e `repltest`.
+
 ## [1.40.1] - 2026-10-19 - "Antarctic Adventure: Mamute, EDIT e A" (Konami)
 
 ### Adicionado -- Mamute, Fase 2: o editor de fonte e a montagem

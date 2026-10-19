@@ -109,6 +109,12 @@ virarem texto no historico.
 titulo e a posicao (`1-18/47`); os titulos de secao (MAIUSCULAS) saem em amarelo. O texto vem pronto do `ReplSession`, quebrado na largura da caixa
 (`SetWidth(cols - 6)`). Testes: `tuitest` (rolar, paginar, nao rolar alem do fim, fechar).
 
+## 6e. Os paineis do Mamute (1.40.2)
+
+Dentro do monitor (`mon`), `DM`, `M`, `S`, `ZAP` e `SCR` abrem um painel na TUI: `Mode::Mamute`. O modelo (`TuiModel`) so' guarda as linhas (`SetMamutePanel`) e traduz as teclas em `mon @key <nome>` (`enter`, `esc`, `up`...,
+`save` para Ctrl+S, `space`, `c:<char>`), enviadas **sem eco no historico** (`SubmitQuiet`); a resposta do monitor e' o painel de novo ou `action=close panel=mamute`. O desenho (`MamuteDialog`, tui_app.cpp) inverte o que esta' entre
+`\x01` e `\x02` (o cursor) e escurece a ultima linha (a ajuda). A `ReplSession` da TUI liga `EnablePanels` e manda `mon @panels on` uma vez por conexao. Detalhes: [mamute-spec.md](mamute-spec.md).
+
 ## 7. O que falta
 
 - Teclas de atalho por letra nos menus (Alt+letra) e menus com mnemonicos.

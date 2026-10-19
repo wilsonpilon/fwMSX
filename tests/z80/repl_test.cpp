@@ -165,6 +165,32 @@ int main() {
             check(!es.monitor_mode(), "BA dentro do EDIT volta ao console");
         }
 
+        // ---- paineis do Mamute: a TUI liga (EnablePanels), o CLI nao ----
+        {
+            repl::ReplSession ps("x");
+            ps.EnablePanels(true);
+            std::ostringstream po;
+            ps.Execute("mon", po);
+            ps.Execute("m c000,3e,2a", po);
+            po.str("");
+            ps.Execute("dm c000", po);
+            check(po.str().rfind("action=show panel=mamute title=DM", 0) == 0 && Contains(po.str(), "ENDERECO: C000"), "TUI: DM abre o painel (protocolo action=show)");
+            po.str("");
+            ps.Execute("mon @key right", po); // a TUI manda as teclas assim; dentro do monitor o prefixo "mon" e' tirado
+            check(Contains(po.str(), "\x01" "2A\x02"), "a tecla chega ao painel (o cursor andou para 2A)");
+            po.str("");
+            ps.Execute("mon @key esc", po);
+            check(po.str() == "action=close panel=mamute\n", "Esc fecha o painel");
+
+            repl::ReplSession cli("x");
+            std::ostringstream co;
+            cli.Execute("mon", co);
+            cli.Execute("m c000,3e,2a", co);
+            co.str("");
+            cli.Execute("dm c000", co);
+            check(co.str().rfind("action=", 0) != 0 && Contains(co.str(), "C000  3E 2A"), "CLI: DM e' a versao de linha (a grade em texto)");
+        }
+
         int received = -1;
         std::vector<std::string> got;
         s.AddTool("ferr", [&](const std::vector<std::string> &a) {

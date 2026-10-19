@@ -577,6 +577,50 @@ void TuiModel::SetPanel(const std::string &reply) {
     }
 }
 
+void TuiModel::SetMamutePanel(const std::string &reply) {
+    const std::vector<std::string> lines = SplitLines(reply);
+    if (lines.empty() || lines[0].rfind("action=", 0) != 0 || lines[0].find("panel=mamute") == std::string::npos) {
+        mode_ = Mode::Normal;
+        mamute_lines_.clear();
+        for (const std::string &l : lines) AddLog(l);
+        return;
+    }
+    if (lines[0].find("action=close") != std::string::npos) {
+        mode_ = Mode::Normal;
+        mamute_lines_.clear();
+        return;
+    }
+    const size_t t = lines[0].find("title=");
+    mamute_title_ = t == std::string::npos ? "Mamute" : lines[0].substr(t + 6);
+    mamute_lines_.assign(lines.begin() + 1, lines.end());
+    mode_ = Mode::Mamute;
+}
+
+void TuiModel::KeyMamute(const Key &key) {
+    auto send = [this](const std::string &k) { SubmitQuiet("mon @key " + k); };
+    switch (key.type) {
+    case Key::Enter: send("enter"); return;
+    case Key::Escape:
+    case Key::F10: send("esc"); return;
+    case Key::Up: send("up"); return;
+    case Key::Down: send("down"); return;
+    case Key::Left: send("left"); return;
+    case Key::Right: send("right"); return;
+    case Key::PageUp: send("pgup"); return;
+    case Key::PageDown: send("pgdn"); return;
+    case Key::Home: send("home"); return;
+    case Key::End: send("end"); return;
+    case Key::Tab: send("tab"); return;
+    case Key::Backspace: send("bs"); return;
+    case Key::CtrlS: send("save"); return;
+    case Key::Char:
+        if (key.text == " ") send("space");
+        else if (key.text.size() == 1) send("c:" + key.text);
+        return;
+    default: return;
+    }
+}
+
 void TuiModel::KeyDebugger(const Key &key) {
     auto send = [this](const std::string &k) { Submit("dbgui key " + k); };
     switch (key.type) {
@@ -643,6 +687,10 @@ void TuiModel::HandleKey(const Key &key) {
         mode_ = Mode::Normal;
         return;
     }
+    if (mode_ == Mode::Mamute) {
+        KeyMamute(key); // o painel do Mamute e' do monitor: as teclas vao para ele
+        return;
+    }
     if (mode_ == Mode::Debugger) {
         KeyDebugger(key); // o painel e' dele: F10 e Esc fecham, F1 nao abre a ajuda
         return;
@@ -669,6 +717,7 @@ void TuiModel::HandleKey(const Key &key) {
     case Mode::Help: break;
     case Mode::Debugger: break;
     case Mode::Man: break;
+    case Mode::Mamute: break;
     }
 }
 
@@ -677,7 +726,7 @@ void TuiModel::Click(int x, int y) {
         mode_ = Mode::Normal;
         return;
     }
-    if (mode_ == Mode::Debugger || mode_ == Mode::Man) return;
+    if (mode_ == Mode::Debugger || mode_ == Mode::Man || mode_ == Mode::Mamute) return;
     const std::vector<std::pair<int, int>> spans = TitleSpans();
     if (y == 0) {
         for (size_t i = 0; i < spans.size(); ++i) {

@@ -1,4 +1,4 @@
-# Mamute -- o monitor Z80 do fwMSX (1.40.0 "Antarctic Adventure"; Fase 2 na 1.40.1)
+# Mamute -- o monitor Z80 do fwMSX (1.40.0 "Antarctic Adventure"; Fase 2 na 1.40.1; Fase 3 na 1.40.2)
 
 O **Mamute** e' o monitor Z80 do fwMSX: um prompt de linha onde cada comando mexe na memoria, disassembla,
 executa, salva e carrega programas, no estilo dos monitores dos anos 80 (MegaAssembler, SUPER-X). Vem do
@@ -32,7 +32,7 @@ Decisoes (perguntadas ao usuario antes de codar, como pede o `CLAUDE.md`):
 |---|---|---|
 | **1** | **1.40.0 "Antarctic Adventure"** | Nucleo (memoria offline/online, CPU offline/online), `mon`/`mamute`, `--mon`, prompt `MON(off)>`/`MON(on)>`, config `mamute.cfg`, `man mamute` (7 paginas) e help. Comandos: `BA QUIT XQT ONLINE OFFLINE STATUS PUSH PULL PAGE DM M SH MS C D P V T F L LP X G LOAD SAVE CFG HELP` |
 | **2** | **1.40.1 "Antarctic Adventure: Mamute, EDIT e A"** | `EDIT`/`LIST`/`A`/`MAP`: editor de linhas do fonte numerado e montagem pelo fwasm (listagem, `O N P I R S D H /desloc`). `R` (fita) so' validava a sintaxe no original e continua pendente |
-| 3 | (a definir) | Telas: `DM`/`M`/`S` interativos como paineis da TUI (setas, TAB, edicao de byte), `ZAP` (setores de `.dsk`), `SCR` (grafico), `P`/`LP` em PDF |
+| **3** | **1.40.2 "Antarctic Adventure: Mamute, telas"** | Telas: `DM`/`M`/`S` interativos como paineis da TUI (setas, TAB, edicao de byte), `ZAP` (setores de `.dsk`), `SCR` (grafico, em braille), `P`/`LP`/`V`/`A P`/`A H` em PDF |
 | 4 | (a definir) | Comandos do **SUPER-X** (prefixo `X`, 36 comandos): `XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, `XCS XTS`, `XCO XSD`, `XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%`, notas `XIM XIC XIL XIS XIR`, portas `XPP XPI XPO` |
 
 ## 3. Arquitetura (as 4 linguagens)
@@ -50,6 +50,17 @@ src/mamute/
   cpp/mamute_source.{h,cpp}     C++      (Fase 2) o fonte numerado: Source, traducao para o asMSX, Assemble, listagem e simbolos
   cpp/mamute_edit.cpp           C++      (Fase 2) os comandos EDIT/LIST/A/MAP dentro do Monitor
 ```
+
+### 3c. Os paineis (Fase 3)
+
+- **`Panel`** (`mamute_panel.h`): `Render(mem)` devolve as linhas (a primeira e' o titulo; o cursor entre `\x01` e `\x02`) e `Key(mem, tecla)` aplica uma tecla por NOME (`up down left right pgup pgdn home end tab enter esc bs plus minus space save c:<char>`);
+  `false` = fechar. O painel nao guarda o `IMemory` (o adaptador da maquina e' temporario): recebe o atual a cada chamada.
+- **`GridPanel`** (DM, M, S, ZAP): 16 linhas de 8 bytes + texto; `DM`/`ZAP` com campo de edicao (ENTER abre/confirma, ESC cancela; hexa pre-preenchido que o 1o digito substitui; texto = `(caractere - desloc) & FF` e o cursor avanca);
+  `M`/`S` com digito pendente (`3_`); escrita em celula nao-RAM so' avisa; ZAP guarda a imagem inteira, o conjunto de setores sujos e grava so' o setor do cursor.
+- **`ScreenPanel`** (SCR): `CharAddr(cx,cy)` = azulejos de dx x dy caracteres (`per_row = ceil(32/dx)`), indice dentro do azulejo `iy*dx+ix` (modo 0) ou `ix*dy+iy` (modo 1), 8 bytes por caractere; braille por pontos (no zoom 2 cada ponto e' o OU de um bloco 2x2);
+  moldura = 2x2 caracteres no canto; edicao 16x16 com snapshot dos 32 bytes para o ESC.
+- **Protocolo e versao de linha**: ver `RELEASE.md` v1.40.2 e `tui-spec.md` 6e. `Monitor::panels_` liga (`@panels on`); sem ele os mesmos comandos sao de linha (`DM` continua 128 bytes depois, `S end,teclas`, `ZAP`/`ZAPW`, `SCR`).
+- **PDF** (`mamute_pdf.cpp`): PDF 1.4 minimo, A4, Courier 9 pt; `WriteListing` escolhe PDF quando o nome termina em `.pdf`.
 
 ### 3b. O editor de fonte e a montagem (Fase 2)
 
@@ -99,10 +110,11 @@ src/mamute/
   PUSH/PULL, `G C000` faz a CPU da maquina rodar o programa escrito no monitor).
 - `repltest`: modo monitor sem emulador (prompt, `!comando`, `BA`, `mon <linha>`) e **conectado a um emulador** (ONLINE, escrita
   na maquina conferida por `peek`).
-- `mantest`: as 8 paginas do manual do Mamute e a categoria "Mamute" no help.
+- `mantest`: as 9 paginas do manual do Mamute e a categoria "Mamute" no help.
+- Fase 3: `mamutetest` (PDF, DM/S/ZAP/SCR de linha, todos os paineis por teclas `@key`, ZAP com arquivo, SCR modos 0 e 1 e a edicao 16x16), `tuitest` (teclas -> `mon @key`) e `repltest` (`EnablePanels`).
 - Fase 2: `mamutetest` (EDIT/A: hexa, B, D, erros por linha, RENUM/DELETE/CHANGE/SEARCH, SAVE/LOAD/MERGE, P/I/R/S/D/H, `/desloc`, e `A O` na maquina real) e `repltest` (QUIT/BA no EDIT).
 
 ## 6. O que falta
 
-Fases 3 e 4 acima (a 2 esta' pronta). Tambem: completar o TAB do console com os comandos do monitor; `R` (carregar assemblado de fita); `V`/`SCR` com
+Fase 4 acima (as 2 e 3 estao prontas). Tambem: o SCR grafico (pixels de verdade) na janela ImGui; TAB do console com os comandos do monitor. Tambem: completar o TAB do console com os comandos do monitor; `R` (carregar assemblado de fita); `V`/`SCR` com
 escrita na VRAM; ligar as portas de E/S da CPU offline ao painel (Fase 4); e continuar a comparar o disassembler com o do Mamute original.

@@ -11,6 +11,7 @@
 #include "../../src/mamute/cpp/mamute_config.h"
 #include "../../src/mamute/cpp/mamute_monitor.h"
 #include "../../src/mamute/cpp/mamute_online.h"
+#include "../../src/mamute/cpp/mamute_pdf.h"
 
 namespace {
 
@@ -239,7 +240,7 @@ void TestEdit() {
 
     // P (listagem em arquivo), H, I (BSAVE): o nome-base vem de >nome
     const std::string base = TempPath("mamute_asm");
-    checkOut(mon, "EDIT A PIR>" + base, "GRAVADO", "A P/I gravam arquivos");
+    checkOut(mon, "EDIT A PIR>" + base + ".lst", "GRAVADO", "A P/I gravam arquivos (>nome.lst = texto)");
     check(!ReadAll(base + ".lst").empty(), "A P: NOME.lst com a listagem");
     const std::vector<uint8_t> bin = ReadAll(base + ".bin");
     check(bin.size() >= 7 && bin[0] == 0xFE && bin[1] == 0x00 && bin[2] == 0x80 && bin[7] == 0x06 && bin[8] == 0x10, "A I: BSAVE FE 8000 ... e o codigo (LD B,10 = 06 10)");
@@ -256,6 +257,229 @@ void TestEdit() {
     mon.Execute("EDIT", &quit);
     mon.Execute("BA", &quit);
     check(quit && !mon.editing(), "BA dentro do EDIT sai do monitor");
+}
+
+// Os paineis e as telas da Fase 3: o modelo recebe teclas por nome (@key), como a TUI manda.
+void TestScreens() {
+    const std::string nl = "\n";
+    mamute::Config cfg;
+    mamute::Monitor mon(cfg);
+
+    // ---- PDF: P, LP, V, A P e A H ----
+    check(mamute::IsPdfName("x.PDF") && !mamute::IsPdfName("x.txt"), "IsPdfName");
+    {
+        std::vector<std::string> many;
+        for (int i = 0; i < 150; ++i) many.push_back("linha " + std::to_string(i) + " (com parenteses)");
+        const std::string pdf = mamute::BuildPdf("TESTE", many);
+        check(pdf.rfind("%PDF-1.4", 0) == 0 && has(pdf, "/Count 3") && has(pdf, "%%EOF") && has(pdf, "linha 149 \\(com parenteses\\)") && has(pdf, "/BaseFont /Courier"),
+              "PDF: 150 linhas = 3 folhas A4 em Courier, com os parenteses escapados");
+    }
+    const std::string pdfp = TempPath("mamute_t_dump.pdf");
+    mon.Execute("M C000,3E,2A,C9");
+    checkOut(mon, "P C000,C00F," + pdfp, "(PDF)", "P grava um PDF quando o nome termina em .pdf");
+    {
+        const std::vector<uint8_t> pdf = ReadAll(pdfp);
+        check(pdf.size() > 200 && pdf[0] == '%' && pdf[1] == 'P', "P: o arquivo e' um PDF");
+    }
+    const std::string txtp = TempPath("mamute_t_dump.txt");
+    checkOut(mon, "P C000,C00F," + txtp, "GRAVADO", "P com outro nome grava texto");
+    {
+        const std::vector<uint8_t> txt = ReadAll(txtp);
+        check(has(std::string(txt.begin(), txt.end()), "C000  3E 2A C9"), "P: o texto tem o despejo");
+    }
+    std::remove(pdfp.c_str());
+    std::remove(txtp.c_str());
+    {
+        const std::string pdf2 = TempPath("mamute_t_lst.pdf");
+        checkOut(mon, "LP C000,C002," + pdf2, "(PDF)", "LP grava um PDF");
+        std::remove(pdf2.c_str());
+        mon.Execute("EDIT NEW");
+        mon.Execute("EDIT 10 ORG 8000H");
+        mon.Execute("EDIT 20 LBL: LD A,1");
+        const std::string base = TempPath("mamute_t_asm");
+        checkOut(mon, "EDIT A PSH>" + base, "mamute_t_asm.pdf (PDF)", "A P: a listagem em PDF");
+        check(has(Run(mon, "EDIT A PSH>" + base), "_labels.pdf (PDF)"), "A H: as listas de simbolos num PDF separado");
+        std::remove((base + ".pdf").c_str());
+        std::remove((base + "_labels.pdf").c_str());
+    }
+
+    // ---- versoes de linha ----
+    mon.Execute("F D000,D0FF,00");
+    checkOut(mon, "DM D000", "ENDERECO: D000", "DM de linha");
+    checkOut(mon, "DM", "ENDERECO: D080", "DM sozinho continua 128 bytes depois");
+    mon.Execute("M D000,11");
+    checkOut(mon, "S D010,1q", "GRAVADOS 1 BYTES EM D010", "S de linha: as teclas do teclado S (1 q = 1 5 = 15)");
+    checkOut(mon, "D D010,D010", "D010  15", "S gravou 15");
+    checkOut(mon, "S D012,k1", "TECLA FORA DO TECLADO S", "S recusa tecla fora do teclado");
+    checkOut(mon, "CFG SKEYS ABCDEFGHIJKLMNOP", "TECLADO S", "CFG SKEYS");
+    mon.Execute("CFG SKEYS 1234qwerasdfzxcv");
+
+    // ---- paineis: o hospedeiro liga (@panels on) e manda as teclas ----
+    mon.Execute("@panels on");
+    std::string r = mon.Execute("DM C000");
+    check(r.rfind("action=show panel=mamute title=DM", 0) == 0, "DM com paineis ligados abre o painel (protocolo da TUI)");
+    check(has(r, "\x01" "3E\x02") && has(r, "ENDERECO: C000") && has(r, "DESLOC.: +00"), "painel DM: o cursor marcado e as linhas de status");
+    r = mon.Execute("@key right");
+    check(has(r, "\x01" "2A\x02"), "seta direita move o cursor");
+    r = mon.Execute("@key down");
+    check(has(r, "CURSOR: C009"), "seta baixo anda uma linha (8 bytes)");
+    r = mon.Execute("@key pgdn");
+    check(has(r, "ENDERECO: C080"), "PgDn pula 128 bytes");
+    r = mon.Execute("@key pgup");
+    check(has(r, "ENDERECO: C000"), "PgUp volta 128 bytes");
+    mon.Execute("@key plus");
+    r = mon.Execute("@key plus");
+    check(has(r, "DESLOC.: +02"), "+ aumenta o deslocamento");
+    mon.Execute("@key minus");
+    mon.Execute("@key minus");
+    mon.Execute("@key up");
+    mon.Execute("@key left");
+    mon.Execute("@key left");
+    r = mon.Execute("@key enter"); // campo de edicao no byte C000
+    check(has(r, "EDITANDO (HEXA): 3E_"), "ENTER abre o campo com o valor atual");
+    mon.Execute("@key c:F");
+    mon.Execute("@key c:F");
+    r = mon.Execute("@key enter");
+    checkOut(mon, "D C000,C000", "C000  FF", "o painel DM gravou FF (campo hexa)");
+    check(has(r, "\x01" "2A\x02"), "depois de gravar o cursor avanca");
+    mon.Execute("@key tab");
+    mon.Execute("@key enter");
+    mon.Execute("@key c:H");
+    mon.Execute("@key c:i");
+    r = mon.Execute("@key enter");
+    checkOut(mon, "D C001,C002", "C001  48 69", "o painel DM no bloco de texto grava os caracteres (H i = 48 69)");
+    mon.Execute("@key enter");
+    mon.Execute("@key c:Z");
+    r = mon.Execute("@key esc"); // cancela o campo
+    check(!has(r, "action=close"), "ESC com o campo aberto cancela o campo e nao fecha");
+    checkOut(mon, "D C003,C003", "C003  00", "e nao gravou nada");
+    r = mon.Execute("@key esc");
+    check(r == "action=close panel=mamute", "ESC fecha o painel");
+
+    // M: dois digitos hexa gravam direto
+    mon.Execute("M C100");
+    r = mon.Execute("@key c:3");
+    check(has(r, "3_"), "M: o primeiro digito fica pendente (3_)");
+    mon.Execute("@key c:F");
+    mon.Execute("@key c:A");
+    mon.Execute("@key c:B");
+    checkOut(mon, "D C100,C101", "C100  3F AB", "M: dois digitos gravam e o cursor avanca (3F AB)");
+    r = mon.Execute("@key enter");
+    check(r == "action=close panel=mamute", "M: ENTER sempre sai");
+    // S: as teclas do teclado numerico (q w = 5 6)
+    mon.Execute("S C200");
+    mon.Execute("@key c:q");
+    mon.Execute("@key c:w");
+    checkOut(mon, "D C200,C200", "C200  56", "S: q w = 5 6");
+    r = mon.Execute("@key c:1");
+    check(has(r, "TECLAS S:"), "S mostra a legenda do teclado");
+    mon.Execute("@key esc");
+    // escrita em celula que nao e' RAM: nada e' gravado e o painel avisa
+    mon.Execute("PAGE 0,0,0,0");
+    mon.Execute("M 0000");
+    mon.Execute("@key c:1");
+    r = mon.Execute("@key c:2");
+    check(has(r, "SOMENTE LEITURA"), "painel M sobre ROM/vazio avisa e nao grava");
+    mon.Execute("@key esc");
+    mon.Execute("PAGE");
+
+    // ---- ZAP sobre uma imagem de disco ----
+    const std::string img = TempPath("mamute_t.dsk");
+    {
+        std::vector<uint8_t> bytes(2048);
+        for (size_t i = 0; i < bytes.size(); ++i) bytes[i] = static_cast<uint8_t>(i & 0xFF);
+        std::ofstream f(img, std::ios::binary);
+        f.write(reinterpret_cast<const char *>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    }
+    mon.Execute("@panels off");
+    checkOut(mon, "ZAP " + img + ",1", "SETOR: 001  BYTE: 000", "ZAP de linha mostra o setor");
+    checkOut(mon, "ZAP " + img + ",1", "000  00 01 02 03 04 05 06 07", "ZAP: o rotulo e' o deslocamento no setor");
+    checkOut(mon, "ZAP " + img + ",9", "FORA DA IMAGEM", "ZAP recusa setor fora da imagem");
+    checkOut(mon, "ZAPW " + img + ",1,10,DE,AD", "GRAVADOS 2 BYTES NO SETOR 1", "ZAPW grava bytes no setor");
+    {
+        const std::vector<uint8_t> b = ReadAll(img);
+        check(b[512 + 0x10] == 0xDE && b[512 + 0x11] == 0xAD && b[512 + 0x12] == 0x12, "ZAPW: bytes certos no arquivo");
+    }
+    mon.Execute("@panels on");
+    r = mon.Execute("ZAP " + img + ",0");
+    check(has(r, "title=ZAP") && has(r, "SETOR: 000"), "ZAP com paineis ligados abre o painel");
+    mon.Execute("@key enter");
+    mon.Execute("@key c:A");
+    r = mon.Execute("@key c:B");
+    check(has(r, "EDITANDO (HEXA): AB_"), "ZAP: o primeiro digito substitui o valor pre-preenchido");
+    r = mon.Execute("@key enter");
+    check(has(r, "ZAP - mamute_t.dsk *"), "ZAP: o titulo ganha * enquanto ha' alteracoes nao salvas");
+    check(ReadAll(img)[0] == 0x00, "ZAP: editar nao grava no arquivo sozinho");
+    r = mon.Execute("@key save");
+    check(has(r, "SETOR 000 GRAVADO") && !has(r, "mamute_t.dsk *") && ReadAll(img)[0] == 0xAB, "ZAP: Ctrl+S grava so' o setor do cursor");
+    mon.Execute("@key enter");
+    mon.Execute("@key c:7");
+    mon.Execute("@key enter");
+    r = mon.Execute("@key esc");
+    check(has(r, "ALTERACOES NAO SALVAS") && !has(r, "action=close"), "ZAP: ESC com alteracao pendente avisa");
+    r = mon.Execute("@key esc");
+    check(r == "action=close panel=mamute", "ZAP: ESC de novo descarta e sai");
+    std::remove(img.c_str());
+
+    // ---- SCR ----
+    mon.Execute("@panels off");
+    mon.Execute("F C000,C00F,00");
+    mon.Execute("M C000,FF,81,81,81,81,81,81,FF");
+    r = mon.Execute("SCR C000,1,1,0,1");
+    {
+        std::vector<std::string> lines;
+        size_t pos = 0;
+        while (pos <= r.size()) {
+            const size_t e = r.find('\n', pos);
+            lines.push_back(r.substr(pos, e == std::string::npos ? std::string::npos : e - pos));
+            if (e == std::string::npos) break;
+            pos = e + 1;
+        }
+        check(lines.size() == 1 + 48 + 1, "SCR zoom 1: titulo + 48 linhas de braille + ajuda (" + std::to_string(lines.size()) + ")");
+        check(lines.size() > 1 && lines[1].rfind("\xE2\xA1\x8F", 0) == 0, "SCR: o primeiro caractere braille e' U+284F (os pixels do glifo FF 81 81 81)");
+    }
+    r = mon.Execute("SCR C000,1,1");
+    check(has(r, "SCR - C000,01,01,0 (OFFLINE)"), "SCR: titulo com endereco e azulejo");
+    mon.Execute("F C000,C00F,00");
+    mon.Execute("M C008,FF,FF,FF,FF,FF,FF,FF,FF");
+    auto first_row_col = [&](const std::string &scr, int col) {
+        const size_t a = scr.find('\n') + 1;
+        return scr.substr(a + static_cast<size_t>(col) * 3, 3);
+    };
+    check(first_row_col(Run(mon, "SCR C000,2,2,0,1"), 4) == "\xE2\xA3\xBF", "SCR modo 0 (horizontal): o segundo caractere do azulejo esta' 8 bytes depois (pixels 8-15 da linha 0)");
+    check(first_row_col(Run(mon, "SCR C000,2,2,1,1"), 4) == "\xE2\xA0\x80", "SCR modo 1 (vertical): o mesmo byte cai embaixo do primeiro, nao ao lado");
+    checkOut(mon, "SCR 1,0,1", "SINTAXE", "SCR recusa dx 0");
+    mon.Execute("@panels on");
+    mon.Execute("F C000,C00F,00");
+    mon.Execute("M C000,FF,FF,FF,FF,FF,FF,FF,FF");
+    r = mon.Execute("SCR C000,1,1");
+    check(r.rfind("action=show panel=mamute title=SCR", 0) == 0, "SCR com paineis ligados abre o painel");
+    r = mon.Execute("@key right");
+    check(has(r, "SCR - C001,01,01,0"), "SCR: seta direita desloca o endereco 1 byte");
+    mon.Execute("@key left");
+    r = mon.Execute("@key tab");
+    check(has(r, "\x01"), "SCR: TAB liga a moldura (cursor invertido)");
+    mon.Execute("@key tab");
+    mon.Execute("@key c:e");
+    r = mon.Execute("@key enter");
+    check(has(r, "EDICAO 16x16"), "SCR: ENTER abre a edicao 16x16");
+    mon.Execute("@key space"); // inverte o pixel (0,0): FF -> 7F
+    checkOut(mon, "D C000,C000", "C000  7F", "SCR: ESPACO inverte o pixel sob o cursor");
+    mon.Execute("@key right");
+    mon.Execute("@key space");
+    checkOut(mon, "D C000,C000", "C000  3F", "SCR: o cursor de pixel anda e inverte o proximo");
+    mon.Execute("@key esc");
+    checkOut(mon, "D C000,C000", "C000  FF", "SCR: ESC na edicao cancela TODAS as alteracoes");
+    mon.Execute("@key enter");
+    mon.Execute("@key c:l");
+    checkOut(mon, "D C000,C000", "C000  00", "SCR: L apaga os 16x16 pixels");
+    mon.Execute("@key c:i");
+    checkOut(mon, "D C000,C000", "C000  FF", "SCR: I inverte tudo");
+    r = mon.Execute("@key enter");
+    check(!has(r, "EDICAO 16x16") && !has(r, "action=close"), "SCR: ENTER sai da edicao e mantem as alteracoes");
+    r = mon.Execute("@key esc");
+    check(r == "action=close panel=mamute", "SCR: ESC fecha");
+    check(mon.Execute("@key up") == "action=close panel=mamute", "@key sem painel aberto responde que fechou");
 }
 
 void TestOnline() {
@@ -327,8 +551,10 @@ void TestOnline() {
 } // namespace
 
 int main() {
+    std::setvbuf(stdout, nullptr, _IONBF, 0); // se algo abortar, o log ate aqui nao se perde
     TestOffline();
     TestEdit();
+    TestScreens();
     TestOnline();
     std::printf("\n%s (%d falha(s))\n", g_failures ? "FALHOU" : "OK", g_failures);
     return g_failures ? 1 : 0;

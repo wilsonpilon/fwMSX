@@ -48,6 +48,7 @@ bool ToKey(const Event &e, Key &key) {
     else if (e == Event::PageDown) key.type = Key::PageDown;
     else if (e == Event::F1) key.type = Key::F1;
     else if (e == Event::F10) key.type = Key::F10;
+    else if (e == Event::CtrlS) key.type = Key::CtrlS;
     else if (e.is_character()) {
         key.type = Key::Char;
         key.text = e.character();
@@ -110,6 +111,7 @@ public:
             std::lock_guard<std::mutex> lock(mu_);
             model_.OpenMan(title, text);
         });
+        session_->EnablePanels(true); // o monitor Mamute abre DM, M, S, ZAP e SCR como paineis desta TUI
     }
 
     ~App() { StopWorker(); }
@@ -178,7 +180,10 @@ private:
                 const std::string text = captured + out.str();
                 {
                     std::lock_guard<std::mutex> lock(mu_);
-                    if (line.rfind("dbgui ", 0) == 0) {
+                    if (text.rfind("action=", 0) == 0 && text.substr(0, text.find(10)).find("panel=mamute") != std::string::npos) {
+                        // Painel do Mamute (DM, M, S, ZAP, SCR): a resposta e' o painel (ou o fechamento dele).
+                        model_.SetMamutePanel(text);
+                    } else if (line.rfind("dbgui ", 0) == 0) {
                         // Painel Z80 Debugger: a resposta inteira (acao + linhas) vai para o painel.
                         std::string panel;
                         std::istringstream in(text);
@@ -340,6 +345,33 @@ Element ManDialog(const TuiModel &m, const Dimensions &dims) {
            size(HEIGHT, EQUAL, std::max(5, dims.dimy - 3)) | clear_under;
 }
 
+// Painel do Mamute: a primeira linha e' o titulo da caixa, a ultima e' a ajuda; o que esta' entre  e  (o cursor) sai invertido.
+Element MamuteDialog(const TuiModel &m, const Dimensions &dims) {
+    const auto &all = m.mamute_lines();
+    Elements lines;
+    for (size_t i = 0; i < all.size(); ++i) {
+        const std::string &l = all[i];
+        Elements parts;
+        std::string cur;
+        bool inv = false;
+        for (const char c : l) {
+            if (c == 1 || c == 2) {
+                if (!cur.empty()) parts.push_back(inv ? text(cur) | inverted : text(cur));
+                cur.clear();
+                inv = c == 1;
+            } else {
+                cur += c;
+            }
+        }
+        if (!cur.empty() || parts.empty()) parts.push_back(inv ? text(cur) | inverted : text(cur.empty() ? std::string(" ") : cur));
+        Element line = hbox(std::move(parts));
+        if (i + 1 == all.size() && all.size() > 1) line = line | dim;
+        lines.push_back(line);
+    }
+    lines.push_back(filler());
+    return window(text(" " + m.mamute_title() + " ") | bold, vbox(std::move(lines))) | size(WIDTH, GREATER_THAN, std::min(dims.dimx - 2, 30)) | clear_under;
+}
+
 Element PanelDialog(const TuiModel &m, int max_rows) {
     const auto &p = m.panel();
     std::string title = "Z80 Debugger";
@@ -438,6 +470,7 @@ Element BuildView(App &app, const Dimensions &size) {
     case TuiModel::Mode::Help: return dbox({base, HelpDialog()});
     case TuiModel::Mode::Debugger: return dbox({base, PanelDialog(m, size.dimy - 2)});
     case TuiModel::Mode::Man: return dbox({base, ManDialog(m, size)});
+    case TuiModel::Mode::Mamute: return dbox({base, MamuteDialog(m, size)});
     default: return base;
     }
 }
