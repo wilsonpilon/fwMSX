@@ -39,14 +39,13 @@ montador, escrito em `src/man/cpp/man_pages_fwasm.cpp` a partir de `resource/asm
 5. **Fuzz diferencial**: mutar os goldens existentes e comparar com o oraculo.
 6. **`.wav` num MSX de verdade** (hoje so' igual ao do asMSX byte a byte).
 7. **Divergencias conhecidas**: mensagens "Redefining output name..." do `-o`; `.org` abaixo do inicio da subpagina (o asMSX trava, o fwasm da' erro 36); codigo em 0000h antes de `.sinclair`.
-8. **asMSX v0.19.2** (o `asmsx.exe` da pasta `musica`) poe outro INIT no cabecalho com `.start ROTULO` adiante antes do `.rom`; hoje seguimos a v1.2.0. Decidir se vale uma opcao de compatibilidade.
-9. **BOM UTF-8** no inicio do fonte: o fwasm da' erro de sintaxe; conferir o que o asMSX faz e alinhar.
+8. **BOM UTF-8** no inicio do fonte: o fwasm da' erro de sintaxe; conferir o que o asMSX faz e alinhar.
 
 ## Programas reais (1.39.1)
 
 `tests/asm/real/pt3/` guarda o replayer PT3 de SapphiRe (asMSX) com a musica AMAZONIA.PT3. O `asme2etest` o monta, confere `.rom`/`.sym` por CRC contra o asMSX v1.2.0 e roda na maquina emulada
-(PSG tocando). Achados: `ROTULO: .include` na mesma linha e `nome .equ valor`. O asMSX v0.19.2 (que acompanha o exemplo) poe outro INIT no cabecalho quando `.start ROTULO` vem antes de `.rom`;
-o fwasm segue a v1.2.0. Proximos corpora: mais fontes reais do ecossistema asMSX (cada um que falhar vira um achado).
+(PSG tocando). Achados: `ROTULO: .include` na mesma linha e `nome .equ valor`.
+O alvo de compatibilidade e' so' o asMSX v1.2.0 (decisao do usuario). Proximos corpora: mais fontes reais do ecossistema asMSX (cada um que falhar vira um achado).
 
 ## Estado (1.39.0): o fwasm e' completo em relacao ao asMSX
 

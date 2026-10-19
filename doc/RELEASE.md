@@ -24,8 +24,7 @@ Primeiro teste do fwasm com um programa REAL escrito para o asMSX por outra pess
 
 - **Dois achados, ambos corrigidos**: `ROTULO: .include "arq"` na mesma linha (o `.include` era ignorado e dava "undefined identifier") e `nome .equ valor` (so' `equ` era aceito).
 - **Resultado**: com as correcoes, o `.rom` (8192 bytes, CRC 898867E9) e o `.sym` (CRC 5E6BB47B) saem iguais aos do `resource/asmsx.exe` (asMSX v1.2.0).
-- **Duas versoes do asMSX**: a pasta traz outro `asmsx.exe` (v0.19.2) e um `musica.rom` gerado por ele. Diferem da v1.2.0 em UM byte: o INIT do cabecalho (0401Ch contra 04010h) quando
-  `.start ROTULO` (rotulo adiante) vem antes do `.rom`. O fwasm segue a v1.2.0 (a do oraculo e do manual `asmsx.md`).
+- **Versao alvo**: so' o asMSX v1.2.0 (decisao do usuario; o `asmsx.exe` v0.19.2 que vinha na pasta foi removido do repositorio de trabalho).
 - **Nao serve de corpus**: `musica.asm` (fonte original do Vortex Tracker, nao e' para o asMSX; o proprio asMSX sai sem gerar nada) e o `msx-msxlib-master` (outra familia de montador).
 - **Teste**: `asme2etest` ganhou `TestPt3Replayer` -- confere os CRCs e roda a ROM por 600 quadros vendo o volume ligar e o tom do canal A mudar no PSG. `ctest` 26/26 (Windows e Linux).
 
