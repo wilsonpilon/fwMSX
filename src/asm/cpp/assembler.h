@@ -15,6 +15,7 @@ struct AsmOptions {
     bool silent = true;    // -s: sem mensagens de progresso
     bool verbose = false;  // -vv
     std::string out_base;  // -o: nome-base (sem extensao) das saidas; vazio = nome do fonte
+    bool want_listing = false; // preenche AsmResult::listing (usado pelo monitor Mamute para montar a listagem)
 };
 
 // Acesso a arquivos de .INCLUDE / .INCBIN (o teste usa um provedor em memoria).
@@ -25,13 +26,29 @@ public:
     virtual bool Read(const std::string &path, std::vector<uint8_t> &data) = 0;
 };
 
+// Uma linha do fonte na passada final: o endereco ($) onde ela comecou e os bytes que gerou (vazio para comentario, rotulo, EQU...).
+// is_const: a linha definiu uma constante (EQU) de valor `value`. So' vem com AsmOptions::want_listing.
+struct ListEntry {
+    std::string file;
+    int line = 0;
+    int32_t addr = 0;
+    std::vector<uint8_t> bytes;
+    bool is_const = false;
+    int32_t value = 0;
+};
+
 struct AsmResult {
     int rc = 0;                       // codigo de saida (0 = ok)
     std::vector<std::string> msgs;    // erros e avisos, formatados ("x.asm, line 3: ...")
     // Arquivos gerados: extensao ("z80", "bin", "rom", "sym", "txt"...) -> conteudo.
     std::map<std::string, std::vector<uint8_t>> outs;
     std::string base_name;            // nome-base das saidas (sem extensao)
+    std::vector<ListEntry> listing;   // so' com want_listing; na ordem do fonte (as linhas depois de um erro nao entram)
 };
+
+// true se `name` (sem diferenciar maiusculas) e' o nome de uma diretiva (org, start, print, size...): nao pode ser rotulo. Quem gera fonte
+// para o fwasm (o Mamute) renomeia os rotulos que colidem.
+bool IsDirectiveName(const std::string &name);
 
 // Monta `text` (conteudo do arquivo `source_name`). `files` pode ser nullptr (sem includes).
 AsmResult Assemble(const std::string &source_name, const std::string &text, const AsmOptions &opts, FileProvider *files);

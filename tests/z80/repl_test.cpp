@@ -145,6 +145,26 @@ int main() {
             check(Contains(mo.str(), "C000  3E 2A") && !ms.monitor_mode(), "mon <linha>: comando avulso, sem entrar no modo, e a memoria continua a mesma");
         }
 
+        // ---- o editor de fonte (EDIT) dentro do monitor: QUIT volta ao monitor, BA sai de tudo ----
+        {
+            repl::ReplSession es("x");
+            std::ostringstream eo;
+            es.Execute("mon", eo);
+            es.Execute("edit", eo);
+            check(es.monitor_mode() && es.MonitorPrompt() == "EDIT> ", "monitor: EDIT muda o prompt para EDIT>");
+            es.Execute("10 org 8000h", eo);
+            es.Execute("20 ld a,10", eo);
+            eo.str("");
+            es.Execute("a", eo);
+            check(Contains(eo.str(), "8000  3E 10"), "EDIT: A monta e lista");
+            eo.str("");
+            es.Execute("quit", eo);
+            check(es.monitor_mode() && es.MonitorPrompt() == "MON(off)> ", "QUIT dentro do EDIT volta ao monitor (nao ao console)");
+            es.Execute("edit", eo);
+            es.Execute("ba", eo);
+            check(!es.monitor_mode(), "BA dentro do EDIT volta ao console");
+        }
+
         int received = -1;
         std::vector<std::string> got;
         s.AddTool("ferr", [&](const std::vector<std::string> &a) {

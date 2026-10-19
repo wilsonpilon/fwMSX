@@ -41,6 +41,12 @@ montador, escrito em `src/man/cpp/man_pages_fwasm.cpp` a partir de `resource/asm
 7. **Divergencias conhecidas**: mensagens "Redefining output name..." do `-o`; `.org` abaixo do inicio da subpagina (o asMSX trava, o fwasm da' erro 36); codigo em 0000h antes de `.sinclair`.
 8. **BOM UTF-8** no inicio do fonte: o fwasm da' erro de sintaxe; conferir o que o asMSX faz e alinhar.
 
+## Para o Mamute (1.40.1)
+
+- `AsmOptions::want_listing` -> `AsmResult::listing`: uma `ListEntry` por linha de fonte da passada final (`file`, `line`, `addr` = o `$` antes da linha, `bytes`, e `is_const`/`value` para `EQU`). O `Emit` acumula os bytes da linha;
+  `DefineConst` marca a constante. Nao muda nada na montagem normal (a opcao vem desligada) nem as saidas.
+- `fwasm::IsDirectiveName(nome)`: true se o nome e' uma diretiva (org, start, print, size...). O Mamute renomeia os rotulos que colidem antes de entregar o fonte. Ver [mamute-spec.md](mamute-spec.md), secao 3b.
+
 ## Programas reais (1.39.2: Amazonia)
 
 `tests/asm/real/amazonia/` guarda o jogo Amazonia (cartucho de 48 KB; fontes + os blocos `64k/AMAZONIA.DA0-4`). Montado com `fwmsx --asm source/amazonia.asm` a partir da pasta do projeto, como no `MakeWin.bat`:

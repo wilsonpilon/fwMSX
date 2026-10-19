@@ -137,6 +137,7 @@ private:
     // ---- saida ----
     void Emit(uint8_t b) {
         if (dry_) return;
+        if (final_ && opts_.want_listing) cur_bytes_.push_back(b);
         if (fmt_ == Fmt::MegaRom) {
             EmitMega(b);
             return;
@@ -183,6 +184,11 @@ private:
 
     std::vector<SrcLine> lines_;
     std::vector<std::string> pre_warnings_;
+    // listagem (AsmOptions::want_listing): o que a linha atual gerou
+    std::vector<ListEntry> listing_;
+    std::vector<uint8_t> cur_bytes_;
+    bool const_set_ = false;
+    int32_t const_val_ = 0;
 
     bool final_ = false;
     int rc_ = 0;
@@ -384,6 +390,10 @@ void Assembler::DefineLabel(const std::string &name) {
 
 void Assembler::DefineConst(const std::string &name, int32_t value) {
     if (dry_) return;
+    if (final_ && opts_.want_listing) {
+        const_set_ = true;
+        const_val_ = value;
+    }
     if (SyntaxReserved().count(Lower(name))) SyntaxError();
     if (predefined_.count(name)) Fail(15, "symbol redefinition");
     if (table_.count(name) || vars_.count(name)) Fail(15, "symbol redefinition");
@@ -457,8 +467,23 @@ void Assembler::RunPass(bool final) {
     for (const SrcLine &l : lines_) {
         cur_file_ = l.file;
         cur_line_ = l.line;
+        const int32_t line_pc = static_cast<int32_t>(pc_);
+        if (final && opts_.want_listing) {
+            cur_bytes_.clear();
+            const_set_ = false;
+        }
         try {
             ProcessLine(l);
+            if (final && opts_.want_listing) {
+                ListEntry e;
+                e.file = l.file;
+                e.line = l.line;
+                e.addr = line_pc;
+                e.bytes = cur_bytes_;
+                e.is_const = const_set_;
+                e.value = const_val_;
+                listing_.push_back(std::move(e));
+            }
         } catch (const Stop &) {
             dry_ = false;
             if (swallow_) {
@@ -1629,11 +1654,14 @@ AsmResult Assembler::Run() {
     }
     result_.rc = rc_;
     result_.msgs = msgs_;
+    result_.listing = std::move(listing_);
     if (rc_ != 0 && rc_ != 25) result_.outs.clear();
     return result_;
 }
 
 } // namespace
+
+bool IsDirectiveName(const std::string &name) { return DirectiveWords().count(Lower(name)) != 0; }
 
 AsmResult Assemble(const std::string &source_name, const std::string &text, const AsmOptions &opts, FileProvider *files) {
     Assembler a(source_name, text, opts, files);

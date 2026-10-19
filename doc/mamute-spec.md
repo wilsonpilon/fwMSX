@@ -1,4 +1,4 @@
-# Mamute -- o monitor Z80 do fwMSX (1.40.0, "Antarctic Adventure")
+# Mamute -- o monitor Z80 do fwMSX (1.40.0 "Antarctic Adventure"; Fase 2 na 1.40.1)
 
 O **Mamute** e' o monitor Z80 do fwMSX: um prompt de linha onde cada comando mexe na memoria, disassembla,
 executa, salva e carrega programas, no estilo dos monitores dos anos 80 (MegaAssembler, SUPER-X). Vem do
@@ -31,7 +31,7 @@ Decisoes (perguntadas ao usuario antes de codar, como pede o `CLAUDE.md`):
 | Fase | Release | Conteudo |
 |---|---|---|
 | **1** | **1.40.0 "Antarctic Adventure"** | Nucleo (memoria offline/online, CPU offline/online), `mon`/`mamute`, `--mon`, prompt `MON(off)>`/`MON(on)>`, config `mamute.cfg`, `man mamute` (7 paginas) e help. Comandos: `BA QUIT XQT ONLINE OFFLINE STATUS PUSH PULL PAGE DM M SH MS C D P V T F L LP X G LOAD SAVE CFG HELP` |
-| 2 | (a definir) | `EDIT`/`A`: editor de linhas do fonte numerado, traduzido para o fwasm; `R` (referencia de fita) |
+| **2** | **1.40.1 "Antarctic Adventure: Mamute, EDIT e A"** | `EDIT`/`LIST`/`A`/`MAP`: editor de linhas do fonte numerado e montagem pelo fwasm (listagem, `O N P I R S D H /desloc`). `R` (fita) so' validava a sintaxe no original e continua pendente |
 | 3 | (a definir) | Telas: `DM`/`M`/`S` interativos como paineis da TUI (setas, TAB, edicao de byte), `ZAP` (setores de `.dsk`), `SCR` (grafico), `P`/`LP` em PDF |
 | 4 | (a definir) | Comandos do **SUPER-X** (prefixo `X`, 36 comandos): `XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, `XCS XTS`, `XCO XSD`, `XDK XFS XCI XTP XSV XLD XS# XL# XL% XS%`, notas `XIM XIC XIL XIS XIR`, portas `XPP XPI XPO` |
 
@@ -47,7 +47,21 @@ src/mamute/
   cpp/mamute_exec.{h,cpp}       C++      IExec + OfflineExec (Z80Cpu privado sobre a memoria offline)
   cpp/mamute_online.{h,cpp}     C++      MachineMemory/MachineExec: a memoria e a CPU da maquina emulada
   cpp/mamute_monitor.{h,cpp}    C++      Monitor: uma linha entra, o texto do log sai
+  cpp/mamute_source.{h,cpp}     C++      (Fase 2) o fonte numerado: Source, traducao para o asMSX, Assemble, listagem e simbolos
+  cpp/mamute_edit.cpp           C++      (Fase 2) os comandos EDIT/LIST/A/MAP dentro do Monitor
 ```
+
+### 3b. O editor de fonte e a montagem (Fase 2)
+
+- **Fonte**: `Source` guarda as linhas numeradas (decimais, 1-65535). Formato `NN [Label:] instrucao operandos [;comentario]`; numeros no texto sao hexa por padrao (`H`, `B` binario, `D` decimal).
+- **Montar = traduzir**: uma linha do asMSX por linha do Mamute, na mesma ordem (um erro `line N` do fwasm vira o numero da linha do Mamute). `.zilog` ligado (o Mamute escreve `(HL)`); numeros viram decimais;
+  `DEFM 'x'` vira `db "x"`; `Label: EQU v` vira `Label equ v`; `ORG` com `/desloc` soma direto no numero (parenteses em sintaxe Zilog seriam acesso a memoria); `END` e' ignorado. O apostrofo so' abre
+  texto quando nao esta' colado numa letra (`EX AF,AF'` e' o registrador alternado; `DEFM 'TEXTO'` tem espaco antes).
+- **Rotulos que colidem**: `PRINT`, `START`, `SIZE`... sao diretivas do fwasm (`fwasm::IsDirectiveName`) e davam "reserved word used as identifier" ate' num operando; a traducao renomeia (`PRINT_m`) so' os rotulos
+  definidos que colidem (nunca registradores/condicoes) e o `.sym` volta com o nome certo.
+- **Listagem**: `AsmOptions::want_listing` faz o fwasm devolver, por linha de fonte, o endereco (`$`) onde ela comecou e os bytes gerados; `EQU` devolve o valor. A listagem mostra linha, endereco (ou valor do EQU), ate' 4 bytes (linhas
+  extras para o resto) e o texto; `ORG`/`END` ficam de fora. Simbolos: valores do `.sym`, ordem de aparicao do proprio fonte; a **referencia cruzada** procura o simbolo (palavra inteira) nos operandos das outras linhas.
+- **Saidas**: `O` escreve a imagem pela memoria ativa do monitor (offline, ou a RAM da maquina no online); `I` grava `NOME.bin` (BSAVE `FE ini fim exec`, buracos com zero); `P` `NOME.lst`; `H` `NOME.sym`.
 
 - **`Monitor::Execute(linha) -> texto`** nao sabe de TUI, de console nem de janela. `IMemory` esconde se atras esta a
   memoria privada ou a viva; `IExec` o Z80 privado ou o da maquina. O mesmo comando vale nos dois modos.
@@ -66,6 +80,7 @@ src/mamute/
 
 ## 4. Diferencas em relacao ao Mamute do Paleobasic
 
+- Fase 2: os dialogos do `SAVE`/`LOAD`/`MERGE`/`A ...I` viram argumentos; `P` e `H` gravam texto (nao PDF); `QUIT` no EDIT volta ao monitor.
 - Sem janelas: `DM`/`M` mostram a grade de 128 bytes no log; `M end,b1,b2...` grava (a edicao interativa e' a Fase 3).
 - `P`/`LP`/`V` gravam um arquivo **texto** (o original gerava PDF A4).
 - `SAVE` de arquivo `.rom` sai **sem cabecalho** (`RAW`, uma imagem de cartucho de verdade); no original saia `AB`+enderecos.
@@ -84,9 +99,10 @@ src/mamute/
   PUSH/PULL, `G C000` faz a CPU da maquina rodar o programa escrito no monitor).
 - `repltest`: modo monitor sem emulador (prompt, `!comando`, `BA`, `mon <linha>`) e **conectado a um emulador** (ONLINE, escrita
   na maquina conferida por `peek`).
-- `mantest`: as 7 paginas do manual do Mamute e a categoria "Mamute" no help.
+- `mantest`: as 8 paginas do manual do Mamute e a categoria "Mamute" no help.
+- Fase 2: `mamutetest` (EDIT/A: hexa, B, D, erros por linha, RENUM/DELETE/CHANGE/SEARCH, SAVE/LOAD/MERGE, P/I/R/S/D/H, `/desloc`, e `A O` na maquina real) e `repltest` (QUIT/BA no EDIT).
 
 ## 6. O que falta
 
-Fases 2, 3 e 4 acima. Tambem: completar o TAB do console com os comandos do monitor; `R` (carregar assemblado de fita); `V`/`SCR` com
+Fases 3 e 4 acima (a 2 esta' pronta). Tambem: completar o TAB do console com os comandos do monitor; `R` (carregar assemblado de fita); `V`/`SCR` com
 escrita na VRAM; ligar as portas de E/S da CPU offline ao painel (Fase 4); e continuar a comparar o disassembler com o do Mamute original.

@@ -7,6 +7,18 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.40.1] - 2026-10-19 - "Antarctic Adventure: Mamute, EDIT e A" (Konami)
+
+### Adicionado -- Mamute, Fase 2: o editor de fonte e a montagem
+- **`EDIT`**: editor de fonte Z80 de linhas NUMERADAS (estilo MegaAssembler/ZX-81): `NN [Label:] instrucao operandos [;comentario]`, numeros no texto em HEXA por padrao (sufixos `H`, `B` binario, `D` decimal).
+  Comandos: `LIST NEW DELETE RENUM CHANGE SEARCH/FIND LSEARCH SAVE LOAD MERGE` (arquivo `.mza` em ASCII), `QUIT` (volta ao monitor, o programa fica) e `HELP`. Prompt `EDIT> `.
+- **`A`** monta pelo **fwasm** (nao ha' um segundo montador): cada linha e' traduzida para o asMSX, na mesma ordem, e os erros voltam com o numero da linha do Mamute (com o cursor `>`).
+  Mostra `PASSO-1`/`PASSO-2` e a listagem (linha, endereco ou valor do EQU, ate' 4 bytes, texto). Opcoes `O` (grava na memoria, tambem a da MAQUINA no modo online), `N`, `P` (listagem em arquivo texto),
+  `I` (BSAVE `.bin`), `R` (referencia cruzada), `S`, `D`, `H` e `/desloc` (soma a todo ORG); `>nome` escolhe o nome-base dos arquivos. `MAP` mostra inicio e fim do ultimo codigo montado.
+- **fwasm**: `AsmOptions::want_listing` devolve, por linha de fonte, o endereco e os bytes gerados (`AsmResult::listing`), e `fwasm::IsDirectiveName` diz se um nome e' de diretiva (rotulos do Mamute como `PRINT`/`START` sao renomeados por dentro).
+- Manual: `man mamute-edit` (a 8a pagina do Mamute). Projeto: [mamute-spec.md](mamute-spec.md).
+- Testes: `mamutetest` (de 71 para 128 checagens: hexa/B/D, erros por linha, RENUM/DELETE/CHANGE/SEARCH, SAVE/LOAD/MERGE, P/I/R/S/D/H, `/desloc`, e o online: `A O` escreve na RAM da maquina e o programa roda la'), `repltest` (QUIT/BA dentro do EDIT) e `mantest`.
+
 ## [1.40.0] - 2026-10-19 - "Antarctic Adventure" (Konami)
 
 ### Adicionado -- o Mamute, o monitor Z80 do fwMSX (Fase 1)

@@ -32,17 +32,77 @@ COMANDOS (todos em HEXA; man mamute-<grupo> detalha)
   despejo     C D P V                      man mamute-dump
   execucao    L LP X G                     man mamute-exec
   arquivos    LOAD SAVE                    man mamute-files
+  fonte       EDIT LIST A MAP              man mamute-edit   (editor de linhas numeradas, monta pelo fwasm)
   modos       ONLINE OFFLINE STATUS PUSH PULL    man mamute-modes
   configurar  CFG                          man mamute-config
   sair        BA QUIT XQT
 
 DIFERENCAS EM RELACAO AO MAMUTE DO PALEOBASIC
   Sem janelas separadas: DM, M e S (grade de 128 bytes) mostram a grade no log; a edicao e' por comando (M end,b1,b2...).
-  P e LP gravam um arquivo TEXTO (nao PDF). Ainda nao existem: ZAP, SCR, S, EDIT/A (montar o fonte numerado) e os comandos
-  do SUPER-X (prefixo X). Entram nas proximas versoes (doc/mamute-spec.md).
+  P e LP gravam um arquivo TEXTO (nao PDF). O EDIT/A monta pelo fwasm (nao ha' um segundo montador). Ainda nao existem: ZAP,
+  SCR, S, R (fita) e os comandos do SUPER-X (prefixo X). Entram nas proximas versoes (doc/mamute-spec.md).
 
 VER TAMBEM
-  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-files, mamute-config, dis, fwasm)MAN";
+  mamute-modes, mamute-memory, mamute-dump, mamute-exec, mamute-edit, mamute-files, mamute-config, dis, fwasm)MAN";
+
+const char *const kEdit = R"MAN(EDIT / LIST / A / MAP -- o editor de fonte Z80 e a montagem
+
+O Mamute guarda um programa-fonte Z80 de linhas NUMERADAS, no estilo do MegaAssembler e do ZX-81, e monta pelo fwasm (o montador do
+fwMSX): cada linha e' traduzida para o asMSX, na mesma ordem, e os erros voltam com o numero da linha do Mamute.
+
+COMO ENTRAR
+  EDIT              entra no editor (o prompt vira EDIT>); QUIT volta ao monitor (o programa fica); BA sai de tudo
+  EDIT <comando>    executa UM comando do editor sem entrar nele (edit list, edit a o)
+  LIST, A, MAP      tambem funcionam direto no monitor
+
+FORMATO DA LINHA
+  NN [Label:] instrucao operandos [;comentario]
+  NN e' o numero da linha, em DECIMAL (1 a 65535); digitar de novo o mesmo numero substitui a linha; so' o numero apaga.
+  Instrucoes: qualquer mnemonico Z80 (com (HL), nao [HL]) e ORG, DEFB, DEFW, DEFM (texto 'entre apostrofos'), DEFS, EQU (exige Label:) e END.
+  NUMEROS NO TEXTO: sem sufixo e' HEXADECIMAL (LD A,10 carrega 16). Sufixos: H hexa, B binario (1010B), D decimal (10D).
+  Um numero que comeca com A-F precisa de um 0 na frente (0FFH), senao e' um rotulo.
+  Rotulos com o nome de uma diretiva do fwasm (PRINT, START, SIZE...) sao aceitos: a traducao os renomeia por dentro.
+
+COMANDOS DO EDITOR
+  LIST [a[-[b]]]               lista (tudo, uma linha, um intervalo ou de a ate' o fim)
+  NEW                          apaga o programa;   DELETE a[-[b]]   apaga uma linha, um intervalo ou ate' o fim
+  RENUM [novo[,antigo[,passo]]]   renumera (sem argumentos: tudo, de 10 em 10); rotulos nao mudam
+  CHANGE 'a'[,'b']             troca a por b em todas as linhas (sem b, apaga a)
+  SEARCH|FIND 'x'              acha (maiusculas contam);  SEARCH x   acha sem distinguir maiusculas;  LSEARCH grava em mamute.srch
+  SAVE arq | LOAD arq | MERGE arq   arquivo .mza (ASCII "NN texto"); MERGE funde (a linha do arquivo vence)
+
+A -- MONTAR
+  A [opcoes][/desloc][>nome]    mostra PASSO-1, PASSO-2 e a listagem: numero da linha, endereco (ou o valor do EQU), ate' 4 bytes e a linha;
+                                ORG e END nao aparecem. Em caso de erro mostra a mensagem e a linha com o cursor >.
+  Opcoes, coladas e em qualquer ordem:
+    O   grava o codigo-objeto na memoria do monitor (no endereco do ORG; so' onde for RAM -- ONLINE escreve na maquina)
+    N   sem a coluna do numero da linha
+    P   tambem grava a listagem em NOME.lst (texto)
+    I   grava o codigo-objeto em NOME.bin no formato BSAVE do MSX (FE inicio fim exec); LOAD NOME.bin carrega de volta
+    R   anexa a referencia cruzada (nome, valor e os enderecos das linhas que usam o simbolo)
+    S   anexa a lista alfabetica de simbolos;  D   a mesma em ordem de aparicao
+    H   grava as listas S e/ou D em NOME.sym
+  /desloc  soma desloc (hexa) a TODO ORG;  >nome  nome-base de P, I e H (padrao: mamute)
+MAP   inicio e fim do codigo da ultima montagem que deu certo (NEW e qualquer edicao a invalidam)
+
+EXEMPLO
+  edit
+  10 ORG 0C100H
+  20 CHPUT: EQU 0A2H
+  30 LD HL,TEXTO
+  40 LOOP: LD A,(HL)
+  50 OR A
+  60 RET Z
+  70 CALL CHPUT
+  80 INC HL
+  90 JR LOOP
+  100 TEXTO: DEFM 'MEGA ASSEMBLER'
+  110 DEFB 0
+  120 END
+  a o                   monta e grava em C100; no BASIC: DEFUSR=&HC100:A=USR(0)  (com ONLINE; OFFLINE: G C100)
+
+VER TAMBEM
+  mamute, mamute-exec, fwasm, fwasm-syntax)MAN";
 
 const char *const kModes = R"MAN(ONLINE / OFFLINE / STATUS / PUSH / PULL
 
@@ -205,6 +265,7 @@ std::vector<Topic> MamuteTopics() {
     add("mamute-memory", "PAGE, DM, M, SH, MS, T, F: ver e editar a memoria", kMemory);
     add("mamute-dump", "C, D, P, V: despejo formatado (4/16 bytes, checksum)", kDump);
     add("mamute-exec", "L, LP, X, G: disassembler, registradores e execucao", kExec);
+    add("mamute-edit", "EDIT, LIST, A, MAP: editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm", kEdit);
     add("mamute-files", "LOAD e SAVE: arquivos na memoria", kFiles);
     add("mamute-config", "CFG e o arquivo mamute.cfg: configuracao inicial", kConfig);
     return v;

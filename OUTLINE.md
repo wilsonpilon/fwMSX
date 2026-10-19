@@ -17,6 +17,9 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.40.1 "Antarctic Adventure: Mamute, EDIT e A" (publicada)**: **Mamute Fase 2** -- `EDIT` (editor de fonte de linhas numeradas, hexa por padrao), `A` (monta pelo fwasm: o fonte e' traduzido para o asMSX linha a linha;
+  listagem, `O N P I R S D H /desloc`, `MAP`), `man mamute-edit`. O fwasm ganhou `want_listing` (endereco e bytes por linha) e `IsDirectiveName`. Proximas fases: 3 = telas (`DM`/`M`/`S` interativos na TUI, `ZAP`, `SCR`);
+  4 = os 36 comandos do SUPER-X. O `R` (fita) so' validava a sintaxe no original e continua pendente.
 - **1.40.0 "Antarctic Adventure" (publicada)**: **Mamute, o monitor Z80 do fwMSX (Fase 1)** -- vindo do Mamute Assembler do paleobasic (PureBasic), reescrito em C + Fortran + NASM + C++ sem janela separada.
   Online (a maquina emulada) e offline (memoria de 16 blocos + CPU propria), `mon`/`mamute`, `fwmsx --mon`, `mamute.cfg`, 31 comandos, `man mamute` (7 paginas). Pedido e decisoes do usuario
   (fases; EDIT/A via fwasm; offline com memoria privada; paineis na TUI) em `doc/mamute-spec.md`. **Proximas fases do Mamute**: 2 = `EDIT`/`A` pelo fwasm + `R`; 3 = telas (`DM`/`M`/`S` interativos na TUI, `ZAP`, `SCR`);

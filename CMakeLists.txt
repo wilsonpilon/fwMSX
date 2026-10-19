@@ -358,6 +358,8 @@ set(MAMUTE_LIB_SOURCES
         src/mamute/cpp/mamute_memory.cpp
         src/mamute/cpp/mamute_exec.cpp
         src/mamute/cpp/mamute_monitor.cpp
+        src/mamute/cpp/mamute_source.cpp
+        src/mamute/cpp/mamute_edit.cpp
         src/mamute/cpp/mamute_online.cpp
 )
 
@@ -417,6 +419,9 @@ set(FWASM_LIB_SOURCES
         src/asm/cpp/preproc.cpp
         src/asm/cpp/assembler.cpp
 )
+
+# O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto.
+list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES})
 
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.

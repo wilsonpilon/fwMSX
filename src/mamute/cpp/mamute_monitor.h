@@ -17,6 +17,7 @@
 #include "mamute_config.h"
 #include "mamute_exec.h"
 #include "mamute_memory.h"
+#include "mamute_source.h"
 
 namespace mamute {
 
@@ -46,8 +47,9 @@ public:
     // Executa UMA linha. `quit` (se nao nulo) vira true com BA/QUIT/XQT. Nunca lanca excecao.
     std::string Execute(const std::string &line, bool *quit = nullptr);
 
-    // "MON(off)> " ou "MON(on)> ".
+    // "MON(off)> " ou "MON(on)> "; "EDIT> " dentro do editor de fonte.
     std::string Prompt() const;
+    bool editing() const { return editing_; }
     bool online() const { return online_ && online_mem_ != nullptr; }
 
     // Mensagem de abertura (modo, memoria, aviso de arquivos que nao abriram).
@@ -76,6 +78,9 @@ private:
     std::string CmdG(const std::vector<std::string> &f);
     std::string CmdCfg(const std::string &rest);
     std::string CmdHelp();
+    std::string ExecuteEdit(const std::string &line); // o editor de fonte (mamute_edit.cpp)
+    std::string CmdAssemble(const std::string &args);
+    std::string CmdMap();
 
     // O arquivo de listagem dos comandos P e LP (texto; o PDF do Mamute original nao existe aqui).
     std::string WriteListing(const std::string &path, const std::string &title, const std::string &body);
@@ -87,6 +92,12 @@ private:
     IMemory *online_mem_ = nullptr;
     IExec *online_exec_ = nullptr;
     bool online_ = false;
+
+    // editor de fonte Z80 (Fase 2): o programa vive no monitor e sobrevive a saida do EDIT
+    Source src_;
+    bool editing_ = false;
+    AsmProduct last_; // a ultima montagem bem-sucedida (MAP)
+    bool last_ok_ = false;
 
     int dump_mode_ = 0;
     int last_find_ = -1;       // onde o ultimo SH achou (o proximo, sem endereco, continua em +1)

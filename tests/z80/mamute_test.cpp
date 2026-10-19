@@ -157,6 +157,107 @@ void TestOffline() {
     check(quit, "BA encerra o monitor");
 }
 
+void TestEdit() {
+    mamute::Config cfg;
+    mamute::Monitor mon(cfg);
+    checkOut(mon, "EDIT", "EDITOR DE FONTE Z80", "EDIT entra no editor");
+    check(mon.Prompt() == "EDIT> " && mon.editing(), "EDIT: prompt EDIT>");
+    // programa do manual do MegaAssembler (numeros em HEXA por padrao)
+    const char *const prog[] = {"10 ORG 0C100H",     "20 CHPUT: EQU 0A2H", "30 START: LD HL,PRINT", "40 LOOP: LD A,(HL)", "50 OR A",
+                                "60 RET Z",          "70 CALL CHPUT",      "80 INC HL",             "90 JR LOOP",         "100 PRINT: DEFM 'MEGA ASSEMBLER'",
+                                "110 DEFB 0",        "120 END"};
+    for (const char *l : prog) mon.Execute(l);
+    checkOut(mon, "LIST 30-50", "30   START: LD HL,PRINT", "LIST mostra o intervalo");
+    checkOut(mon, "A", "PASSO-1", "A: PASSO-1/PASSO-2 e listagem");
+    checkOut(mon, "A", "   30 C100  21 0C C1     START: LD HL,PRINT", "A: numero, endereco, bytes e a linha (LD HL,PRINT = 21 0C C1)");
+    checkOut(mon, "A", "   20 00A2", "A: a coluna do endereco mostra o valor do EQU");
+    checkOut(mon, "A", "  100 C10C  4D 45 47 41", "A: DEFM vira os caracteres");
+    checkOut(mon, "A", "C110  20 41 53 53", "A: linha extra para o que passa de 4 bytes");
+    check(!has(Run(mon, "A"), "ORG 0C100H"), "A: ORG e END nao aparecem na listagem");
+    checkOut(mon, "MAP", "INICIO C100 FIM C11A (27 BYTES)", "MAP: inicio e fim do codigo montado");
+    checkOut(mon, "A N", "C100  21 0C C1     START: LD HL,PRINT", "A N: sem a coluna do numero da linha");
+    checkOut(mon, "A R", "LOOP         C103     C10A", "A R: referencia cruzada (LOOP e' usado em C10A)");
+    checkOut(mon, "A S", "SIMBOLOS (ORDEM ALFABETICA)", "A S: lista alfabetica");
+    checkOut(mon, "A D", "SIMBOLOS (ORDEM DE APARICAO)", "A D: lista em ordem de aparicao");
+    checkOut(mon, "A H", "EXIGE S OU D", "A H sem S nem D recusa");
+
+    // O grava na memoria no endereco do ORG; /desloc soma a todo ORG
+    checkOut(mon, "A O", "GRAVADOS 27 BYTES NA MEMORIA (OFFLINE) EM C100-C11A", "A O escreve o objeto na memoria");
+    mon.Execute("QUIT");
+    check(!mon.editing() && mon.Prompt() == "MON(off)> ", "QUIT volta ao monitor (o prompt muda)");
+    checkOut(mon, "D C100,C102", "C100  21 0C C1", "o codigo montado esta' na memoria");
+    checkOut(mon, "L C100,C100", "LD HL,C10Ch", "e disassembla de volta");
+    checkOut(mon, "A/10", "C110  21 1C C1", "A /10 desloca todo ORG (e os rotulos junto)");
+    checkOut(mon, "MAP", "INICIO C110", "MAP depois do deslocamento");
+
+    // numeros: hexa padrao, H, B (binario), D (decimal)
+    mon.Execute("EDIT NEW");
+    mon.Execute("EDIT 10 ORG 8000H");
+    mon.Execute("EDIT 20 LD A,10");
+    mon.Execute("EDIT 30 LD A,10D");
+    mon.Execute("EDIT 40 LD A,1010B");
+    mon.Execute("EDIT 50 LD A,0FFH");
+    mon.Execute("EDIT 60 LD (IX+5),A");
+    mon.Execute("EDIT 70 EX AF,AF'");
+    checkOut(mon, "EDIT A", "3E 10", "numero sem sufixo e' hexa (LD A,10 = 3E 10)");
+    checkOut(mon, "EDIT A", "3E 0A        LD A,10D", "sufixo D e' decimal");
+    checkOut(mon, "EDIT A", "3E 0A        LD A,1010B", "sufixo B e' binario");
+    checkOut(mon, "EDIT A", "3E FF", "sufixo H");
+    checkOut(mon, "EDIT A", "DD 77 05", "indexado (IX+5)");
+    checkOut(mon, "EDIT A", "08", "EX AF,AF' (o apostrofo do registrador alternado nao e' texto)");
+
+    // erros voltam com o numero da linha do Mamute
+    mon.Execute("EDIT 55 FOO BAR");
+    checkOut(mon, "EDIT A", "ERRO NA LINHA 55", "erro de montagem aponta a linha do Mamute");
+    checkOut(mon, "EDIT A", "> 55   FOO BAR", "e mostra a linha com o cursor >");
+    check(has(Run(mon, "MAP"), "NADA MONTADO"), "MAP depois de um erro: nada montado");
+    mon.Execute("EDIT 55");
+    checkOut(mon, "EDIT LIST", "50   LD A,0FFH", "linha so' com o numero apaga");
+    check(!has(Run(mon, "EDIT LIST"), "FOO"), "a linha 55 foi apagada");
+    mon.Execute("EDIT 35 EQU 5");
+    checkOut(mon, "EDIT A", "EQU EXIGE UM ROTULO", "EQU sem rotulo");
+    mon.Execute("EDIT 35");
+
+    // gerenciamento: RENUM, DELETE, CHANGE, SEARCH, SAVE/LOAD/MERGE
+    checkOut(mon, "EDIT RENUM", "RENUMERADO", "RENUM");
+    checkOut(mon, "EDIT LIST 10-30", "20   LD A,10", "RENUM: passo 10 a partir de 10");
+    checkOut(mon, "EDIT CHANGE 'LD A','LD B'", "TROCADAS 4", "CHANGE troca em todas as linhas");
+    checkOut(mon, "EDIT SEARCH 'LD B,0FFH'", "LD B,0FFH", "SEARCH entre aspas");
+    checkOut(mon, "EDIT SEARCH ld b,0ffh", "LD B,0FFH", "SEARCH sem aspas ignora maiusculas");
+    checkOut(mon, "EDIT SEARCH 'ld b,0ffh'", "NAO ENCONTRADO", "SEARCH entre aspas conta maiusculas");
+    const std::string mza = TempPath("mamute_t.mza");
+    checkOut(mon, "EDIT SAVE " + mza, "SALVO", "SAVE grava o fonte em ASCII");
+    mon.Execute("EDIT DELETE 30-");
+    checkOut(mon, "EDIT LIST", "20   LD B,10", "DELETE a- apaga ate' o fim");
+    check(!has(Run(mon, "EDIT LIST"), "LD B,0FFH"), "o fim do programa foi apagado");
+    checkOut(mon, "EDIT MERGE " + mza, "FUNDIDO", "MERGE funde");
+    checkOut(mon, "EDIT LIST", "LD B,0FFH", "MERGE traz as linhas do arquivo de volta");
+    mon.Execute("EDIT NEW");
+    checkOut(mon, "EDIT LOAD " + mza, "CARREGADO", "LOAD substitui o programa");
+    checkOut(mon, "EDIT LIST 10-10", "ORG 8000H", "LOAD: o conteudo do arquivo");
+    std::remove(mza.c_str());
+
+    // P (listagem em arquivo), H, I (BSAVE): o nome-base vem de >nome
+    const std::string base = TempPath("mamute_asm");
+    checkOut(mon, "EDIT A PIR>" + base, "GRAVADO", "A P/I gravam arquivos");
+    check(!ReadAll(base + ".lst").empty(), "A P: NOME.lst com a listagem");
+    const std::vector<uint8_t> bin = ReadAll(base + ".bin");
+    check(bin.size() >= 7 && bin[0] == 0xFE && bin[1] == 0x00 && bin[2] == 0x80 && bin[7] == 0x06 && bin[8] == 0x10, "A I: BSAVE FE 8000 ... e o codigo (LD B,10 = 06 10)");
+    std::remove((base + ".lst").c_str());
+    std::remove((base + ".bin").c_str());
+    checkOut(mon, "EDIT HELP", "EDITOR DE FONTE Z80", "HELP do editor");
+    checkOut(mon, "EDIT BLA", "COMANDO DESCONHECIDO NO EDITOR", "comando desconhecido no editor");
+
+    // o programa sobrevive a sair e voltar
+    mon.Execute("EDIT");
+    mon.Execute("QUIT");
+    checkOut(mon, "LIST", "ORG 8000H", "LIST no monitor: o programa continua depois de sair do EDIT");
+    bool quit = false;
+    mon.Execute("EDIT", &quit);
+    mon.Execute("BA", &quit);
+    check(quit && !mon.editing(), "BA dentro do EDIT sai do monitor");
+}
+
 void TestOnline() {
 #ifdef FWMSX_SOURCE_DIR
     const std::string bios = std::string(FWMSX_SOURCE_DIR) + "/resource/fMSX/ROMs/MSX.ROM";
@@ -209,6 +310,16 @@ void TestOnline() {
     for (int i = 0; i < 4; ++i) m->RunFrame();
     check(m->cpu().state().af.b.hi == 0x2A, "online: o programa escrito no monitor rodou na maquina (A = 2A)");
     checkOut(mon, "X A", "A=2A", "online: X le os registradores da maquina");
+    // A O no modo ONLINE: o programa montado pelo fwasm vai para a RAM da maquina e roda la'
+    mon.Execute("EDIT NEW");
+    mon.Execute("EDIT 10 ORG 0C200H");
+    mon.Execute("EDIT 20 LD A,5A");
+    mon.Execute("EDIT 30 JR $");
+    checkOut(mon, "EDIT A O", "GRAVADOS 4 BYTES NA MEMORIA (ONLINE) EM C200-C203", "online: A O escreve o objeto na RAM da maquina");
+    check(m->ReadMemory(0xC200) == 0x3E && m->ReadMemory(0xC201) == 0x5A, "online: a maquina enxerga o codigo montado");
+    checkOut(mon, "G C200", "EXECUTANDO NA MAQUINA", "online: G solta a CPU no programa montado");
+    for (int i = 0; i < 4; ++i) m->RunFrame();
+    check(m->cpu().state().af.b.hi == 0x5A, "online: o programa montado com A O rodou na maquina (A = 5A)");
     checkOut(mon, "OFFLINE", "MODO OFFLINE", "OFFLINE volta para a memoria privada");
 #endif
 }
@@ -217,6 +328,7 @@ void TestOnline() {
 
 int main() {
     TestOffline();
+    TestEdit();
     TestOnline();
     std::printf("\n%s (%d falha(s))\n", g_failures ? "FALHOU" : "OK", g_failures);
     return g_failures ? 1 : 0;

@@ -1127,6 +1127,7 @@ O **Mamute** e' o monitor Z80 do fwMSX: um prompt de linha onde cada comando mex
 | Memoria | `PAGE [?\|a,b,c,d]` `DM end[,desloc]` `M end[,b1,b2..]` `SH [end],b1,,b3` / `SH [end],'texto` `MS end,[desloc],'texto` `T ini,fim,dest` `F ini,fim,byte` |
 | Despejo | `C modo` (0 = 4 B/linha, 1 = 16 B, 2 = 8 B + checksum, 3 = idem sem o endereco) `D ini[,fim]` `P ini[,fim][,arq]` (texto) `V ini[,fim]` (VRAM) |
 | Execucao | `L [ini[,fim]]` `LP` (disassembler) `X [reg [valor]]` `G [ini[,bp1[,bp2]]]` |
+| Fonte Z80 | `EDIT` (editor de linhas numeradas) `LIST` `A [opcoes][/desloc][>nome]` (monta pelo fwasm) `MAP` - ver "Editor de fonte e montagem" abaixo |
 | Arquivos | `LOAD arq[,slot[,end]]` `SAVE arq,ini,fim[,exec[,BIN\|ROM\|RAW]]` |
 | Modos | `ONLINE` `OFFLINE` `STATUS` `PUSH` `PULL` |
 | Configuracao | `CFG` `CFG SET slot,pagina,tipo[,arq[,HALF]]` `CFG VRAM n` `CFG ONLINE 0\|1` `CFG DUMP n` `CFG SAVE` `CFG LOAD` |
@@ -1145,6 +1146,34 @@ MODO ONLINE: o monitor agora le e escreve na MAQUINA EMULADA
 MON(on)> push c100,c107            (so' vale do offline para a maquina: ver man mamute-modes)
 ```
 
+### Editor de fonte e montagem (`EDIT`, `A`)
+
+`EDIT` entra num editor de programa-fonte Z80 de linhas **numeradas** (estilo MegaAssembler/ZX-81; prompt `EDIT> `). A linha e' `NN [Label:] instrucao operandos [;comentario]`; o numero da linha e' decimal,
+**os numeros no texto sao HEXADECIMAIS por padrao** (`LD A,10` carrega 16; sufixos `H`, `B` binario `1010B`, `D` decimal `10D`; um numero que comeca com A-F leva um `0` na frente). Digitar o mesmo numero
+substitui a linha; so' o numero apaga. `QUIT` volta ao monitor (o programa fica); `BA` sai de tudo.
+
+| Comando | O que faz |
+|---|---|
+| `LIST [a[-[b]]]` `NEW` `DELETE a[-[b]]` `RENUM [novo[,antigo[,passo]]]` | ver e reorganizar as linhas |
+| `CHANGE 'a'[,'b']` `SEARCH 'x'` / `SEARCH x` `LSEARCH` | trocar / procurar (com aspas as maiusculas contam) |
+| `SAVE arq` `LOAD arq` `MERGE arq` | arquivo `.mza` em ASCII |
+| `A [opcoes][/desloc][>nome]` | monta pelo **fwasm** e lista (linha, endereco, bytes, texto); erro mostra a linha com o cursor `>` |
+| `MAP` | inicio e fim do ultimo codigo montado |
+
+Opcoes do `A` (coladas): `O` grava o codigo na memoria do monitor (offline, ou **na maquina** no modo online), `N` sem a coluna do numero, `P` listagem em `NOME.lst`, `I` objeto em `NOME.bin` (BSAVE),
+`R` referencia cruzada, `S`/`D` lista de simbolos (alfabetica / em ordem de aparicao), `H` grava as listas em `NOME.sym`, `/desloc` soma a todo `ORG`, `>nome` escolhe o nome-base.
+
+```
+MON(off)> edit
+EDIT> 10 ORG 0C100H
+EDIT> 20 LD A,2A
+EDIT> 30 RET
+EDIT> a o
+...  GRAVADOS 3 BYTES NA MEMORIA (OFFLINE) EM C100-C102
+EDIT> quit
+MON(off)> g c100          (offline)   ou   online + a o   e, no BASIC, DEFUSR=&HC100:A=USR(0)
+```
+
 ### Configuracao inicial (`mamute.cfg`)
 
 Arquivo de texto `chave=valor` ao lado do executavel, lido quando o monitor abre: `online=0|1`, `vram=16|128|192`, `dump=0..3`,
@@ -1153,7 +1182,7 @@ Arquivo de texto `chave=valor` ao lado do executavel, lido quando o monitor abre
 
 ### O que ainda nao existe
 
-`ZAP`, `SCR`, `S`, `EDIT`/`A` (montar o fonte numerado) e os comandos do SUPER-X (prefixo `X`) do Mamute original: ver as fases em [mamute-spec.md](mamute-spec.md).
+`ZAP`, `SCR`, `S`, `R` (referencia de fita) e os comandos do SUPER-X (prefixo `X`) do Mamute original: ver as fases em [mamute-spec.md](mamute-spec.md).
 
 ## Banco de ROMs (`--romdb`)
 

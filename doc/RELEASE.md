@@ -17,6 +17,20 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.40.1 -- "Antarctic Adventure: Mamute, EDIT e A" (Konami) (2026-10-19)
+
+**Mamute, Fase 2.** O `EDIT` (editor de linhas numeradas do MegaAssembler) e o `A` (montar). Decisao do usuario (Fase 1): o `A` monta pelo fwasm, nao pelo `Z80Asm.pbi` do paleobasic.
+Especificacao lida no manual do Mamute original (secoes EDIT e A); o `R` do original so' validava a sintaxe e continua fora.
+
+- **Como funciona**: o fonte do Mamute (`Label: instrucao`, hexa por padrao, `DEFB/DEFW/DEFM/DEFS/EQU/ORG/END`, `(HL)` em vez de `[HL]`) e' traduzido linha a linha para o asMSX (`.zilog` ligado) e entregue ao fwasm;
+  numeros viram decimais, `DEFM 'texto'` vira `db "texto"`, `Label: EQU x` vira `Label equ x`. Uma linha do asMSX por linha do Mamute, na mesma ordem: um erro "line N" do fwasm vira "linha NN" do Mamute.
+- **fwasm ganhou**: `AsmOptions::want_listing` (por linha de fonte, o endereco `$` onde comecou e os bytes que gerou; EQU devolve o valor) e `fwasm::IsDirectiveName`. Achado: `PRINT`, `START`, `SIZE`... sao diretivas do fwasm
+  e davam "reserved word used as identifier" ate' num operando (`LD HL,PRINT`); a traducao renomeia (`PRINT_m`) so' os rotulos que colidem e o `.sym` volta com o nome certo.
+- **Referencia cruzada (`A R`)**: o fwasm nao guarda os usos, entao o Mamute procura o simbolo nos operandos das linhas (palavra inteira) e mostra o endereco de cada uma.
+- **Diferencas do original**: os dialogos viram argumentos (`SAVE arq`, `A ...>nome`); `P` e `H` gravam texto (nao PDF); a opcao `I` grava o `.bin` direto (o original abria a janela do SAVE); `QUIT` no EDIT volta ao monitor e `BA` sai de tudo.
+- **Parte tecnica**: `CONTROL_LIB_SOURCES` passou a levar o fwasm (o Mamute monta); o console decide `QUIT` dentro do EDIT consultando o prompt do monitor (`EDIT> `).
+- `ctest` 27/27 (Windows e Linux).
+
 ## v1.40.0 -- "Antarctic Adventure" (Konami) (2026-10-19)
 
 **O Mamute no fwMSX (Fase 1).** Pedido do usuario: trazer o Mamute Assembler (debugger/montador/editor de memoria/dumper) do paleobasic, escrito em PureBasic, para dentro do

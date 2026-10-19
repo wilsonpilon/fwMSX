@@ -67,9 +67,9 @@ Com os formatos implementados, `man fwasm-directives` nao tem mais nada "FALTA",
 (`msxbas2rom`, `msxbas2rom-<arquivo>`; o "MSX Turbo Basic" do menu do paleobasic). O manual do **fwasm** e' escrito a mao (`man_pages_fwasm.cpp`), em portugues, a partir do manual do asMSX, com o ESTADO real
 de cada diretiva; as tabelas de BIOS vem de `src/asm/cpp/bios_tables.inc`. Nao importados: o manual do asMSX do paleobasic (substituido pelo do fwasm), N80/LK80/LIBSTOR (por enquanto) e o OpenMSX.
 
-### 1h. O Mamute (1.40.0)
+### 1h. O Mamute (1.40.0; `mamute-edit` na 1.40.1)
 
-`man mamute` (alias `mon`) e as paginas `mamute-modes`, `mamute-memory`, `mamute-dump`, `mamute-exec`, `mamute-files` e `mamute-config` (categoria "Mamute", escritas a mao em
+`man mamute` (alias `mon`) e as paginas `mamute-modes`, `mamute-memory`, `mamute-dump`, `mamute-exec`, `mamute-edit` (1.40.1), `mamute-files` e `mamute-config` (categoria "Mamute", escritas a mao em
 `src/man/cpp/man_pages_mamute.cpp`). So' `mamute` entra na tabela do `help` (uso `mon [linha]`). Ao mudar um comando do monitor, atualizar a pagina do grupo
 (o `mantest` confere que as paginas existem e alguns trechos, nao o texto de cada comando). Projeto: [mamute-spec.md](mamute-spec.md).
 

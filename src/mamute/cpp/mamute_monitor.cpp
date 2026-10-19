@@ -118,6 +118,7 @@ const char *kHelp =
     "  L [ini[,fim]] | LP [ini[,fim]][,arq]   disassembler (log | arquivo texto)\n"
     "  X [reg [valor]] | G [ini[,bp1[,bp2]]]  registradores / executa\n"
     "  LOAD arq[,slot[,end]] | SAVE arq,ini,fim[,exec[,BIN|ROM|RAW]]   arquivos\n"
+    "  EDIT | LIST | A [opcoes] | MAP   editor de fonte Z80 (linhas numeradas) e montagem pelo fwasm (HELP no EDIT)\n"
     "  CFG [SET s,p,tipo[,arq[,HALF]] | VRAM n | ONLINE 0|1 | DUMP n | SAVE | LOAD]   configuracao inicial\n"
     "  HELP                         esta lista (o manual completo: man mamute)";
 
@@ -129,7 +130,10 @@ Monitor::Monitor(const Config &cfg, std::string config_path)
     load_warnings_ = offline_.Reconfigure(cfg_);
 }
 
-std::string Monitor::Prompt() const { return online() ? "MON(on)> " : "MON(off)> "; }
+std::string Monitor::Prompt() const {
+    if (editing_) return "EDIT> ";
+    return online() ? "MON(on)> " : "MON(off)> ";
+}
 
 std::string Monitor::Banner() {
     std::string out = "MAMUTE - MONITOR Z80 DO fwMSX (modo " + Upper(Mem().Name()) + ", HELP lista os comandos)";
@@ -143,15 +147,29 @@ std::string Monitor::Execute(const std::string &line_in, bool *quit) {
     const std::string line = Trim(line_in);
     if (line.empty()) return "";
     size_t i = 0;
-    while (i < line.size() && !std::isspace(static_cast<unsigned char>(line[i])) && line[i] != ',' && line[i] != '\'') ++i;
+    while (i < line.size() && !std::isspace(static_cast<unsigned char>(line[i])) && line[i] != ',' && line[i] != '\'' && line[i] != '/' && line[i] != '>') ++i;
     const std::string cmd = Upper(line.substr(0, i));
     const std::string rest = Trim(line.substr(i));
     const std::vector<std::string> f = Fields(rest);
 
-    if (cmd == "BA" || cmd == "QUIT" || cmd == "XQT") {
+    if (cmd == "BA" || cmd == "XQT" || (cmd == "QUIT" && !editing_)) {
+        editing_ = false;
         if (quit) *quit = true;
         return "";
     }
+    if (editing_) { // dentro do EDIT: tudo e' do editor de fonte; QUIT volta ao monitor
+        if (cmd == "QUIT") {
+            editing_ = false;
+            return "VOLTA AO MONITOR (O PROGRAMA-FONTE CONTINUA NA MEMORIA)";
+        }
+        return ExecuteEdit(line);
+    }
+    if (cmd == "EDIT") {
+        if (!rest.empty()) return ExecuteEdit(rest); // um comando do editor sem entrar nele: edit list, edit a o
+        editing_ = true;
+        return "EDITOR DE FONTE Z80 - " + std::to_string(src_.size()) + " LINHAS (HELP lista, QUIT volta ao monitor)";
+    }
+    if (cmd == "LIST" || cmd == "A" || cmd == "MAP") return ExecuteEdit(line);
     if (cmd == "HELP" || cmd == "?") return CmdHelp();
     if (cmd == "ONLINE") return CmdMode(true);
     if (cmd == "OFFLINE") return CmdMode(false);
