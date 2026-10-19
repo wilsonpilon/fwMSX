@@ -47,7 +47,7 @@ const std::vector<std::string> kCompletions = {
     "help", "exit", "quit", "emu start", "emu attach", "emu detach", "emu stop", "emu status", "newdisk", "romdb", "cas",
     "fitadb", "msxdisk", "version", "status", "reset", "pause", "resume", "step", "type", "peek", "poke", "regs", "cart",
     "disk", "eject", "tape", "state save", "state load", "screenshot", "man", "break", "unbreak", "breaks", "watch", "unwatch",
-    "watches", "stepi", "next", "until", "go", "stop", "jump", "dis", "mem", "stack", "reg", "slots", "events", "dbgui", "wait", "asm"};
+    "watches", "stepi", "next", "until", "go", "stop", "jump", "dis", "mem", "stack", "reg", "slots", "events", "dbgui", "wait", "asm", "mon", "mamute"};
 
 // Tamanho do terminal em colunas x linhas; tty = false quando a saida foi redirecionada (sem paginar).
 struct TermSize {
@@ -188,9 +188,12 @@ int RunReplCommand(const std::vector<std::string> &args, const std::string &argv
     });
 
     std::cout << "fwMSX - console. 'help' lista os comandos; 'emu start' abre o emulador; 'exit' sai." << std::endl;
+    for (const std::string &a : args) {
+        if (a == "--mon") session.Execute("mon", std::cout); // abre ja' dentro do monitor Mamute
+    }
     while (true) {
         session.PrintEvents(std::cout); // eventos que chegaram enquanto se digitava (breakpoint atingido...)
-        const char *raw = rx.input(session.Prompt());
+        const char *raw = rx.input(session.monitor_mode() ? session.MonitorPrompt() : session.Prompt());
         if (raw == nullptr) {
             std::cout << std::endl;
             break;

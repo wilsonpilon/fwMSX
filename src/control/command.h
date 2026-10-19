@@ -12,11 +12,16 @@
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 #include <string>
 #include <vector>
 
 #include "../debug/cpp/debug_view.h"
 #include "../machine/machine.h"
+
+namespace mamute {
+class Monitor;
+} // namespace mamute
 
 namespace control {
 
@@ -53,7 +58,8 @@ public:
 
 class Commander {
 public:
-    explicit Commander(Host &host) : host_(host) {}
+    explicit Commander(Host &host);
+    ~Commander();
 
     // Executa UMA linha de comando. Nunca lanca excecao.
     Result Execute(const std::string &line);
@@ -85,6 +91,9 @@ public:
 private:
 
     Host &host_;
+    // O monitor Mamute (comando `mon`): criado na primeira vez que alguem o usa; a maquina so' e' ligada a ele DURANTE
+    // cada comando (ela pode ser recriada pelo host entre um comando e outro).
+    std::unique_ptr<mamute::Monitor> mon_;
     // Painel "Z80 Debugger" por texto (comando `dbgui`): o MESMO modelo da janela, para a TUI e qualquer cliente.
     dbgui::DebugView dbgview_;
     std::deque<TypedKey> typing_;

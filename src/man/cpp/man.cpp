@@ -36,7 +36,7 @@ std::vector<std::string> Names(const Topic &t) {
 }
 
 // Categorias dos comandos, na ordem em que o help as mostra.
-const char *const kCommandCategories[] = {"Console", "Emulador", "Midia e estado", "Depurador", "Ferramentas"};
+const char *const kCommandCategories[] = {"Console", "Emulador", "Midia e estado", "Depurador", "Mamute", "Ferramentas"};
 
 std::string Repeat(char c, int n) { return std::string(static_cast<size_t>(std::max(0, n)), c); }
 
@@ -123,6 +123,7 @@ const std::vector<Topic> &Topics() {
         absorb(ManualTopics());
         absorb(ToolsHelpTopics());
         absorb(FwasmTopics());
+        absorb(MamuteTopics());
         return v;
     }();
     return all;

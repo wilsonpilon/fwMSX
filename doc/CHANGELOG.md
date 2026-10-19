@@ -7,6 +7,22 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.40.0] - 2026-10-19 - "Antarctic Adventure" (Konami)
+
+### Adicionado -- o Mamute, o monitor Z80 do fwMSX (Fase 1)
+- **Mamute** (do Mamute Assembler do Paleobasic, reescrito em C + Fortran + Assembly + C++, sem janela separada): um prompt de linha onde
+  cada comando mexe na memoria, disassembla, executa, salva e carrega. Comandos: `BA QUIT XQT ONLINE OFFLINE STATUS PUSH PULL PAGE DM M SH MS C D P V T F L LP X G LOAD SAVE CFG HELP`.
+- **Dois modos**: **offline** (memoria privada de 16 blocos de 16 KB -- 4 slots x 4 paginas -- e CPU privada; criar e depurar sem a maquina) e **online**
+  (a memoria e a CPU da maquina emulada: o que se escreve aparece na hora no programa em execucao -- uma rotina em C000h e, no BASIC, `DEFUSR=&HC000:A=USR(0)`).
+  `ONLINE`/`OFFLINE` trocam; `PUSH`/`PULL` levam um bloco de um lado para o outro.
+- **Como abrir**: `mon` (ou `mamute`) no console e na TUI entra no monitor (prompt `MON(off)> ` / `MON(on)> `; `BA` volta; `!comando` roda um comando do console);
+  `mon <linha>` executa um comando so'; `fwmsx --mon` (alias `--mamute`) abre o console ja' dentro do monitor. Pela ponte de controle: `mon <linha>`.
+- **Configuracao inicial**: `mamute.cfg` ao lado do executavel (modo, VRAM de 16/128/192 KB, formato de despejo, tipo e arquivo de cada uma das 16 celulas) e o comando `CFG`.
+- **Manual**: `man mamute` (+ `mamute-modes`, `mamute-memory`, `mamute-dump`, `mamute-exec`, `mamute-files`, `mamute-config`); o `help` ganhou a categoria "Mamute".
+- Quatro linguagens: C (`mamute_dump.c`, formato do despejo), Fortran (`mamute_sum.f90`, checksum), Assembly NASM dual-ABI (`mamute_scan.asm`, busca com curinga) e C++ (o monitor).
+- Testes: `mamutetest` (71 checagens, offline e online com a maquina real), `repltest` (modo monitor, local e conectado) e `mantest` (as paginas). `ctest` 27/27.
+- Projeto e fases (2: `EDIT`/`A` pelo fwasm; 3: telas `DM`/`ZAP`/`SCR`; 4: os 36 comandos do SUPER-X): [mamute-spec.md](mamute-spec.md).
+
 ## [1.39.2] - 2026-10-19 - "Yie Ar Kung-Fu: Amazonia" (Konami)
 
 ### Corrigido -- achados ao montar o jogo Amazonia (cartucho de 48 KB, `tests/asm/real/amazonia`)

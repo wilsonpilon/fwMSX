@@ -17,6 +17,10 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-16)
 
+- **1.40.0 "Antarctic Adventure" (publicada)**: **Mamute, o monitor Z80 do fwMSX (Fase 1)** -- vindo do Mamute Assembler do paleobasic (PureBasic), reescrito em C + Fortran + NASM + C++ sem janela separada.
+  Online (a maquina emulada) e offline (memoria de 16 blocos + CPU propria), `mon`/`mamute`, `fwmsx --mon`, `mamute.cfg`, 31 comandos, `man mamute` (7 paginas). Pedido e decisoes do usuario
+  (fases; EDIT/A via fwasm; offline com memoria privada; paineis na TUI) em `doc/mamute-spec.md`. **Proximas fases do Mamute**: 2 = `EDIT`/`A` pelo fwasm + `R`; 3 = telas (`DM`/`M`/`S` interativos na TUI, `ZAP`, `SCR`);
+  4 = os 36 comandos do SUPER-X (`XD XA XI XM XH`, `XRG XGO XTR`, `XBT XRT XFL XCM XFD`, ..., notas `XIM...`, portas `XPP XPI XPO`). Depois do Mamute: depurador sofisticado.
 - **Compatibilidade do fwasm com o asMSX v1.2.0 (2026-10-16)**: medida 100% (6606 casos dourados + 1 programa real); estimada ~95% no geral. Pendencias (mais programas reais, CLI, `.sym`/`.txt`, fuzz, BOM): `doc/asm-spec.md`.
 - **1.39.2 "Yie Ar Kung-Fu: Amazonia" (publicada)**: segundo programa real (jogo Amazonia em cartucho, `tests/asm/real/amazonia`): corrigidos fonte em subpasta, include/incbin relativos ao diretorio atual e `#hex`;
   `.rom` 48 KB e `.sym` iguais ao asMSX v1.2.0. O fonte do usuario tem `LINL40` duplicado em `msxsys.asm` (a v1.2.0 recusa; aguardando o usuario decidir se corrige o original).

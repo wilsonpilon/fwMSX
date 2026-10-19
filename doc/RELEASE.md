@@ -17,6 +17,24 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.40.0 -- "Antarctic Adventure" (Konami) (2026-10-19)
+
+**O Mamute no fwMSX (Fase 1).** Pedido do usuario: trazer o Mamute Assembler (debugger/montador/editor de memoria/dumper) do paleobasic, escrito em PureBasic, para dentro do
+fwMSX, convertido para o mix C/C++/Fortran/Assembly e integrado a TUI, a CLI e a passagem de parametros, com HELP, `man` e configuracao inicial; sem a janela separada; com um modo
+online (reflete na maquina em execucao) e um offline. Pesquisa antes de codar: ~21 mil linhas de PureBasic, ~60 comandos, uma maquina simulada propria (256 KB, Z80 proprio) que o fwMSX
+ja' tem de verdade -- o online e' o monitor operando a maquina emulada. Decisoes do usuario (AskUserQuestion): entregar **em fases**; EDIT/A **via fwasm**; offline com **memoria privada +
+nucleo Z80 do fwMSX**; telas como **paineis da TUI + versao de linha no CLI**. Detalhes em [mamute-spec.md](mamute-spec.md).
+
+- **Fase 1 (esta)**: nucleo + 31 comandos (`BA QUIT XQT ONLINE OFFLINE STATUS PUSH PULL PAGE DM M SH MS C D P V T F L LP X G LOAD SAVE CFG HELP`), `mon`/`mamute`, `--mon`, prompt
+  `MON(off)>`/`MON(on)>`, `mamute.cfg`, `man mamute` (7 paginas), categoria "Mamute" no help.
+- **Online de verdade**: o `repltest` conecta o console a uma maquina real (BIOS), entra no monitor, escreve `3E 2A C9` em C000h e le o byte de volta pelo `peek`; o `mamutetest` faz o `G C000` e
+  a CPU da maquina passa a rodar o programa (A = 2A). Escrita em ROM e' ignorada, como num MSX de verdade.
+- **Achados**: o `Commander` recria a maquina entre comandos (o host pode troca-la), por isso o monitor so' a recebe DURANTE cada comando (`AttachMachine`/`DetachMachine`) e guarda o modo
+  proprio; na TUI o prompt aparece na linha de entrada (campo `monitor_prompt`).
+- **Diferencas do original**: sem janelas (a grade do `DM` sai no log), `P`/`LP` gravam texto (nao PDF), `SAVE .rom` sai sem cabecalho, padrao com RAM no slot 3. Ainda nao existem: `ZAP SCR S EDIT A R` e os
+  comandos do SUPER-X (Fases 2 a 4).
+- `ctest` 27/27 (Windows e Linux).
+
 ## v1.39.2 -- "Yie Ar Kung-Fu: Amazonia" (Konami) (2026-10-19)
 
 Segundo programa real no fwasm: o jogo **Amazonia** (Renato Degiovani) em versao cartucho de 48 KB, adaptado pelo Wilson a partir da versao em disco (o autor nao tem mais os fontes

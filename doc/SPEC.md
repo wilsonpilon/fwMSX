@@ -192,13 +192,14 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.39.2)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-13, depois da v1.40.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
 
-**Funcionando (v1.39.2, publicada em `main`):**
+**Funcionando (v1.40.0, publicada em `main`):**
 - [x] **Compatibilidade fwasm x asMSX v1.2.0**: medida 100% (6606 casos + 1 programa real), estimada ~95%; pendencias em `asm-spec.md`.
+- [x] **Mamute, o monitor Z80** (1.40.0, Fase 1): memoria offline (16 blocos de 16 KB) e online (a maquina emulada), 31 comandos, `mon`/`--mon`, `mamute.cfg`, `man mamute`; fases 2-4 em `mamute-spec.md`.
 - [x] **fwasm com o jogo Amazonia** (1.39.2): `.rom` 48 KB e `.sym` iguais ao asMSX v1.2.0; corrigidos fonte em subpasta, include/incbin relativos ao diretorio atual e `#hex`.
 - [x] **fwasm com programa real** (1.39.1): replayer PT3 de SapphiRe monta igual ao asMSX v1.2.0 e toca no emulador (`asme2etest`); corrigidos `ROTULO: .include` e `nome .equ valor`.
 

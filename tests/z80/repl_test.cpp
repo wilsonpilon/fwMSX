@@ -123,6 +123,28 @@ int main() {
         check(s.Execute("", o) && o.str().empty(), "linha vazia");
         check(!s.Execute("exit", o) && !s.Execute("quit", o), "exit/quit encerram o console");
 
+        // ---- modo monitor (Mamute) sem emulador: monitor local, so' offline ----
+        {
+            repl::ReplSession ms("x");
+            std::ostringstream mo;
+            check(ms.Execute("mon", mo) && ms.monitor_mode() && Contains(mo.str(), "MAMUTE") && ms.MonitorPrompt() == "MON(off)> ", "mon: entra no monitor local (prompt MON(off)>)");
+            mo.str("");
+            ms.Execute("m c000,3e,2a", mo);
+            check(Contains(mo.str(), "GRAVADOS 2"), "monitor: as linhas vao para o Mamute");
+            mo.str("");
+            ms.Execute("online", mo);
+            check(Contains(mo.str(), "SEM MAQUINA"), "monitor: ONLINE sem emulador explica");
+            mo.str("");
+            ms.Execute("!version", mo);
+            check(Contains(mo.str(), "erro: sem emulador") && ms.monitor_mode(), "monitor: !comando roda um comando do console e continua no monitor");
+            mo.str("");
+            ms.Execute("ba", mo);
+            check(!ms.monitor_mode() && ms.MonitorPrompt().empty() && Contains(mo.str(), "volta ao console"), "monitor: BA volta ao console");
+            mo.str("");
+            ms.Execute("mon d c000,c001", mo);
+            check(Contains(mo.str(), "C000  3E 2A") && !ms.monitor_mode(), "mon <linha>: comando avulso, sem entrar no modo, e a memoria continua a mesma");
+        }
+
         int received = -1;
         std::vector<std::string> got;
         s.AddTool("ferr", [&](const std::vector<std::string> &a) {
@@ -187,6 +209,29 @@ int main() {
         }
     }
     server.Stop();
+
+    // ---- monitor Mamute online, pelo console conectado ----------------------------------------
+    {
+        control::Server msrv;
+        std::string merr;
+        check(msrv.Start(0, merr), "servidor de controle para o monitor (" + merr + ")");
+        repl::ReplSession s("fwMSX.exe");
+        const std::string mport = std::to_string(msrv.port());
+        const std::vector<std::string> out = RunScript(
+            s, {"emu attach " + mport, "mon", "online", "m c000,3e,2a,c9", "d c000,c003", "c 1", "!version", "ba", "peek 0xC000 3", "emu detach"},
+            {&msrv}, cmd);
+        check(out.size() == 10, "script do monitor executado (" + std::to_string(out.size()) + " respostas)");
+        if (out.size() == 10) {
+            check(Contains(out[1], "MAMUTE") && Contains(out[1], "MODO ONLINE") == false, "mon conectado: abertura do monitor da maquina");
+            check(Contains(out[2], "MODO ONLINE"), "ONLINE pelo console conectado");
+            check(Contains(out[3], "GRAVADOS 3 BYTES EM C000"), "M escreve na maquina");
+            check(Contains(out[4], "C000  3E 2A C9") && Contains(out[5], "MODO 1"), "D le a maquina e C troca o formato (no monitor da maquina)");
+            check(Contains(out[6], "fwMSX 1."), "!comando dentro do monitor vai ao console");
+            check(Contains(out[7], "volta ao console"), "BA sai do monitor");
+            check(Contains(out[8], "3E 2A C9"), "a maquina de fato recebeu os bytes (peek)");
+        }
+        msrv.Stop();
+    }
 
     // ---- emu start (iniciador falso: abre o servidor na porta que o console escolheu) -----
     {

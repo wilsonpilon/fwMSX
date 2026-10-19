@@ -33,7 +33,7 @@ utilitario chamado **MSX-PoorManOS**.
      **JOGO NOVO de MSX**, nunca repetido. Zera o Z. Para o X = Konami, jogos reservados na
      ordem: ~~Nemesis (1.32)~~, ~~Penguin Adventure (1.33)~~, ~~Metal Gear (1.34)~~, ~~Vampire Killer~~
      (1.35), ~~Salamander~~ (1.36), ~~Knightmare~~ (1.37), Road Fighter (1.38), Yie Ar Kung-Fu (1.39),
-     Antarctic Adventure (1.40), Hyper Sports (1.41)... (as versoes 1.19 a 1.31 ficaram todas
+     ~~Antarctic Adventure~~ (1.40), Hyper Sports (1.41)... (as versoes 1.19 a 1.31 ficaram todas
      como "King's Valley", do esquema antigo -- nao renomear).
    - **Z (patch)**: feature pequena, ajuste ou correcao. Leva o nome do jogo do Y **mais um
      subtitulo** ("Nemesis: Ponte de controle"). A versao X.Y.0 leva so' o nome do jogo.
@@ -93,7 +93,7 @@ utilitario chamado **MSX-PoorManOS**.
 - **`doc/*-spec.md`**: um design doc por subsistema (`vdp-spec.md`, `man-spec.md`,
   `memory-map-spec.md`, `savestate-spec.md`, `tape-spec.md`, `fdc-spec.md`,
   `romdb-spec.md`, `fm-spec.md`, `scc-spec.md`, `sram-spec.md`,
-  `slots-spec.md`, `msx2-spec.md`, `msx2p-spec.md`, `ppi-spec.md`,
+  `slots-spec.md`, `mamute-spec.md`, `msx2-spec.md`, `msx2p-spec.md`, `ppi-spec.md`,
   `z80-core-spec.md`...) -- mesmo formato: o que foi feito, decisoes
   tomadas, testes, o que falta.
 - **`README.md`** / **`doc/MANUAL.md`**: docs voltados pro usuario final

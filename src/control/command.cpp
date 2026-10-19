@@ -8,6 +8,8 @@
 
 #include "../common/version.h"
 #include "../debug/c/dbg_flow.h"
+#include "../mamute/cpp/mamute_monitor.h"
+#include "../mamute/cpp/mamute_online.h"
 #include "../z80/debug/z80_disasm.h"
 
 extern "C" void dbg_format_flags(int f, char *buf); // src/debug/fortran/dbg_fmt.f90
@@ -43,7 +45,8 @@ const char *kHelp =
     "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
-    "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md)";
+    "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
+    "monitor Mamute: mon [linha] (ver doc/mamute-spec.md)";
 
 std::string DisasmLine(machine::Machine &m, uint16_t addr, uint16_t *length = nullptr) {
     const z80::debug::DisasmResult d = z80::debug::Disassemble([&](uint16_t a) { return m.ReadMemory(a); }, addr);
@@ -267,6 +270,9 @@ bool Commander::ParseTypeSpec(machine::Machine &m, const std::string &spec, bool
     return true;
 }
 
+Commander::Commander(Host &host) : host_(host) {}
+Commander::~Commander() = default;
+
 Result Commander::Execute(const std::string &line) {
     std::string tokenize_error;
     const std::vector<std::string> t = Tokenize(line, tokenize_error);
@@ -277,6 +283,28 @@ Result Commander::Execute(const std::string &line) {
     machine::Machine &m = host_.machine();
 
     if (cmd == "help") return Ok(kHelp);
+
+    // mon <linha do Mamute>: o monitor Z80 (doc/mamute-spec.md). O texto depois da palavra vai CRU para ele (virgulas,
+    // apostrofos e barras dos caminhos do Windows sao dele). `mon @prompt` devolve o prompt (quem mantem o modo do
+    // monitor, como o console, mostra "MON(on)> " ou "MON(off)> "); `mon` sozinho mostra a abertura.
+    if (cmd == "mon" || cmd == "mamute") {
+        std::string rest = line;
+        const size_t sp = rest.find_first_of(" 	");
+        rest = sp == std::string::npos ? std::string() : rest.substr(sp + 1);
+        while (!rest.empty() && std::isspace(static_cast<unsigned char>(rest.front()))) rest.erase(0, 1);
+        const bool first = !mon_;
+        if (first) mon_ = std::make_unique<mamute::Monitor>(mamute::LoadConfig(mamute::DefaultConfigPath()), mamute::DefaultConfigPath());
+        mamute::MachineMemory memory(m);
+        mamute::MachineExec exec(m);
+        mon_->AttachMachine(&memory, &exec);
+        if (first) mon_->ApplyStartMode();
+        std::string out;
+        if (rest == "@prompt") out = mon_->Prompt();
+        else if (rest.empty()) out = mon_->Banner();
+        else out = mon_->Execute(rest);
+        mon_->DetachMachine();
+        return Ok(out);
+    }
 
     if (cmd == "version") {
         return Ok(std::string(FWMSX_NAME) + " " + std::to_string(FWMSX_VERSION_MAJOR) + "." + std::to_string(FWMSX_VERSION_MINOR) +

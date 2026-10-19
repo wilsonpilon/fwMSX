@@ -208,6 +208,7 @@ private:
         EmuStatus st;
         st.connected = session_->connected();
         st.port = st.connected ? session_->link().port() : 0;
+        st.monitor_prompt = session_->MonitorPrompt();
         if (st.connected) {
             std::string reply, error;
             if (session_->link().Send("status", reply, error)) ParseStatus(reply, st);
@@ -425,7 +426,7 @@ Element BuildView(App &app, const Dimensions &size) {
     // linha de comando com cursor
     const std::string &in = m.input();
     const size_t cur = static_cast<size_t>(m.cursor());
-    Element input_line = hbox({text("> ") | bold, text(in.substr(0, cur)),
+    Element input_line = hbox({text(st.monitor_prompt.empty() ? std::string("> ") : st.monitor_prompt) | bold, text(in.substr(0, cur)),
                                text(cur < in.size() ? in.substr(cur, 1) : std::string(" ")) | inverted,
                                text(cur < in.size() ? in.substr(cur + 1) : std::string())});
 

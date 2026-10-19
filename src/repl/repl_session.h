@@ -8,11 +8,16 @@
 
 #include <functional>
 #include <map>
+#include <memory>
 #include <ostream>
 #include <string>
 #include <vector>
 
 #include "emu_link.h"
+
+namespace mamute {
+class Monitor;
+} // namespace mamute
 
 namespace repl {
 
@@ -25,6 +30,7 @@ public:
 
     // `exe_path` = o executavel que sera' iniciado por `emu start` (o proprio fwMSX).
     explicit ReplSession(std::string exe_path);
+    ~ReplSession();
 
     void AddTool(const std::string &name, Tool tool, const std::string &help);
     void SetSpawner(Spawner spawner) { spawner_ = std::move(spawner); }
@@ -43,6 +49,12 @@ public:
     std::string Prompt() const;
 
     bool connected() const { return link_.connected(); }
+
+    // Modo monitor (comando `mon`): enquanto ligado, cada linha digitada e' um comando do Mamute. Com emulador conectado
+    // a linha vai para o monitor DELE (modo online disponivel); sem emulador roda um monitor local, so' offline.
+    bool monitor_mode() const { return mon_mode_; }
+    // O prompt do monitor ("MON(off)> "), ou vazio fora do modo monitor.
+    std::string MonitorPrompt();
 
     // Mostra os eventos do emulador (breakpoint atingido...) que chegaram, como "[evento] break id=1 ...".
     // Espera ate' `wait_ms` por um evento. Devolve true se mostrou algum.
@@ -63,6 +75,8 @@ private:
     void Forward(const std::string &line, std::ostream &out);
     void Help(const std::vector<std::string> &t, std::ostream &out);
     void Man(const std::vector<std::string> &t, std::ostream &out);
+    void Monitor(const std::string &line, std::ostream &out);    // uma linha do Mamute (remota ou local)
+    void MonitorEnter(const std::string &rest, std::ostream &out); // `mon` / `mon <linha>`
 
     std::string exe_path_;
     Spawner spawner_;
@@ -70,6 +84,8 @@ private:
     int width_ = 78;
     EmuLink link_;
     std::map<std::string, ToolEntry> tools_;
+    std::unique_ptr<mamute::Monitor> local_mon_; // monitor local (sem emulador): so' offline
+    bool mon_mode_ = false;
 };
 
 } // namespace repl

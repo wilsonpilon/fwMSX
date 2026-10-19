@@ -1097,6 +1097,64 @@ fonte, ou onde o `-o` indicar. O codigo de saida e' o do asMSX (0 = ok; erros e 
 formato `arquivo.asm, line N: mensagem`). No console (`fwMSXc.exe --cli`) o mesmo montador e' o comando `asm`.
 Detalhes e estado do suporte as diretivas: `doc/asm-spec.md`.
 
+## Mamute -- monitor Z80 (`mon`, `fwmsx --mon`)
+
+O **Mamute** e' o monitor Z80 do fwMSX: um prompt de linha onde cada comando mexe na memoria, disassembla, executa e salva programas
+(no estilo dos monitores dos anos 80). Funciona no console (`--cli`), na TUI (`--tui`) e pela ponte de controle, sem janela separada.
+**Todo endereco e' hexadecimal.** O manual completo esta' no proprio programa: `man mamute`.
+
+### Como abrir
+
+| Forma | O que faz |
+|---|---|
+| `mon` (ou `mamute`) | entra no monitor; o prompt vira `MON(off)> ` (offline) ou `MON(on)> ` (online); `BA` ou `QUIT` volta ao console |
+| `mon <linha>` | executa UM comando do monitor, sem entrar nele (`mon d 4000,400f`) |
+| `fwmsx --mon` (alias `--mamute`) | abre o console ja' dentro do monitor; com `--attach <porta>` liga a um emulador |
+| `!comando` (dentro do monitor) | roda um comando do CONSOLE (`!emu start`) e continua no monitor |
+
+### Online e offline
+
+- **Offline**: memoria e CPU PRIVADAS do monitor (16 blocos de 16 KB: 4 slots x 4 paginas). Serve para criar, depurar e rodar um programa sem tocar na maquina.
+  E' o modo de quem abre o monitor sem emulador.
+- **Online**: a memoria e a CPU da MAQUINA emulada. O que o monitor escreve aparece na hora no programa em execucao: escreva uma rotina em `C000` e, no BASIC da janela,
+  `DEFUSR=&HC000:A=USR(0)`. A escrita em ROM e' ignorada (como num MSX de verdade).
+- `ONLINE` e `OFFLINE` trocam de modo; `PUSH ini,fim[,dest]` leva um bloco do offline para a maquina e `PULL` traz de volta.
+
+### Comandos
+
+| Grupo | Comandos |
+|---|---|
+| Memoria | `PAGE [?\|a,b,c,d]` `DM end[,desloc]` `M end[,b1,b2..]` `SH [end],b1,,b3` / `SH [end],'texto` `MS end,[desloc],'texto` `T ini,fim,dest` `F ini,fim,byte` |
+| Despejo | `C modo` (0 = 4 B/linha, 1 = 16 B, 2 = 8 B + checksum, 3 = idem sem o endereco) `D ini[,fim]` `P ini[,fim][,arq]` (texto) `V ini[,fim]` (VRAM) |
+| Execucao | `L [ini[,fim]]` `LP` (disassembler) `X [reg [valor]]` `G [ini[,bp1[,bp2]]]` |
+| Arquivos | `LOAD arq[,slot[,end]]` `SAVE arq,ini,fim[,exec[,BIN\|ROM\|RAW]]` |
+| Modos | `ONLINE` `OFFLINE` `STATUS` `PUSH` `PULL` |
+| Configuracao | `CFG` `CFG SET slot,pagina,tipo[,arq[,HALF]]` `CFG VRAM n` `CFG ONLINE 0\|1` `CFG DUMP n` `CFG SAVE` `CFG LOAD` |
+| Outros | `HELP` `BA` `QUIT` `XQT` |
+
+Exemplo (offline, depois online):
+
+```
+fwmsx> mon
+MON(off)> m c100,06,05,05,20,fd,3e,77,76       ; LD B,5 / DEC B / JR NZ / LD A,77 / HALT
+MON(off)> g c100
+PARADO EM HALT NO ENDERECO C107 (...)   A=77 B=00 ...
+MON(off)> !emu start
+MON(off)> online
+MODO ONLINE: o monitor agora le e escreve na MAQUINA EMULADA
+MON(on)> push c100,c107            (so' vale do offline para a maquina: ver man mamute-modes)
+```
+
+### Configuracao inicial (`mamute.cfg`)
+
+Arquivo de texto `chave=valor` ao lado do executavel, lido quando o monitor abre: `online=0|1`, `vram=16|128|192`, `dump=0..3`,
+`cell.S.P=vazio|ram|rom|basic`, `file.S.P=caminho`, `half.S.P=1`. Sem ele: offline, VRAM de 16 KB, formato 0 e RAM no slot 3. `CFG` mostra e muda
+(`CFG SAVE` grava). Detalhes: `man mamute-config`.
+
+### O que ainda nao existe
+
+`ZAP`, `SCR`, `S`, `EDIT`/`A` (montar o fonte numerado) e os comandos do SUPER-X (prefixo `X`) do Mamute original: ver as fases em [mamute-spec.md](mamute-spec.md).
+
 ## Banco de ROMs (`--romdb`)
 
 O banco guarda as ROMs que voce tem no disco (pelo SHA-1), com nome, tipo de hardware, mapper e

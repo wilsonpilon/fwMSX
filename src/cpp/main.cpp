@@ -67,6 +67,7 @@
 #endif
 #include <cstdint>
 #include <cstdlib>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <string>
@@ -83,6 +84,7 @@
 #include "diskfmt/cpp/cli.h"
 #include "repl/repl.h"
 #include "asm/cpp/cli.h"
+#include "mamute/cpp/mamute_config.h"
 #include "splash/splash.h"
 #include "term/term_app.h"
 #include "tui/tui_app.h"
@@ -147,6 +149,11 @@ int main(int argc, char* argv[]) {
 #ifdef _WIN32
     attach_parent_console();
 #endif
+    {
+        // o mamute.cfg (configuracao inicial do monitor) mora ao lado do executavel
+        std::error_code ec;
+        mamute::SetConfigDir(std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path().string());
+    }
     // Sem argumento nenhum, com o core de emulacao (Z80+VDP+PSG+mapa de
     // memoria+maquina) ja existindo de verdade, abre a maquina completa em
     // janela com os padroes de "--msx" (BIOS MSX1 ao lado do executavel,
@@ -197,7 +204,8 @@ int main(int argc, char* argv[]) {
         splash::HandleTerminalArgs(tokens, argv[0]); // splash so' com --splash
         return tui::RunTui(tokens, argv[0]);
     }
-    if (argc > 1 && std::string(argv[1]) == "--cli") {
+    // --mon / --mamute: o console ja' dentro do monitor Z80 (sem emulador = so' offline; com --attach <porta> tambem online)
+    if (argc > 1 && (std::string(argv[1]) == "--cli" || std::string(argv[1]) == "--mon" || std::string(argv[1]) == "--mamute")) {
 #ifdef _WIN32
         if (g_gui_on_terminal) {
             // O shell nao espera um programa de janela e disputa o teclado com ele: o console
@@ -208,6 +216,7 @@ int main(int argc, char* argv[]) {
         }
 #endif
         std::vector<std::string> tokens(argv + 2, argv + argc);
+        if (std::string(argv[1]) != "--cli") tokens.insert(tokens.begin(), "--mon");
         splash::HandleTerminalArgs(tokens, argv[0]); // splash so' com --splash
         return repl::RunReplCommand(tokens, argv[0]);
     }

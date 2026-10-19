@@ -348,9 +348,23 @@ set(FDC_LIB_SOURCES
 )
 
 # --- Ponte de controle externa (comandos de texto sobre TCP em 127.0.0.1) -- ver doc/control-spec.md.
+# --- Mamute: o monitor Z80 (memoria, disassembler, depurador) em C + Fortran + Assembly + C++ -- ver doc/mamute-spec.md.
+# mamute_online.cpp e' o lado ligado a maquina emulada; o resto nao depende dela.
+set(MAMUTE_LIB_SOURCES
+        src/mamute/core/mamute_dump.c
+        src/mamute/fortran/mamute_sum.f90
+        src/mamute/asm/mamute_scan.asm
+        src/mamute/cpp/mamute_config.cpp
+        src/mamute/cpp/mamute_memory.cpp
+        src/mamute/cpp/mamute_exec.cpp
+        src/mamute/cpp/mamute_monitor.cpp
+        src/mamute/cpp/mamute_online.cpp
+)
+
 set(CONTROL_LIB_SOURCES
         src/control/command.cpp
         src/control/server.cpp
+        ${MAMUTE_LIB_SOURCES}
 )
 
 # --- Modo terminal do emulador (FTXUI) -- ver doc/term-spec.md. screenshot.cpp usa o miniz (so' o fwMSX linka).
@@ -377,6 +391,7 @@ set(MAN_LIB_SOURCES
         src/man/cpp/man_pages_manuals.cpp
         src/man/cpp/man_pages_tools_help.cpp
         src/man/cpp/man_pages_fwasm.cpp
+        src/man/cpp/man_pages_mamute.cpp
         src/man/c/man_wrap.c
         src/man/fortran/man_match.f90
         src/man/asm/man_fold.asm
@@ -620,6 +635,19 @@ if (WIN32)
     target_link_libraries(asme2etest PRIVATE ws2_32)
 endif ()
 add_test(NAME asm_e2e COMMAND asme2etest)
+
+# mamutetest: o monitor Mamute (offline puro e online sobre a maquina emulada).
+add_executable(mamutetest tests/z80/mamute_test.cpp ${CONTROL_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
+target_include_directories(mamutetest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
+target_compile_definitions(mamutetest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+set_target_properties(mamutetest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/mamutetest)
+if (MINGW)
+    target_link_options(mamutetest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+if (WIN32)
+    target_link_libraries(mamutetest PRIVATE ws2_32)
+endif ()
+add_test(NAME mamute COMMAND mamutetest)
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})

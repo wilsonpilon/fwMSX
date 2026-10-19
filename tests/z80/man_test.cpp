@@ -179,6 +179,23 @@ void TestTopics() {
         check(Contains(man::Find("fwasm-megarom")->page, "Konami megaROM forces page 0 at 4000h") && Contains(man::Find("fwasm-formats")->page, "16000 ciclos"), "fwasm-megarom e fwasm-formats");
         check(man::Find("asm") && Contains(man::Find("asm")->page, "fwasm"), "man asm aponta para o manual do fwasm");
         check(man::Find("asmsx") == man::Find("fwasm"), "asmsx e' apelido do manual do nosso montador");
+
+        // o Mamute (monitor Z80)
+        {
+            const char *const mp[] = {"mamute", "mamute-modes", "mamute-memory", "mamute-dump", "mamute-exec", "mamute-files", "mamute-config"};
+            bool mall = true;
+            for (const char *p : mp) {
+                const man::Topic *tp = man::Find(p);
+                if (!tp || tp->category != "Mamute" || tp->page.size() < 300) {
+                    std::printf("  pagina do mamute ausente: %s\n", p);
+                    mall = false;
+                }
+            }
+            check(mall, "as 7 paginas do manual do Mamute existem");
+            check(man::Find("mon") == man::Find("mamute") && man::Find("mamute")->command && !man::Find("mamute-dump")->command, "mon e' apelido de mamute e so' ele entra no help");
+            check(Contains(man::Find("mamute-dump")->page, "F4") && Contains(man::Find("mamute-modes")->page, "DEFUSR=&HC000"), "mamute-dump (checksum) e mamute-modes (DEFUSR) escritos");
+            check(Contains(man::HelpTable(100), "mon [linha]"), "o help lista o comando mon");
+        }
     }
 
     // MSX-DOS 2, MSX-DOS 1, Z80, R800, FM-PAC e referencias do BASIC (SOFTWARE.CHM / MANUALS.CHM do RuMSX, via paleobasic)

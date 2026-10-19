@@ -2,9 +2,11 @@
 #include "repl_session.h"
 
 #include <algorithm>
+#include <cctype>
 #include <cstdlib>
 
 #include "../control/command.h"
+#include "../mamute/cpp/mamute_monitor.h"
 #include "../man/cpp/man.h"
 
 namespace repl {
@@ -190,7 +192,63 @@ void ReplSession::Emu(const std::vector<std::string> &t, std::ostream &out) {
     out << "erro: use emu start | attach <porta> | detach | stop | status\n";
 }
 
+ReplSession::~ReplSession() = default;
+
+// Uma linha do Mamute: com emulador conectado vai para o monitor dele (`mon <linha>`); sem emulador, o local.
+void ReplSession::Monitor(const std::string &line, std::ostream &out) {
+    if (link_.connected()) {
+        Forward("mon " + line, out);
+        return;
+    }
+    if (!local_mon_) local_mon_ = std::make_unique<mamute::Monitor>(mamute::LoadConfig(mamute::DefaultConfigPath()), mamute::DefaultConfigPath());
+    const std::string text = line.empty() ? local_mon_->Banner() : local_mon_->Execute(line);
+    if (!text.empty()) out << text << "\n";
+}
+
+void ReplSession::MonitorEnter(const std::string &rest, std::ostream &out) {
+    if (!rest.empty()) { // `mon <linha>`: um comando so', sem entrar no modo
+        Monitor(rest, out);
+        return;
+    }
+    mon_mode_ = true;
+    Monitor("", out);
+    out << "(BA ou QUIT volta ao console; uma linha comecando com ! e' um comando do console)\n";
+}
+
+std::string ReplSession::MonitorPrompt() {
+    if (!mon_mode_) return "";
+    if (link_.connected()) {
+        std::string reply, error;
+        if (link_.Send("mon @prompt", reply, error) && reply.rfind("ok ", 0) == 0) return reply.substr(3);
+        return "MON(?)> ";
+    }
+    if (!local_mon_) local_mon_ = std::make_unique<mamute::Monitor>(mamute::LoadConfig(mamute::DefaultConfigPath()), mamute::DefaultConfigPath());
+    return local_mon_->Prompt();
+}
+
 bool ReplSession::Execute(const std::string &line, std::ostream &out) {
+    // modo monitor: toda linha e' do Mamute (BA/QUIT/XQT saem; "!comando" roda um comando do console)
+    if (mon_mode_) {
+        const size_t a = line.find_first_not_of(" 	");
+        if (a == std::string::npos) return true;
+        if (line[a] == '!') { // "!comando": um comando do CONSOLE, e continua no monitor
+            mon_mode_ = false;
+            const bool keep = Execute(line.substr(a + 1), out);
+            mon_mode_ = true;
+            return keep;
+        }
+        size_t e = a;
+        while (e < line.size() && !std::isspace(static_cast<unsigned char>(line[e])) && line[e] != ',') ++e;
+        std::string word = line.substr(a, e - a);
+        for (char &c : word) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+        if (word == "BA" || word == "QUIT" || word == "XQT") {
+            mon_mode_ = false;
+            out << "(volta ao console)\n";
+            return true;
+        }
+        Monitor(line.substr(a), out);
+        return true;
+    }
     std::string error;
     const std::vector<std::string> t = Tokenize(line, error);
     if (!error.empty()) {
@@ -206,6 +264,14 @@ bool ReplSession::Execute(const std::string &line, std::ostream &out) {
     }
     if (t[0] == "man" || t[0] == "manual") {
         Man(t, out);
+        return true;
+    }
+    if (t[0] == "mon" || t[0] == "mamute") {
+        const size_t sp = line.find_first_of(" 	");
+        std::string rest = sp == std::string::npos ? std::string() : line.substr(sp + 1);
+        const size_t a = rest.find_first_not_of(" 	");
+        rest = a == std::string::npos ? std::string() : rest.substr(a);
+        MonitorEnter(rest, out);
         return true;
     }
     if (t[0] == "emu") {

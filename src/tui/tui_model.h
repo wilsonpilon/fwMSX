@@ -28,6 +28,7 @@ struct EmuStatus {
     bool stopped = false; // parado pelo depurador (breakpoint, watchpoint, passo)
     uint64_t frame = 0;
     int screen = 0;
+    std::string monitor_prompt; // "MON(off)> " enquanto o console esta no modo monitor (Mamute); vazio fora dele
 };
 
 class TuiModel {

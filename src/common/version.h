@@ -20,9 +20,9 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 39
-#define FWMSX_VERSION_PATCH 2
+#define FWMSX_VERSION_MINOR 40
+#define FWMSX_VERSION_PATCH 0
 
 #define FWMSX_COMPANY   "Konami"
-#define FWMSX_CODENAME  "Yie Ar Kung-Fu"
-#define FWMSX_SUBTITLE  "Amazonia"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_CODENAME  "Antarctic Adventure"
+#define FWMSX_SUBTITLE  ""  // so' nas versoes X.Y.Z com Z > 0
