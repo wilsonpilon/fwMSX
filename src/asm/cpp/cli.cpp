@@ -33,7 +33,9 @@ size_t LastSlash(const std::string &s) { return s.find_last_of("/\\"); }
 class DiskFiles : public FileProvider {
 public:
     explicit DiskFiles(std::string dir) : dir_(std::move(dir)) {}
-    bool Read(const std::string &path, std::vector<uint8_t> &data) override { return ReadAll(dir_ + path, data); }
+    // O montador ja' manda o caminho com o diretorio do fonte na frente (ou so' o nome, relativo ao diretorio atual, como o asMSX aceita);
+    // prefixar de novo o diretorio do fonte quebrava todo include de um fonte em subpasta.
+    bool Read(const std::string &path, std::vector<uint8_t> &data) override { return ReadAll(path, data) || ReadAll(dir_ + path, data); }
 
 private:
     std::string dir_;

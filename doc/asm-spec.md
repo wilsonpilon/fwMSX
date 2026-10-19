@@ -41,6 +41,12 @@ montador, escrito em `src/man/cpp/man_pages_fwasm.cpp` a partir de `resource/asm
 7. **Divergencias conhecidas**: mensagens "Redefining output name..." do `-o`; `.org` abaixo do inicio da subpagina (o asMSX trava, o fwasm da' erro 36); codigo em 0000h antes de `.sinclair`.
 8. **BOM UTF-8** no inicio do fonte: o fwasm da' erro de sintaxe; conferir o que o asMSX faz e alinhar.
 
+## Programas reais (1.39.2: Amazonia)
+
+`tests/asm/real/amazonia/` guarda o jogo Amazonia (cartucho de 48 KB; fontes + os blocos `64k/AMAZONIA.DA0-4`). Montado com `fwmsx --asm source/amazonia.asm` a partir da pasta do projeto, como no `MakeWin.bat`:
+o `.rom`/`.sym` saem iguais ao asMSX v1.2.0 (CRC no `asme2etest`). Achados: fonte em subpasta (diretorio duplicado), includes/incbin relativos ao diretorio atual (ao lado do fonte primeiro) e `#hex`.
+Lembrete: o `msxsys.asm` original tem `LINL40` duas vezes; a copia de teste omite a repeticao (a v1.2.0 recusa).
+
 ## Programas reais (1.39.1)
 
 `tests/asm/real/pt3/` guarda o replayer PT3 de SapphiRe (asMSX) com a musica AMAZONIA.PT3. O `asme2etest` o monta, confere `.rom`/`.sym` por CRC contra o asMSX v1.2.0 e roda na maquina emulada

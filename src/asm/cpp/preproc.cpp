@@ -108,12 +108,18 @@ struct Pre {
                             Fail(4, name, no, "Recursive include");
                             return;
                         }
-                        if (!files || !files->Read(full, data)) {
-                            Fail(3, name, no, "Include file not found");
-                            return;
+                        // o asMSX procura primeiro ao lado do arquivo que inclui e depois no diretorio atual
+                        // ("source/msxsys.asm" dentro de source/amazonia.asm)
+                        std::string found = full;
+                        if (!files || !files->Read(found, data)) {
+                            if (!files || found == inc || !files->Read(inc, data)) {
+                                Fail(3, name, no, "Include file not found");
+                                return;
+                            }
+                            found = inc;
                         }
-                        include_stack.push_back(full);
-                        Read(full, std::string(data.begin(), data.end()), depth + 1, dst);
+                        include_stack.push_back(found);
+                        Read(found, std::string(data.begin(), data.end()), depth + 1, dst);
                         include_stack.pop_back();
                         continue;
                     }

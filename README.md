@@ -141,6 +141,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+1.39.2 fwasm monta o jogo Amazonia (cartucho de 48 KB) igual ao asMSX;
 1.39.1 fwasm testado com um replayer de musica PT3 real (monta igual ao asMSX e toca no emulador);
 **1.39.0 fwasm completo: gera ROM, MegaROM, BASIC (.bin), MSX-DOS (.com), fita (.cas/.wav) e .tap (ZX Spectrum)**. Detalhes em
 [CHANGELOG.md](doc/CHANGELOG.md).

@@ -198,6 +198,25 @@ void TestPt3Replayer(const std::string &bios, const std::string &src_dir) {
     std::remove(path.c_str());
 }
 
+// Programa real: o jogo Amazonia (Renato Degiovani) em versao cartucho de 48 KB, fonte adaptado por Wilson Pilon. Cobre o que o replayer nao cobre: fonte numa
+// subpasta incluindo "source/x.asm" relativo ao diretorio ATUAL, .incbin "64k/x" idem, constantes com #hex e .size com MegaROM-like de 48 KB.
+void TestAmazonia(const std::string &src_dir) {
+    const std::string dir = src_dir + "/tests/asm/real/amazonia";
+    std::ifstream sf(dir + "/source/amazonia.asm", std::ios::binary);
+    if (!sf) {
+        std::printf("[SKIP] fontes do Amazonia nao encontrados\n");
+        return;
+    }
+    const std::string text((std::istreambuf_iterator<char>(sf)), std::istreambuf_iterator<char>());
+    DiskFiles files(dir);
+    fwasm::AsmOptions opts;
+    const fwasm::AsmResult r = fwasm::Assemble("source/amazonia.asm", text, opts, &files);
+    check(r.rc == 0 && r.outs.count("rom") && r.outs.count("sym"), "Amazonia: montou source/amazonia.asm (includes e incbin relativos ao diretorio atual, #hex)");
+    if (r.rc != 0 || !r.outs.count("rom") || !r.outs.count("sym")) return;
+    check(r.outs.at("rom").size() == 49152 && Crc32(r.outs.at("rom")) == 0x0254F631u, "Amazonia: o .rom (48 KB) e' igual ao do asMSX v1.2.0");
+    check(Crc32(r.outs.at("sym")) == 0xB036A9F4u, "Amazonia: o .sym e' igual ao do asMSX v1.2.0");
+}
+
 } // namespace
 
 int main() {
@@ -213,6 +232,7 @@ int main() {
     TestCartridges(bios);
     TestTape(bios);
     TestPt3Replayer(bios, FWMSX_SOURCE_DIR);
+    TestAmazonia(FWMSX_SOURCE_DIR);
 #endif
     std::printf("\n%s (%d falha(s))\n", g_failures ? "FALHOU" : "OK", g_failures);
     return g_failures ? 1 : 0;

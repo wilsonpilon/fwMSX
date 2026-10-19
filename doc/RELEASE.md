@@ -17,6 +17,20 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.39.2 -- "Yie Ar Kung-Fu: Amazonia" (Konami) (2026-10-19)
+
+Segundo programa real no fwasm: o jogo **Amazonia** (Renato Degiovani) em versao cartucho de 48 KB, adaptado pelo Wilson a partir da versao em disco (o autor nao tem mais os fontes
+originais). Fontes em `resource/Amazonia64kV5/source`, montado por `MakeWin.bat` (`asmsx source\amazonia.asm` a partir da raiz do projeto). Copiado para `tests/asm/real/amazonia/`.
+
+- **Tres achados, todos corrigidos**: (1) fonte em subpasta: o CLI duplicava o diretorio e nada era incluido; (2) `.include "source/x.asm"` / `.incbin "64k/x"` relativos ao diretorio ATUAL
+  (o asMSX tenta ao lado do fonte e depois no diretorio atual; confirmado no oraculo); (3) hexadecimal `#F3AE`.
+- **Resultado**: `.rom` (49152 bytes, CRC 0254F631) e `.sym` (4217 bytes, CRC B036A9F4) iguais aos do asMSX v1.2.0.
+- **Fonte do usuario**: `msxsys.asm` define `LINL40` duas vezes (linhas 39 e 52, mesmo valor). O asMSX v1.2.0 (e o fwasm) recusam com "symbol redefinition"; o asMSX antigo que o
+  `MakeWin.bat` usa (`bin/asmsx.exe`) aceitava. A copia de teste tem a linha 52 removida; o fonte original do usuario NAO foi alterado.
+- **Diferenca contra o `build/amazonia.rom` antigo**: so' 2 bytes (o INIT cabecalho, offsets 2-3: 0010h no antigo, F3E7h na v1.2.0 e no fwasm) e a linha duplicada do `LINL40` no `.sym`.
+  O fwasm segue a v1.2.0 por decisao do usuario.
+- `ctest` 26/26 (Windows e Linux).
+
 ## v1.39.1 -- "Yie Ar Kung-Fu: Replayer PT3" (Konami) (2026-10-16)
 
 Primeiro teste do fwasm com um programa REAL escrito para o asMSX por outra pessoa: o replayer de musica PT3 (Vortex/Arkos) de SapphiRe, que veio na pasta

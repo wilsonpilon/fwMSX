@@ -18,6 +18,8 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 ## 2. Onde estamos (2026-10-16)
 
 - **Compatibilidade do fwasm com o asMSX v1.2.0 (2026-10-16)**: medida 100% (6606 casos dourados + 1 programa real); estimada ~95% no geral. Pendencias (mais programas reais, CLI, `.sym`/`.txt`, fuzz, BOM): `doc/asm-spec.md`.
+- **1.39.2 "Yie Ar Kung-Fu: Amazonia" (publicada)**: segundo programa real (jogo Amazonia em cartucho, `tests/asm/real/amazonia`): corrigidos fonte em subpasta, include/incbin relativos ao diretorio atual e `#hex`;
+  `.rom` 48 KB e `.sym` iguais ao asMSX v1.2.0. O fonte do usuario tem `LINL40` duplicado em `msxsys.asm` (a v1.2.0 recusa; aguardando o usuario decidir se corrige o original).
 - **1.39.1 "Yie Ar Kung-Fu: Replayer PT3" (publicada)**: primeiro programa real no fwasm (replayer PT3 de SapphiRe, `tests/asm/real/pt3`): achou e corrigiu `ROTULO: .include` e `nome .equ valor`;
   `.rom`/`.sym` iguais ao asMSX v1.2.0 e a musica toca no emulador (`asme2etest`). Proximos: mais corpora reais, CLI/`.sym`/`.txt` por golden, fuzz diferencial, depois integrar o fwasm a TUI.
 - **1.39.0 "Yie Ar Kung-Fu" (publicada)**: **fwasm completo** -- `.rom`, `.megarom`+`.subpage`+`.select`, `.basic`, `.msxdos`, `.cas`, `.wav` (modulo NASM `wav_synth.asm`), `.sinclair`, `.size`, `.search`,

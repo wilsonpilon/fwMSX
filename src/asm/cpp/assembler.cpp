@@ -1005,7 +1005,8 @@ bool Assembler::Directive(const std::string &w, const std::vector<Token> &t, siz
         const std::string full = (file.find(':') != std::string::npos || (!file.empty() && (file[0] == '/' || file[0] == '\\')))
                                      ? file
                                      : (slash == std::string::npos ? std::string() : name_.substr(0, slash + 1)) + file;
-        if (!files_ || !files_->Read(full, data)) Fail(19, "binary file not found");
+        // ao lado do fonte e, se nao achar, relativo ao diretorio atual ("64k/AMAZONIA.DA0" dentro de source/amazonia.asm)
+        if (!files_ || !(files_->Read(full, data) || (full != file && files_->Read(file, data)))) Fail(19, "binary file not found");
         const size_t from = static_cast<size_t>(std::max(0, skip));
         if (from > data.size() || (size >= 0 && from + static_cast<size_t>(size) > data.size())) {
             Fail(30, "included binary shorter than expected");

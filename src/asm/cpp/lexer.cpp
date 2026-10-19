@@ -167,6 +167,19 @@ LexResult Lex(const std::string &s) {
             continue;
         }
 
+        // ---- #hex (outra forma de $hex; o asMSX aceita, o fonte do Amazonia usa) ----
+        if (c == '#' && i + 1 < n && IsHex(s[i + 1])) {
+            size_t j = i + 1;
+            while (j < n && IsHex(s[j])) ++j;
+            Token t;
+            t.kind = Token::Int;
+            t.text = s.substr(i, j - i);
+            t.ival = ParseHex(s.substr(i + 1, j - i - 1));
+            push(t);
+            i = j;
+            continue;
+        }
+
         // ---- caractere 'a' ----
         if (c == '\'') {
             if (i + 2 < n && s[i + 2] == '\'' && s[i + 1] != '\'' && s[i + 1] != '"') {

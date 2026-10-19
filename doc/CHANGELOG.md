@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.39.2] - 2026-10-19 - "Yie Ar Kung-Fu: Amazonia" (Konami)
+
+### Corrigido -- achados ao montar o jogo Amazonia (cartucho de 48 KB, `tests/asm/real/amazonia`)
+- **Fonte numa subpasta** (`fwmsx --asm source/amazonia.asm`): o CLI prefixava o diretorio do fonte duas vezes e nenhum `.include`/`.incbin` era achado.
+- **Caminhos relativos ao diretorio atual**: `.include "source/x.asm"` e `.incbin "64k/x"` agora tambem sao procurados a partir do diretorio atual (como o asMSX; ao lado do fonte tem prioridade).
+- **`#F3AE`** (hexadecimal com `#`, alem de `$F3AE` e `0F3AEh`) aceito.
+- Teste novo no `asme2etest`: o `.rom` (48 KB) e o `.sym` do Amazonia saem iguais aos do asMSX v1.2.0 (CRC).
+
 ## [1.39.1] - 2026-10-16 - "Yie Ar Kung-Fu: Replayer PT3" (Konami)
 
 ### Corrigido -- achados ao montar um programa real (replayer PT3 do SapphiRe, `tests/asm/real/pt3`)
