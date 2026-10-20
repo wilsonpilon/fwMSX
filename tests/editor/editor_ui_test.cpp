@@ -37,6 +37,10 @@ std::string row(const ed::Grid &g, int y) {
     return s;
 }
 
+bool row_has(const ed::Grid &g, int y, const std::string &needle) {
+    return row(g, y).find(needle) != std::string::npos;
+}
+
 bool screen_has(EditorApp &a, const std::string &needle) {
     ed::Grid g;
     a.Render(g);
@@ -415,6 +419,7 @@ void test_windows() {
 
 void test_mouse() {
     EditorApp a;
+    a.Ed().settings().line_numbers = false; // as coordenadas do mouse destes testes partem da coluna 0
     a.SetSize(80, 25);
     a.Ed().SetText("hello world\nsecond line\nthird");
     a.MouseDown(3, 2);
@@ -809,6 +814,7 @@ void test_syntax_in_editor() {
 
     // a grade da TUI usa o destaque
     ed::EditorApp a;
+    a.Ed().settings().line_numbers = false;
     a.SetSize(80, 25);
     a.Ed().SetText("10 PRINT \"HI\" 'c");
     a.Ed().SetLanguage(ed::LangById("msxbasic"), true);
@@ -968,6 +974,76 @@ void test_view_app() {
 
 } // namespace
 
+void test_complete_and_numbers() {
+    const fs::path dir = fs::temp_directory_path() / "fwedit_e5";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+
+    // numeros de linha na grade (TUI): ligados por padrao; o dialogo Display setup liga e desliga
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.Ed().SetText("hello\nworld");
+    ed::Grid g;
+    a.Render(g);
+    check(g.at(4, 1).ch == 'h' && g.at(2, 1).ch == '1', "TUI: a grade mostra os numeros de linha por padrao");
+    K(a, {"A-o", "d"});
+    check(a.HasDialog() && screen_has(a, "Line numbers"), "Display setup tem 'Line numbers'");
+    check(a.Current()->Find(16)->checked, "a caixa abre marcada");
+    a.CurrentMutable()->Find(16)->checked = false;
+    a.DialogEnter();
+    a.Render(g);
+    check(!a.Ed().settings().line_numbers && g.at(0, 1).ch == 'h', "desmarcar tira a margem");
+    ed::Settings s1;
+    s1.line_numbers = false;
+    s1.auto_complete = true;
+    ed::UiSettings u;
+    std::string cerr;
+    check(ed::SaveConfigFile((dir / "c.cfg").string(), s1, u, cerr), "grava a configuracao");
+    ed::Settings s2;
+    ed::UiSettings u2;
+    check(ed::LoadConfigFile((dir / "c.cfg").string(), s2, u2) && !s2.line_numbers && s2.auto_complete, "a configuracao guarda os numeros de linha e o completar sozinho");
+    // o mouse conta a margem
+    a.Ed().settings().line_numbers = true;
+    a.Render(g);
+    a.MouseDown(6, 1);
+    check(a.Ed().Cursor() == Pos{0, 2}, "TUI: o clique desconta a margem de numeros");
+
+    // completar pelo app: Alt-/ abre, a lista aparece na grade, Enter aceita
+    EditorApp b;
+    b.SetSize(80, 25);
+    b.Ed().settings().line_numbers = false;
+    b.Ed().SetLanguage(ed::LangById("msxbasic"), true);
+    b.Ed().SetText("10 LE");
+    b.Ed().SetCursor({0, 5});
+    K(b, {"A-/"});
+    check(b.Ed().CompletionOpen(), "Alt-/ no app abre a lista");
+    b.Render(g);
+    bool shown = false;
+    for (int y = 2; y < 12; ++y) shown = shown || row_has(g, y, "LEFT$");
+    check(shown, "a lista aparece na grade, abaixo do cursor");
+    K(b, {"Enter"});
+    check(!b.Ed().CompletionOpen() && b.Ed().Text() != "10 LE", "Enter aceita (o app repassa a tecla ao editor)");
+    K(b, {"A-s", "w"});
+    check(!b.Ed().CompletionOpen(), "o menu Search > Complete word abre a lista (ou completa direto)");
+
+    // Editor setup: Completar sozinho
+    K(b, {"A-o", "e"});
+    check(b.HasDialog() && screen_has(b, "Auto completion"), "Editor setup tem 'Auto completion'");
+    b.CurrentMutable()->Find(15)->checked = true;
+    b.DialogEnter();
+    check(b.Ed().settings().auto_complete, "marcar liga o completar sozinho");
+
+    // snippets do usuario vem de fwedit.snippets, ao lado da configuracao
+    spit(dir / "fwedit.snippets", "[msxbasic]\nhi=PRINT \"$1\"\n");
+    EditorApp c;
+    c.SetConfigPaths((dir / "fwedit.cfg").string(), "");
+    c.LoadConfig();
+    ed::SnippetDef d;
+    check(ed::FindSnippet(ed::LangById("msxbasic"), "hi", d) && d.body == "PRINT \"$1\"", "LoadConfig le o fwedit.snippets");
+    ed::SetUserSnippets("");
+    fs::remove_all(dir);
+}
+
 int main() {
     test_key_names();
     test_menus();
@@ -984,6 +1060,7 @@ int main() {
     test_syntax_in_editor();
     test_model_extras();
     test_translation();
+    test_complete_and_numbers();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

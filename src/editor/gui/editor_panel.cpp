@@ -428,7 +428,8 @@ void EditorPanel::DrawPane(int pane, ImVec2 size) {
     const float lh = std::ceil(fs * 1.35f);
     const int nlines = ed.LineCount();
     const int digits = std::max(3, static_cast<int>(std::to_string(nlines).size()));
-    const float gutter = show_numbers_ ? (static_cast<float>(digits) + 2.0f) * cw : 8.0f;
+    const bool numbers = ed.settings().line_numbers; // Options > Display > Line numbers (a mesma opcao da TUI)
+    const float gutter = numbers ? (static_cast<float>(digits) + 2.0f) * cw : 8.0f;
     const int maxlen = MaxLen(doc, ed);
 
     const ImU32 bg = ImGui::GetColorU32(ImGuiCol_FrameBg);
@@ -451,6 +452,7 @@ void EditorPanel::DrawPane(int pane, ImVec2 size) {
         const int rows = std::max(1, static_cast<int>((wsize.y - sb) / lh));
         const int cols = std::max(1, static_cast<int>((wsize.x - gutter - sb) / cw));
         const int first = std::max(0, static_cast<int>(ImGui::GetScrollY() / lh));
+        ed.SetGridGutter(false); // a margem de numeros e' desenhada aqui, nao na grade de caracteres
         ed.SetViewSize(cols, rows, false);
         ed.SetTopLine(first);
         ed.SetLeftCol(static_cast<int>(ImGui::GetScrollX() / cw));
@@ -556,7 +558,7 @@ void EditorPanel::DrawPane(int pane, ImVec2 size) {
             }
         }
         // numeros de linha (fixos na esquerda)
-        if (show_numbers_) {
+        if (numbers) {
             const ImU32 gbg = ImGui::GetColorU32(ImGuiCol_MenuBarBg);
             dl->AddRectFilled(ImVec2(wpos.x, wpos.y), ImVec2(wpos.x + gutter, wpos.y + wsize.y), gbg);
             for (int l = first; l < last; ++l) {
@@ -568,9 +570,47 @@ void EditorPanel::DrawPane(int pane, ImVec2 size) {
             }
         }
 
-        // mouse
+        // lista de completar (Alt-/ ou Ctrl-Space): desenhada por cima do texto, junto da palavra que esta' sendo escrita
         const ImVec2 mp = io.MousePos;
-        const bool inside = ImGui::IsWindowHovered() && mp.x < wpos.x + wsize.x - sb && mp.y < wpos.y + wsize.y - sb;
+        bool on_popup = false;
+        if (is_active && ed.CompletionOpen() && !ed.CompletionItems().empty()) {
+            const std::vector<ed::Candidate> &items = ed.CompletionItems();
+            const int n = static_cast<int>(items.size());
+            const int show = std::min(n, 8);
+            const int top = ed.CompletionSel() >= show ? ed.CompletionSel() - show + 1 : 0;
+            float tw = 0;
+            for (const ed::Candidate &c : items) tw = std::max(tw, ImGui::CalcTextSize(c.text.c_str()).x + (c.snippet ? 9.0f * cw : 0.0f));
+            const float pw = tw + 2.0f * cw;
+            const float ph = static_cast<float>(show) * lh;
+            float px = origin.x + gutter + static_cast<float>(ed.DisplayCol({cur.line, ed.CompletionCol()})) * cw - cw;
+            float py = origin.y + static_cast<float>(cur.line + 1) * lh;
+            if (py + ph > wpos.y + wsize.y - sb) py = origin.y + static_cast<float>(cur.line) * lh - ph; // nao cabe embaixo: vai para cima
+            px = std::max(wpos.x + gutter, std::min(px, wpos.x + wsize.x - sb - pw));
+            dl->AddRectFilled(ImVec2(px, py), ImVec2(px + pw, py + ph), ImGui::GetColorU32(ImGuiCol_PopupBg), 3.0f);
+            for (int i = 0; i < show; ++i) {
+                const ed::Candidate &c = items[static_cast<size_t>(top + i)];
+                const float iy = py + static_cast<float>(i) * lh;
+                if (top + i == ed.CompletionSel()) dl->AddRectFilled(ImVec2(px + 1, iy), ImVec2(px + pw - 1, iy + lh), ImGui::GetColorU32(ImGuiCol_Header));
+                dl->AddText(font, fs, ImVec2(px + cw, iy + (lh - fs) / 2), fg, c.text.c_str());
+                if (c.snippet) {
+                    const char *tag = "snippet";
+                    dl->AddText(font, fs, ImVec2(px + pw - cw - ImGui::CalcTextSize(tag).x, iy + (lh - fs) / 2), ImGui::GetColorU32(ImGuiCol_TextDisabled), tag);
+                }
+            }
+            dl->AddRect(ImVec2(px, py), ImVec2(px + pw, py + ph), ImGui::GetColorU32(ImGuiCol_Border), 3.0f);
+            on_popup = mp.x >= px && mp.x < px + pw && mp.y >= py && mp.y < py + ph;
+            if (on_popup && ImGui::IsWindowHovered() && ImGui::IsMouseClicked(0)) { // clique escolhe e aceita
+                ed.CompletionSelect(top + static_cast<int>((mp.y - py) / lh));
+                ed.CompletionAccept();
+                blink_reset_ = ImGui::GetTime();
+                wants_kb_ = true;
+            } else if (!on_popup && ImGui::IsMouseClicked(0)) {
+                ed.CompletionClose(); // clicar fora fecha, e o clique segue para o texto
+            }
+        }
+
+        // mouse
+        const bool inside = !on_popup && ImGui::IsWindowHovered() && mp.x < wpos.x + wsize.x - sb && mp.y < wpos.y + wsize.y - sb;
         auto to_pos = [&](ImVec2 m) {
             const int line = static_cast<int>(std::floor((m.y - origin.y) / lh));
             const int dcol = static_cast<int>(std::floor((m.x - origin.x - gutter) / cw + 0.5f));

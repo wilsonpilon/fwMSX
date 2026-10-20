@@ -42,6 +42,8 @@ bool SaveConfigFile(const std::string &path, const Settings &s, const UiSettings
     f << "top_margin=" << s.top_margin << "\n";
     f << "autosave_minutes=" << s.autosave_minutes << "\n";
     f << "syntax=" << s.syntax << "\n";
+    f << "line_numbers=" << s.line_numbers << "\n";
+    f << "auto_complete=" << s.auto_complete << "\n";
     f << "autosave_files=" << s.autosave_files << "\n";
     f << "scheme=" << u.scheme << "\n";
     f << "lines=" << u.lines << "\n";
@@ -82,6 +84,8 @@ bool LoadConfigFile(const std::string &path, Settings &s, UiSettings &u) {
         else if (k == "page_length") s.page_length = std::max(1, v);
         else if (k == "top_margin") s.top_margin = std::max(0, v);
         else if (k == "syntax") s.syntax = v != 0;
+        else if (k == "line_numbers") s.line_numbers = v != 0;
+        else if (k == "auto_complete") s.auto_complete = v != 0;
         else if (k == "autosave_minutes") s.autosave_minutes = std::max(0, std::min(v, 1440));
         else if (k == "autosave_files") s.autosave_files = v != 0;
         else if (k == "scheme") u.scheme = std::max(0, std::min(v, 4));
@@ -800,6 +804,7 @@ void EditorApp::BuildDisplay() {
     dlg_.ws.push_back(CheckW(12, 2, 10, "Zoom window effects", ui_.zoom_effects));
     dlg_.ws.push_back(CheckW(13, 2, 11, "Large cursor", ui_.large_cursor));
     dlg_.ws.push_back(CheckW(15, 2, 12, "Syntax highlighting", Ed().settings().syntax));
+    dlg_.ws.push_back(CheckW(16, 2, 13, "Line numbers", Ed().settings().line_numbers));
     dlg_.ws.push_back(Label(36, 9, "Tab spacing:"));
     dlg_.ws.push_back(InputW(14, 49, 9, 3, std::to_string(Ed().settings().tab_width), true, true));
     OkCancel(dlg_, 14);
@@ -874,6 +879,7 @@ void EditorApp::BuildEditorSetup() {
     dlg_.ws.push_back(Label(2, 11, "Auto-save every (minutes, 0 = off):"));
     dlg_.ws.push_back(InputW(12, 40, 11, 4, std::to_string(s.autosave_minutes), true, true));
     dlg_.ws.push_back(CheckW(13, 2, 12, "Also overwrite files that have a name", s.autosave_files));
+    dlg_.ws.push_back(CheckW(15, 34, 10, "Auto completion", s.auto_complete));
     OkCancel(dlg_, 14);
     dlg_.BuildFields();
     dlg_.group_sel[0] = static_cast<int>(s.over_mode);

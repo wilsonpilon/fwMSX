@@ -1,5 +1,6 @@
 // Teste do editor de textos (src/editor): o modelo sem interface. As teclas entram por NOME, como a TUI e a janela as
 // repassam, e o teste confere o texto, o cursor, os dialogos pedidos e a grade desenhada. Ver doc/editor-spec.md.
+#include <algorithm>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
@@ -8,6 +9,7 @@
 #include <vector>
 
 #include "../../src/editor/asm/ed_indent.h"
+#include "../../src/editor/c/ed_syntax.h"
 #include "../../src/editor/c/ed_text.h"
 #include "../../src/editor/cpp/editor.h"
 
@@ -670,6 +672,7 @@ void test_text_layout() {
 
 void test_render() {
     Editor e;
+    e.settings().line_numbers = false; // estes testes conferem as colunas do NE 2 (sem margem); a margem tem teste proprio
     e.SetSize(80, 25);
     ed::Grid g;
     e.Render(g);
@@ -721,6 +724,242 @@ void test_render() {
 
 } // namespace
 
+void test_gutter() {
+    Editor e;
+    e.SetSize(80, 25);
+    e.SetText("hello\nworld\n\ttab");
+    check(e.settings().line_numbers && e.Gutter() == 4, "numeros de linha: ligados por padrao, 3 digitos + respiro");
+    ed::Grid g;
+    e.Render(g);
+    check(g.at(2, 1).ch == '1' && g.at(2, 2).ch == '2' && g.at(4, 1).ch == 'h' && g.at(8, 1).ch == 'o', "numeros de linha: o texto comeca depois da margem");
+    check(g.at(2, 2).style == ed::kSynCommentSt && g.at(2, 1).style == ed::kText, "numeros de linha: cor discreta, e a linha do cursor em destaque");
+    int x = -1, y = -1;
+    e.SetCursor({0, 2});
+    check(e.CursorScreen(x, y) && x == 6 && y == 1, "numeros de linha: o cursor anda com a margem");
+    check(e.ScreenToPos(4, 0) == Pos{0, 0} && e.ScreenToPos(6, 1) == Pos{1, 2} && e.ScreenToPos(1, 0) == Pos{0, 0}, "numeros de linha: o mouse desconta a margem");
+    e.SetText(many_lines(1200));
+    check(e.Gutter() == 5, "numeros de linha: a margem cresce com os digitos (1000+ linhas)");
+    e.settings().line_numbers = false;
+    check(e.Gutter() == 0, "numeros de linha: desligados nao ocupam coluna");
+    e.settings().line_numbers = true;
+    e.SetGridGutter(false);
+    check(e.Gutter() == 0, "numeros de linha: a janela grafica desenha a margem dela");
+    e.SetGridGutter(true);
+    // a rolagem horizontal conta a margem: o fim de uma linha longa continua visivel
+    e.SetText(std::string(200, 'x'));
+    e.SetCursor({0, 200});
+    e.Render(g);
+    check(e.CursorScreen(x, y) && x < 79, "numeros de linha: o cursor no fim de uma linha longa continua visivel");
+}
+
+void test_completion() {
+    Editor e;
+    e.settings().line_numbers = false;
+    e.SetSize(80, 25);
+    ed::SetUserSnippets("");
+    e.SetLanguage(ed::LangById("msxbasic"), true);
+
+    // funcoes auxiliares C (prefixo) e Fortran (nota)
+    check(ed_word_start("ab cd", 5, 5) == 3 && ed_word_start("ab cd", 5, 2) == 0 && ed_word_start("(x", 2, 2) == 1, "ed_word_start (C)");
+    check(ed_match_score("pri", 3, "print", 5) == 3 && ed_match_score("PRI", 3, "print", 5) == 2 && ed_match_score("print", 5, "print", 5) == 0 &&
+              ed_match_score("PRINT", 5, "print", 5) == 2 && ed_match_score("x", 1, "abc", 3) == 0 && ed_match_score("abcd", 4, "abc", 3) == 0,
+          "ed_match_score (Fortran)");
+
+    // um candidato so': completa direto
+    e.SetText("10 PRIN");
+    e.SetCursor({0, 7});
+    e.Execute(Cmd::Complete);
+    check(e.Text() == "10 PRINT" && !e.CompletionOpen(), "Alt-/ com um candidato so' completa direto");
+    keys(e, {"A-BS"});
+    check(e.Text() == "10 PRIN", "desfazer volta o prefixo");
+
+    // varios: abre a lista; escolher e aceitar
+    e.SetText("10 LE");
+    e.SetCursor({0, 5});
+    keys(e, {"A-/"});
+    check(e.CompletionOpen() && e.CompletionItems().size() >= 3, "Alt-/ abre a lista com varios candidatos");
+    int len_at = -1;
+    for (size_t i = 0; i < e.CompletionItems().size(); ++i) {
+        if (e.CompletionItems()[i].text == "LEN") len_at = static_cast<int>(i);
+    }
+    check(len_at >= 0, "a lista traz LEN (palavra do MSX-BASIC)");
+    e.CompletionSelect(len_at);
+    keys(e, {"Enter"});
+    check(e.Text() == "10 LEN" && !e.CompletionOpen(), "Enter aceita o escolhido");
+
+    // Cima/Baixo, Esc
+    e.SetText("10 LE");
+    e.SetCursor({0, 5});
+    keys(e, {"A-/", "Down"});
+    check(e.CompletionOpen() && e.CompletionSel() == 1, "Baixo desce na lista");
+    keys(e, {"Up", "Up"});
+    check(e.CompletionSel() == static_cast<int>(e.CompletionItems().size()) - 1, "Cima na primeira volta ao fim");
+    keys(e, {"Esc"});
+    check(!e.CompletionOpen() && e.Text() == "10 LE", "Esc fecha sem mexer no texto");
+
+    // digitar filtra; BS volta a abrir mais
+    keys(e, {"A-/"});
+    const size_t before = e.CompletionItems().size();
+    e.Type("F");
+    check(e.CompletionOpen() && e.CompletionItems().size() == 1 && e.CompletionItems()[0].text == "LEFT$", "digitar continua filtrando a lista");
+    keys(e, {"BS"});
+    check(e.CompletionOpen() && e.CompletionItems().size() == before, "apagar alarga a lista de novo");
+    e.Type(" ");
+    check(!e.CompletionOpen(), "uma tecla que nao e' de palavra fecha a lista");
+    keys(e, {"A-/"});
+    check(!e.CompletionOpen(), "sem prefixo nao ha' o que completar");
+
+    // outra tecla fecha e age normalmente
+    e.SetText("10 LE");
+    e.SetCursor({0, 5});
+    keys(e, {"A-/", "Left"});
+    check(!e.CompletionOpen() && e.Cursor() == Pos{0, 4}, "Esquerda fecha a lista e move o cursor");
+
+    // palavras do proprio texto (linguagem de texto puro)
+    e.SetLanguage(ed::LangById("plain"), true);
+    e.SetText("alphabet alpha\nalp");
+    e.SetCursor({1, 3});
+    keys(e, {"A-/"});
+    check(e.CompletionOpen() && e.CompletionItems().size() == 2 && e.CompletionItems()[0].text == "alpha" && e.CompletionItems()[1].text == "alphabet",
+          "palavras do texto, a mais curta primeiro");
+
+    // o cursor no meio de uma palavra: ela mesma nao e' candidata
+    e.SetText("se10 alpha");
+    e.SetCursor({0, 2});
+    e.Execute(Cmd::Complete);
+    bool self = false;
+    for (const ed::Candidate &c : e.CompletionItems()) self = self || c.text == "se10";
+    check(!self, "a palavra sob o cursor nao aparece na propria lista");
+    e.CompletionClose();
+
+    // BIOS no assembly: a caixa certa (maiuscula)
+    e.SetLanguage(ed::LangById("z80asm"), true);
+    e.SetText("  call chp");
+    e.SetCursor({0, 10});
+    e.Execute(Cmd::Complete); // dois candidatos: o snippet "chput" e a rotina da BIOS
+    int bios_at = -1;
+    for (size_t i = 0; i < e.CompletionItems().size(); ++i) {
+        if (e.CompletionItems()[i].text == "CHPUT" && !e.CompletionItems()[i].snippet) bios_at = static_cast<int>(i);
+    }
+    check(e.CompletionOpen() && bios_at >= 0 && e.CompletionItems()[0].snippet, "BIOS: CHPUT em maiusculas, depois do snippet de mesmo nome");
+    e.CompletionSelect(bios_at);
+    keys(e, {"Tab"});
+    check(e.Text() == "  call CHPUT", "BIOS: completa em maiusculas mesmo digitada em minusculas");
+
+    // modo leitura
+    e.SetLanguage(ed::LangById("msxbasic"), true);
+    e.SetText("10 PRIN");
+    e.SetCursor({0, 7});
+    e.SetReadOnly(true);
+    keys(e, {"A-/"});
+    check(e.Text() == "10 PRIN" && !e.CompletionOpen(), "modo leitura: completar nao faz nada");
+    e.SetReadOnly(false);
+
+    // completar sozinho (Editor setup)
+    e.SetText("");
+    e.settings().auto_complete = true;
+    e.Type("L");
+    check(!e.CompletionOpen(), "completar sozinho espera 2 letras");
+    e.Type("E");
+    check(e.CompletionOpen(), "completar sozinho abre com 2 letras");
+    e.Type(" ");
+    check(!e.CompletionOpen(), "e fecha com um espaco");
+    e.settings().auto_complete = false;
+    e.SetText("");
+    e.Type("LE");
+    check(!e.CompletionOpen(), "desligado: digitar nao abre a lista");
+
+    // menu e tecla
+    bool found = false;
+    for (const ed::Menu &m : ed::Menus()) {
+        for (const ed::MenuItem &it : m.items) found = found || it.cmd == Cmd::Complete;
+    }
+    check(found, "Search > Complete word existe no menu");
+}
+
+void test_snippets() {
+    Editor e;
+    e.settings().line_numbers = false;
+    e.SetSize(80, 25);
+    ed::SetUserSnippets("");
+    e.SetLanguage(ed::LangById("msxbasic"), true);
+
+    e.SetText("for");
+    e.SetCursor({0, 3});
+    keys(e, {"Tab"});
+    check(e.Text() == "FOR = TO ::NEXT" && e.Cursor() == Pos{0, 4} && e.SnippetActive(), "snippet: for + Tab expande e vai ao primeiro ponto");
+    e.Type("I");
+    keys(e, {"Tab"});
+    check(e.Cursor() == Pos{0, 6}, "Tab pula para o ponto seguinte, acompanhando o que foi digitado");
+    e.Type("1");
+    keys(e, {"Tab"});
+    e.Type("9");
+    keys(e, {"Tab"});
+    check(e.Text() == "FOR I=1 TO 9::NEXT" && e.Cursor() == Pos{0, 13} && !e.SnippetActive(), "o ultimo Tab leva ao $0 e encerra o snippet");
+    keys(e, {"Tab"});
+    check(e.Text() == "FOR I=1 TO 9:\t:NEXT", "sem snippet, Tab e' tabulacao de novo");
+
+    // em desfazer, um passo
+    e.SetText("for");
+    e.SetCursor({0, 3});
+    keys(e, {"Tab", "A-BS"});
+    check(e.Text() == "for" && !e.SnippetActive(), "desfazer o snippet de uma vez");
+
+    // varias linhas com a identacao da linha do gatilho (Pascal)
+    e.SetLanguage(ed::LangById("pascal"), true);
+    e.SetText("  for");
+    e.SetCursor({0, 5});
+    keys(e, {"Tab"});
+    check(e.LineCount() == 4 && e.Line(0) == "  for  :=  to  do" && e.Line(1) == "  begin" && e.Line(3) == "  end;" && e.Cursor() == Pos{0, 6},
+          "snippet de varias linhas mantem a identacao");
+    keys(e, {"Tab", "Tab", "Tab"});
+    check(e.Cursor() == Pos{2, 4}, "o $0 fica dentro do bloco");
+
+    // no meio de uma palavra, Tab nao expande
+    e.SetText("format");
+    e.SetCursor({0, 3});
+    keys(e, {"Tab"});
+    check(e.Text() == "for\tmat", "no meio de uma palavra nao expande");
+
+    // arquivo do usuario
+    ed::SetUserSnippets("# meus\n[msxbasic]\nhello=PRINT \"$1\"$0\nfor=FOR $1 TO\n[all]\nsig=-- fwMSX\\nfim\n");
+    e.SetLanguage(ed::LangById("msxbasic"), true);
+    e.SetText("hello");
+    e.SetCursor({0, 5});
+    keys(e, {"Tab"});
+    check(e.Text() == "PRINT \"\"" && e.Cursor() == Pos{0, 7}, "snippet do usuario (secao da linguagem)");
+    e.SetText("for");
+    e.SetCursor({0, 3});
+    keys(e, {"Tab"});
+    check(e.Text() == "FOR  TO", "o snippet do usuario ganha do de fabrica");
+    e.SetText("sig");
+    e.SetCursor({0, 3});
+    keys(e, {"Tab"});
+    check(e.Text() == "-- fwMSX\nfim", "secao [all] e \\n no texto");
+    ed::SetUserSnippets("");
+
+    // a lista de completar traz o gatilho; aceitar expande
+    e.SetText("for");
+    e.SetCursor({0, 3});
+    keys(e, {"A-/"});
+    check(e.CompletionOpen() && e.CompletionItems().size() >= 2 && e.CompletionItems()[0].snippet && e.CompletionItems()[0].text == "for",
+          "o gatilho do snippet aparece na lista, antes das palavras");
+    keys(e, {"Enter"});
+    check(e.Text() == "FOR = TO ::NEXT" && e.SnippetActive(), "aceitar o gatilho da lista expande o snippet");
+
+    // listas
+    check(ed::SnippetsFor(ed::LangById("z80asm")).size() >= 5 && ed::SnippetsFor(ed::LangById("plain")).empty(), "snippets de fabrica por linguagem");
+    const ed::Expansion ex = ed::ExpandSnippet("a$2b\n$1c$0", "  ");
+    check(ex.text == "ab\n  c" && ex.stops.size() == 3 && ex.stops[0] == std::make_pair(1, 2) && ex.stops[1] == std::make_pair(0, 1) && ex.stops[2] == std::make_pair(1, 3),
+          "ExpandSnippet: ordem dos pontos e identacao");
+    std::vector<std::string> w;
+    ed::LangById("z80asm")->Words(w);
+    check(std::find(w.begin(), w.end(), "CHPUT") != w.end() && std::find(w.begin(), w.end(), "ldir") != w.end(), "Lang::Words: BIOS em maiusculas e mnemonicos em minusculas");
+    w.clear();
+    ed::LangById("kunbasic")->Words(w);
+    check(std::find(w.begin(), w.end(), "PRINT") != w.end() && std::find(w.begin(), w.end(), "CHR$") != w.end(), "Lang::Words: BASIC em maiusculas, com o $");
+}
+
 int main() {
     test_kernels();
     test_bindings();
@@ -735,6 +974,9 @@ int main() {
     test_files();
     test_text_layout();
     test_render();
+    test_gutter();
+    test_completion();
+    test_snippets();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

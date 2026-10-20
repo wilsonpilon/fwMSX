@@ -61,6 +61,19 @@ public:
         return kSynNone;
     }
     size_t MaxLen() const { return maxlen_; }
+    // Para o completar: as palavras que sao so' identificador (sem aspas nem apostrofo), em maiusculas (`upper`) ou minusculas; a BIOS sempre em maiusculas.
+    void Dump(std::vector<std::string> &out, bool upper) const {
+        for (const auto &kv : map_) {
+            std::string w = kv.second.word;
+            bool ok = true;
+            for (char c : w) ok = ok && (ed_hl_ident_char(static_cast<unsigned char>(c)) != 0 || c == '$');
+            if (!ok) continue;
+            if (upper || kv.second.cls == kSynBios) {
+                for (char &c : w) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+            }
+            out.push_back(w);
+        }
+    }
 
 private:
     struct Entry {
@@ -164,6 +177,11 @@ public:
         }
     }
     bool MultiLine() const override { return kind_ == BasicKind::Dignified || kind_ == BasicKind::Kun; }
+    void Words(std::vector<std::string> &out) const override {
+        words_.Dump(out, true);
+        call_.Dump(out, true);
+        cmd_.Dump(out, true);
+    }
     void Highlight(const std::string &line, HlState &st, std::vector<Span> &out) const override;
 
 private:
@@ -462,6 +480,7 @@ public:
         words_.Add("sin cos tan acos asin atan sqr sqrt exp pow log ln abs fix fixmul fixdiv int pi random", kSynKeyword2);
     }
     bool MultiLine() const override { return true; } // /* ... */
+    void Words(std::vector<std::string> &out) const override { words_.Dump(out, false); }
     void Highlight(const std::string &line, HlState &st, std::vector<Span> &out) const override;
 
 private:
@@ -576,6 +595,7 @@ public:
         words_.Add("true false maxint", kSynNumber);
     }
     bool MultiLine() const override { return true; }
+    void Words(std::vector<std::string> &out) const override { words_.Dump(out, false); }
     void Highlight(const std::string &line, HlState &st, std::vector<Span> &out) const override;
 
 private:
@@ -680,6 +700,7 @@ public:
                    "attrib basic fixdisk romdisk ramdisk mapper cdir ",
                    kSynKeyword);
     }
+    void Words(std::vector<std::string> &out) const override { words_.Dump(out, false); }
     void Highlight(const std::string &line, HlState &st, std::vector<Span> &out) const override;
 
 private:

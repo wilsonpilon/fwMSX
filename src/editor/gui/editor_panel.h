@@ -71,7 +71,6 @@ private:
     float mono_size_ = 17.0f;
     bool wants_kb_ = false;
     bool request_focus_ = false;
-    bool show_numbers_ = true;
     bool alt_down_ = false;
     bool alt_used_ = false;
     double blink_reset_ = 0;

@@ -53,6 +53,8 @@ public:
     virtual bool MultiLine() const { return false; }
     // Destaca `line`; `st` entra com o estado do inicio da linha e sai com o do fim. `out` e' limpo antes. Trechos em ordem, sem sobrepor.
     virtual void Highlight(const std::string &line, HlState &st, std::vector<Span> &out) const = 0;
+    // As palavras que o completar oferece (comandos, funcoes, diretivas, BIOS), ja' na caixa em que se costuma escrever. Acrescenta em `out`.
+    virtual void Words(std::vector<std::string> &out) const { (void)out; }
 
 protected:
     Lang(std::string id, std::string name, std::vector<std::string> exts) : id_(std::move(id)), name_(std::move(name)), exts_(std::move(exts)) {}

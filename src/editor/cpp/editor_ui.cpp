@@ -82,6 +82,9 @@ void EditorApp::LoadConfig() {
     LoadConfigFile(cfg_main_, s, ui_);
     LoadConfigFile(cfg_dir_, s, ui_);
     for (Editor &w : wins_) w.settings() = s;
+    // snippets do usuario: fwedit.snippets ao lado da configuracao (o da pasta atual, se existir, vale no lugar do outro)
+    if (!cfg_main_.empty()) LoadUserSnippets(fs::path(cfg_main_).replace_filename("fwedit.snippets").string());
+    if (!cfg_dir_.empty()) LoadUserSnippets(fs::path(cfg_dir_).replace_filename("fwedit.snippets").string());
     Ed().NewFile(); // aplica o modo inicial de Insert/Over
 }
 
@@ -523,6 +526,9 @@ bool EditorApp::Enabled(const MenuItem &it) const {
 bool EditorApp::Key(const std::string &canon) {
     if (canon.empty()) return false;
     Ed().ClearMessage();
+    for (Editor &w : wins_) { // a lista de completar e' do editor que esta' recebendo as teclas
+        if (&w != &Ed()) w.CompletionClose();
+    }
     if (HasDialog()) {
         if (dlg_.kind == Dialog::Help && canon == "F1") return true;
         int b = 0;
@@ -606,6 +612,7 @@ std::vector<int> VisibleItems(const Menu &m) {
 } // namespace
 
 void EditorApp::OpenMenu(int m) {
+    Ed().CompletionClose();
     const std::vector<Menu> &ms = Menus();
     menu_ = (m + static_cast<int>(ms.size())) % static_cast<int>(ms.size());
     bar_active_ = true;
@@ -1046,6 +1053,7 @@ void EditorApp::DialogDone(int button) {
         s.tab_width = std::max(1, std::min(32, std::atoi(done.Text(14).c_str())));
         s.show_bracket = ui_.blinking_bracket;
         s.syntax = done.Checked(15);
+        s.line_numbers = done.Checked(16);
         for (Editor &w : wins_) w.settings() = s;
         config_dirty_ = true;
         SetSize(cols_, rows_);
@@ -1077,6 +1085,7 @@ void EditorApp::DialogDone(int button) {
         s.alt_selects_menu = done.Checked(11);
         s.autosave_minutes = std::max(0, std::min(1440, std::atoi(done.Text(12).c_str())));
         s.autosave_files = done.Checked(13);
+        s.auto_complete = done.Checked(15);
         for (Editor &w : wins_) w.settings() = s;
         config_dirty_ = true;
         break;

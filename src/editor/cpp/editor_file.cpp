@@ -56,6 +56,8 @@ std::vector<std::string> SplitLines(const std::string &data, bool crlf) {
 
 void Editor::NewFile() {
     ++rev_;
+    snip_stops_.clear();
+    comp_open_ = false;
     lines_.assign(1, std::string());
     cur_ = {};
     top_ = left_ = goal_dcol_ = 0;
@@ -79,6 +81,8 @@ void Editor::NewFile() {
 
 void Editor::SetText(const std::string &text) {
     ++rev_;
+    snip_stops_.clear(); // os pontos de parada e a lista eram do texto antigo
+    comp_open_ = false;
     lines_ = SplitLines(text, false);
     cur_ = {};
     top_ = left_ = goal_dcol_ = 0;
@@ -116,6 +120,8 @@ bool Editor::Load(const std::string &path, std::string &err) {
     const bool crlf = data.empty() ? true : data.find("\r\n") != std::string::npos;
     NewFile();
     lines_ = SplitLines(data, crlf);
+    snip_stops_.clear();
+    comp_open_ = false;
     crlf_ = crlf;
     eof_ctrl_z_ = ctrl_z;
     bom_ = bom;

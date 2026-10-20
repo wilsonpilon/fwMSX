@@ -35,6 +35,12 @@ int ed_hl_string_end(const char *s, int len, int pos, char quote);
 // 3 = binario, 4 = octal, 5 = real.
 int ed_number_kind(const char *s, int n);
 
+// Inicio da palavra que termina em `col` (letras, digitos, '_' e bytes altos para tras): o prefixo que o completar usa.
+int ed_word_start(const char *s, int len, int col);
+
+// Nota de um candidato do completar para o prefixo (Fortran): 0 = nao serve, 2 = prefixo em outra caixa, 3 = prefixo com a mesma caixa.
+int ed_match_score(const char *pre, int np, const char *cand, int nc);
+
 #ifdef __cplusplus
 }
 #endif

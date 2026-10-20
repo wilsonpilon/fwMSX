@@ -43,7 +43,7 @@ void Editor::SetViewSize(int cols, int text_rows, bool reveal) {
 }
 
 bool Editor::CursorScreen(int &x, int &y) const {
-    x = DisplayCol(cur_) - left_;
+    x = DisplayCol(cur_) - left_ + Gutter();
     y = cur_.line - top_ + 1;
     return x >= 0 && x < cols_ - 1 && y >= 1 && y <= TextRows();
 }
@@ -86,7 +86,8 @@ void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
     const int h = TextRows();
     Pos ba, bb;
     const bool has_block = BlockRange(ba, bb);
-    const int width = scrollbar ? cols_ - 1 : cols_;
+    const int gut = Gutter();
+    const int width = (scrollbar ? cols_ - 1 : cols_) - gut;
     Pos bracket{-1, -1};
     if (set_.show_bracket && cur_.col > 0) {
         const std::string &cl = lines_[static_cast<size_t>(cur_.line)];
@@ -96,6 +97,12 @@ void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
     for (int row = 0; row < h; ++row) {
         const int l = top_ + row;
         if (l >= LineCount()) continue;
+        if (gut > 0) { // numero da linha, alinhado a direita, na cor dos comentarios (a da linha do cursor fica normal)
+            const std::string num = std::to_string(l + 1);
+            const int pad = std::max(0, gut - 1 - static_cast<int>(num.size()));
+            const Style st = l == cur_.line ? kText : static_cast<Style>(kSynCommentSt);
+            g.Put(pad, y0 + row, num.substr(num.size() - std::min<size_t>(num.size(), static_cast<size_t>(gut - 1))), st);
+        }
         const std::string &s = lines_[static_cast<size_t>(l)];
         const int tw = std::max(1, set_.tab_width);
         int dc = 0;
@@ -113,7 +120,7 @@ void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
             for (int k = 0; k < w; ++k) {
                 const int x = dc + k - left_;
                 if (x < 0 || x >= width) continue;
-                Cell &c = g.at(x, y0 + row);
+                Cell &c = g.at(x + gut, y0 + row);
                 if (!eol && s[static_cast<size_t>(i)] != '	') c.ch = static_cast<unsigned char>(s[static_cast<size_t>(i)]);
                 c.style = marker ? kBlockMark : (in_block ? kBlockSel : SynStyle(cls));
                 if (here == bracket) c.style = kBracket;
@@ -123,6 +130,8 @@ void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
             if (dc - left_ >= width) break;
         }
     }
+
+    DrawCompletion(g, y0, gut, width);
 
     if (!scrollbar) return;
     // --- barra de rolagem vertical ---

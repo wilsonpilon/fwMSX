@@ -699,6 +699,8 @@ set(EDITOR_LIB_SOURCES
         src/editor/cpp/editor_dialogs.cpp
         src/editor/cpp/syntax_langs.cpp
         src/editor/cpp/editor_syntax.cpp
+        src/editor/cpp/editor_complete.cpp
+        src/editor/cpp/completion.cpp
         src/editor/c/ed_text.c
         src/editor/c/ed_syntax.c
         src/editor/fortran/ed_stats.f90

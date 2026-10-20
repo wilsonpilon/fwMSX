@@ -7,6 +7,16 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.8] - 2026-10-20 - "Hyper Sports: Completar e snippets" (Konami)
+
+### Adicionado -- fase E5 do editor: completar palavras e snippets
+- **Completar**: `Alt-/` (e `Ctrl-Space` na janela; menu Busca > Completar palavra) abre uma lista com as palavras que completam o que esta' antes do cursor: palavras da **linguagem** (as mesmas tabelas do destaque: comandos e funcoes do MSX-BASIC, extensoes `CALL`, comandos do MSXBAS2ROM, funcoes `NB_` do NestorBASIC, mnemonicos e diretivas do Z80, a **BIOS** em maiusculas, Pascal, Batch), **gatilhos de snippet** e palavras do **proprio texto**. Cima/Baixo escolhem, Enter/Tab aceitam, Esc fecha; digitar continua filtrando e apagar alarga a lista; um candidato so' completa direto. Na janela a lista e' desenhada junto da palavra e o clique aceita; na TUI e' uma caixa na grade.
+- **Completar sozinho** (Opcoes > Editor... > Auto completion, desligado por padrao): a lista abre sozinha depois de 2 letras.
+- **Snippets**: `Tab` depois de um gatilho (`for`, `rom`, `proc`, `ldir`, `prog`...) expande o snippet; o cursor vai ao primeiro ponto de parada (`$1`) e `Tab` pula para o seguinte ate' o `$0`; a identacao da linha vale para todas as linhas; desfazer volta tudo de uma vez. Snippets de fabrica para MSX-BASIC (e dialetos), Kun BASIC (`turbo`), Z80, Pascal, Batch e Markdown. O arquivo `fwedit.snippets` (ao lado do `fwedit.cfg`) acrescenta ou troca snippets: `[linguagem]` + `gatilho=texto` (`\n`, `\t`; secao `[all]` vale para todas).
+- **Numeros de linha** (pedido do usuario: "nesta versao precisamos de linhas numeradas como os editores de programas padrao"): a janela ja' tinha; agora e' a opcao **Opcoes > Tela... > Line numbers** (ligada por padrao, gravada no `fwedit.cfg`) e a **TUI** tambem ganhou a margem (digitos alinhados a direita na cor dos comentarios; o clique do mouse e a rolagem horizontal descontam a margem).
+- Nucleo nas 4 linguagens: **C** `ed_word_start` (prefixo), **Fortran** `ed_match_score` (nota do candidato: mesma caixa, outra caixa, nao serve), **NASM** `ed_hash_ci` (palavras do texto sem repetir), **C++** `completion.cpp`/`editor_complete.cpp`.
+- Testes: `edittest` 229, `editorui` 260, `syntaxtest` 117 verificacoes (margem, mouse, lista, filtro, snippets de varias linhas, snippets do usuario, configuracao).
+
 ## [1.41.7] - 2026-10-20 - "Hyper Sports: Kun BASIC" (Konami)
 
 ### Corrigido/Adicionado -- a sintaxe real do MSX-BASIC KUN no destaque (esclarecimento do usuario)

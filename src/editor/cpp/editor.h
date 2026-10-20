@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "completion.h"
 #include "syntax.h"
 
 namespace ed {
@@ -99,7 +100,7 @@ enum class Cmd {
     ParagraphFormat, DocumentFormat, CenterLine, TextSetup, WordWrap, InsertPageBreaks, RemovePageBreaks, ExpandTabs,
     PutInTabs, AutoIndent,
     // menu Search
-    Find, Replace, ContinueFwd, ContinueRev, LineNumber, MatchBracket, WindowDiff, TextInBlock,
+    Find, Replace, ContinueFwd, ContinueRev, LineNumber, MatchBracket, WindowDiff, TextInBlock, Complete,
     // menu Print
     Print, PrintBlock, EjectPage, PrintSetup,
     // menu View
@@ -175,6 +176,8 @@ struct Settings {
     bool syntax = true;           // destaque de sintaxe (Display setup: Syntax highlighting)
     int autosave_minutes = 0;     // salvamento automatico periodico (Editor setup); 0 = desligado
     bool autosave_files = false;  // o autosave tambem grava nos arquivos que ja' tem nome (senao so' a sessao de recuperacao)
+    bool line_numbers = true;     // numeracao de linhas na margem esquerda (Display setup: Line numbers); o NE nao tinha, os editores de hoje sim
+    bool auto_complete = false;   // abre a lista de completar sozinha ao digitar (Editor setup: Auto completion); Alt-/ abre sempre
 };
 
 struct DocInfo {
@@ -245,6 +248,21 @@ public:
     // Trechos coloridos da linha (vazio se o destaque esta' desligado ou a linguagem e' texto puro). Cuida do estado entre linhas.
     void HighlightLine(int line, std::vector<Span> &out) const;
     void SetUntitled(const std::string &u) { untitled_ = u; }
+    // --- completar e snippets (fase E5) ---
+    // Alt-/ (ou Ctrl-Space na janela) abre a lista de palavras que completam o que esta' antes do cursor: palavras da linguagem, gatilhos de snippet
+    // e palavras do texto. Cima/Baixo escolhem, Enter/Tab aceitam, Esc fecha; digitar continua filtrando. Com um candidato so', completa direto.
+    // Tab depois de um gatilho de snippet ("for", "rom"...) expande o snippet e leva o cursor ao primeiro ponto de parada; Tab pula para o seguinte.
+    bool CompletionOpen() const { return comp_open_; }
+    const std::vector<Candidate> &CompletionItems() const { return comp_items_; }
+    int CompletionSel() const { return comp_sel_; }
+    int CompletionCol() const { return comp_col_; }     // byte onde comeca o prefixo, na linha do cursor
+    void CompletionSelect(int i);
+    bool CompletionAccept();
+    void CompletionClose() { comp_open_ = false; }
+    bool SnippetActive() const { return !snip_stops_.empty(); }
+    // Largura da margem de numeros de linha na grade (TUI): 0 se desligada. A janela grafica desenha a dela e pede SetGridGutter(false).
+    int Gutter() const;
+    void SetGridGutter(bool v) { grid_gutter_ = v; }
     bool AutosavedOnce() const { return autosaved_; }
     void SetAutosavedOnce(bool v) { autosaved_ = v; }
     void SetName(const std::string &n) { name_ = n; }
@@ -348,6 +366,14 @@ private:
     bool Writable() const { return !read_only_; }
     bool InsertLiteral(const std::string &base, bool ctrl);
     bool Search(bool fwd);
+    bool KeyImpl(const std::string &name);
+    bool CompletionKey(const std::string &canon);
+    void CompleteCmd();
+    void RefreshCompletion();
+    void AfterTyping(const std::string &text);
+    bool SnippetTab();
+    void ExpandSnippetAt(Pos from, Pos to, const std::string &body);
+    void DrawCompletion(Grid &g, int y0, int gutter, int width) const;
 
     std::vector<std::string> lines_;
     Pos cur_;
@@ -406,6 +432,15 @@ private:
     bool exit_requested_ = false;
     bool menu_request_ = false;
     std::string clipboard_;
+
+    // completar e snippets
+    bool comp_open_ = false;
+    std::vector<Candidate> comp_items_;
+    int comp_sel_ = 0;
+    int comp_col_ = 0;
+    std::vector<std::string> comp_words_;  // palavras do texto, colhidas quando a lista abre
+    std::vector<Pos> snip_stops_;          // os pontos de parada que faltam visitar (acompanham as edicoes)
+    bool grid_gutter_ = true;
 
     bool literal_pending_ = false;
     char menu_prefix_ = 0;

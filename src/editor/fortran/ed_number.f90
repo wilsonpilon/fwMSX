@@ -140,4 +140,32 @@ contains
         end if
     end function ed_number_kind
 
+    ! Nota de um candidato do completar para o prefixo digitado: 0 = nao serve, 3 = prefixo com a mesma caixa, 2 = prefixo em outra caixa.
+    ! Um candidato igual ao prefixo (mesma caixa) tambem e' 0: nao ha' o que completar.
+    function ed_match_score(pre, np, cand, nc) result(score) bind(c, name="ed_match_score")
+        character(kind=c_char), intent(in) :: pre(*), cand(*)
+        integer(c_int), value :: np, nc
+        integer(c_int) :: score
+
+        integer :: i, a, b
+        logical :: same_case
+
+        score = 0
+        if (np < 1 .or. nc < np) return
+        same_case = .true.
+        do i = 1, np
+            a = ichar(pre(i))
+            b = ichar(cand(i))
+            if (a /= b) then
+                same_case = .false.
+                if (a >= 65 .and. a <= 90) a = a + 32
+                if (b >= 65 .and. b <= 90) b = b + 32
+                if (a /= b) return
+            end if
+        end do
+        if (nc == np .and. same_case) return
+        score = 2
+        if (same_case) score = 3
+    end function ed_match_score
+
 end module mod_ed_number

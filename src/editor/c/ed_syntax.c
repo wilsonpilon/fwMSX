@@ -105,3 +105,9 @@ int ed_hl_string_end(const char *s, int len, int pos, char quote) {
     }
     return len;
 }
+
+int ed_word_start(const char *s, int len, int col) {
+    if (col > len) col = len;
+    while (col > 0 && ed_hl_ident_char((unsigned char)s[col - 1])) --col;
+    return col;
+}

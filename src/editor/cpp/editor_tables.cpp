@@ -106,6 +106,7 @@ const CmdInfo kInfos[] = {
     {Cmd::MatchBracket, "match-bracket", false, D::None, true},
     {Cmd::WindowDiff, "window-differences", false, D::None, false},
     {Cmd::TextInBlock, "text-in-block", false, D::None, true},
+    {Cmd::Complete, "complete", true, D::None, true},
     {Cmd::Print, "print", false, D::None, false},
     {Cmd::PrintBlock, "print-block", false, D::None, false},
     {Cmd::EjectPage, "eject-page", false, D::None, false},
@@ -187,6 +188,7 @@ const std::vector<Menu> &Menus() {
              {"Matching bracket", 0, "Ctrl-]", Cmd::MatchBracket, 0, false, false},
              {"Window Differences", 'd', "", Cmd::WindowDiff, 0, true, false},
              {"Text in Block", 'b', "", Cmd::TextInBlock, 0, false, false},
+             {"Complete word", 'w', "Alt-/", Cmd::Complete, 0, false, false},
              {"Block Marker", 'm', "", Cmd::BlockFindMarker, 0, false, false},
          }},
         {"Print", 'p', 37,
@@ -259,6 +261,7 @@ const std::vector<KeyBinding> &Bindings() {
         {"A-Enter", Cmd::EnterIndent, true},
         {"A-Up", Cmd::DividerUp, true}, {"A-Down", Cmd::DividerDown, true},
         {"F10", Cmd::MenuOpen, true},
+        {"A-/", Cmd::Complete, true}, {"C-Space", Cmd::Complete, true},
         // --- alternativas modernas (o Norton Editor nao tem) ---
         {"A-BS", Cmd::Undo, true}, {"A-S-BS", Cmd::Redo, true},
         {"C-Ins", Cmd::Copy, true}, {"S-Ins", Cmd::Paste, true}, {"S-Del", Cmd::Cut, true},

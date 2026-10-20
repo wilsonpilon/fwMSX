@@ -25,7 +25,7 @@ std::string Tr(const std::string &en) {
         // Search
         {"Find string...", "Localizar..."}, {"Find and Replace...", "Localizar e substituir..."}, {"Continue fwd", "Continuar adiante"},
         {"Continue rev", "Continuar para tras"}, {"Line number...", "Ir para a linha..."}, {"Matching bracket", "Parentese correspondente"},
-        {"Window Differences", "Diferencas entre paineis"}, {"Text in Block", "Texto do bloco"}, {"Block Marker", "Marca do bloco"},
+        {"Window Differences", "Diferencas entre paineis"}, {"Text in Block", "Texto do bloco"}, {"Complete word", "Completar palavra"}, {"Block Marker", "Marca do bloco"},
         // Print
         {"Print Block", "Imprimir bloco"}, {"Eject page", "Ejetar pagina"},
         // View
@@ -65,6 +65,7 @@ std::string Tr(const std::string &en) {
         {"Alt alone selects menu", "Alt sozinho abre o menu"},
         {"Auto-save every (minutes, 0 = off):", "Salvar automaticamente a cada (minutos, 0 = nao):"},
         {"Also overwrite files that have a name", "Gravar tambem nos arquivos que ja tem nome"},
+        {"Line numbers", "Numeros de linha"}, {"Auto completion", "Completar sozinho"},
         {"Auto-saved", "Salvo automaticamente"},
         {"Save configuration", "Salvar configuracao"}, {"Update:", "Atualizar:"}, {"current config file", "o arquivo de configuracao atual"},
         {"config for this directory", "a configuracao desta pasta"},

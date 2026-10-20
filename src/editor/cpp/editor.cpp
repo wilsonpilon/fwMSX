@@ -256,6 +256,7 @@ Pos Editor::DoInsert(Pos p, const std::string &s) {
     AdjustForInsert(p, end, m1_);
     AdjustForInsert(p, end, m2_);
     AdjustForInsert(p, end, sel_anchor_);
+    for (Pos &q : snip_stops_) AdjustForInsert(p, end, q);
     if (!replaying_) {
         undo_.push_back({true, p, s, cur_, end, group_});
         redo_.clear();
@@ -270,6 +271,7 @@ std::string Editor::DoDelete(Pos a, Pos b) {
     AdjustForDelete(a, b, m1_);
     AdjustForDelete(a, b, m2_);
     AdjustForDelete(a, b, sel_anchor_);
+    for (Pos &q : snip_stops_) AdjustForDelete(a, b, q);
     if (!replaying_) {
         undo_.push_back({false, a, text, cur_, a, group_});
         redo_.clear();
@@ -283,6 +285,8 @@ void Editor::BeginGroup(bool merge) {
 }
 
 void Editor::DoUndo(bool redo) {
+    snip_stops_.clear();
+    comp_open_ = false;
     std::vector<Op> &from = redo ? redo_ : undo_;
     std::vector<Op> &to = redo ? undo_ : redo_;
     if (from.empty()) {
@@ -354,7 +358,7 @@ void Editor::Reveal() {
     }
     top_ = std::max(0, top_);
     const int dc = DisplayCol(cur_);
-    const int width = std::max(1, cols_ - 1);
+    const int width = std::max(1, cols_ - 1 - Gutter());
     if (dc < left_) {
         left_ = dc;
     } else if (dc >= left_ + width) {
@@ -415,6 +419,20 @@ bool Editor::InsertLiteral(const std::string &base, bool ctrl) {
 }
 
 bool Editor::Key(const std::string &name) {
+    const std::string canon = CanonicalKey(name);
+    if (comp_open_ && !canon.empty()) {
+        if (CompletionKey(canon)) return true;
+        // digitar e apagar continuam filtrando a lista; qualquer outra tecla fecha e age normalmente
+        const bool filter = canon == "BS" || canon.size() == 1 || (canon.size() == 3 && canon.compare(0, 2, "S-") == 0);
+        if (!filter) comp_open_ = false;
+    }
+    if (canon == "Esc") snip_stops_.clear();
+    const bool r = KeyImpl(name);
+    if (comp_open_ && canon == "BS") RefreshCompletion();
+    return r;
+}
+
+bool Editor::KeyImpl(const std::string &name) {
     message_.clear();
     const std::string canon = CanonicalKey(name);
     if (canon.empty()) return false;
@@ -481,6 +499,7 @@ bool Editor::Type(const std::string &text) {
     InsertChars(text);
     last_typed_ = true;
     last_type_end_ = cur_;
+    AfterTyping(text);
     return true;
 }
 
@@ -727,7 +746,11 @@ bool Editor::Execute(Cmd cmd, int arg) {
     case Cmd::EnterIndent:
         InsertNewline(true);
         return true;
+    case Cmd::Complete:
+        CompleteCmd();
+        return true;
     case Cmd::Tab: {
+        if (SnippetTab()) return true;
         const int tw = std::max(1, set_.tab_width);
         if (set_.tab_key == TabKey::InsertTab) {
             InsertChars("\t");
@@ -1186,7 +1209,7 @@ bool Editor::MatchOf(Pos from, Pos &out) const {
 
 Pos Editor::ScreenToPos(int x, int row) const {
     const int line = std::max(0, std::min(top_ + row, LineCount() - 1));
-    return {line, ColFromDisplay(line, std::max(0, x) + left_)};
+    return {line, ColFromDisplay(line, std::max(0, x - Gutter()) + left_)};
 }
 
 Pos Editor::PosAt(int line, int dcol) const {

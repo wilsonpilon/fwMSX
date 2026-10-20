@@ -17,6 +17,18 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.8 -- "Hyper Sports: Completar e snippets" (Konami) (2026-10-20)
+
+**Pedido do usuario**: "pode passar para a fase E5" (completar e snippets) e "precisa ter numeracao de linhas nos editores, coisa que o NE nao possuia".
+- **Modelo**: `completion.h/.cpp` (sem estado: candidatos, snippets, arquivo do usuario, expansao) e `editor_complete.cpp` (a lista aberta, aceitar, pontos de parada, a margem de numeros). `Lang::Words()` entrega as palavras de cada linguagem (a BIOS em maiusculas; o BASIC em maiusculas, com o `$`). Os pontos de parada do snippet acompanham as edicoes (`AdjustForInsert/Delete`).
+- **Teclas**: `Alt-/` (como o dabbrev do Emacs; funciona no terminal) e `Ctrl-Space` (so' na janela: no terminal Ctrl-Space e' o mesmo byte do Ctrl-2, que no NE e' "Divider up"). Dentro da lista: Cima/Baixo/PgUp/PgDn, Enter/Tab, Esc.
+- **Numeros de linha**: `Settings.line_numbers` (padrao ligado), `Editor::Gutter()` na grade; a janela le' a mesma opcao e pede `SetGridGutter(false)` porque desenha a margem dela. Os testes que conferem as colunas do NE 2 e as coordenadas do mouse a partir da coluna 0 desligam a opcao.
+- **Escolhas minhas** (a rever): so' os pontos `$1..$9` e `$0` (sem valor padrao `${1:x}` e sem espelhamento: dois `$2` iguais param so' no primeiro); o gatilho digitado por inteiro ainda aparece na lista (e' assim que se descobre que ele existe); a palavra sob o cursor nao e' candidata de si mesma; os snippets de fabrica sao poucos e de MSX (`for`, `scr5`, `sprite`, `rom`, `chput`, `wrtvdp`...); completar sozinho vem desligado.
+- **Nao feito**: completar com os simbolos de outros arquivos do projeto (depende do projeto `.msxproject`, fase E6); menu para listar/inserir snippet; rolagem na lista (mostra 8 e sobe o item escolhido).
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 30/30; captura da janela real com a lista aberta sobre o texto e a margem de numeros.
+
+---
+
 ## v1.41.7 -- "Hyper Sports: Kun BASIC" (Konami) (2026-10-20)
 
 **Pedido do usuario**: o "Turbo Basic" nao e' o da Borland, e' o MSX-BASIC KUN ("uma especie de compilador on the fly de basic para assembly"; poucos extras: `call turbo on`, `call turbo off`); manual indicado. Um subagente leu a pagina e devolveu a sintaxe (usada como DADOS; nada do texto do manual foi copiado).
