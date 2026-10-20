@@ -7,6 +7,19 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.0] - 2026-10-20 - "Hyper Sports" (Konami)
+
+### Adicionado -- o editor de textos (fase E1: o nucleo, estilo Norton Editor 2)
+- **Modelo do editor sem interface** (`src/editor/`, `ed::Editor`): buffer de linhas, cursor, Insert/Over, desfazer/refazer geral, area de transferencia, selecao e **blocos** (marcadores como no NE: Alt-B S/R/F/C/M/D/L/E, Indent/Unindent, Output to file), busca (Find, Continue fwd/rev, Text in Block, ir para linha, parentese casado, Replace)
+  e a grade de celulas 80x25 desenhada como a tela do NE 2 (barra de menu, texto, barra de rolagem, barra de estado `Line= Col= nome Insert WW=`). Ainda sem tela: a TUI (E2) e a janela (E3) so' vao pintar essa grade.
+- **As teclas do Norton Editor 2 como padrao** (as 40 teclas das telas de ajuda: Ctrl/Alt-W/L/A, Alt-K, Ctrl-U, Ctrl-F/R/C, Alt-C, Ctrl-], Ctrl-P, Ctrl-Enter, Alt-Z/Ctrl-Z...), os **49 mnemonicos de menu** (Alt-F N, Alt-B C, Alt-T W, Alt-S L...) e teclas ALTERNATIVAS marcadas
+  (as que o terminal entrega mal: Alt-Setas, Alt-PgUp, Alt-Enter, F10; e as modernas: Alt-Backspace desfaz, Ctrl-Ins/Shift-Ins/Shift-Del, Shift+setas). Tudo em tabelas de dados (`Bindings()`, `Menus()`).
+- **Modo somente leitura** (`view`): so' o que nao destroi nada funciona (navegacao, busca, copiar, Save As, imprimir, informacoes); o destrutivo e' ignorado em silencio e os itens do menu ficam desabilitados (`ItemEnabled`). Barra de estado mostra `View`.
+- **Arquivos do MSX**: CRLF/LF e Ctrl-Z (0x1A) no fim reconhecidos e preservados, BOM UTF-8, backup com `{` (`READ.ME` -> `READ.{E`), Merge, Output to file.
+- Menu Text-layout que ja' funciona: Center line, Word wrap, Auto indent, Expand tabs, Put in Tabs, Insert/Remove page breaks (a caixa de dialogo vem na E2; o modelo expoe `TakeDialog()` e os metodos `Apply*`).
+- **Quatro linguagens**: C++ (modelo), C (`ed_text.c`: palavras, busca na linha, inverter caixa), Fortran (`ed_stats.f90`: contagem de palavras), NASM dual-ABI (`ed_indent.asm`: indentacao da linha).
+- Teste `edittest` (`ctest` editor): sequencias de teclas -> texto, cursor, dialogos pedidos e grade.
+
 ## [1.40.5] - 2026-10-19 - "Antarctic Adventure: Montador na TUI" (Konami)
 
 ### Adicionado -- o montador na TUI e a base do depurador avancado

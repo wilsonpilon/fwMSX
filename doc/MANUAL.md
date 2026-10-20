@@ -1275,6 +1275,14 @@ continua tendo prioridade.
 **Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
 do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [romdb-spec.md](romdb-spec.md).
 
+## Editor de textos (1.41.0, fase E1 -- ainda sem tela)
+
+A 1.41.0 entrega o NUCLEO do editor de textos do fwMSX, no estilo do **Norton Editor 2** (projeto completo em `doc/editor-spec.md`). Ele ainda nao tem tela: a TUI (menus e dialogos do NE) vem na proxima fase e a janela depois; por enquanto o que existe e' o modelo, coberto pelo teste `edittest` (`ctest -R editor`).
+
+O que o modelo ja' faz (e que a tela vai apenas desenhar): teclas do NE 2 (Ctrl-W/Alt-W apagam palavra, Ctrl-L/Alt-L apagam ate' o inicio/fim da linha, Alt-K apaga a linha, Ctrl-U desfaz a ultima remocao, Ctrl-A/Alt-A invertem a caixa, Ctrl-P insere uma tecla de controle, Ctrl-Enter abre
+linha com indentacao, Ctrl-F/Ctrl-R/Alt-C/Ctrl-C/Ctrl-] buscam), os mnemonicos de menu (Alt-F N, Alt-B C, Alt-T W, Alt-S L, ...), blocos por marcadores (Alt-B S/R/F/C/M/D/L/E), desfazer geral (Alt-Backspace), Shift+setas e a area de transferencia (Ctrl-Ins, Shift-Ins, Shift-Del).
+Arquivos: CRLF/LF e Ctrl-Z no fim sao preservados, BOM UTF-8 tambem, e o backup troca o 1o caractere da extensao por `{`. **Modo somente leitura (`view`)**: so' o que nao destroi nada funciona; o resto e' ignorado em silencio.
+
 ## Montador no emulador e depurador com simbolos (1.40.5)
 
 O montador **fwasm** agora monta e carrega pelo proprio emulador. Com o emulador em execucao (`emu start`), na TUI use o menu **Montador** (ou, no console, `asmrun`; na janela, Depurador > Montar e rodar):

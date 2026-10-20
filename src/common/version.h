@@ -20,9 +20,9 @@
 #define FWMSX_NAME "fwMSX"
 
 #define FWMSX_VERSION_MAJOR 1
-#define FWMSX_VERSION_MINOR 40
-#define FWMSX_VERSION_PATCH 5
+#define FWMSX_VERSION_MINOR 41
+#define FWMSX_VERSION_PATCH 0
 
 #define FWMSX_COMPANY   "Konami"
-#define FWMSX_CODENAME  "Antarctic Adventure"
-#define FWMSX_SUBTITLE  "Montador na TUI"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_CODENAME  "Hyper Sports"
+#define FWMSX_SUBTITLE  ""  // so' nas versoes X.Y.Z com Z > 0

@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.0 -- "Hyper Sports" (Konami) (2026-10-20)
+
+**Pedido do usuario**: "siga pela fase E1" do editor de textos (projeto em `doc/editor-spec.md`): o nucleo, estilo Norton Editor 2, com os mesmos recursos e atalhos na TUI e na janela. Decisoes anteriores: perfil de teclas Norton como padrao + teclas modernas alternativas + perfil opcional "fwEditor";
+teclas alternativas para o que o terminal entrega mal; Load more/Write to cursor/Top of file depois; **modo somente leitura `view`** (so' o nao destrutivo funciona). O levantamento veio de 62 telas do NE 2 (`images/ne-*.png`, `images/Monitor_1_*.png`).
+
+- **Arquitetura**: um MODELO sem interface (`Key(nome)`/`Type(texto)` entram, `Render(grade)` sai), como o Mamute e o Z80 Debugger; a TUI e a janela so' pintam a grade. Comandos com caixa de dialogo deixam um `Dialog` pendente (`TakeDialog`); a interface devolve o resultado por `Find`, `GoToLine`, `Indent`, `Apply*`, `Load`...
+- **Dados, nao codigo**: `Info(Cmd)` (nome, destrutivo?, dialogo, implementado?), `Menus()` (itens, letra, atalho, comando) e `Bindings()` (tecla -> comando, `alt` = alternativa). O modo `view` e' UMA regra: comando destrutivo + `read_only_` = ignorado.
+- **Escolhas minhas onde as telas nao diziam (a rever com o usuario)**: Alt-K apaga a linha inteira (a ajuda diz "kills all characters on line"); Ctrl-Backspace = desindentar (a ajuda mostra `Ctrl <-` e o glifo da seta e' o do Backspace); Ctrl-U desfaz so' a ULTIMA remocao (se o cursor nao mexeu);
+  a busca nao da' a volta ao fim do arquivo; `Col=` e' a coluna de TELA (tab expandido); Information conta CRLF como 2 caracteres; "Moves to tab stop" so' move o cursor; quebra de pagina = linha com so' o FF (0Ch); o backup troca o 1o caractere da extensao; Alt-B S pela terceira vez recomeca o bloco.
+- **Teclas**: Alt-F/B/T/S/P/V/O seguidas da letra do item (49 mnemonicos conferidos por teste); Esc cancela; `F10` pede a barra de menus (`TakeMenuRequest`).
+- **Achado de ferramenta**: nenhum de build; o Fortran usa `ichar` (nunca `iachar`: derruba o f951 do gfortran 16).
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 28/28 nos dois.
+- **Fora de escopo / proximos**: E2 (tela do NE na TUI: menus, dialogos, 2a janela, mouse; comando `edit`/`view`), E3 (GUI ImGui), E4 destaque de sintaxe, E5 completar e snippets, E6 integracao (Executar no MSX, erros -> linha, projeto), E7 Text-layout completo (paragrafo, documento), Load more/Write to cursor/Top of file e Print.
+
+---
+
 ## v1.40.5 -- "Antarctic Adventure: Montador na TUI" (Konami) (2026-10-19)
 
 **Pedido do usuario**: integrar o montador (asm) ao painel TUI, seguir `.debug`/`.break` para chegar perto do depurador avancado, garantir BOM/UTF-8 no fwasm e levar a fita para a TUI se preciso (ja' estava, 1.40.4). Decisoes (AskUserQuestion):

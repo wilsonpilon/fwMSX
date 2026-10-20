@@ -686,6 +686,23 @@ if (WIN32)
 endif ()
 add_test(NAME mamute COMMAND mamutetest)
 
+# edittest: o editor de textos estilo Norton Editor 2 (modelo sem interface; doc/editor-spec.md).
+set(EDITOR_LIB_SOURCES
+        src/editor/cpp/editor.cpp
+        src/editor/cpp/editor_tables.cpp
+        src/editor/cpp/editor_file.cpp
+        src/editor/cpp/editor_render.cpp
+        src/editor/c/ed_text.c
+        src/editor/fortran/ed_stats.f90
+        src/editor/asm/ed_indent.asm
+)
+add_executable(edittest tests/editor/editor_test.cpp ${EDITOR_LIB_SOURCES})
+set_target_properties(edittest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/edittest)
+if (MINGW)
+    target_link_options(edittest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME editor COMMAND edittest)
+
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})
 set_target_properties(diskfmttest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/diskfmttest)
