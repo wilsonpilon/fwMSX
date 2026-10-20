@@ -104,7 +104,126 @@ bool EditorApp::Open2(const std::string &path, std::string &err, bool view) {
     return Open(path, err, view);
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// modo grafico: abas e divisao
+// ---------------------------------------------------------------------------------------------------------------
+
+bool EditorApp::OpenTab(const std::string &path, std::string &err, bool view) {
+    std::error_code ec;
+    const std::string abs = fs::absolute(path, ec).string();
+    for (size_t i = 0; i < wins_.size(); ++i) {
+        if (!wins_[i].Name().empty() && fs::absolute(wins_[i].Name(), ec).string() == abs) {
+            SetActive(static_cast<int>(i));
+            return true;
+        }
+    }
+    // uma unica aba vazia e intacta: o arquivo entra nela
+    if (wins_.size() == 1 && wins_[0].Name().empty() && !wins_[0].Modified() && wins_[0].LineCount() == 1 && wins_[0].Line(0).empty()) {
+        return Open(path, err, view);
+    }
+    Editor e;
+    e.settings() = Ed().settings();
+    if (!e.Load(path, err)) return false;
+    e.SetReadOnly(view);
+    wins_.push_back(e);
+    SetActive(static_cast<int>(wins_.size()) - 1);
+    cwd_ = fs::path(abs).parent_path().string();
+    return true;
+}
+
+void EditorApp::NewTab() {
+    Editor e;
+    e.settings() = Ed().settings();
+    e.NewFile();
+    wins_.push_back(e);
+    SetActive(static_cast<int>(wins_.size()) - 1);
+}
+
+void EditorApp::SetActive(int i) {
+    if (i < 0 || i >= WindowCount()) return;
+    active_ = i;
+    if (split_) {
+        if (i == pane_[0]) ap_ = 0;
+        else if (i == pane_[1]) ap_ = 1;
+        else pane_[ap_] = i;
+    }
+}
+
+void EditorApp::ToggleSplit() {
+    if (split_) {
+        split_ = false;
+        return;
+    }
+    if (WindowCount() >= 2) {
+        const int other = (active_ + 1) % WindowCount();
+        pane_[0] = std::min(active_, other); // a aba mais a esquerda fica no painel da esquerda
+        pane_[1] = std::max(active_, other);
+        ap_ = active_ == pane_[1] ? 1 : 0;
+        split_ = true;
+    } else {
+        ShowDialog(Dialog::Window2);
+    }
+}
+
+void EditorApp::RemoveTab(int i) {
+    if (i < 0 || i >= WindowCount()) return;
+    wins_.erase(wins_.begin() + i);
+    split_ = false;
+    if (wins_.empty()) {
+        Editor e;
+        wins_.push_back(e);
+    }
+    if (i < active_) --active_;
+    active_ = std::max(0, std::min(active_, WindowCount() - 1));
+}
+
+void EditorApp::CloseTab(int i) {
+    if (i < 0 || i >= WindowCount()) return;
+    if (!wins_[static_cast<size_t>(i)].Modified()) {
+        RemoveTab(i);
+        return;
+    }
+    active_ = i;
+    close_index_ = i;
+    confirm_purpose_ = 4;
+    BuildConfirm({"This file has been changed.", "Save it before closing?"}, {kBtnSave, kBtnDontSave, kBtnCancel}, kBtnDontSave, Dialog::ConfirmExit);
+}
+
+void EditorApp::RunMenu(int m, int i) {
+    const std::vector<Menu> &ms = Menus();
+    if (m < 0 || m >= static_cast<int>(ms.size())) return;
+    const Menu &menu = ms[static_cast<size_t>(m)];
+    if (i < 0 || i >= static_cast<int>(menu.items.size())) return;
+    RunMenuItem(menu.items[static_cast<size_t>(i)]);
+}
+
+void EditorApp::DialogEnter() {
+    if (!HasDialog()) return;
+    if (dlg_.kind == Dialog::Open || dlg_.kind == Dialog::SaveAs || dlg_.kind == Dialog::Merge || dlg_.kind == Dialog::Window2) {
+        FileDialogEnter();
+        return;
+    }
+    for (const Widget &w : dlg_.ws) {
+        if (w.type == Widget::Button && w.is_default) {
+            DialogDone(w.id);
+            return;
+        }
+    }
+}
+
 bool EditorApp::DoCloseWindow() {
+    if (gui_mode_) {
+        if (split_) {
+            split_ = false;
+            return true;
+        }
+        if (wins_.size() > 1) {
+            CloseTab(active_);
+            return true;
+        }
+        Msg("There is only one file");
+        return false;
+    }
     if (wins_.size() < 2) {
         Msg("There is no second window");
         return false;
@@ -116,12 +235,12 @@ bool EditorApp::DoCloseWindow() {
 }
 
 bool EditorApp::WindowDifferences() {
-    if (wins_.size() < 2) {
+    if (wins_.size() < 2 || (gui_mode_ && !split_)) {
         Msg("Open a second window first (F2)");
         return false;
     }
-    Editor &a = wins_[0];
-    Editor &b = wins_[1];
+    Editor &a = wins_[static_cast<size_t>(gui_mode_ ? pane_[0] : 0)];
+    Editor &b = wins_[static_cast<size_t>(gui_mode_ ? pane_[1] : 1)];
     Pos pa = a.Cursor();
     Pos pb = b.Cursor();
     while (pa.line < a.LineCount() && pb.line < b.LineCount()) {
@@ -166,6 +285,15 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
     Editor &e = Ed();
     switch (cmd) {
     case Cmd::Window2:
+        if (gui_mode_) {
+            if (split_) {
+                ap_ = 1 - ap_; // F2 com a divisao aberta: passa para o outro painel
+                active_ = pane_[ap_];
+            } else {
+                ToggleSplit();
+            }
+            return true;
+        }
         if (wins_.size() == 2) {
             active_ = 1 - active_;
         } else {
@@ -185,6 +313,10 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
     case Cmd::WindowDiff:
         return WindowDifferences();
     case Cmd::New:
+        if (gui_mode_) {
+            NewTab(); // abas: o arquivo novo abre ao lado, nada e' perdido
+            return true;
+        }
         if (e.ReadOnly()) return true;
         if (e.Modified()) {
             confirm_purpose_ = 2;
@@ -213,8 +345,8 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
 }
 
 bool EditorApp::Enabled(const MenuItem &it) const {
-    if (it.cmd == Cmd::CloseWindow) return wins_.size() > 1;
-    if (it.cmd == Cmd::WindowDiff) return wins_.size() > 1;
+    if (it.cmd == Cmd::CloseWindow) return gui_mode_ ? (split_ || wins_.size() > 1) : wins_.size() > 1;
+    if (it.cmd == Cmd::WindowDiff) return gui_mode_ ? split_ : wins_.size() > 1;
     if (it.cmd == Cmd::Window2) return true;
     if (it.cmd == Cmd::New || it.cmd == Cmd::Exit) return !(Ed().ReadOnly() && it.cmd == Cmd::New);
     if (it.cmd == Cmd::Outline || it.cmd == Cmd::Print || it.cmd == Cmd::PrintBlock || it.cmd == Cmd::EjectPage) return false;
@@ -560,6 +692,9 @@ void EditorApp::ContinueAfterConfirm() {
     } else if (purpose == 3) {
         std::string err;
         if (!Open(pending_path_, err, false)) Msg(err);
+    } else if (purpose == 4) {
+        RemoveTab(close_index_);
+        close_index_ = -1;
     }
 }
 
@@ -600,6 +735,7 @@ void EditorApp::DialogDone(int button) {
         if (button == kBtnCancel) {
             confirm_purpose_ = 0;
             exit_index_ = -1;
+            close_index_ = -1;
             return;
         }
         if (confirm_purpose_ == 5) {
@@ -641,6 +777,10 @@ void EditorApp::DialogDone(int button) {
     switch (kind) {
     case Dialog::Open:
         if (!file_chosen) return;
+        if (gui_mode_) {
+            if (!OpenTab(pending_path_, err, false)) Msg(err);
+            break;
+        }
         if (e.Modified()) {
             confirm_purpose_ = 3;
             BuildConfirm({"This file has been changed.", "Save it before opening another?"}, {kBtnSave, kBtnDontSave, kBtnCancel}, kBtnDontSave, Dialog::ConfirmExit);
@@ -660,6 +800,19 @@ void EditorApp::DialogDone(int button) {
         if (file_chosen && !e.Merge(pending_path_, err)) Msg(err);
         break;
     case Dialog::Window2:
+        if (gui_mode_) {
+            if (!file_chosen) break;
+            const int prev = active_;
+            if (OpenTab(pending_path_, err, false)) {
+                pane_[0] = prev;
+                pane_[1] = active_;
+                ap_ = 1;
+                split_ = prev != active_;
+            } else {
+                Msg(err);
+            }
+            break;
+        }
         if (file_chosen && !Open2(pending_path_, err, false)) Msg(err);
         break;
     case Dialog::Find:

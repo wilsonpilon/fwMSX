@@ -154,7 +154,7 @@ if (FWMSX_MSXDISK_GUI)
 
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app.cpp src/msxdisk/gui/style.cpp src/msxdisk/gui/file_dialog.cpp)
     set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window.cpp src/machine/gui/video_filters.cpp
-            src/machine/gui/rom_manager.cpp src/editor/gui/editor_window.cpp)
+            src/machine/gui/rom_manager.cpp src/editor/gui/editor_window.cpp src/editor/gui/editor_panel.cpp)
 else ()
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app_stub.cpp)
     set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window_stub.cpp src/editor/gui/editor_window_stub.cpp)
@@ -694,6 +694,7 @@ set(EDITOR_LIB_SOURCES
         src/editor/cpp/editor_render.cpp
         src/editor/cpp/editor_keys.cpp
         src/editor/cpp/editor_gui_input.cpp
+        src/editor/cpp/editor_i18n.cpp
         src/editor/cpp/editor_ui.cpp
         src/editor/cpp/editor_dialogs.cpp
         src/editor/c/ed_text.c

@@ -55,6 +55,7 @@ std::vector<std::string> SplitLines(const std::string &data, bool crlf) {
 } // namespace
 
 void Editor::NewFile() {
+    ++rev_;
     lines_.assign(1, std::string());
     cur_ = {};
     top_ = left_ = goal_dcol_ = 0;
@@ -72,6 +73,7 @@ void Editor::NewFile() {
 }
 
 void Editor::SetText(const std::string &text) {
+    ++rev_;
     lines_ = SplitLines(text, false);
     cur_ = {};
     top_ = left_ = goal_dcol_ = 0;

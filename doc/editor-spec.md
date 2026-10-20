@@ -178,3 +178,9 @@ Text-layout/Print/Display/Mouse/Editor setup, Save configuration, saida, page br
 
 **E3 entregue na 1.41.2** (`fwMSX.exe --edit`/`--view` em janela): `src/editor/gui/editor_window.cpp` (ImGui/GLFW/OpenGL3), `editor_gui_input.*` (nomes de tecla e paleta RGB, sem OpenGL), `--gui`/`--tui` em `main.cpp`. A janela e' fina: teclado/mouse -> `EditorApp`, grade -> `ImDrawList`; ornamentos desenhados a mao; Alt sozinho abre o menu; area de transferencia do sistema.
 **Falta de E3**: zoom da fonte, icone, conferir mouse/Alt sozinho/AltGr numa janela de verdade, `edit`/`view` dentro do console e da TUI de menus, `man editor`.
+
+**CORRECAO (2026-10-20): a E3 da 1.41.2 (grade de caracteres numa janela) NAO era o que o usuario queria e foi substituida na 1.41.3.** Pedido esclarecido: um programa GUI de verdade, integrado ao menu do fwMSX, visual igual/parecido com o fwMSX; "nao quero o mesmo editor, quero apenas os mesmos atalhos e opcoes do menu".
+Decisoes: janela flutuante dentro do fwMSX (+ standalone `--edit`); barra de menus propria do editor; abas + divisao opcional em 2 paineis; tema do fwMSX, fonte monoespacada, textos em portugues (`ed::Tr`; a TUI fica em ingles como o NE).
+**E3b entregue na 1.41.3**: `ed::gui::EditorPanel` (src/editor/gui/editor_panel.*) -- menus, abas, paineis de texto com rolagem/mouse, dialogos com widgets reais e barra de estado, sobre o mesmo `EditorApp`; menu "Editor" e janela flutuante em `emu_window.cpp`; `editor_window.cpp` = host standalone;
+`editor_i18n.*` (portugues). A grade/paleta da 1.41.2 saiu da GUI (`editor_gui_input` ficou com os nomes de tecla; a paleta RGB so' e' testada).
+**Falta**: mouse/Alt sozinho/AltGr conferidos numa janela real; opcoes de visual (numeros de linha, fonte, divisao empilhada); icone; E4-E7; menus novos (Executar, Montar, Sprites...).

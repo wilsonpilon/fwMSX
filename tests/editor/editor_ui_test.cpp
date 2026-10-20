@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../../src/editor/cpp/editor_gui_input.h"
+#include "../../src/editor/cpp/editor_i18n.h"
 #include "../../src/editor/cpp/editor_keys.h"
 #include "../../src/editor/cpp/editor_ui.h"
 
@@ -490,6 +491,161 @@ void test_gui_input() {
     check(blue.bg.b == 170 && blue.fg.r == 255, "Color 1: texto branco no azul");
 }
 
+void test_gui_mode() {
+    const fs::path dir = fs::temp_directory_path() / "fwmsx_editor_guimode_test";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    spit(dir / "one.txt", "abc\ndef\nghi");
+    spit(dir / "two.txt", "abc\ndeX\nghi");
+    spit(dir / "three.txt", "third");
+
+    EditorApp a;
+    a.SetGuiMode(true);
+    a.SetSize(80, 25);
+    a.SetStartDir(dir.string());
+    std::string err;
+    check(a.GuiMode() && a.WindowCount() == 1 && a.Ed().Name().empty(), "modo grafico: comeca com uma aba vazia");
+    check(a.OpenTab((dir / "one.txt").string(), err) && a.WindowCount() == 1 && fs::path(a.Ed().Name()).filename() == "one.txt",
+          "a primeira abertura entra na aba vazia (nao cria uma aba a mais)");
+    check(a.OpenTab((dir / "two.txt").string(), err) && a.WindowCount() == 2 && a.Active() == 1, "abrir outro arquivo cria uma aba");
+    check(a.OpenTab((dir / "one.txt").string(), err) && a.WindowCount() == 2 && a.Active() == 0, "abrir um arquivo ja' aberto so' ativa a aba");
+    K(a, {"A-f", "n"});
+    check(a.WindowCount() == 3 && a.Active() == 2 && a.Ed().Name().empty(), "Arquivo > Novo abre uma aba nova");
+    a.Ed().Type("novo texto");
+
+    // divisao em paineis
+    a.SetActive(0);
+    a.Key("F2");
+    check(a.Split() && a.PaneDoc(0) == 0 && a.PaneDoc(1) == 1 && a.ActivePane() == 0, "F2 divide a area em 2 paineis (abas 0 e 1)");
+    a.Key("F2");
+    check(a.Split() && a.ActivePane() == 1 && a.Active() == 1, "F2 com a divisao passa para o outro painel");
+    a.Win(0).SetCursor({0, 0});
+    a.Win(1).SetCursor({0, 0});
+    K(a, {"A-s", "d"});
+    check(a.Win(0).Cursor() == Pos{1, 2} && a.Win(1).Cursor() == Pos{1, 2}, "Window Differences compara os dois paineis");
+    a.SetActive(2);
+    check(a.Split() && a.PaneDoc(a.ActivePane()) == 2 && a.PaneDoc(1 - a.ActivePane()) != 2, "ativar uma terceira aba troca o conteudo do painel ativo");
+    K(a, {"A-f", "c"});
+    check(!a.Split() && a.WindowCount() == 3, "Close window com a divisao: desfaz a divisao");
+
+    // fechar abas
+    a.CloseTab(1);
+    check(a.WindowCount() == 2, "fechar uma aba sem alteracoes a remove");
+    a.CloseTab(1); // a aba do 'novo texto' esta' alterada
+    check(a.HasDialog() && screen_has(a, "Save it before closing?") && a.WindowCount() == 2, "fechar uma aba alterada pergunta");
+    K(a, {"Esc"});
+    check(!a.HasDialog() && a.WindowCount() == 2, "Cancel mantem a aba");
+    a.CloseTab(1);
+    K(a, {"d"});
+    check(a.WindowCount() == 1 && fs::path(a.Ed().Name()).filename() == "one.txt", "Don't Save fecha a aba");
+    a.CloseTab(0);
+    check(a.WindowCount() == 1 && a.Ed().Name().empty(), "fechar a ultima aba deixa uma aba vazia");
+
+    // Abrir pelo dialogo abre uma aba
+    a.Ed().SetText("");
+    K(a, {"A-f", "o"});
+    a.Text((dir / "three.txt").string());
+    K(a, {"Enter"});
+    check(!a.HasDialog() && fs::path(a.Ed().Name()).filename() == "three.txt" && a.Ed().Text() == "third", "o dialogo Abrir carrega o arquivo");
+    K(a, {"A-f", "2"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Window2, "2nd window sem outra aba pede um arquivo");
+    a.Text((dir / "one.txt").string());
+    K(a, {"Enter"});
+    check(a.Split() && a.WindowCount() == 2 && fs::path(a.Win(a.PaneDoc(0)).Name()).filename() == "three.txt" && a.ActivePane() == 1, "o arquivo escolhido abre na divisao");
+
+    // API de menu e dialogo para a interface grafica
+    EditorApp m;
+    m.SetGuiMode(true);
+    m.OpenMenuAt(0);
+    check(m.MenuIndex() == 0 && m.MenuItemEnabled(ed::Menus()[0].items[0]), "OpenMenuAt abre o menu");
+    m.SetMenuItem(2);
+    check(m.MenuItemIndex() == 2, "SetMenuItem");
+    m.RunMenu(0, 1);
+    check(m.MenuIndex() < 0 && m.HasDialog() && m.CurrentMutable()->kind == ed::Dialog::Open, "RunMenu executa o item e fecha o menu");
+    ed::DialogBox *d = m.CurrentMutable();
+    d->ws[0].text.clear();
+    m.PressDialog(ed::kBtnCancel);
+    check(!m.HasDialog(), "PressDialog(Cancel) fecha o dialogo");
+    m.RunMenu(3, 0); // Busca > Find
+    d = m.CurrentMutable();
+    check(d && d->kind == ed::Dialog::Find, "Busca > Localizar abre o dialogo");
+    d->Find(1)->text = "x";
+    d->Find(10)->checked = true;
+    m.DialogEnter();
+    check(!m.HasDialog(), "DialogEnter confirma pelo botao padrao");
+
+    // tabs nao mudam o comportamento do terminal
+    EditorApp t;
+    t.SetSize(80, 25);
+    check(!t.GuiMode(), "a TUI continua sem modo grafico");
+    fs::remove_all(dir);
+}
+
+void test_model_extras() {
+    ed::Editor e;
+    e.SetText("one two\nthree");
+    const uint64_t r0 = e.Revision();
+    e.SetCursor({0, 0});
+    e.Type("x");
+    check(e.Revision() > r0, "Revision muda a cada alteracao");
+    check(e.PosAt(0, 100) == Pos{0, 8} && e.PosAt(99, 0) == Pos{1, 0} && e.PosAt(-3, 2) == Pos{0, 2}, "PosAt: coluna/linha de tela -> posicao do texto");
+    e.SelectWord({0, 5});
+    check(e.BlockText() == "two", "SelectWord (duplo clique)");
+    e.SelectLine(0);
+    check(e.BlockText() == "xone two\n", "SelectLine (triplo clique)");
+    e.SelectLine(1);
+    check(e.BlockText() == "three", "SelectLine na ultima linha");
+    e.SetText(many_lines(50));
+    e.SetTopLine(7);
+    e.SetLeftCol(3);
+    check(e.TopLine() == 7 && e.LeftCol() == 3, "SetTopLine/SetLeftCol (a rolagem e' do ImGui)");
+    e.SetViewSize(80, 10, false);
+    check(e.TopLine() == 7, "SetViewSize sem revelar nao mexe na rolagem");
+    // as teclas alternativas dos editores graficos
+    e.SetText("abc");
+    e.SetCursor({0, 3});
+    e.Key("C-v");
+    check(e.Text() == "abc", "Ctrl-V com a area de transferencia vazia nao faz nada");
+    e.SetClipboard("XY");
+    e.Key("C-v");
+    check(e.Text() == "abcXY", "Ctrl-V cola");
+    e.SelectWord({0, 1});
+    e.Key("C-x");
+    check(e.Text().empty() && e.Clipboard() == "abcXY", "Ctrl-X recorta");
+}
+
+void test_translation() {
+    using ed::Tr;
+    check(Tr("File") == "Arquivo" && Tr("Search") == "Busca" && Tr("F1=Help") == "Ajuda", "Tr: titulos de menu");
+    check(Tr("Don't Save") == "Nao salvar" && Tr("Cancel") == "Cancelar" && Tr("Yes") == "Sim", "Tr: botoes");
+    check(Tr("Words in edit buffer:      12").rfind("Palavras no buffer:", 0) == 0 && Tr("Words in edit buffer:      12").find("12") != std::string::npos,
+          "Tr: 'rotulo: valor' traduz so' o rotulo");
+    check(Tr("never seen text") == "never seen text", "Tr: texto desconhecido volta como veio");
+    // todo item de menu do NE tem texto em portugues (ou e' igual nas duas linguas)
+    bool all = true;
+    for (const ed::Menu &m : ed::Menus()) {
+        for (const ed::MenuItem &it : m.items) {
+            if (!it.label) continue;
+            const std::string en = it.label;
+            if (Tr(en) == en && en != "Mouse..." && en != "Editor..." && en != "Cursor" && en != "OK") {
+                std::printf("    sem traducao: %s\n", en.c_str());
+                all = false;
+            }
+        }
+    }
+    check(all, "Tr: todos os itens de menu tem traducao");
+    bool accents = true;
+    for (const ed::Menu &m : ed::Menus()) {
+        for (const ed::MenuItem &it : m.items) {
+            if (!it.label) continue;
+            for (const unsigned char c : Tr(it.label)) {
+                if (c > 127) accents = false;
+            }
+        }
+    }
+    check(accents, "Tr: sem acentos (convencao do projeto)");
+}
+
 void test_view_app() {
     const fs::path dir = fs::temp_directory_path() / "fwmsx_editor_view_test";
     fs::remove_all(dir);
@@ -533,6 +689,9 @@ int main() {
     test_mouse();
     test_view_app();
     test_gui_input();
+    test_gui_mode();
+    test_model_extras();
+    test_translation();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

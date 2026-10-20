@@ -7,6 +7,20 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.3] - 2026-10-20 - "Hyper Sports: Editor GUI" (Konami)
+
+### Corrigido o rumo da fase E3: o editor GRAFICO de verdade (substitui a "grade de caracteres em janela" da 1.41.2)
+O usuario esclareceu: o editor em janela deve ser um programa GUI de verdade, integrado ao menu do fwMSX, com a aparencia do fwMSX -- e so' os atalhos e as opcoes de menu do Norton Editor, NAO a mesma tela de caracteres. Decisoes (AskUserQuestion): janela flutuante dentro do fwMSX; barra de menus propria do editor;
+abas com divisao opcional em 2 paineis; tema do fwMSX, fonte monoespacada, textos em portugues.
+- **Menu "Editor" na barra do fwMSX** (Mostrar o editor, Novo arquivo, Abrir arquivo...): abre uma **janela flutuante do ImGui** ao lado da tela do MSX, que continua rodando. Com o editor em foco o teclado e' dele (as teclas nao vao para o MSX; so' o F11 de tela cheia passa; o F10 abre o menu do editor).
+- **`fwMSX.exe --edit [arquivos]` / `--view arquivo`**: o MESMO componente numa janela do sistema (standalone), no tema do fwMSX. `--tui` continua sendo o editor de terminal; `--gui` forca a janela.
+- **Interface grafica de verdade**: barra de menus (Arquivo, Bloco, Texto, Busca, Imprimir, Exibir, Opcoes, Ajuda) com popups e os atalhos ao lado; **abas** por arquivo (indicador de alterado, fechar, "+" para novo); **divisao em 2 paineis** (F2) com Window Differences; texto com numeros de linha, rolagem do ImGui (barras vertical e horizontal), selecao e cursor
+  desenhados no tema, **mouse** (clicar, arrastar, duplo clique = palavra, triplo = linha, roda, menu de contexto Recortar/Copiar/Colar/Desfazer/Refazer/Selecionar tudo); **dialogos com widgets graficos** (campos, radios, caixas de marcar, listas, botoes) sobre os MESMOS dados dos dialogos do NE; barra de estado (Lin, Col, Insert, CRLF, alterado, mensagens).
+- **Os mesmos atalhos do Norton Editor 2** (todas as teclas chegam com seus modificadores: Ctrl-Enter, Ctrl-PgUp, Ctrl-2...), o Alt sozinho abre o menu, e as alternativas graficas Ctrl-S/N/O/V/X (salvar, novo, abrir, colar, recortar).
+- **Textos em portugues** (`ed::Tr`, sem acento) so' na GUI; a TUI mantem os textos do NE.
+- `EditorApp` no modo grafico: abas (`OpenTab/NewTab/CloseTab/SetActive`), divisao (`ToggleSplit`), API de menus e dialogos para a interface (`OpenMenuAt/RunMenu/PressDialog/DialogEnter`). `Editor`: `SetTopLine/SetLeftCol/PosAt/SelectWord/SelectLine/Revision`.
+- Testes: `editorui` ficou com 172 verificacoes (modo grafico, abas, divisao, traducao, extras do modelo).
+
 ## [1.41.2] - 2026-10-20 - "Hyper Sports: Editor em janela" (Konami)
 
 ### Adicionado -- o editor de textos em JANELA (fase E3)

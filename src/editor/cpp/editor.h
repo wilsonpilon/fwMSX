@@ -5,6 +5,7 @@
 // aqui: deixam um Dialog pendente (TakeDialog) e a interface devolve o resultado pelos metodos Apply*/Open/Find.
 #pragma once
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -247,7 +248,8 @@ public:
 
     // --- tela ------------------------------------------------------------------------------------------------------
     void SetSize(int cols, int rows);                   // a janela inteira (menu + texto + estado)
-    void SetViewSize(int cols, int text_rows);          // so' a area de texto (uma janela de varias)
+    void SetViewSize(int cols, int text_rows, bool reveal = true); // so' a area de texto (uma janela de varias)
+    uint64_t Revision() const { return rev_; }          // muda a cada alteracao do texto (a interface grafica usa para guardar medidas)
     int TextRows() const { return text_rows_; }
     void Render(Grid &grid) const;                      // barra de menu + texto + barra de estado
     // So' a area de texto (e a barra de rolagem) nas linhas [y0, y0 + TextRows()) da grade.
@@ -255,6 +257,13 @@ public:
     void RenderStatus(Grid &grid, int y) const;         // a barra de estado do NE na linha y
     bool CursorScreen(int &x, int &y) const;            // onde fica o cursor na grade (linha 1 = primeira do texto)
     int TopLine() const { return top_; }
+    int LeftCol() const { return left_; }
+    // janela grafica: a rolagem e' do ImGui; o modelo so' recebe onde esta' a primeira linha/coluna visivel
+    void SetTopLine(int t) { top_ = std::max(0, std::min(t, LineCount() - 1)); }
+    void SetLeftCol(int c) { left_ = std::max(0, c); }
+    Pos PosAt(int line, int dcol) const;                // posicao do texto sob a linha/coluna de tela (mouse)
+    void SelectWord(Pos p);                             // duplo clique
+    void SelectLine(int line);                          // triplo clique
     // mouse: (x, row) sao relativos a area de texto desta janela
     Pos ScreenToPos(int x, int row) const;
     void SelectBlock(Pos a, Pos b);                     // marca o bloco entre a e b (arrastar o mouse)
@@ -280,7 +289,7 @@ private:
     std::string DoDelete(Pos a, Pos b);
     void AdjustForInsert(Pos p, Pos end, Pos &q) const;
     void AdjustForDelete(Pos a, Pos b, Pos &q) const;
-    void Touch() { modified_ = true; }
+    void Touch() { modified_ = true; ++rev_; }
     Pos EndOfFile() const;
 
     bool InsertChars(const std::string &s);
@@ -318,6 +327,7 @@ private:
     int cols_ = kDefaultCols;
     int rows_ = kDefaultRows;
     int text_rows_ = kDefaultRows - 2;
+    uint64_t rev_ = 1;
     bool insert_ = true;
     bool modified_ = false;
     bool read_only_ = false;

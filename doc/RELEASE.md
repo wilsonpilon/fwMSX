@@ -17,6 +17,26 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.3 -- "Hyper Sports: Editor GUI" (Konami) (2026-10-20)
+
+**Correcao de interpretacao do usuario sobre a fase E3**: "eu quero que o Editor Janela/Windows/GUI seja um programa realmente GUI, integrado inclusive ao menu do fwMSX, ... com a interface igual ou similar graficamente ao fwMSX. Nao quero o mesmo editor, quero apenas os mesmos atalhos e opcoes do menu."
+A 1.41.2 desenhava a grade de caracteres do terminal numa janela (nao era isso). A 1.41.3 a substitui por um componente grafico de verdade.
+
+- **Decisoes do usuario** (AskUserQuestion): (1) janela flutuante dentro do fwMSX; (2) menus do NE numa barra de menus PROPRIA do editor (do fwMSX entra so' o item "Editor"); (3) abas, com divisao opcional em 2 paineis; (4) tema do fwMSX, fonte monoespacada, textos em portugues.
+- **Arquitetura**: `ed::gui::EditorPanel` (src/editor/gui/editor_panel.*) LE o estado do `EditorApp`/`Editor` e DESENHA com widgets do ImGui. O texto, os comandos, os atalhos e os dialogos continuam como DADOS no modelo (nada foi reescrito); o painel traduz teclado/mouse para o modelo e os dados dos dialogos (`DialogBox`) para widgets.
+  Dialogos: o `DialogBox` (widgets em posicoes de celula) e' desenhado com widgets reais em posicoes escaladas (`Input` e' um campo proprio com cursor/selecao, `Radio`/`Check`/`Button`/`List` sao widgets do ImGui); o teclado dos dialogos segue as mesmas regras da TUI (Tab, Enter, Esc, a inicial do botao).
+  Menus: o estado do menu aberto mora no `EditorApp` (setas, letra do item, Alt+letra) e o painel so' mostra o popup; passar o mouse troca de menu.
+- **Texto**: rolagem do ImGui (`SetNextWindowScroll` quando o MODELO move a vista; o modelo recebe `SetTopLine/SetLeftCol` quando o usuario rola), largura do conteudo pelo maior comprimento de linha (cache por `Revision`), linhas desenhadas so' no intervalo visivel, numeros de linha fixos a esquerda, selecao/cursor/parentese no tema.
+- **Integracao no emulador** (`emu_window.cpp`): menu "Editor", janela flutuante, `g_input.ed_capture` (o editor em foco toma o teclado: o MSX nao recebe as teclas). Conferido por captura: a janela abre sobre a tela do MSX com o menu "Editor > Mostrar o editor".
+- **Fonte**: Consolas/Courier New (Windows), DejaVu/Liberation Mono (Linux) ou a embutida do ImGui. Fonte do texto: 17 px.
+- **Escolhas minhas** (a rever): as abas ficam em cima e os paineis lado a lado (nao empilhados como no NE); numeros de linha ligados por padrao (sem opcao de menu ainda); os menus mostram "Alt+F, N" quando nao ha' atalho direto; o menu de contexto usa a area de transferencia do sistema; fechar o X da janela flutuante pergunta
+  pelos arquivos alterados (como Arquivo > Sair) e so' esconde a janela, mantendo os arquivos abertos.
+- **Conferido**: o editor standalone abre README.md/CLAUDE.md lado a lado (captura), o menu Arquivo e o dialogo Abrir arquivo (lista de arquivos e pastas, campo com mascara) e a janela flutuante no emulador. **Nao conferido**: mouse (clicar/arrastar/duplo clique), Alt sozinho, AltGr, colar do sistema, Linux em janela (so' compilou).
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 29/29 nos dois.
+- **Fora de escopo / proximos**: E4 destaque de sintaxe, E5 completar e snippets, E6 integracao (Executar no MSX, erros -> linha, projeto, menus Montar/Sprites/...), E7 (Paragraph/Document format, Print, Outline, Load more...); opcoes de visual (numeros de linha, tamanho da fonte, divisao empilhada); icone; `man editor`.
+
+---
+
 ## v1.41.2 -- "Hyper Sports: Editor em janela" (Konami) (2026-10-20)
 
 **Pedido do usuario**: "fase E3": o mesmo editor na janela (GUI), com os mesmos recursos e atalhos da TUI. O usuario testou a TUI (1.41.1) no terminal e disse que "funcionou bem".

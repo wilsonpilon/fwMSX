@@ -36,10 +36,10 @@ void Editor::SetSize(int cols, int rows) {
     Reveal();
 }
 
-void Editor::SetViewSize(int cols, int text_rows) {
+void Editor::SetViewSize(int cols, int text_rows, bool reveal) {
     cols_ = std::max(20, cols);
     text_rows_ = std::max(1, text_rows);
-    Reveal();
+    if (reveal) Reveal();
 }
 
 bool Editor::CursorScreen(int &x, int &y) const {

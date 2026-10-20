@@ -265,6 +265,8 @@ const std::vector<KeyBinding> &Bindings() {
         {"S-Home", Cmd::SelHome, true}, {"S-End", Cmd::SelEnd, true},
         {"S-PgUp", Cmd::SelPgUp, true}, {"S-PgDn", Cmd::SelPgDn, true},
         {"C-S-Left", Cmd::SelWordLeft, true}, {"C-S-Right", Cmd::SelWordRight, true},
+        // --- alternativas dos editores graficos (nao conflitam com o NE) ---
+        {"C-v", Cmd::Paste, true}, {"C-x", Cmd::Cut, true}, {"C-s", Cmd::Save, true}, {"C-n", Cmd::New, true}, {"C-o", Cmd::Open, true},
     };
     return b;
 }

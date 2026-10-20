@@ -32,6 +32,7 @@
 #include "../../msxdisk/gui/style.h"
 #include "video_filters.h"
 #include "rom_manager.h"
+#include "../../editor/gui/editor_panel.h"
 #include "../../psg/cpp/psg_device.h"
 #include "../../psg/core/psg_state.h"
 #include <imgui.h>
@@ -168,6 +169,7 @@ struct HostInput {
     bool screenshot = false;  // F12: grava a tela num PNG
     bool toggle_debugger = false; // F10: entra/sai do Z80 Debugger
     bool dbg_capture = false;     // o Z80 Debugger esta' aberto: o teclado e' dele, nao do MSX
+    bool ed_capture = false;      // o editor de textos esta' em foco (janela, menu ou dialogo): o teclado e' dele, nao do MSX
 };
 HostInput g_input;
 
@@ -177,6 +179,8 @@ void KeyCallback(GLFWwindow *, int key, int, int action, int) {
         if (action == GLFW_PRESS) g_input.toggle_fullscreen = true;
         return;
     }
+    // O editor de textos em foco fica com TODAS as teclas (F10 abre o menu dele, nao o depurador); so' o F11 (tela cheia) passa.
+    if (g_input.ed_capture) return;
     // F10: entra/sai do Z80 Debugger (o mesmo que [CTRL]+[F10] do fMSX). Com o painel aberto, o teclado e' dele.
     if (key == GLFW_KEY_F10) {
         if (action == GLFW_PRESS) g_input.toggle_debugger = true;
@@ -400,6 +404,9 @@ int RunEmulatorWindow(const WindowOptions &options) {
     ImGuiIO &io = ImGui::GetIO();
     io.IniFilename = nullptr; // sem imgui.ini solto na pasta de trabalho
     msxdisk::gui::LoadModernFont(io);
+    ed::gui::EditorPanel editor_panel; // o editor de textos (menu Editor)
+    editor_panel.LoadFont(io, 17.0f);
+    editor_panel.Configure(options.exe_dir, std::filesystem::current_path().string());
     msxdisk::gui::ApplyModernStyle(true);
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
@@ -483,6 +490,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     std::string tape_message;
     std::string asm_message; // resultado do ultimo "Montar e rodar" (menu Depurador)
     bool show_tape_window = false;
+    bool show_editor = false; // janela do editor de textos
     int state_slot = 1; // slot de save-state atual (1 a kStateSlots)
     // Aviso temporario no canto da tela (salvou/carregou/captura): texto, validade e se e' aviso/erro.
     std::string toast_text;
@@ -1263,6 +1271,22 @@ int RunEmulatorWindow(const WindowOptions &options) {
                 }
                 ImGui::EndMenu();
             }
+            if (ImGui::BeginMenu("Editor")) {
+                if (ImGui::MenuItem("Mostrar o editor", nullptr, &show_editor) && show_editor) editor_panel.RequestFocus();
+                ImGui::Separator();
+                if (ImGui::MenuItem("Novo arquivo", "Ctrl+N")) {
+                    show_editor = true;
+                    editor_panel.RequestFocus();
+                    editor_panel.app().NewTab();
+                }
+                if (ImGui::MenuItem("Abrir arquivo...", "Ctrl+O")) {
+                    show_editor = true;
+                    editor_panel.ShowOpenDialog();
+                }
+                ImGui::Separator();
+                ImGui::TextDisabled("Atalhos do Norton Editor 2 (F1 no editor)");
+                ImGui::EndMenu();
+            }
             if (ImGui::BeginMenu("Depurador")) {
                 if (ImGui::MenuItem("Entrar no Z80 Debugger", "F10", dbg_open)) g_input.toggle_debugger = true;
                 if (ImGui::MenuItem("Continuar a execucao", nullptr, false, machine->debugger().stopped())) {
@@ -1686,6 +1710,8 @@ int RunEmulatorWindow(const WindowOptions &options) {
             dl->AddText(pos, toast_warn ? IM_COL32(255, 190, 90, 255) : IM_COL32(255, 255, 255, 255), toast_text.c_str());
         }
 
+        if (show_editor) editor_panel.DrawWindow(&show_editor);
+        g_input.ed_capture = show_editor && editor_panel.WantsKeyboard();
         {
             // Tema, letra, moldura e splash ficam gravados em fwmsx.cfg assim que mudam.
             if (cfg.splash != ui_splash || cfg.theme != ui_theme || cfg.font != ui_font || cfg.frame != ui_frame) {

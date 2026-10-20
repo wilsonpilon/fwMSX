@@ -110,6 +110,7 @@ public:
     int Active() const { return active_; }
     int DividerRows() const { return divider_; }
     bool QuitRequested() const { return quit_; }
+    void ClearQuit() { quit_ = false; exit_index_ = -1; confirm_purpose_ = 0; }
     void RequestExit() { ExecuteCmd(Cmd::Exit, 0); } // fechar a janela: o mesmo caminho de Alt-F X (pergunta por arquivos alterados)
     UiSettings &ui() { return ui_; }
     const UiSettings &ui() const { return ui_; }
@@ -122,6 +123,28 @@ public:
     int MenuItemIndex() const { return item_; }
     const DialogBox *Current() const { return dlg_.kind == Dialog::None ? nullptr : &dlg_; }
     bool HasDialog() const { return dlg_.kind != Dialog::None; }
+
+    // --- interface grafica (janela flutuante do fwMSX / editor standalone) ---
+    // No modo grafico os arquivos viram ABAS (nao ha' limite de 2 janelas), "2nd window" divide a area em 2 paineis lado a lado,
+    // `New`/`Open` abrem uma aba nova e a grade de caracteres (Render) nao e' usada: a interface le' o estado e desenha com widgets.
+    void SetGuiMode(bool g) { gui_mode_ = g; }
+    bool GuiMode() const { return gui_mode_; }
+    bool OpenTab(const std::string &path, std::string &err, bool view = false);
+    void NewTab();
+    void CloseTab(int i);                     // pergunta se o arquivo foi alterado
+    void SetActive(int i);
+    bool Split() const { return split_; }
+    int PaneDoc(int pane) const { return split_ ? pane_[pane] : active_; }
+    int ActivePane() const { return split_ ? ap_ : 0; }
+    void ToggleSplit();                       // com 2+ abas divide; sem outra aba pede um arquivo (2nd window)
+    void OpenMenuAt(int m) { OpenMenu(m); }
+    void CloseMenuNow() { CloseMenu(); }
+    void SetMenuItem(int i) { item_ = i; }
+    void RunMenu(int m, int i);
+    bool MenuItemEnabled(const MenuItem &it) const { return Enabled(it); }
+    DialogBox *CurrentMutable() { return HasDialog() ? &dlg_ : nullptr; }
+    void PressDialog(int id) { DialogDone(id); }
+    void DialogEnter();                       // Enter no dialogo (nos de arquivo: abre/entra no diretorio)
 
     // --- entrada ---
     bool Key(const std::string &canon);      // nome canonico (KeyNameFromInput)
@@ -151,6 +174,7 @@ private:
     void FinishExit();
     void NextExitStep();
     bool DoCloseWindow();
+    void RemoveTab(int i);
     bool WindowDifferences();
     void Msg(const std::string &m) { Ed().SetMessage(m); }
 
@@ -192,8 +216,13 @@ private:
     int menu_ = -1;
     int item_ = 0;
     DialogBox dlg_;
+    bool gui_mode_ = false;
+    bool split_ = false;
+    int pane_[2] = {0, 0};      // modo grafico: a aba mostrada em cada painel quando ha' divisao
+    int ap_ = 0;                // painel ativo
+    int close_index_ = -1;      // modo grafico: aba que esta' sendo fechada (confirmacao)
     int exit_index_ = -1;       // sequencia de saida: janela que esta' sendo conferida
-    int confirm_purpose_ = 0;   // 1 = sair, 2 = novo arquivo, 3 = abrir outro arquivo
+    int confirm_purpose_ = 0;   // 1 = sair, 2 = novo arquivo, 3 = abrir outro arquivo, 4 = fechar aba, 5 = salvar a configuracao
     int after_save_ = 0;        // >0: o Save As aberto continua o fluxo de confirmacao (sair, novo, abrir)
     bool config_dirty_ = false; // alguma caixa de Options mudou a configuracao
     int repl_count_ = 0;

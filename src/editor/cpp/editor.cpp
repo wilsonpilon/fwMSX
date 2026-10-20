@@ -1189,6 +1189,36 @@ Pos Editor::ScreenToPos(int x, int row) const {
     return {line, ColFromDisplay(line, std::max(0, x) + left_)};
 }
 
+Pos Editor::PosAt(int line, int dcol) const {
+    const int l = std::max(0, std::min(line, LineCount() - 1));
+    return {l, ColFromDisplay(l, std::max(0, dcol))};
+}
+
+void Editor::SelectWord(Pos p) {
+    p.line = std::max(0, std::min(p.line, LineCount() - 1));
+    const std::string &s = lines_[static_cast<size_t>(p.line)];
+    const int len = static_cast<int>(s.size());
+    int a = std::min(p.col, len);
+    int b = a;
+    while (a > 0 && ed_is_word_char(static_cast<unsigned char>(s[static_cast<size_t>(a - 1)]))) --a;
+    while (b < len && ed_is_word_char(static_cast<unsigned char>(s[static_cast<size_t>(b)]))) ++b;
+    if (a == b && b < len) ++b; // pontuacao: seleciona o proprio caractere
+    SelectBlock({p.line, a}, {p.line, b});
+    sel_active_ = false;
+    cur_ = {p.line, b};
+    goal_dcol_ = DisplayCol(cur_);
+}
+
+void Editor::SelectLine(int line) {
+    line = std::max(0, std::min(line, LineCount() - 1));
+    const Pos a{line, 0};
+    const Pos b = line + 1 < LineCount() ? Pos{line + 1, 0} : Pos{line, static_cast<int>(lines_[static_cast<size_t>(line)].size())};
+    SelectBlock(a, b);
+    sel_active_ = false;
+    cur_ = b;
+    goal_dcol_ = DisplayCol(cur_);
+}
+
 void Editor::SelectBlock(Pos a, Pos b) {
     if (a == b) {
         m1_set_ = m2_set_ = false;

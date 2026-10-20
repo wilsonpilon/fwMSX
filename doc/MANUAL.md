@@ -1275,7 +1275,17 @@ continua tendo prioridade.
 **Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
 do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [romdb-spec.md](romdb-spec.md).
 
-## Editor de textos em janela (1.41.2, fase E3)
+## Editor de textos grafico (1.41.3, fase E3)
+
+O editor de textos tambem existe como **interface grafica**, no visual do fwMSX (tema escuro/claro, fonte monoespacada, textos em portugues):
+
+- **Dentro do emulador**: menu **Editor** da barra do fwMSX (Mostrar o editor, Novo arquivo, Abrir arquivo...). Abre uma janela flutuante ao lado da tela do MSX; o emulador continua rodando. Com o editor em foco, o teclado e' dele (as teclas nao vao para o MSX).
+- **Programa separado**: `fwMSX.exe --edit [arquivo [arquivo2]]` (dois arquivos abrem lado a lado) e `fwMSX.exe --view arquivo` (somente leitura). No Linux: `fwmsx --edit --gui arquivo`.
+
+Barra de menus propria (Arquivo, Bloco, Texto, Busca, Imprimir, Exibir, Opcoes, Ajuda) com os itens e os **atalhos do Norton Editor 2** (Ctrl-F, Alt-C, Ctrl-W, Alt-B S...; **Alt sozinho** abre o menu; F1 = ajuda) e as alternativas graficas (Ctrl-S, Ctrl-N, Ctrl-O, Ctrl-V, Ctrl-X). **Abas** por arquivo, **F2** divide a area em 2 paineis lado a lado,
+mouse (clicar, arrastar para selecionar, duplo clique = palavra, triplo = linha, roda, botao direito = Recortar/Copiar/Colar/Desfazer), dialogos com campos, listas e botoes, numeros de linha e barra de estado. Detalhes: `doc/editor-spec.md`.
+
+## Editor de textos em janela de caracteres (1.41.2, substituido pelo grafico acima)
 
 ```
 fwMSX.exe --edit [arquivo [arquivo2]]      (janela; no Linux: fwmsx --edit --gui arquivo)
