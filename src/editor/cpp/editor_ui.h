@@ -110,6 +110,7 @@ public:
     int Active() const { return active_; }
     int DividerRows() const { return divider_; }
     bool QuitRequested() const { return quit_; }
+    void RequestExit() { ExecuteCmd(Cmd::Exit, 0); } // fechar a janela: o mesmo caminho de Alt-F X (pergunta por arquivos alterados)
     UiSettings &ui() { return ui_; }
     const UiSettings &ui() const { return ui_; }
     void SetConfigPaths(const std::string &main_cfg, const std::string &dir_cfg) { cfg_main_ = main_cfg; cfg_dir_ = dir_cfg; }

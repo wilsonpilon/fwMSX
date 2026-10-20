@@ -89,6 +89,7 @@
 #include "term/term_app.h"
 #include "tui/tui_app.h"
 #include "editor/cpp/editor_tui.h"
+#include "editor/gui/editor_window.h"
 #include "machine/cli.h"
 #include "tape/cli/cas_tool.h"
 #include "tapedb/cli.h"
@@ -112,6 +113,13 @@ void print_signature(const char* label, std::uint16_t signature) {
 // true quando este processo e' do subsistema janela E ficou ligado a um terminal interativo (entrada
 // do teclado nao redirecionada): ai' o console interativo nao funciona (ver main()).
 bool g_gui_on_terminal = false;
+
+// true no fwMSXc.exe: a copia do executavel com o subsistema "console" (o fwMSX.exe e' do subsistema "janela").
+bool IsConsoleExe() {
+    const auto *dos = reinterpret_cast<const IMAGE_DOS_HEADER *>(GetModuleHandleA(nullptr));
+    const auto *nt = reinterpret_cast<const IMAGE_NT_HEADERS *>(reinterpret_cast<const BYTE *>(dos) + dos->e_lfanew);
+    return nt->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
+}
 
 void attach_parent_console() {
     if (!AttachConsole(ATTACH_PARENT_PROCESS)) return; // fwMSXc.exe (console) ja' tem o seu
@@ -209,15 +217,24 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && (std::string(argv[1]) == "--edit" || std::string(argv[1]) == "--view")) {
         const bool as_view = std::string(argv[1]) == "--view";
         const std::vector<std::string> tokens(argv + 2, argv + argc);
-        bool dump = false;
-        for (const std::string &t : tokens) dump = dump || t == "--dump";
+        // Janela x terminal: --gui / --tui escolhem; sem eles, o fwMSX.exe (subsistema janela) abre a JANELA e o
+        // fwMSXc.exe (console) e o Linux abrem o TERMINAL. --dump e' sempre do terminal (imprime a tela e sai).
+        bool dump = false, want_gui = false, want_tui = false;
+        for (const std::string &t : tokens) {
+            dump = dump || t == "--dump";
+            want_gui = want_gui || t == "--gui";
+            want_tui = want_tui || t == "--tui";
+        }
+        bool use_gui = want_gui;
 #ifdef _WIN32
-        if (g_gui_on_terminal && !dump) {
-            std::cerr << "fwmsx " << argv[1] << ": use o fwMSXc.exe (versao de console) para o editor de textos:\n"
+        if (!want_gui && !want_tui && !dump) use_gui = !IsConsoleExe();
+        if (!use_gui && g_gui_on_terminal && !dump) {
+            std::cerr << "fwmsx " << argv[1] << " --tui: use o fwMSXc.exe (versao de console) para o editor no terminal:\n"
                          "  fwMSXc.exe " << argv[1] << " arquivo" << std::endl;
             return 2;
         }
 #endif
+        if (use_gui && !dump) return ed::RunEditorWindow(tokens, argv[0], as_view);
         return ed::RunEditorTui(tokens, argv[0], as_view);
     }
     // --mon / --mamute: o console ja' dentro do monitor Z80 (sem emulador = so' offline; com --attach <porta> tambem online)

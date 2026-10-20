@@ -175,3 +175,6 @@ Alt-B S na terceira vez recomeca o bloco; copiar/mover bloco deixam o cursor no 
 
 **E2 entregue na 1.41.1** (`fwMSXc --edit`/`--view`): `editor_ui.*` (aplicacao), `editor_dialogs.cpp` (caixas e ajuda), `editor_keys.*` (terminal -> tecla), `editor_tui.cpp` (FTXUI). Feito: menus abertos (Alt+letra/F10), F1=Help paginada, os dialogos do NE (arquivo, Find, Replace interativo, linha, indent, output,
 Text-layout/Print/Display/Mouse/Editor setup, Save configuration, saida, page breaks/tabs "starting at"), 2a janela com divisor e Window Differences, mouse, 5 esquemas de cor, `fwedit.cfg`. **Falta de E2**: `edit`/`view` dentro do console e da TUI de menus (so' `--edit`/`--view` por enquanto), `man editor`, conferir no terminal real (Alt/Ctrl+setas/mouse no Windows Terminal e no Linux).
+
+**E3 entregue na 1.41.2** (`fwMSX.exe --edit`/`--view` em janela): `src/editor/gui/editor_window.cpp` (ImGui/GLFW/OpenGL3), `editor_gui_input.*` (nomes de tecla e paleta RGB, sem OpenGL), `--gui`/`--tui` em `main.cpp`. A janela e' fina: teclado/mouse -> `EditorApp`, grade -> `ImDrawList`; ornamentos desenhados a mao; Alt sozinho abre o menu; area de transferencia do sistema.
+**Falta de E3**: zoom da fonte, icone, conferir mouse/Alt sozinho/AltGr numa janela de verdade, `edit`/`view` dentro do console e da TUI de menus, `man editor`.

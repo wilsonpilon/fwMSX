@@ -7,6 +7,18 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.2] - 2026-10-20 - "Hyper Sports: Editor em janela" (Konami)
+
+### Adicionado -- o editor de textos em JANELA (fase E3)
+- **`fwMSX.exe --edit [arquivo [arquivo2]]`** e **`--view arquivo`** abrem o editor numa janela (Dear ImGui + GLFW + OpenGL3), com a MESMA grade, os mesmos menus, dialogos, janelas, mouse e atalhos da TUI (e' o mesmo `ed::EditorApp`; a janela so' pinta a grade e traduz teclado/mouse). `--gui` / `--tui` escolhem a forma:
+  o `fwMSX.exe` abre a janela por padrao, o `fwMSXc.exe` e o Linux abrem o terminal (`--edit --gui` no Linux abre a janela).
+- **Teclado de verdade**: cada tecla chega com seus modificadores, entao **tudo do Norton Editor 2 funciona sem alternativa**: Ctrl-Enter, Ctrl-PgUp/PgDn, Ctrl-Home/End, Ctrl-Setas, Ctrl-2/Alt-2 (divisor das janelas), Ctrl-], Ctrl-Backspace, e **Alt sozinho abre a barra de menus** (a opcao "Alt alone selects menu" do NE).
+  AltGr (teclados internacionais) digita o caractere em vez de virar Ctrl+Alt.
+- **Desenho**: fonte de largura fixa do sistema (Consolas/Courier New, DejaVu/Liberation Mono; ou a embutida do ImGui) e os ornamentos (bordas simples e duplas, sombra pontilhada, setas, barra de rolagem, marcador de bloco) **desenhados a mao**, para nao depender de a fonte ter os glifos.
+  Os 5 esquemas de cor do NE em RGB (LCD, Color 1 azul, Color 2 ciano, VGA mono, mono), cursor de barra/bloco piscando, janela redimensionavel (a grade acompanha), titulo `fwEdit - arquivo *`.
+- **Area de transferencia do sistema**: copiar/recortar (Ctrl-Ins, Shift-Del) grava nela; colar (Shift-Ins) le' dela. Fechar a janela faz o mesmo que Alt-F X (pergunta por cada arquivo alterado).
+- `editor_gui_input` (sem OpenGL): nomes de tecla do teclado de verdade e a paleta RGB; testados em `editorui` (+17 verificacoes).
+
 ## [1.41.1] - 2026-10-20 - "Hyper Sports: Editor na TUI" (Konami)
 
 ### Adicionado -- o editor de textos no terminal (fase E2)

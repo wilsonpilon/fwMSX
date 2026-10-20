@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.2 -- "Hyper Sports: Editor em janela" (Konami) (2026-10-20)
+
+**Pedido do usuario**: "fase E3": o mesmo editor na janela (GUI), com os mesmos recursos e atalhos da TUI. O usuario testou a TUI (1.41.1) no terminal e disse que "funcionou bem".
+
+- **Arquitetura**: `src/editor/gui/editor_window.cpp` (ImGui/GLFW) so' faz tres coisas: (1) le' o teclado/mouse do ImGui e chama `EditorApp::Key/Text/MouseDown/...`; (2) pede a grade com `Render`; (3) desenha as celulas com `ImDrawList` (fundo por trecho de mesmo estilo, texto por trecho, ornamentos a mao). Nenhuma regra do editor mora na janela.
+- **Teclas**: `GuiKeyName(tecla, ctrl, alt, shift)` (editor_gui_input.cpp, testavel): letra/digito/pontuacao SEM Ctrl/Alt sao texto (vem da fila de caracteres do ImGui, que ja' trata Shift, acento e teclado internacional); Enter, Tab, setas, Home/End, PgUp/PgDn, Ins, Del, Backspace, Esc e F1-F12 sempre sao tecla.
+  Alt sozinho: apertar e soltar sem outra tecla nem clique = F10 (abre/fecha o menu). Ctrl+Alt = AltGr: so' texto.
+- **Roteamento** `--edit`/`--view` (main.cpp): `--gui`/`--tui` explicitos; sem eles, no Windows o subsistema do executavel decide (`IsConsoleExe`: le' o cabecalho PE; o `fwMSXc.exe` e' o mesmo programa com o subsistema "console"); no Linux o padrao e' o terminal. `--dump` e' sempre do terminal.
+  Sem a GUI compilada (`FWMSX_MSXDISK_GUI=OFF`) entra um stub que manda usar o terminal.
+- **Escolhas minhas** (a rever): fonte de 18 px e celula = largura de "M" x 1,2 da altura; piscar o cursor a cada 0,5 s; roda do mouse rola 3 linhas; `Display lines` nao tem efeito na janela (o tamanho e' o da janela); o icone da janela ainda nao foi posto; sem zoom da fonte (Ctrl+roda) por enquanto.
+- **Conferido**: a janela abre e desenha o menu File como o NE (captura com `tools/wincap/wincap.ps1`, que manda a tecla F10); o resto da interacao e' o mesmo codigo ja' testado (`editorui`). **Nao conferido em janela**: mouse, Alt sozinho e AltGr (so' o modelo e a traducao de teclas foram testados).
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 29/29 nos dois.
+- **Fora de escopo / proximos**: E4 destaque de sintaxe, E5 completar e snippets, E6 integracao (Executar no MSX, erros -> linha, projeto), E7 (Paragraph/Document format, Print, Outline, Load more...); `edit`/`view` dentro do console e da TUI de menus; zoom da fonte; icone; `man editor`; perfil fwEditor.
+
+---
+
 ## v1.41.1 -- "Hyper Sports: Editor na TUI" (Konami) (2026-10-20)
 
 **Pedido do usuario**: "fase E2" do editor de textos (`doc/editor-spec.md`): a tela do Norton Editor 2 na TUI com menus, dialogos, 2a janela e mouse, e os comandos `edit`/`view`. Replicar o MAXIMO do original (62 telas de referencia em `images/`).

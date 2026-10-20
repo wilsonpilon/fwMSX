@@ -1275,6 +1275,16 @@ continua tendo prioridade.
 **Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
 do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [romdb-spec.md](romdb-spec.md).
 
+## Editor de textos em janela (1.41.2, fase E3)
+
+```
+fwMSX.exe --edit [arquivo [arquivo2]]      (janela; no Linux: fwmsx --edit --gui arquivo)
+fwMSX.exe --view arquivo                   (janela, somente leitura)
+```
+
+E' o MESMO editor da TUI, numa janela: os mesmos menus, dialogos, duas janelas (F2) e mouse. A diferenca e' o teclado: na janela **todas as teclas do Norton Editor 2 funcionam** (Ctrl-Enter, Ctrl-PgUp, Ctrl-Home/End, Ctrl-Setas, Ctrl-2/Alt-2) e **apertar e soltar o Alt abre a barra de menus**.
+Copiar/recortar/colar (Ctrl-Ins, Shift-Del, Shift-Ins) usam a area de transferencia do sistema. Fechar a janela pergunta por cada arquivo alterado, como Alt-F X. `--tui` forca o terminal; `--gui` forca a janela.
+
 ## Editor de textos (1.41.1, fase E2 -- na TUI)
 
 Abra o editor no terminal com o executavel de console:

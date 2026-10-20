@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "../../src/editor/cpp/editor_gui_input.h"
 #include "../../src/editor/cpp/editor_keys.h"
 #include "../../src/editor/cpp/editor_ui.h"
 
@@ -452,6 +453,43 @@ void test_mouse() {
     check(m.MenuIndex() == static_cast<int>(ed::Menus().size()) - 1, "clicar em F1=Help abre o menu de ajuda");
 }
 
+void test_gui_input() {
+    using ed::GuiKey;
+    using ed::GuiKeyName;
+    // teclado "de verdade": as teclas do NE chegam todas, com os modificadores
+    check(GuiKeyName(GuiKey::W, true, false, false) == "C-w" && GuiKeyName(GuiKey::W, false, true, false) == "A-w", "Ctrl-W e Alt-W");
+    check(GuiKeyName(GuiKey::Enter, true, false, false) == "C-Enter" && GuiKeyName(GuiKey::Enter, false, false, false) == "Enter", "Ctrl-Enter distinto de Enter");
+    check(GuiKeyName(GuiKey::PgUp, true, false, false) == "C-PgUp" && GuiKeyName(GuiKey::Home, true, false, false) == "C-Home", "Ctrl-PgUp e Ctrl-Home");
+    check(GuiKeyName(GuiKey::D2, true, false, false) == "C-2" && GuiKeyName(GuiKey::D2, false, true, false) == "A-2", "Ctrl-2 e Alt-2");
+    check(GuiKeyName(GuiKey::RBracket, true, false, false) == "C-]", "Ctrl-]");
+    check(GuiKeyName(GuiKey::Backspace, true, false, false) == "C-BS" && GuiKeyName(GuiKey::Tab, false, false, true) == "S-Tab", "Ctrl-Backspace e Shift-Tab");
+    check(GuiKeyName(GuiKey::Left, true, false, true) == "C-S-Left" && GuiKeyName(GuiKey::F10, false, false, false) == "F10", "Ctrl-Shift-Esquerda e F10");
+    check(GuiKeyName(GuiKey::A, false, false, false).empty() && GuiKeyName(GuiKey::A, false, false, true).empty() && GuiKeyName(GuiKey::D5, false, false, false).empty() &&
+              GuiKeyName(GuiKey::Space, false, false, false).empty(),
+          "letra, digito e espaco sem Ctrl/Alt sao texto (vem da fila de caracteres)");
+    check(GuiKeyName(GuiKey::Del, false, false, false) == "Del" && GuiKeyName(GuiKey::Escape, false, false, false) == "Esc", "Del e Esc");
+    check(GuiKeyName(GuiKey::None, true, true, true).empty(), "tecla desconhecida");
+    // todo nome devolvido existe como tecla do modelo ou e' uma tecla de dialogo
+    ed::Editor e;
+    e.SetText("hello world");
+    e.SetCursor({0, 11});
+    e.Key(GuiKeyName(GuiKey::W, true, false, false));
+    check(e.Text() == "hello ", "o nome de Ctrl-W aciona o comando no modelo");
+    // paleta
+    bool all = true;
+    for (int scheme = 0; scheme < 5; ++scheme) {
+        for (int st = 0; st < ed::kStyleCount; ++st) {
+            const ed::PalRgb p = ed::PaletteRgb(scheme, static_cast<uint8_t>(st));
+            if (p.fg.r == p.bg.r && p.fg.g == p.bg.g && p.fg.b == p.bg.b && st != ed::kShadow) all = false; // texto invisivel
+        }
+    }
+    check(all, "paleta: todo estilo de todo esquema tem contraste (fundo != texto)");
+    const ed::PalRgb lcd = ed::PaletteRgb(0, ed::kBar);
+    check(lcd.bg.r == 170 && lcd.fg.r == 0, "LCD: barras pretas no cinza");
+    const ed::PalRgb blue = ed::PaletteRgb(1, ed::kText);
+    check(blue.bg.b == 170 && blue.fg.r == 255, "Color 1: texto branco no azul");
+}
+
 void test_view_app() {
     const fs::path dir = fs::temp_directory_path() / "fwmsx_editor_view_test";
     fs::remove_all(dir);
@@ -494,6 +532,7 @@ int main() {
     test_windows();
     test_mouse();
     test_view_app();
+    test_gui_input();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }
