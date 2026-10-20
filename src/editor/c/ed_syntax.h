@@ -41,6 +41,13 @@ int ed_word_start(const char *s, int len, int col);
 // Nota de um candidato do completar para o prefixo (Fortran): 0 = nao serve, 2 = prefixo em outra caixa, 3 = prefixo com a mesma caixa.
 int ed_match_score(const char *pre, int np, const char *cand, int nc);
 
+// Proximo indice de uma lista circular de `count` itens (Fortran): `cur` < 0 = ainda sem escolha (+1 -> primeiro, -1 -> ultimo); dir = +1 ou -1.
+int ed_cycle(int count, int cur, int dir);
+
+// Mensagem do montador/compilador no formato "arquivo, line N: texto": devolve 1 e preenche *name_end (fim do nome do arquivo),
+// *line (numero da linha, base 1) e *kind (1 = erro, 2 = aviso "Warning:"); 0 se a mensagem nao aponta para uma linha.
+int ed_build_msg(const char *s, int len, int *name_end, int *line, int *kind);
+
 #ifdef __cplusplus
 }
 #endif

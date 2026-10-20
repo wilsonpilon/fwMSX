@@ -115,6 +115,12 @@ const CmdInfo kInfos[] = {
     {Cmd::Outline, "outline", false, D::Outline, false},
     {Cmd::About, "about", false, D::About, true},
     {Cmd::Language, "language", false, D::Language, true},
+    {Cmd::Assemble, "assemble", false, D::None, true},
+    {Cmd::RunMsx, "run-msx", false, D::None, true},
+    {Cmd::NextError, "next-error", false, D::None, true},
+    {Cmd::PrevError, "prev-error", false, D::None, true},
+    {Cmd::ErrorList, "error-list", false, D::None, true},
+    {Cmd::HelpWord, "help-word", false, D::None, true},
     {Cmd::DisplaySetup, "display-setup", false, D::DisplaySetup, true},
     {Cmd::MouseSetup, "mouse-setup", false, D::MouseSetup, true},
     {Cmd::EditorSetup, "editor-setup", false, D::EditorSetup, true},
@@ -212,6 +218,15 @@ const std::vector<Menu> &Menus() {
              {"Editor...", 'e', "", Cmd::EditorSetup, 0, true, false},
              {"Save configuration...", 's', "", Cmd::SaveConfig, 0, false, false},
          }},
+        // O menu Build (fase E6): nao existe no NE; fica entre Options e F1=Help
+        {"Build", 'u', 59,
+         {
+             {"Assemble", 'a', "F9", Cmd::Assemble, 0, false, false},
+             {"Run on MSX", 'r', "F5", Cmd::RunMsx, 0, true, false},
+             {"Next message", 'n', "F8", Cmd::NextError, 0, false, false},
+             {"Previous message", 'p', "Shift-F8", Cmd::PrevError, 0, false, false},
+             {"Messages...", 'm', "", Cmd::ErrorList, 0, false, false},
+         }},
         // O menu "F1=Help" (so' abre por F1 ou pelo mouse; nao tem letra de Alt)
         {"F1=Help", 0, 70,
          {
@@ -224,6 +239,7 @@ const std::vector<Menu> &Menus() {
              {"Print", 'p', "", Cmd::Help, 6, false, false},
              {"View", 'v', "", Cmd::Help, 7, false, false},
              {"Options", 'o', "", Cmd::Help, 8, true, false},
+             {"On word", 'w', "Ctrl-F1", Cmd::HelpWord, 0, false, false},
              {"About", 'a', "", Cmd::About, 0, false, false},
          }},
     };
@@ -262,6 +278,9 @@ const std::vector<KeyBinding> &Bindings() {
         {"A-Up", Cmd::DividerUp, true}, {"A-Down", Cmd::DividerDown, true},
         {"F10", Cmd::MenuOpen, true},
         {"A-/", Cmd::Complete, true}, {"C-Space", Cmd::Complete, true},
+        // menu Build (fase E6)
+        {"F9", Cmd::Assemble, true}, {"F5", Cmd::RunMsx, true}, {"F8", Cmd::NextError, true}, {"S-F8", Cmd::PrevError, true},
+        {"C-F1", Cmd::HelpWord, true},
         // --- alternativas modernas (o Norton Editor nao tem) ---
         {"A-BS", Cmd::Undo, true}, {"A-S-BS", Cmd::Redo, true},
         {"C-Ins", Cmd::Copy, true}, {"S-Ins", Cmd::Paste, true}, {"S-Del", Cmd::Cut, true},

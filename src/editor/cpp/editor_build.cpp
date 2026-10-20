@@ -1,0 +1,241 @@
+// fwMSX -- editor de textos: menu Build (fase E6) -- montar o fonte do buffer, mensagens que levam a' linha, executar no MSX e a ajuda da
+// palavra sob o cursor. Codigo ORIGINAL do fwMSX (BSD-3-Clause). Ver doc/editor-spec.md.
+//
+// O editor monta o TEXTO DO BUFFER (nao o arquivo do disco): as mensagens refletem o que esta' na tela, mesmo sem salvar. Quem sabe rodar
+// na maquina e quem sabe o manual (`man`) entram por ganchos (SetRunHook/SetHelpHook), para o modelo continuar testavel sem emulador.
+#include "editor_ui.h"
+
+#include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <unordered_set>
+
+extern "C" {
+#include "../asm/ed_hash.h"
+#include "../c/ed_syntax.h"
+}
+#include "../../asm/cpp/assembler.h"
+
+namespace fs = std::filesystem;
+
+namespace ed {
+
+namespace {
+
+// Includes e incbin saem da pasta do fonte (o mesmo criterio do `asmrun`).
+class DiskFiles : public fwasm::FileProvider {
+public:
+    explicit DiskFiles(std::string dir) : dir_(std::move(dir)) {}
+    bool Read(const std::string &path, std::vector<uint8_t> &data) override { return ReadAll(path, data) || ReadAll(dir_ + path, data); }
+
+private:
+    static bool ReadAll(const std::string &p, std::vector<uint8_t> &data) {
+        std::ifstream f(p, std::ios::binary);
+        if (!f) return false;
+        data.assign(std::istreambuf_iterator<char>(f), std::istreambuf_iterator<char>());
+        return true;
+    }
+    std::string dir_;
+};
+
+bool IsBasicFamily(const Lang *l) {
+    if (!l) return false;
+    const std::string &id = l->Id();
+    return id.find("bas") != std::string::npos || id == "dignified"; // o $ de LEFT$ faz parte do nome
+}
+
+} // namespace
+
+// ---------------------------------------------------------------------------------------------------------------
+// a palavra sob o cursor
+// ---------------------------------------------------------------------------------------------------------------
+
+std::string Editor::WordAtCursor() const {
+    const std::string &s = lines_[static_cast<size_t>(cur_.line)];
+    const int len = static_cast<int>(s.size());
+    const int st = ed_word_start(s.data(), len, cur_.col);
+    const int end = ed_hl_ident_end(s.data(), len, st, IsBasicFamily(Language()) ? ED_ID_SUFFIX : 0);
+    if (end <= st) return {};
+    return s.substr(static_cast<size_t>(st), static_cast<size_t>(end - st));
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// montar
+// ---------------------------------------------------------------------------------------------------------------
+
+bool EditorApp::BuildAssemble() {
+    Editor &e = Ed();
+    if (!e.Language() || e.Language()->Id() != "z80asm") {
+        Msg("Assemble: this is not a Z80 assembly source (View > Language)");
+        return false;
+    }
+    const std::string path = e.Name();
+    const std::string name = path.empty() ? std::string("noname.asm") : fs::path(path).filename().string();
+    std::string dir;
+    if (!path.empty() && fs::path(path).has_parent_path()) dir = fs::path(path).parent_path().string() + "/";
+
+    DiskFiles files(dir);
+    fwasm::AsmOptions opts;
+    const fwasm::AsmResult r = fwasm::Assemble(name, e.Text(), opts, &files);
+
+    build_msgs_.clear();
+    build_cur_ = -1;
+    build_src_ = path;
+    build_name_ = name;
+    std::unordered_set<unsigned> seen; // o montador repete a mesma mensagem em varias passadas
+    int errors = 0, warnings = 0;
+    for (const std::string &m : r.msgs) {
+        const unsigned h = ed_hash_ci(reinterpret_cast<const unsigned char *>(m.data()), static_cast<int>(m.size()));
+        if (!seen.insert(h).second) continue;
+        BuildMsg b;
+        int name_end = 0, line = 0, kind = 0;
+        if (ed_build_msg(m.data(), static_cast<int>(m.size()), &name_end, &line, &kind)) {
+            b.file = m.substr(0, static_cast<size_t>(name_end));
+            b.line = line;
+            b.warning = kind == 2;
+            const size_t colon = m.find(':', static_cast<size_t>(name_end));
+            b.text = colon == std::string::npos ? m : m.substr(colon + 1);
+        } else {
+            b.text = m;
+            b.warning = m.rfind("Warning", 0) == 0;
+        }
+        while (!b.text.empty() && b.text.front() == ' ') b.text.erase(b.text.begin());
+        if (b.warning && b.text.rfind("Warning:", 0) == 0) {
+            b.text.erase(0, 8);
+            while (!b.text.empty() && b.text.front() == ' ') b.text.erase(b.text.begin());
+        }
+        (b.warning ? warnings : errors)++;
+        build_msgs_.push_back(b);
+    }
+
+    if (r.rc != 0 || errors > 0) {
+        size_t first = 0;
+        while (first < build_msgs_.size() && build_msgs_[first].warning) ++first;
+        if (first >= build_msgs_.size()) first = 0;
+        if (!build_msgs_.empty()) BuildGoto(static_cast<int>(first));
+        Msg("Assemble: " + std::to_string(errors) + " error(s), " + std::to_string(warnings) + " warning(s)  [" + std::to_string(first + 1) + "/" +
+            std::to_string(build_msgs_.size()) + "] " + (build_msgs_.empty() ? std::string() : build_msgs_[first].text));
+        return false;
+    }
+    size_t bytes = 0;
+    std::string kind = r.format.empty() ? "bin" : r.format;
+    for (const char *ext : {"rom", "com", "bin", "cas", "z80"}) {
+        const auto it = r.outs.find(ext);
+        if (it != r.outs.end()) {
+            bytes = it->second.size();
+            break;
+        }
+    }
+    Msg("Assemble OK: " + kind + ", " + std::to_string(bytes) + " bytes" + (warnings ? ", " + std::to_string(warnings) + " warning(s)" : std::string()));
+    return true;
+}
+
+bool EditorApp::BuildRun() {
+    if (!run_hook_) {
+        Msg("Run on MSX: only inside the fwMSX emulator window");
+        return false;
+    }
+    if (!BuildAssemble()) return false; // as mensagens e a linha do erro ja' estao na tela
+    Editor &e = Ed();
+    if (e.Name().empty() || e.Name().rfind("noname", 0) == 0) {
+        Msg("Run on MSX: save the file first (File > Save As)");
+        return false;
+    }
+    if (e.Modified()) { // o `asmrun` le' o arquivo do disco: o que esta' na tela precisa estar gravado
+        std::string err;
+        if (!e.Save(err, false)) {
+            Msg("Run on MSX: " + err);
+            return false;
+        }
+    }
+    const std::string res = run_hook_(e.Name());
+    if (!res.empty()) {
+        Msg(res);
+        return false;
+    }
+    Msg("Running on the MSX: " + fs::path(e.Name()).filename().string());
+    if (embedded_) hide_request_ = true; // a janela do editor sai da frente para ver o programa rodar
+    return true;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// mensagens
+// ---------------------------------------------------------------------------------------------------------------
+
+void EditorApp::BuildGoto(int i) {
+    if (i < 0 || i >= static_cast<int>(build_msgs_.size())) return;
+    build_cur_ = i;
+    const BuildMsg &m = build_msgs_[static_cast<size_t>(i)];
+    const std::string tag = "[" + std::to_string(i + 1) + "/" + std::to_string(build_msgs_.size()) + "] " + (m.warning ? "Warning: " : "") + m.text;
+    if (m.line <= 0) {
+        Msg(tag);
+        return;
+    }
+    const fs::path src(build_src_);
+    int target = -1;
+    if (m.file.empty() || m.file == build_name_) {
+        for (int w = 0; w < WindowCount(); ++w) {
+            if (!build_src_.empty() && Win(w).Name() == build_src_) target = w;
+        }
+        if (target < 0) target = active_;
+    } else { // um .include: abre a aba se ainda nao esta' aberta (so' na janela grafica; na TUI as duas janelas sao do usuario)
+        const std::string inc = (src.has_parent_path() ? src.parent_path() / m.file : fs::path(m.file)).string();
+        for (int w = 0; w < WindowCount(); ++w) {
+            std::error_code ec;
+            if (Win(w).Name() == inc || (!Win(w).Name().empty() && fs::equivalent(Win(w).Name(), inc, ec))) target = w;
+        }
+        if (target < 0 && gui_mode_) {
+            std::string err;
+            if (OpenTab(inc, err)) target = active_;
+        }
+        if (target < 0) {
+            Msg(m.file + ":" + std::to_string(m.line) + " " + tag);
+            return;
+        }
+    }
+    SetActive(target);
+    Editor &e = Ed();
+    e.SetCursor({std::max(0, std::min(m.line - 1, e.LineCount() - 1)), 0});
+    Msg(tag);
+}
+
+void EditorApp::BuildStep(int dir) {
+    if (build_msgs_.empty()) {
+        Msg("No messages (Build > Assemble)");
+        return;
+    }
+    BuildGoto(ed_cycle(static_cast<int>(build_msgs_.size()), build_cur_, dir));
+}
+
+void EditorApp::BuildErrors() {
+    if (build_msgs_.empty()) {
+        Msg("No messages (Build > Assemble)");
+        return;
+    }
+    ShowDialog(Dialog::Errors);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// ajuda da palavra
+// ---------------------------------------------------------------------------------------------------------------
+
+bool EditorApp::HelpOnWord() {
+    if (!help_hook_) {
+        Msg("Help: the manual is not attached");
+        return false;
+    }
+    const std::string word = Ed().WordAtCursor();
+    if (word.empty()) {
+        Msg("Help: put the cursor on a word");
+        return false;
+    }
+    const std::string text = help_hook_(word);
+    if (text.empty()) {
+        Msg("No manual page for '" + word + "'");
+        return false;
+    }
+    BuildReference(word, text);
+    return true;
+}
+
+} // namespace ed

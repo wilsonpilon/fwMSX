@@ -700,6 +700,7 @@ set(EDITOR_LIB_SOURCES
         src/editor/cpp/syntax_langs.cpp
         src/editor/cpp/editor_syntax.cpp
         src/editor/cpp/editor_complete.cpp
+        src/editor/cpp/editor_build.cpp # menu Build: monta o buffer pelo fwasm
         src/editor/cpp/completion.cpp
         src/editor/c/ed_text.c
         src/editor/c/ed_syntax.c
@@ -707,6 +708,7 @@ set(EDITOR_LIB_SOURCES
         src/editor/fortran/ed_number.f90
         src/editor/asm/ed_indent.asm
         src/editor/asm/ed_hash.asm
+        ${FWASM_LIB_SOURCES}
 )
 add_executable(edittest tests/editor/editor_test.cpp ${EDITOR_LIB_SOURCES})
 set_target_properties(edittest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/edittest)
@@ -926,7 +928,7 @@ add_executable(fwMSX
         ${FWASM_LIB_SOURCES} src/asm/cpp/cli.cpp
         ${TERM_LIB_SOURCES}
         ${TUI_LIB_SOURCES}
-        ${EDITOR_LIB_SOURCES} src/editor/cpp/editor_tui.cpp
+        ${EDITOR_LIB_SOURCES} src/editor/cpp/editor_tui.cpp src/editor/cpp/editor_host.cpp
         ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}

@@ -8,6 +8,7 @@
 #include <string>
 
 #include "../cpp/editor_gui_input.h"
+#include "../cpp/editor_host.h"
 #include "../cpp/editor_i18n.h"
 
 namespace ed::gui {
@@ -140,6 +141,7 @@ ImFont *LoadMonoFont(ImGuiIO &io, float size) {
 
 EditorPanel::EditorPanel() {
     app_.SetGuiMode(true);
+    AttachManHelp(app_);
 }
 
 void EditorPanel::LoadFont(ImGuiIO &io, float size) {

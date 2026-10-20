@@ -9,7 +9,9 @@ std::string Tr(const std::string &en) {
     static const std::unordered_map<std::string, std::string> kPt = {
         // --- menus ---
         {"File", "Arquivo"}, {"Block", "Bloco"}, {"Text-layout", "Texto"}, {"Search", "Busca"}, {"Print", "Imprimir"},
-        {"View", "Exibir"}, {"Options", "Opcoes"}, {"F1=Help", "Ajuda"},
+        {"View", "Exibir"}, {"Options", "Opcoes"}, {"F1=Help", "Ajuda"}, {"Build", "Montar"},
+        {"Assemble", "Montar (assemble)"}, {"Run on MSX", "Executar no MSX"}, {"Next message", "Proxima mensagem"},
+        {"Previous message", "Mensagem anterior"}, {"Messages...", "Mensagens..."}, {"On word", "Sobre a palavra"},
         // File
         {"New", "Novo"}, {"Open...", "Abrir..."}, {"Save", "Salvar"}, {"Save As...", "Salvar como..."}, {"Merge...", "Mesclar..."},
         {"2nd window...", "Dividir (2a janela)..."}, {"Close window", "Fechar janela"}, {"Load more", "Carregar mais"},

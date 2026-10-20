@@ -111,3 +111,24 @@ int ed_word_start(const char *s, int len, int col) {
     while (col > 0 && ed_hl_ident_char((unsigned char)s[col - 1])) --col;
     return col;
 }
+
+int ed_build_msg(const char *s, int len, int *name_end, int *line, int *kind) {
+    /* procura a ULTIMA ocorrencia de ", line <digitos>:" -- o nome do arquivo pode ter virgula */
+    for (int i = len - 7; i >= 0; --i) {
+        if (s[i] != ',' || s[i + 1] != ' ' || s[i + 2] != 'l' || s[i + 3] != 'i' || s[i + 4] != 'n' || s[i + 5] != 'e' || s[i + 6] != ' ') continue;
+        int j = i + 7, v = 0, digits = 0;
+        while (j < len && s[j] >= '0' && s[j] <= '9' && digits < 9) {
+            v = v * 10 + (s[j] - '0');
+            ++j;
+            ++digits;
+        }
+        if (digits == 0 || j >= len || s[j] != ':') continue;
+        *name_end = i;
+        *line = v;
+        *kind = (j + 10 < len && s[j + 1] == ' ' && s[j + 2] == 'W' && s[j + 3] == 'a' && s[j + 4] == 'r' && s[j + 5] == 'n' && s[j + 6] == 'i' &&
+                 s[j + 7] == 'n' && s[j + 8] == 'g' && s[j + 9] == ':') ? 2 : 1;
+        return 1;
+    }
+    return 0;
+}
+

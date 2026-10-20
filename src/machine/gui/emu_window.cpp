@@ -576,6 +576,11 @@ int RunEmulatorWindow(const WindowOptions &options) {
         return !SaveScreenshotPng(*machine, error, path).empty();
     };
     control::Commander ctl_commander(ctl_host);
+    // Build > Run on MSX do editor: o mesmo `asmrun` do console (monta o arquivo gravado, carrega e entrega os simbolos ao depurador)
+    editor_panel.app().SetRunHook([&ctl_commander](const std::string &path) -> std::string {
+        const control::Result res = ctl_commander.Execute("asmrun \"" + path + "\"");
+        return res.ok ? std::string() : res.text;
+    });
     control::Server ctl_server;
     // Arquivos fwmsx.port (pasta do executavel e pasta de trabalho): apagados ao sair, para uma
     // ferramenta nao tentar uma porta que ja' fechou.

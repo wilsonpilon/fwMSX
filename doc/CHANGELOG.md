@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.9] - 2026-10-20 - "Hyper Sports: Montar e executar" (Konami)
+
+### Adicionado -- fase E6 do editor (primeira parte): menu Build e ajuda da palavra
+- **Menu Build** (Alt-U; "Montar" em portugues) entre Options e F1=Help, tanto na TUI quanto na janela: **Assemble** (`F9`), **Run on MSX** (`F5`), **Next message** (`F8`), **Previous message** (`Shift-F8`) e **Messages...**.
+- **Assemble** monta o TEXTO DO BUFFER pelo fwasm (nao o arquivo do disco): as mensagens refletem o que esta' na tela, mesmo sem salvar; `.include`/`.incbin` saem da pasta do fonte. Erros e avisos viram uma lista de mensagens com arquivo e linha; o cursor vai para a linha do **primeiro erro** (pula os avisos) e a barra de estado mostra `Assemble: 1 error(s), 2 warning(s)  [3/3] texto`. Sem erro: `Assemble OK: rom, 16384 bytes`. So' vale para fontes Z80 (outra linguagem avisa).
+- **F8 / Shift-F8** andam pela lista (circular) e levam o cursor a' linha; **Messages...** abre a lista inteira (`E`/`W` + arquivo:linha + texto) e Enter vai para a linha escolhida. Mensagem de um `.include`: a janela abre a aba do arquivo; na TUI (so' 2 janelas, ambas do usuario) mostra `arquivo:linha` na barra.
+- **Run on MSX** monta, grava o arquivo se estiver alterado e manda o mesmo `asmrun` do console carregar o resultado na maquina (ROM/MegaROM como cartucho, `.basic` por fita, `.msxdos` num disco), com simbolos e arquivo:linha no depurador; a janela do editor sai da frente para o programa rodar. Com erro de montagem nao executa. So' existe no editor embutido no emulador (sem maquina o item fica cinza).
+- **Help > On word** (`Ctrl-F1`): abre a pagina do `man` da palavra sob o cursor (`LEFT$`, `CHPUT`, `LDIR`... as 554 rotinas da BIOS e os comandos do BASIC), numa caixa de leitura rolavel; palavra sem pagina avisa.
+- Nucleo nas 4 linguagens: **C** `ed_build_msg` (le' "arquivo, line N: texto", erro ou aviso), **Fortran** `ed_cycle` (indice circular), **NASM** `ed_hash_ci` (tira as mensagens repetidas das varias passadas do montador), **C++** `editor_build.cpp`, `editor_host.cpp`.
+- Testes: `editorui` ganhou `test_build` (parser, ciclo, montar bom e com erro, F8/Shift-F8, lista, executar com gancho, erro do gancho, ajuda da palavra).
+
 ## [1.41.8] - 2026-10-20 - "Hyper Sports: Completar e snippets" (Konami)
 
 ### Adicionado -- fase E5 do editor: completar palavras e snippets

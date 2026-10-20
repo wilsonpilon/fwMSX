@@ -4,6 +4,7 @@
 // cores. Por isso tudo aqui e' testavel com texto puro.
 #pragma once
 
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -93,9 +94,25 @@ struct DialogBox {
 // A aplicacao
 // ---------------------------------------------------------------------------------------------------------------
 
+// Uma mensagem do montador apontando (ou nao) para uma linha de um fonte.
+struct BuildMsg {
+    std::string file;   // o nome como o montador o escreveu ("jogo.asm", "inc/x.inc"); vazio se a mensagem nao traz arquivo
+    int line = 0;       // base 1; 0 = mensagem geral
+    bool warning = false;
+    std::string text;   // so' o texto, sem "arquivo, line N:"
+};
+
 class EditorApp {
 public:
     EditorApp();
+
+    // --- menu Build (fase E6) ---
+    // Ganchos do hospedeiro: `run` recebe o caminho do .asm ja' gravado e devolve "" se rodou, ou a mensagem de erro; `help` recebe a
+    // palavra e devolve o texto do manual (vazio = sem pagina). Sem gancho o item fica cinza / avisa. O editor nao conhece a maquina nem o `man`.
+    void SetRunHook(std::function<std::string(const std::string &)> f) { run_hook_ = std::move(f); }
+    void SetHelpHook(std::function<std::string(const std::string &)> f) { help_hook_ = std::move(f); }
+    const std::vector<BuildMsg> &BuildMessages() const { return build_msgs_; }
+    int BuildCurrent() const { return build_cur_; }
 
     // --- abrir/estado ---
     bool Open(const std::string &path, std::string &err, bool view = false); // primeira janela (ou a ativa)
@@ -222,6 +239,15 @@ private:
     void SaveConfigNow(bool this_dir);
     bool SaveActive();
     void ContinueAfterConfirm();
+    // menu Build (editor_build.cpp)
+    bool BuildAssemble();
+    bool BuildRun();
+    void BuildStep(int dir);
+    void BuildGoto(int i);
+    void BuildErrors();
+    void BuildMessagesDialog();
+    bool HelpOnWord();
+    void BuildReference(const std::string &title, const std::string &text);
 
     std::vector<Editor> wins_;
     int active_ = 0;
@@ -260,6 +286,13 @@ private:
     bool dragging_ = false;
     Pos drag_anchor_;
     int drag_win_ = 0;
+    // menu Build
+    std::vector<BuildMsg> build_msgs_;
+    int build_cur_ = -1;
+    std::string build_name_;    // o nome com que o montador viu o fonte (as mensagens do proprio fonte trazem este nome)
+    std::string build_src_;     // arquivo montado por ultimo (caminho completo; vazio = buffer sem nome)
+    std::function<std::string(const std::string &)> run_hook_;
+    std::function<std::string(const std::string &)> help_hook_;
 };
 
 } // namespace ed

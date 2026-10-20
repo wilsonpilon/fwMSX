@@ -32,6 +32,7 @@ bool IsAppCmd(Cmd c) {
     switch (c) {
     case Cmd::Window2: case Cmd::CloseWindow: case Cmd::DividerUp: case Cmd::DividerDown: case Cmd::WindowDiff:
     case Cmd::New: case Cmd::Exit: case Cmd::Outline: case Cmd::Print: case Cmd::PrintBlock: case Cmd::EjectPage:
+    case Cmd::Assemble: case Cmd::RunMsx: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord:
         return true;
     default:
         return false;
@@ -500,6 +501,24 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         confirm_purpose_ = 1;
         NextExitStep();
         return true;
+    case Cmd::Assemble:
+        BuildAssemble();
+        return true;
+    case Cmd::RunMsx:
+        BuildRun();
+        return true;
+    case Cmd::NextError:
+        BuildStep(+1);
+        return true;
+    case Cmd::PrevError:
+        BuildStep(-1);
+        return true;
+    case Cmd::ErrorList:
+        BuildErrors();
+        return true;
+    case Cmd::HelpWord:
+        HelpOnWord();
+        return true;
     case Cmd::Outline:
     case Cmd::Print:
     case Cmd::PrintBlock:
@@ -518,6 +537,9 @@ bool EditorApp::Enabled(const MenuItem &it) const {
     if (it.cmd == Cmd::CloseWindow) return gui_mode_ ? (split_ || wins_.size() > 1) : wins_.size() > 1;
     if (it.cmd == Cmd::WindowDiff) return gui_mode_ ? split_ : wins_.size() > 1;
     if (it.cmd == Cmd::Window2) return true;
+    if (it.cmd == Cmd::RunMsx) return static_cast<bool>(run_hook_);
+    if (it.cmd == Cmd::HelpWord) return static_cast<bool>(help_hook_);
+    if (it.cmd == Cmd::NextError || it.cmd == Cmd::PrevError) return !build_msgs_.empty();
     if (it.cmd == Cmd::New || it.cmd == Cmd::Exit) return !(Ed().ReadOnly() && it.cmd == Cmd::New);
     if (it.cmd == Cmd::Outline || it.cmd == Cmd::Print || it.cmd == Cmd::PrintBlock || it.cmd == Cmd::EjectPage) return false;
     return Ed().ItemEnabled(it);
@@ -792,6 +814,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::DisplaySetup: BuildDisplay(); break;
     case Dialog::MouseSetup: BuildMouse(); break;
     case Dialog::Language: BuildLanguage(); break;
+    case Dialog::Errors: BuildMessagesDialog(); break;
     case Dialog::EditorSetup: BuildEditorSetup(); break;
     case Dialog::SaveConfig: BuildSaveConfig(); break;
     case Dialog::Help: BuildHelp(arg, 0); break;
@@ -1059,6 +1082,13 @@ void EditorApp::DialogDone(int button) {
         SetSize(cols_, rows_);
         break;
     }
+    case Dialog::Errors: {
+        const Widget *l = done.Find(2);
+        if (button == kBtnOk && l) BuildGoto(l->sel);
+        break;
+    }
+    case Dialog::Reference:
+        break;
     case Dialog::Language: {
         const Widget *l = done.Find(2);
         const int sel = l ? l->sel : 0;

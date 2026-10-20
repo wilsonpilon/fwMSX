@@ -17,6 +17,18 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.9 -- "Hyper Sports: Montar e executar" (Konami) (2026-10-20)
+
+**Pedido do usuario**: "sim pode seguir por a E6". A E6 do `editor-spec.md` (Integracao) e' grande; esta versao entrega a parte que usa o que o fwMSX ja' tem (fwasm, `asmrun`, `man`) e deixa o projeto `.msxproject` para a proxima.
+- **Modelo**: o editor NAO conhece a maquina nem o `man`: `EditorApp::SetRunHook` (recebe o caminho do `.asm` gravado, devolve "" ou a mensagem de erro) e `SetHelpHook` (palavra -> texto). Quem liga: `emu_window.cpp` (Run = `ctl_commander.Execute("asmrun ...")`) e `editor_host.cpp` (`AttachManHelp`, so' no executavel). Os testes usam ganchos falsos.
+- **Montar o buffer, nao o disco**: `fwasm::Assemble(nome, texto, ...)` com um provedor de arquivos da pasta do fonte. O fwasm PARA no primeiro erro (como o asMSX), por isso a lista tem quase sempre um erro e varios avisos.
+- **Mensagens**: `BuildMsg{file, line, warning, text}`; `ed_build_msg` (C) reconhece "arquivo, line N: ..." procurando o ULTIMO ", line N:" (o nome do arquivo pode ter virgula) e distingue "Warning:". Mensagens gerais ("Parsing error", "only 2 out of 4 megaROM pages") ficam na lista sem linha.
+- **Escolhas minhas** (a rever): `F9`/`F5`/`F8`/`Shift-F8`/`Ctrl-F1` como teclas (nao ha' NE para copiar; `Ctrl-F1` depende do terminal entregar F-keys com Ctrl, a janela entrega sempre; o menu Help > On word e' a alternativa); o Run grava o arquivo sem refazer o `.bak`; a janela do editor embutido se esconde ao executar; "Build" so' monta Assembly (BASIC nao tem o que montar; o MSXBAS2ROM/NestorBASIC/Kizuna entram com o projeto).
+- **Nao feito da E6**: projeto `.msxproject` (SQLite) com receita/`Obifile`; simbolos do projeto no completar; menus Sprites/Telas/Draw/Som/Musica (dependem dos editores visuais); `man editor`.
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 30/30; captura da janela real (`fwMSX.exe --edit t.asm`, F9 leva o cursor ao erro) e do `fwMSXc.exe --edit --dump` com Ctrl-F1 abrindo a pagina de `LEFT$`.
+
+---
+
 ## v1.41.8 -- "Hyper Sports: Completar e snippets" (Konami) (2026-10-20)
 
 **Pedido do usuario**: "pode passar para a fase E5" (completar e snippets) e "precisa ter numeracao de linhas nos editores, coisa que o NE nao possuia".

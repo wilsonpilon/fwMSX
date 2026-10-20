@@ -168,4 +168,19 @@ contains
         if (same_case) score = 3
     end function ed_match_score
 
+    ! Proximo indice de uma lista circular de `count` itens (base 0) a partir de `cur`, andando `dir` (+1 ou -1). cur < 0 = ainda nao
+    ! escolhido: +1 vai ao primeiro e -1 ao ultimo. Usado pelo "proxima/anterior mensagem" do menu Build.
+    function ed_cycle(count, cur, dir) result(idx) bind(c, name="ed_cycle")
+        integer(c_int), value :: count, cur, dir
+        integer(c_int) :: idx
+
+        idx = 0
+        if (count < 1) return
+        if (cur < 0 .or. cur >= count) then
+            if (dir < 0) idx = count - 1
+            return
+        end if
+        idx = modulo(cur + dir, count)
+    end function ed_cycle
+
 end module mod_ed_number

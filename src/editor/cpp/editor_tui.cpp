@@ -1,5 +1,6 @@
 // fwMSX -- editor de textos na TUI (FTXUI). Ver editor_tui.h.
 #include "editor_tui.h"
+#include "editor_host.h"
 
 #include <atomic>
 #include <chrono>
@@ -173,6 +174,7 @@ Element BuildView(const Grid &g, int scheme, bool have_cursor, int cx, int cy, b
 
 int RunEditorTui(const std::vector<std::string> &args, const std::string &argv0, bool as_view) {
     EditorApp app;
+    ed::AttachManHelp(app);
     std::vector<std::string> files;
     std::string keys;
     std::string cfg;

@@ -105,6 +105,8 @@ enum class Cmd {
     Print, PrintBlock, EjectPage, PrintSetup,
     // menu View
     Information, Outline, About, Language,
+    // menu Build (fase E6): montar o fonte do buffer, executar no MSX, navegar pelas mensagens, ajuda da palavra
+    Assemble, RunMsx, NextError, PrevError, ErrorList, HelpWord,
     // menu Options
     DisplaySetup, MouseSetup, EditorSetup, SaveConfig,
     // ajuda e menu
@@ -114,7 +116,7 @@ enum class Cmd {
 enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
     InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
-    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language
+    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference
 };
 
 struct CmdInfo {
@@ -214,6 +216,7 @@ public:
     void NewFile();
     void SetText(const std::string &text);              // troca o conteudo (EOL interno: '\n')
     std::string Text() const;                           // o conteudo com '\n' entre as linhas
+    std::string WordAtCursor() const;                   // a palavra sob o cursor (ou logo antes dele); vazio se nao ha'
 
     // --- resultados de dialogos ------------------------------------------------------------------------------------
     Dialog TakeDialog();                                // o dialogo pedido pelo ultimo comando (e limpa)

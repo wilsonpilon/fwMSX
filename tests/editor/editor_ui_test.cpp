@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "../../src/editor/c/ed_syntax.h"
 #include "../../src/editor/cpp/editor_gui_input.h"
 #include "../../src/editor/cpp/editor_i18n.h"
 #include "../../src/editor/cpp/editor_keys.h"
@@ -1044,6 +1045,114 @@ void test_complete_and_numbers() {
     fs::remove_all(dir);
 }
 
+bool menu_item_enabled(EditorApp &app, ed::Cmd cmd) {
+    for (const ed::Menu &m : ed::Menus()) {
+        for (const ed::MenuItem &it : m.items) {
+            if (it.cmd == cmd) return app.MenuItemEnabled(it);
+        }
+    }
+    return false;
+}
+
+void test_build() {
+    // o parser de mensagens (C) e o ciclo (Fortran)
+    int ne = 0, ln = 0, kd = 0;
+    const std::string m1 = "jogo.asm, line 12: Undefined identifier";
+    check(ed_build_msg(m1.data(), static_cast<int>(m1.size()), &ne, &ln, &kd) == 1 && ne == 8 && ln == 12 && kd == 1, "ed_build_msg: erro com arquivo e linha");
+    const std::string m2 = "a, b.asm, line 3: Warning: algo";
+    check(ed_build_msg(m2.data(), static_cast<int>(m2.size()), &ne, &ln, &kd) == 1 && ne == 8 && ln == 3 && kd == 2, "ed_build_msg: aviso; virgula no nome do arquivo");
+    const std::string m3 = "Warning: only 2 out of 4 megaROM pages are defined";
+    check(ed_build_msg(m3.data(), static_cast<int>(m3.size()), &ne, &ln, &kd) == 0, "ed_build_msg: mensagem geral nao aponta para linha");
+    check(ed_cycle(3, -1, 1) == 0 && ed_cycle(3, -1, -1) == 2 && ed_cycle(3, 2, 1) == 0 && ed_cycle(3, 0, -1) == 2 && ed_cycle(0, 0, 1) == 0, "ed_cycle: circular");
+
+    const fs::path dir = fs::temp_directory_path() / "fwedit_e6";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+
+    // montar o buffer: bom e com erros
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.Ed().SetLanguage(ed::LangById("z80asm"), true);
+    a.Ed().SetText(" org #4000\n ld a,1\n ret\n");
+    K(a, {"F9"});
+    check(a.Ed().Message().rfind("Assemble OK", 0) == 0 && a.BuildMessages().empty(), "F9: monta o buffer sem erros");
+    // dois avisos (linhas 2 e 3) e um erro (linha 4): o fwasm para no primeiro erro
+    a.Ed().SetText(" org #4000\n ld a,300\n ld b,-200\n ld a,undef_one\n ret\n");
+    K(a, {"F9"});
+    check(a.BuildMessages().size() == 3 && a.BuildMessages()[0].warning && a.BuildMessages()[0].line == 2 && !a.BuildMessages()[2].warning &&
+              a.BuildMessages()[2].line == 4 && a.BuildMessages()[2].file == "noname.asm",
+          "F9: avisos e erro viram mensagens com arquivo e linha");
+    check(a.BuildCurrent() == 2 && a.Ed().Cursor().line == 3 && a.Ed().Message().find("1 error(s), 2 warning(s)") != std::string::npos,
+          "o cursor vai para a linha do primeiro ERRO (pula os avisos)");
+    K(a, {"F8"});
+    check(a.BuildCurrent() == 0 && a.Ed().Cursor().line == 1, "F8: proxima mensagem (volta ao comeco da lista)");
+    K(a, {"S-F8"});
+    check(a.BuildCurrent() == 2 && a.Ed().Cursor().line == 3, "Shift-F8: mensagem anterior (circular)");
+    K(a, {"A-u"});
+    check(a.BarActive() && screen_has(a, "Run on MSX") && screen_has(a, "Messages..."), "Alt-U abre o menu Build");
+    K(a, {"Esc"});
+    K(a, {"A-u", "m"});
+    check(a.HasDialog() && screen_has(a, "Build messages") && screen_has(a, "undefined identifier"), "Build > Messages... lista as mensagens");
+    K(a, {"Up", "Enter"});
+    check(!a.HasDialog() && a.BuildCurrent() == 1 && a.Ed().Cursor().line == 2, "Enter na lista vai para a linha escolhida");
+
+    // outra linguagem: avisa
+    EditorApp b;
+    b.SetSize(80, 25);
+    b.Ed().SetLanguage(ed::LangById("msxbasic"), true);
+    b.Ed().SetText("10 PRINT LEFT$(A$,1)");
+    K(b, {"F9"});
+    check(b.Ed().Message().find("not a Z80") != std::string::npos, "F9 num fonte BASIC avisa");
+    K(b, {"F8"});
+    check(b.Ed().Message().find("No messages") != std::string::npos, "F8 sem mensagens avisa");
+
+    // executar: sem gancho o item fica desligado; com gancho grava, monta e chama
+    check(!b.BuildMessages().size() && !menu_item_enabled(b, ed::Cmd::RunMsx), "Run on MSX: desligado sem gancho");
+    EditorApp c;
+    c.SetSize(80, 25);
+    c.SetEmbedded(true);
+    std::string got;
+    c.SetRunHook([&](const std::string &p) { got = p; return std::string(); });
+    check(menu_item_enabled(c, ed::Cmd::RunMsx), "Run on MSX: ligado com gancho");
+    const fs::path src = dir / "jogo.asm";
+    spit(src, " org #4000\n ret\n");
+    std::string err;
+    check(c.Open(src.string(), err), "abre o fonte");
+    c.Ed().SetLanguage(ed::LangById("z80asm"), true);
+    c.Ed().SetText(" org #4000\n ld a,2\n ret\n");
+    c.Ed().MarkModified();
+    K(c, {"F5"});
+    check(got == c.Ed().Name() && slurp(src).find("ld a,2") != std::string::npos, "F5: grava o buffer e entrega o caminho ao gancho");
+    check(c.TakeHideRequest(), "F5: a janela do editor sai da frente (embutido)");
+    c.Ed().SetText(" bogus\n");
+    got.clear();
+    K(c, {"F5"});
+    check(got.empty() && !c.TakeHideRequest(), "F5 com erro de montagem nao executa");
+    c.SetRunHook([&](const std::string &) { return std::string("sem maquina"); });
+    c.Ed().SetText(" ret\n");
+    K(c, {"F5"});
+    check(c.Ed().Message() == "sem maquina", "o erro do gancho vai para a barra de mensagens");
+
+    // ajuda da palavra
+    EditorApp d;
+    d.SetSize(80, 25);
+    d.Ed().SetLanguage(ed::LangById("msxbasic"), true);
+    d.Ed().SetText("10 PRINT LEFT$(A$,1)");
+    d.Ed().SetCursor({0, 12});
+    K(d, {"C-F1"});
+    check(d.Ed().Message().find("not attached") != std::string::npos, "Ctrl-F1 sem manual avisa");
+    std::string asked;
+    d.SetHelpHook([&](const std::string &w) { asked = w; return w == "LEFT$" ? std::string("LEFT$(texto,n)\nPega os n primeiros caracteres.") : std::string(); });
+    K(d, {"C-F1"});
+    check(asked == "LEFT$" && d.HasDialog() && screen_has(d, "Pega os n primeiros"), "Ctrl-F1: abre a pagina da palavra sob o cursor (BASIC com $)");
+    K(d, {"Esc"});
+    d.Ed().SetCursor({0, 3});
+    K(d, {"C-F1"});
+    check(!d.HasDialog() && d.Ed().Message().find("No manual page") != std::string::npos, "palavra sem pagina avisa");
+
+    fs::remove_all(dir);
+}
+
 int main() {
     test_key_names();
     test_menus();
@@ -1061,6 +1170,7 @@ int main() {
     test_model_extras();
     test_translation();
     test_complete_and_numbers();
+    test_build();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

@@ -836,6 +836,47 @@ void EditorApp::BuildLanguage() {
     dlg_.BuildFields();
 }
 
+// A lista das mensagens do montador (Build > Messages...): Enter vai para a linha da mensagem escolhida.
+void EditorApp::BuildMessagesDialog() {
+    dlg_ = DialogBox();
+    dlg_.kind = Dialog::Errors;
+    dlg_.title = "Build messages";
+    dlg_.w = std::min(cols_ - 2, 76);
+    dlg_.h = 17;
+    Widget list = ListW(2, 2, 1, dlg_.w - 6, 12, "");
+    for (const BuildMsg &m : build_msgs_) {
+        std::string where = m.line > 0 ? (m.file.empty() ? std::string() : m.file + ":") + std::to_string(m.line) : std::string("-");
+        list.items.push_back((m.warning ? "W " : "E ") + where + "  " + m.text);
+    }
+    list.sel = std::max(0, build_cur_);
+    list.top = std::max(0, list.sel - 5);
+    dlg_.ws.push_back(list);
+    OkCancel(dlg_, 14);
+    dlg_.BuildFields();
+}
+
+// O texto de uma pagina do manual (o `man`), so' para ler: a lista rola com as setas e PgUp/PgDn.
+void EditorApp::BuildReference(const std::string &title, const std::string &text) {
+    dlg_ = DialogBox();
+    dlg_.kind = Dialog::Reference;
+    dlg_.title = "Manual: " + title;
+    dlg_.w = std::min(cols_ - 2, 78);
+    dlg_.h = std::max(10, std::min(rows_ - 2, 24));
+    Widget list = ListW(2, 2, 1, dlg_.w - 6, dlg_.h - 5, "");
+    size_t pos = 0;
+    while (pos <= text.size()) {
+        size_t nl = text.find('\n', pos);
+        if (nl == std::string::npos) nl = text.size();
+        std::string line = text.substr(pos, nl - pos);
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        list.items.push_back(line);
+        pos = nl + 1;
+    }
+    dlg_.ws.push_back(list);
+    dlg_.ws.push_back(ButtonW(kBtnOk, (dlg_.w - 2 - 6) / 2, dlg_.h - 3, "OK", true));
+    dlg_.BuildFields();
+}
+
 void EditorApp::BuildMouse() {
     dlg_ = DialogBox();
     dlg_.kind = Dialog::MouseSetup;
