@@ -17,6 +17,17 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.7 -- "Hyper Sports: Kun BASIC" (Konami) (2026-10-20)
+
+**Pedido do usuario**: o "Turbo Basic" nao e' o da Borland, e' o MSX-BASIC KUN ("uma especie de compilador on the fly de basic para assembly"; poucos extras: `call turbo on`, `call turbo off`); manual indicado. Um subagente leu a pagina e devolveu a sintaxe (usada como DADOS; nada do texto do manual foi copiado).
+- **Do manual**: `_TURBO ON/OFF` e `CALL TURBO ON/OFF` (bloco, sem aninhar, uma instrucao por linha), `_TURBO ON(A,C())` (variaveis comuns), `_RUN`/`CALL RUN`, remtags `'#I` `'#C+/-` `'#N+/-`, `@linha`, a lista de comandos nao compilaveis e a de limitados.
+- **Implementacao**: `BasicKind::Kun` em `syntax_langs.cpp`; `MultiLine()` verdadeiro (o bloco atravessa linhas: `HlState.mode == 1`); `unsupported_` (tabela) + as regras de `CALL`, `PRINT#`/`INPUT#` e `USING`; nova classe `kSynError` (vermelho, negrito) na TUI e na janela; a deteccao de `.bas` por conteudo (`_turbo `, `call turbo`).
+- **Escolhas minhas** (a rever): so' a lista de comandos NAO compilaveis e' destacada (a de "limitados", com restricoes de parametros, nao); dentro do bloco `DEFFN`, `KEY LIST`, `PUT KANJI` e `LINE INPUT#` nao sao marcados (o primeiro e' `DEF` + `FN`, os demais tem 2-3 palavras); `ON INTERVAL GOSUB` tambem nao.
+- Corrigido junto: no BASIC `#1` (numero de arquivo) era pintado como hexadecimal; agora so' `&H`/`&B`/`&O` e decimais sao numeros.
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 30/30 nos dois; captura da janela com um `.kun` (OPEN/USING/CALL em vermelho dentro do bloco).
+
+---
+
 ## v1.41.6 -- "Hyper Sports: Destaque de sintaxe" (Konami) (2026-10-20)
 
 **Pedido do usuario** (fase E4 do editor): destaque de sintaxe para MSX-BASIC, `.BAT`/`.BTM`, `.ASM`, `.PAS`, `.BAS`, `.DMX`, `.AMX` e assim por diante; Basic Dignified com compatibilidade total; MSXBAS2ROM, NestorBASIC e Turbo Basic/Basic Kun como dialetos.

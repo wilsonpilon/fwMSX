@@ -41,11 +41,11 @@ enum Style : uint8_t {
     kBracket,     // o parentese que casa com o que esta' a esquerda do cursor
     // destaque de sintaxe (um por SynClass, na mesma ordem; use SynStyle)
     kSynKeywordSt, kSynKeyword2St, kSynDirectiveSt, kSynCommentSt, kSynStringSt, kSynNumberSt, kSynLabelSt, kSynRegisterSt, kSynOperatorSt,
-    kSynLineNoSt, kSynVariableSt, kSynBiosSt, kSynHeadingSt,
+    kSynLineNoSt, kSynVariableSt, kSynBiosSt, kSynHeadingSt, kSynErrorSt,
     kStyleCount
 };
 
-// O estilo de celula da classe de destaque `cls` (1..13); 0 (sem classe) volta kText.
+// O estilo de celula da classe de destaque `cls` (1..14); 0 (sem classe) volta kText.
 inline uint8_t SynStyle(uint8_t cls) {
     return cls == 0 ? static_cast<uint8_t>(kText) : static_cast<uint8_t>(kSynKeywordSt + cls - 1);
 }

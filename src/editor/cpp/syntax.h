@@ -27,6 +27,7 @@ enum SynClass : uint8_t {
     kSynVariable,  // variaveis (%VAR%, ~nome)
     kSynBios,      // chamadas e variaveis da BIOS (CHPUT, LINL40)
     kSynHeading,   // titulos (Markdown)
+    kSynError,     // comando que o compilador do bloco nao aceita (Kun BASIC)
     kSynClassCount
 };
 

@@ -7,6 +7,16 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.7] - 2026-10-20 - "Hyper Sports: Kun BASIC" (Konami)
+
+### Corrigido/Adicionado -- a sintaxe real do MSX-BASIC KUN no destaque (esclarecimento do usuario)
+O usuario esclareceu que o "Turbo Basic" nao e' o da Borland: e' o **MSX-BASIC KUN** (compilador de BASIC para Z80, J. Suzuki 1989), e indicou o manual (MSX2 Technical Handbook, KunBASIC). A lista inventada da 1.41.6 (`while wend repeat until...`) saiu; a linguagem agora se chama **MSX-BASIC KUN** (`kun`, `kbas`; e `.bas` com `_TURBO ON` ou `CALL TURBO`).
+- **Blocos**: `_TURBO ON` / `CALL TURBO ON(A,C())` abre o bloco compilado e `_TURBO OFF` fecha (estado de varias linhas); `_RUN` / `CALL RUN` compila tudo.
+- **Remtags**: `'#I` (Z80 em linha, com `@150` = rotulo de linha), `'#C+`/`'#C-` (recorte nos SCREEN 5 a 8) e `'#N+`/`'#N-` (estouro do NEXT).
+- **O que o compilador NAO aceita**: dentro de um bloco `_TURBO`, os comandos da lista do manual (OPEN, CLOSE, PLAY, TAB, SPC, WIDTH, ERROR, BLOAD/BSAVE, CLEAR, LIST, LOAD/SAVE, MKI$..., `PRINT#`, `INPUT#`, `PRINT USING`, `CALL` que nao seja TURBO...) ficam em **vermelho** (nova classe `kSynError`); fora do bloco sao MSX-BASIC normal.
+- No BASIC, `$ # %` deixaram de iniciar numero (`#1` e' numero de arquivo; hexadecimal e' `&H`).
+- Testes: `syntaxtest` 117 verificacoes (blocos, remtags, erros dentro do bloco e a deteccao por conteudo).
+
 ## [1.41.6] - 2026-10-20 - "Hyper Sports: Destaque de sintaxe" (Konami)
 
 ### Adicionado -- destaque de sintaxe no editor (fase E4), na TUI e na janela

@@ -84,6 +84,7 @@ Rgb SyntaxRgb(uint8_t cls, bool dark, bool *bold) {
     case kSynVariable: return dark ? Rgb{156, 220, 254} : Rgb{0, 16, 128};
     case kSynBios: if (bold) *bold = false; return dark ? Rgb{79, 193, 255} : Rgb{0, 112, 193};
     case kSynHeading: if (bold) *bold = true; return dark ? Rgb{86, 156, 214} : Rgb{0, 0, 200};
+    case kSynError: if (bold) *bold = true; return dark ? Rgb{244, 71, 71} : Rgb{205, 49, 49};
     default: return dark ? Rgb{212, 212, 212} : Rgb{30, 30, 30};
     }
 }

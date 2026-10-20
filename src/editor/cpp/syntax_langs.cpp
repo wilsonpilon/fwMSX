@@ -128,7 +128,7 @@ public:
 // MSX-BASIC e seus dialetos
 // ---------------------------------------------------------------------------------------------------------------
 
-enum class BasicKind { Msx, Dignified, Bas2Rom, Nestor, Turbo };
+enum class BasicKind { Msx, Dignified, Bas2Rom, Nestor, Kun };
 
 const char *kBasicFunctions =
     "abs asc atn base bin$ cdbl chr$ cint cos csng csrlin cvd cvi cvs dskf eof exp fix fpos fre hex$ inkey$ inp input$ instr int left$ len loc lof log "
@@ -153,12 +153,17 @@ public:
             call_.Add(kGenNestorFuncs, kSynDirective);
             words_.Add(kGenNestorFuncs, kSynDirective);
         }
-        if (kind == BasicKind::Turbo) {
-            // Basic Kun / Turbo Basic: acrescenta os blocos estruturados (lista inicial; o usuario completa)
-            words_.Add("while wend repeat until do loop exit turbo", kSynKeyword);
+        if (kind == BasicKind::Kun) {
+            // MSX-BASIC KUN (compilador BASIC -> Z80, J. Suzuki 1989): _TURBO ON/OFF delimita o bloco compilado; _RUN compila tudo. O que o compilador
+            // NAO aceita dentro do bloco (lista do manual) vira kSynError. Fora do bloco o texto e' MSX-BASIC normal.
+            call_.Add("turbo run bc", kSynDirective);
+            unsupported_.Add("auto base bload bsave cdbl cint clear cload close cont csave csng cvd cvi cvs delete draw dskf eof erase erl err error eqv field "
+                             "files fpos fre get imp lfiles list llist load loc lof lset maxfiles merge motor mkd$ mki$ mks$ name new open play renum resume "
+                             "rset save spc tab tron troff width",
+                             kSynError);
         }
     }
-    bool MultiLine() const override { return kind_ == BasicKind::Dignified; }
+    bool MultiLine() const override { return kind_ == BasicKind::Dignified || kind_ == BasicKind::Kun; }
     void Highlight(const std::string &line, HlState &st, std::vector<Span> &out) const override;
 
 private:
@@ -166,6 +171,7 @@ private:
     WordTable words_;
     WordTable call_;
     WordTable cmd_;
+    WordTable unsupported_;
 };
 
 void BasicLang::Highlight(const std::string &line, HlState &st, std::vector<Span> &out) const {
@@ -209,6 +215,9 @@ void BasicLang::Highlight(const std::string &line, HlState &st, std::vector<Span
         i = e;
     }
 
+    const bool kun = kind_ == BasicKind::Kun;
+    const bool in_turbo = kun && st.mode == 1; // dentro de _TURBO ON ... _TURBO OFF
+    bool turbo_word = false;                 // acabou de ver _TURBO / CALL TURBO: o proximo ON/OFF abre/fecha o bloco
     bool stmt_start = true; // inicio de instrucao: depois de ':', THEN, ELSE
     bool ref_mode = false;  // depois de GOTO/GOSUB/THEN/...: os numeros sao numeros de linha
     bool call_next = false;
@@ -227,8 +236,28 @@ void BasicLang::Highlight(const std::string &line, HlState &st, std::vector<Span
             continue;
         }
         if (c == '\'') {
+            if (kun && i + 2 < n && s[i + 1] == '#') { // '#I (inline Z80)  '#C+ '#C- (clip)  '#N+ '#N- (estouro do NEXT)
+                const char t = static_cast<char>(std::toupper(static_cast<unsigned char>(s[i + 2])));
+                if (t == 'I') {
+                    o.Add(i, i + 3, kSynDirective);
+                    i += 3;
+                    continue;
+                }
+                if ((t == 'C' || t == 'N') && i + 3 < n && (s[i + 3] == '+' || s[i + 3] == '-')) {
+                    o.Add(i, i + 4, kSynDirective);
+                    if (i + 4 < n) o.Add(i + 4, n, kSynComment);
+                    return;
+                }
+            }
             o.Add(i, n, kSynComment);
             return;
+        }
+        if (kun && c == '@' && i + 1 < n && s[i + 1] >= '0' && s[i + 1] <= '9') { // @150: o rotulo de uma linha (no '#I)
+            int e = i + 1;
+            while (e < n && s[e] >= '0' && s[e] <= '9') ++e;
+            o.Add(i, e, kSynLabel);
+            i = e;
+            continue;
         }
         if (c == ':') {
             stmt_start = true;
@@ -293,11 +322,13 @@ void BasicLang::Highlight(const std::string &line, HlState &st, std::vector<Span
         if (c == '_' && stmt_start && i + 1 < n && ed_hl_ident_start(static_cast<unsigned char>(s[i + 1]))) { // _CMD = CALL CMD
             const int e = ed_hl_ident_end(s, n, i + 1, ED_ID_SUFFIX);
             o.Add(i, e, kSynDirective);
+            if (kun && HasPrefixCi(line, static_cast<size_t>(i), "_turbo") && e - i == 6) turbo_word = true;
             i = e;
             stmt_start = false;
             continue;
         }
-        if ((c >= '0' && c <= '9') || c == '&' || c == '$' || c == '#' || c == '%' || c == '.') {
+        // no BASIC so' decimais e &H/&B/&O sao numeros: $ # % sao sufixo de tipo, numero de arquivo (#1) ou operador
+        if ((c >= '0' && c <= '9') || c == '&' || c == '.') {
             const int e = NumberAt(s, n, i);
             if (e > i) {
                 o.Add(i, e, ref_mode ? kSynLabel : kSynNumber);
@@ -319,6 +350,7 @@ void BasicLang::Highlight(const std::string &line, HlState &st, std::vector<Span
             if (call_next) {
                 o.Add(i, e, kSynDirective);
                 call_next = false;
+                if (kun && e - i == 5 && HasPrefixCi(line, static_cast<size_t>(i), "turbo")) turbo_word = true;
                 i = e;
                 continue;
             }
@@ -378,6 +410,21 @@ void BasicLang::Highlight(const std::string &line, HlState &st, std::vector<Span
                 i = e + 1;
                 stmt_start = false;
                 continue;
+            }
+            if (kun && turbo_word && (w == "on" || w == "off")) { // _TURBO ON / OFF: abre ou fecha o bloco
+                st.mode = w == "on" ? 1 : 0;
+                turbo_word = false;
+            }
+            if (in_turbo) { // dentro do bloco: o que o compilador nao aceita fica em vermelho
+                uint8_t bad = unsupported_.Find(s + i, e - i);
+                if (!bad && w == "call") { // CALL so' vale para TURBO (OFF)
+                    int p = SkipSpaces(s, n, e);
+                    const int pe = ed_hl_ident_end(s, n, p, 0);
+                    if (!(pe - p == 5 && HasPrefixCi(line, static_cast<size_t>(p), "turbo"))) bad = kSynError;
+                }
+                if (!bad && (w == "print" || w == "input") && SkipSpaces(s, n, e) < n && s[SkipSpaces(s, n, e)] == '#') bad = kSynError; // PRINT# INPUT#
+                if (!bad && w == "using") bad = kSynError;                                                         // PRINT USING
+                if (bad) cls = bad;
             }
             o.Add(i, e, cls);
             if (w == "call") call_next = true;
@@ -827,7 +874,7 @@ struct Registry {
         add(new BasicLang("dignified", "Basic Dignified", {"dmx"}, BasicKind::Dignified));
         add(new BasicLang("msxbas2rom", "MSXBAS2ROM", {"mbas"}, BasicKind::Bas2Rom));
         add(new BasicLang("nestorbasic", "NestorBASIC", {"nbas"}, BasicKind::Nestor));
-        add(new BasicLang("turbobasic", "Turbo Basic / Basic Kun", {"tbas", "bk"}, BasicKind::Turbo));
+        add(new BasicLang("kunbasic", "MSX-BASIC KUN", {"kun", "kbas"}, BasicKind::Kun));
         add(new AsmLang());
         add(new PascalLang());
         add(new BatLang());
@@ -883,6 +930,7 @@ const Lang *LangForFile(const std::string &path, const std::string &sample) {
             pos = end + 1;
         }
         if (bas2rom) return LangById("msxbas2rom");
+        if (t.find("_turbo ") != std::string::npos || t.find("call turbo") != std::string::npos || t.find("_turbo\n") != std::string::npos) return LangById("kunbasic");
         if (t.find("nb_") != std::string::npos || t.find("nestorbasic") != std::string::npos) return LangById("nestorbasic");
         return LangById("msxbasic");
     }
@@ -898,7 +946,7 @@ const Lang *LangForFile(const std::string &path, const std::string &sample) {
 
 const char *SynClassName(uint8_t cls) {
     static const char *names[] = {"none", "keyword", "keyword2", "directive", "comment", "string", "number", "label",
-                                  "register", "operator", "lineno", "variable", "bios", "heading"};
+                                  "register", "operator", "lineno", "variable", "bios", "heading", "error"};
     return cls < kSynClassCount ? names[cls] : "?";
 }
 

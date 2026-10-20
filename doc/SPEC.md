@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.41.6)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.41.7)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.41.6, publicada em `main`):**
+**Funcionando (v1.41.7, publicada em `main`):**
+- [x] **MSX-BASIC KUN no destaque** (1.41.7): `_TURBO ON/OFF` (bloco de varias linhas), `_RUN`, remtags `'#I`/`'#C`/`'#N`, `@linha`, e os comandos que o compilador nao aceita em vermelho dentro do bloco (a lista do manual).
 - [x] **Destaque de sintaxe do editor, fase E4** (1.41.6): 10 linguagens (MSX-BASIC, Basic Dignified, MSXBAS2ROM, NestorBASIC, Turbo Basic, Assembly Z80, Pascal, Batch, Markdown, texto) escolhidas pela extensao ou em View > Language; cores na TUI e no tema da janela; `syntaxtest`. Falta: sintaxe real do Turbo Basic/Basic Kun; E5 completar/snippets.
 - [x] **Autosave do editor e noname01..** (1.41.5): Options > Editor: "Auto-save every (minutes, 0 = off)" + "Also overwrite files that have a name" (so' a sessao `fwedit.session`, ou tambem os arquivos com nome); abas sem nome = noname01, noname02...
 - [x] **Editor embutido: esconder e reabrir** (1.41.4): fechar o editor (X ou Arquivo > Sair) so' o ESCONDE, sem pergunta; os arquivos e o texto nao salvo ficam e voltam na proxima abertura e, em `fwedit.session`, na proxima execucao do emulador; menus e dialogos viraram janelas comuns do ImGui (o modal fantasma travava a reabertura).

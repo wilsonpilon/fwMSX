@@ -115,7 +115,25 @@ void test_dialects() {
     check(Fmt("msxbas2rom", "10 CMD TURBO 1") == "lineno(10) keyword(CMD) directive(TURBO) number(1)", "MSXBAS2ROM: CMD <comando estendido>");
     check(Fmt("nestorbasic", "10 ?USR(0)") == "lineno(10) keyword(?) keyword2(USR) number(0)", "NestorBASIC: usa o MSX-BASIC + as funcoes NB_");
     check(Fmt("nestorbasic", "x=nb_playmusic").find("directive(nb_playmusic)") != std::string::npos, "NestorBASIC: nomes NB_ sao diretivas");
-    check(Fmt("turbobasic", "while a<10").find("keyword(while)") == 0, "Turbo Basic: WHILE");
+    check(Fmt("kunbasic", "120 _TURBO ON") == "lineno(120) directive(_TURBO) keyword(ON)", "Kun BASIC: _TURBO ON");
+    check(Fmt("kunbasic", "120 CALL TURBO ON(A,C())") == "lineno(120) keyword(CALL) directive(TURBO) keyword(ON)", "Kun BASIC: CALL TURBO ON(A,C())");
+    check(Fmt("kunbasic", "10 _RUN") == "lineno(10) directive(_RUN)", "Kun BASIC: _RUN");
+    check(Fmt("kunbasic", "120 '#I &HF3,&HCD,@150,&HFB") == "lineno(120) directive('#I) number(&HF3) number(&HCD) label(@150) number(&HFB)", "Kun BASIC: '#I e @linha");
+    check(Fmt("kunbasic", "20 '#C- sem recorte") == "lineno(20) directive('#C-) comment( sem recorte)", "Kun BASIC: '#C-");
+    check(Fmt("kunbasic", "30 '#N+") == "lineno(30) directive('#N+)", "Kun BASIC: '#N+");
+    check(Fmt("kunbasic", "40 'um comentario comum") == "lineno(40) comment('um comentario comum)", "Kun BASIC: comentario comum");
+    {
+        HlState st;
+        check(Fmt("kunbasic", "100 OPEN \"A\" AS #1", &st) == "lineno(100) keyword(OPEN) string(\"A\") keyword(AS) number(1)" && st.mode == 0, "Kun BASIC: fora do bloco OPEN e' comando normal");
+        Fmt("kunbasic", "110 _TURBO ON", &st);
+        check(st.mode == 1, "Kun BASIC: _TURBO ON abre o bloco (estado de varias linhas)");
+        check(Fmt("kunbasic", "120 OPEN \"A\" AS #1", &st) == "lineno(120) error(OPEN) string(\"A\") keyword(AS) number(1)", "Kun BASIC: dentro do bloco OPEN nao compila (erro)");
+        check(Fmt("kunbasic", "130 FOR X=0 TO 255:LINE(X,0)-(X,211),0:NEXT X", &st).find("error(") == std::string::npos, "Kun BASIC: FOR/LINE/NEXT compilam");
+        check(Fmt("kunbasic", "135 PRINT #1,A$", &st).find("error(PRINT)") != std::string::npos && Fmt("kunbasic", "136 PRINT USING \"#\";A", &st).find("error(USING)") != std::string::npos, "Kun BASIC: PRINT# e PRINT USING nao compilam");
+        check(Fmt("kunbasic", "137 CALL MUSIC", &st).find("error(CALL)") != std::string::npos && Fmt("kunbasic", "138 TAB(3)", &st).find("error(TAB)") != std::string::npos, "Kun BASIC: CALL (menos TURBO) e TAB nao compilam");
+        check(Fmt("kunbasic", "139 CALL TURBO OFF", &st) == "lineno(139) keyword(CALL) directive(TURBO) keyword(OFF)" && st.mode == 0, "Kun BASIC: CALL TURBO OFF fecha o bloco e nao e' erro");
+        check(Fmt("kunbasic", "140 OPEN \"A\" AS #1", &st).find("keyword(OPEN)") != std::string::npos, "Kun BASIC: depois do bloco OPEN volta ao normal");
+    }
 }
 
 void test_asm() {
@@ -195,11 +213,12 @@ void test_detection() {
     check(id("a.bas", "10 PRINT 1\n20 FILE \"X.SC2\"") == "msxbasic" && id("a.bas", "FILE \"SCREEN.SC1\"\n10 SCREEN 1") == "msxbas2rom", ".bas com FILE \"...\" = MSXBAS2ROM");
     check(id("a.bas", "10 CMD TURBO 1") == "msxbas2rom", ".bas com CMD <comando estendido> = MSXBAS2ROM");
     check(id("a.bas", "10 X=NB_ExecCode") == "nestorbasic", ".bas com NB_ = NestorBASIC");
+    check(id("a.bas", "100 SCREEN 8:DEFINT A-Z\n120 _TURBO ON") == "kunbasic" && id("a.bas", "10 CALL TURBO ON") == "kunbasic" && id("x.kun") == "kunbasic", ".bas com _TURBO ON / CALL TURBO = MSX-BASIC KUN");
     check(ed::LangById("pascal") != nullptr && ed::LangById("nada") == nullptr && ed::AllLangs().size() == 10 && ed::AllLangs()[0]->Id() == "plain", "registro: 10 linguagens, a primeira e' o texto puro");
 }
 
 void test_sanity() {
-    const char *langs[] = {"plain", "msxbasic", "dignified", "msxbas2rom", "nestorbasic", "turbobasic", "z80asm", "pascal", "bat", "markdown"};
+    const char *langs[] = {"plain", "msxbasic", "dignified", "msxbas2rom", "nestorbasic", "kunbasic", "z80asm", "pascal", "bat", "markdown"};
     const std::string lines[] = {"", " ", "10", "10 PRINT \"", "\"\"\"", "{{{", "}}}", "(*", "*)", "/*", "*/", "'", "''", "```", "[[[", "]]]", "~~~", "%%%", "&&&", "$$$", "###",
                                  "FORI=1TO10:NEXT", ".", "..", ":", "::", "@", "@@@", "1.2.3", "&H", "0x", "af''", "{$", "(*)", "-", "***", "\t\t", "label:", "a\tb"};
     bool ok = true;

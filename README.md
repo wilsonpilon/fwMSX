@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.41.6 "Hyper Sports: Destaque de sintaxe", Konami)
+## Estado atual (v1.41.7 "Hyper Sports: Kun BASIC", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.41.7 o destaque conhece o MSX-BASIC KUN de verdade: blocos `_TURBO ON/OFF`, remtags `'#I` `'#C` `'#N` e os comandos que o compilador recusa em vermelho**
 **1.41.6 destaque de sintaxe no editor (TUI e janela): MSX-BASIC, Basic Dignified, MSXBAS2ROM, NestorBASIC, Turbo Basic, Assembly Z80 (com a BIOS), Pascal, Batch e Markdown**
 **1.41.5 autosave do editor (a cada N minutos; so' a sessao de recuperacao ou tambem os arquivos com nome) e abas sem nome noname01, noname02...**
 **1.41.4 o editor do emulador so' esconde ao fechar e guarda as anotacoes (inclusive entre execucoes); corrigido o travamento ao reabrir**

@@ -34,7 +34,7 @@ struct PalRgb {
     bool underline = false;
 };
 
-// Cor do destaque de sintaxe de uma classe (SynClass 1..13) para tema escuro (`dark`) ou claro; `bold` pede negrito.
+// Cor do destaque de sintaxe de uma classe (SynClass 1..14) para tema escuro (`dark`) ou claro; `bold` pede negrito.
 Rgb SyntaxRgb(uint8_t cls, bool dark, bool *bold = nullptr);
 
 // Cor de cada estilo da grade (`ed::Style`) nos esquemas do NE: 0 LCD, 1 Color 1 (azul), 2 Color 2 (ciano), 3 VGA mono, 4 mono.

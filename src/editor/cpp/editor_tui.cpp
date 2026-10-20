@@ -51,6 +51,7 @@ Pal SynPal(int scheme, uint8_t style) {
     case kSynVariableSt: return {Color::CyanLight, bg};
     case kSynBiosSt: return {Color::RedLight, bg, true};
     case kSynHeadingSt: return {Color::YellowLight, bg, true};
+    case kSynErrorSt: return {Color::RedLight, bg, true, true};
     default: return {Color::White, bg};
     }
 }
