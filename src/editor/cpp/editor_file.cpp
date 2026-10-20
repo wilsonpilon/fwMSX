@@ -64,6 +64,8 @@ void Editor::NewFile() {
     eof_ctrl_z_ = false;
     bom_ = false;
     name_.clear();
+    untitled_.clear();
+    autosaved_ = false;
     m1_set_ = m2_set_ = sel_active_ = false;
     undo_.clear();
     redo_.clear();
@@ -119,14 +121,19 @@ bool Editor::Load(const std::string &path, std::string &err) {
     return true;
 }
 
-bool Editor::Save(std::string &err) {
+std::string Editor::Title() const {
+    if (!name_.empty()) return fs::path(name_).filename().string();
+    return untitled_.empty() ? std::string("Untitled") : untitled_;
+}
+
+bool Editor::Save(std::string &err, bool make_backup) {
     if (name_.empty()) {
         err = "File has no name";
         return false;
     }
     std::error_code ec;
     // Copia de seguranca: o primeiro caractere da extensao vira o caractere de backup (READ.ME -> READ.{E), como no DOS.
-    if (!set_.delete_backup && fs::exists(name_, ec)) {
+    if (make_backup && !set_.delete_backup && fs::exists(name_, ec)) {
         fs::path bak(name_);
         std::string ext = bak.extension().string();
         if (ext.size() >= 2) {
@@ -154,6 +161,7 @@ bool Editor::Save(std::string &err) {
         return false;
     }
     modified_ = false;
+    if (make_backup) autosaved_ = false; // um Save manual refaz a copia na proxima vez que o autosave gravar
     return true;
 }
 

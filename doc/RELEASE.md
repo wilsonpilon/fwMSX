@@ -17,6 +17,21 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.5 -- "Hyper Sports: Autosave do editor" (Konami) (2026-10-20)
+
+**Pedidos do usuario**: (1) "Sem Nome" nao agrada: **noname01**, e as outras abas noname02, noname03...; (2) fechar sem perguntar esta' ok (editores modernos fazem isso); (3) antes da E4, uma opcao de configuracao com "a cada quantos minutos o editor salva automaticamente o seu conteudo em disco, 0 nao salva periodicamente".
+Pergunta feita (AskUserQuestion) porque "salvar o conteudo" tem dois sentidos: o usuario escolheu **os dois, escolhendo em Options**.
+
+- **`EditorApp::AutosaveTick(now)`**: `autosave_minutes` (0..1440) em `ed::Settings`; o primeiro quadro so' arma o relogio; ao mudar o intervalo recomeca a contar; passado o prazo chama `AutosaveNow` (sessao se `SetSessionPath`, e com `autosave_files` os arquivos com nome, alterados e nao somente-leitura). Tempo em segundos de qualquer relogio crescente (testavel sem esperar).
+- **Copia `{`**: `Editor::Save(err, make_backup)`; o autosave faz a copia so' na primeira gravacao (`AutosavedOnce`), um Save manual a refaz (e zera a marca). Sem isso o `{` viraria "a versao de 2 minutos atras" e nao o original.
+- **`noname01..`**: `Editor::Title()` (nome do arquivo, ou o nome automatico, ou "Untitled") e `EditorApp::EnsureUntitled()` (menor numero livre entre as abas sem nome; roda em `NewTab`/`RemoveTab`/`OpenTab`/`LoadSession`/`SetGuiMode` e a cada quadro do painel). Aba, titulo da janela e cabecalho do painel usam `Title()`. Sessao: nova linha `UNT <nome>` (opcional ao ler: as sessoes da 1.41.4 abrem).
+- **Dialogo**: Editor setup ganhou o campo numerico (id 12) e a caixa (id 13); a TUI mostra o mesmo dialogo em ingles; a GUI traduz ("Salvar automaticamente a cada (minutos, 0 = nao):").
+- **Relogio**: emulador chama `editor_panel.Tick()` todo quadro (editor visivel ou escondido); editor standalone idem; TUI: uma thread so' posta `Event::Custom` a cada 10 s e o tratamento roda na thread da interface.
+- **Escolhas minhas** (a rever): o relogio so' conta enquanto o programa esta' aberto (fechar e reabrir reinicia a contagem); o autosave de arquivos nao pergunta se o arquivo mudou no disco por fora (sobrescreve); a sessao do standalone e a do emulador sao o MESMO arquivo (`fwedit.session`).
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 29/29 nos dois; captura da caixa Editor setup na GUI.
+
+---
+
 ## v1.41.4 -- "Hyper Sports: Reabrir o editor" (Konami) (2026-10-20)
 
 **Relato do usuario**: o editor aberto pelo menu do fwMSX, fechado e reaberto, abria com o texto anterior mas travado (sem teclado, menus sem efeito, impossivel fechar). Ele tambem quer MANTER o ultimo buffer ("o programador esta trabalhando direto no MSX e quer fazer anotacoes ... para salvar so' no final"), desde que a reabertura deixe continuar editando com os menus funcionais.

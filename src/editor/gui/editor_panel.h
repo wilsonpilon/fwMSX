@@ -34,6 +34,7 @@ public:
     bool WantsKeyboard() const { return wants_kb_; }
     void RequestFocus() { request_focus_ = true; }
     void ShowOpenDialog();           // Arquivo > Abrir...
+    void Tick();                     // chamar a cada quadro, com o editor visivel ou nao: o salvamento automatico periodico
     bool NeedsAttention() const { return app_.HasDialog() || app_.MenuIndex() >= 0; }
 
 private:

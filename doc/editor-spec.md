@@ -186,3 +186,5 @@ Decisoes: janela flutuante dentro do fwMSX (+ standalone `--edit`); barra de men
 **Falta**: mouse/Alt sozinho/AltGr conferidos numa janela real; opcoes de visual (numeros de linha, fonte, divisao empilhada); icone; E4-E7; menus novos (Executar, Montar, Sprites...).
 
 **1.41.4: fechar o editor EMBUTIDO so' esconde (sem pergunta) e as abas, com o texto nao salvo, sao guardadas em `fwedit.session`** (pedido do usuario: anotar enquanto trabalha no MSX e salvar so' no fim). Menus e dialogos da GUI sao janelas comuns do ImGui, nunca popups/modais (um modal esquecido na pilha do ImGui travava a reabertura). O editor standalone (`--edit`) continua perguntando ao sair.
+
+**1.41.5: autosave** (Options > Editor: minutos, 0 = desligado; caixa "tambem sobrescrever os arquivos com nome") **e abas sem nome noname01, noname02...** (menor numero livre). Decisoes do usuario: fechar sem perguntar esta' ok; uma sessao por pasta do executavel esta' ok; o autosave tem os dois modos (so' sessao, ou tambem os arquivos com nome).

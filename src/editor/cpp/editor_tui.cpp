@@ -1,10 +1,13 @@
 // fwMSX -- editor de textos na TUI (FTXUI). Ver editor_tui.h.
 #include "editor_tui.h"
 
+#include <atomic>
+#include <chrono>
 #include <cstdio>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
+#include <thread>
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
@@ -171,6 +174,11 @@ int RunEditorTui(const std::vector<std::string> &args, const std::string &argv0,
     app.LoadConfig();
     app.SetSize(dump_cols, dump_rows);
 
+    // sem arquivos na linha de comando: volta a ultima sessao (texto nao salvo inclusive) e o autosave grava nela
+    if (files.empty() && !dump) {
+        app.SetSessionPath((exe / "fwedit.session").string());
+        app.LoadSession(app.SessionPath());
+    }
     std::string err;
     for (size_t i = 0; i < files.size() && i < 2; ++i) {
         const bool ok = i == 0 ? app.Open(files[i], err, view) : app.Open2(files[i], err, view);
@@ -213,6 +221,11 @@ int RunEditorTui(const std::vector<std::string> &args, const std::string &argv0,
     });
 
     auto component = CatchEvent(renderer, [&](Event e) {
+        if (e == Event::Custom) { // o relogio do autosave (abaixo): o terminal so' redesenha quando ha' evento
+            using namespace std::chrono;
+            app.AutosaveTick(duration<double>(steady_clock::now().time_since_epoch()).count());
+            return true;
+        }
         if (e.is_mouse()) {
             const Mouse &m = e.mouse();
             const Mouse::Button want = app.ui().mouse_button == 0 ? Mouse::Left : Mouse::Right;
@@ -233,7 +246,17 @@ int RunEditorTui(const std::vector<std::string> &args, const std::string &argv0,
         return true;
     });
 
+    std::atomic<bool> ticking{true};
+    std::thread ticker([&] {
+        while (ticking) {
+            for (int i = 0; i < 10 && ticking; ++i) std::this_thread::sleep_for(std::chrono::seconds(1));
+            if (ticking) screen.PostEvent(Event::Custom);
+        }
+    });
     screen.Loop(component);
+    ticking = false;
+    ticker.join();
+    app.DiscardSession(); // saida limpa: o usuario ja' decidiu o que salvar
     return 0;
 }
 

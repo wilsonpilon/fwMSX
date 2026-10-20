@@ -130,6 +130,7 @@ bool EditorApp::OpenTab(const std::string &path, std::string &err, bool view) {
     wins_.push_back(e);
     SetActive(static_cast<int>(wins_.size()) - 1);
     cwd_ = fs::path(abs).parent_path().string();
+    EnsureUntitled();
     return true;
 }
 
@@ -139,6 +140,75 @@ void EditorApp::NewTab() {
     e.NewFile();
     wins_.push_back(e);
     SetActive(static_cast<int>(wins_.size()) - 1);
+    EnsureUntitled();
+}
+
+void EditorApp::EnsureUntitled() {
+    std::vector<bool> used(wins_.size() + 2, false);
+    for (Editor &e : wins_) {
+        if (!e.Name().empty()) {
+            e.SetUntitled("");
+            continue;
+        }
+        const std::string &u = e.Untitled();
+        if (u.rfind("noname", 0) == 0) {
+            const size_t n = static_cast<size_t>(std::atoi(u.c_str() + 6));
+            if (n >= 1 && n < used.size()) used[n] = true;
+        }
+    }
+    for (Editor &e : wins_) {
+        if (!e.Name().empty() || !e.Untitled().empty()) continue;
+        size_t n = 1;
+        while (n < used.size() && used[n]) ++n;
+        if (n >= used.size()) used.resize(n + 1, false);
+        used[n] = true;
+        char buf[24];
+        std::snprintf(buf, sizeof buf, "noname%02zu", n);
+        e.SetUntitled(buf);
+    }
+}
+
+bool EditorApp::AutosaveTick(double now) {
+    const int minutes = wins_[0].settings().autosave_minutes;
+    if (minutes <= 0) {
+        autosave_next_ = 0;
+        return false;
+    }
+    const double period = minutes * 60.0;
+    if (autosave_next_ <= 0 || autosave_period_ != period) { // ligou agora, ou o intervalo mudou: recomeca a contar
+        autosave_period_ = period;
+        autosave_next_ = now + period;
+        return false;
+    }
+    if (now < autosave_next_) return false;
+    autosave_next_ = now + period;
+    return AutosaveNow();
+}
+
+bool EditorApp::AutosaveNow() {
+    bool any = false;
+    if (wins_[0].settings().autosave_files) {
+        for (Editor &e : wins_) {
+            if (e.Name().empty() || !e.Modified() || e.ReadOnly()) continue;
+            std::string err;
+            // a copia { do arquivo ORIGINAL so' e' feita no primeiro autosave (os seguintes nao a trocam pela versao anterior)
+            if (e.Save(err, !e.AutosavedOnce())) {
+                e.SetAutosavedOnce(true);
+                any = true;
+            } else {
+                Msg(err);
+            }
+        }
+    }
+    if (!session_path_.empty() && SaveSession(session_path_)) any = true;
+    if (any) Msg("Auto-saved");
+    return any;
+}
+
+void EditorApp::DiscardSession() {
+    if (session_path_.empty()) return;
+    std::error_code ec;
+    fs::remove(session_path_, ec);
 }
 
 void EditorApp::SetActive(int i) {
@@ -175,6 +245,7 @@ void EditorApp::RemoveTab(int i) {
         Editor e;
         wins_.push_back(e);
     }
+    EnsureUntitled();
     if (i < active_) --active_;
     active_ = std::max(0, std::min(active_, WindowCount() - 1));
 }
@@ -214,6 +285,7 @@ bool EditorApp::SaveSession(const std::string &path) const {
         const Editor &e = wins_[static_cast<size_t>(i)];
         const std::string text = e.Text();
         f << "DOC\n" << "NAME " << e.Name().size() << "\n" << e.Name() << "\n";
+        f << "UNT " << e.Untitled() << "\n";
         f << "MOD " << (e.Modified() ? 1 : 0) << " " << (e.Crlf() ? 1 : 0) << " " << e.Cursor().line << " " << e.Cursor().col << "\n";
         f << "TEXT " << text.size() << "\n";
         f.write(text.data(), static_cast<std::streamsize>(text.size()));
@@ -239,8 +311,14 @@ bool EditorApp::LoadSession(const std::string &path) {
         std::string name(n, '\0');
         if (n) f.read(&name[0], static_cast<std::streamsize>(n));
         std::getline(f, line); // fim da linha do nome
+        std::string untitled;
+        if (!std::getline(f, line)) return false;
+        if (line.rfind("UNT ", 0) == 0) { // sessoes da 1.41.4 nao tem esta linha
+            untitled = line.substr(4);
+            if (!std::getline(f, line)) return false;
+        }
         int mod = 0, crlf = 1, cl = 0, cc = 0;
-        if (!std::getline(f, line) || std::sscanf(line.c_str(), "MOD %d %d %d %d", &mod, &crlf, &cl, &cc) != 4) return false;
+        if (std::sscanf(line.c_str(), "MOD %d %d %d %d", &mod, &crlf, &cl, &cc) != 4) return false;
         size_t tn = 0;
         if (!std::getline(f, line) || std::sscanf(line.c_str(), "TEXT %zu", &tn) != 1) return false;
         std::string text(tn, '\0');
@@ -258,12 +336,14 @@ bool EditorApp::LoadSession(const std::string &path) {
             e.SetCrlf(crlf != 0);
             if (mod || name.empty()) e.MarkModified();
         }
+        if (name.empty()) e.SetUntitled(untitled);
         e.SetCursor({cl, cc});
         docs.push_back(e);
     }
     wins_ = docs;
     split_ = false;
     active_ = std::max(0, std::min(active_pos, WindowCount() - 1));
+    EnsureUntitled();
     return true;
 }
 
@@ -977,6 +1057,8 @@ void EditorApp::DialogDone(int button) {
         s.backup_char = done.Group(2) == 1 ? '~' : done.Group(2) == 2 ? '@' : '{';
         s.delete_backup = done.Checked(10);
         s.alt_selects_menu = done.Checked(11);
+        s.autosave_minutes = std::max(0, std::min(1440, std::atoi(done.Text(12).c_str())));
+        s.autosave_files = done.Checked(13);
         for (Editor &w : wins_) w.settings() = s;
         config_dirty_ = true;
         break;

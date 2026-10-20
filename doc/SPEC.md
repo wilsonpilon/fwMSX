@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.41.4)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.41.5)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.41.4, publicada em `main`):**
+**Funcionando (v1.41.5, publicada em `main`):**
+- [x] **Autosave do editor e noname01..** (1.41.5): Options > Editor: "Auto-save every (minutes, 0 = off)" + "Also overwrite files that have a name" (so' a sessao `fwedit.session`, ou tambem os arquivos com nome); abas sem nome = noname01, noname02...
 - [x] **Editor embutido: esconder e reabrir** (1.41.4): fechar o editor (X ou Arquivo > Sair) so' o ESCONDE, sem pergunta; os arquivos e o texto nao salvo ficam e voltam na proxima abertura e, em `fwedit.session`, na proxima execucao do emulador; menus e dialogos viraram janelas comuns do ImGui (o modal fantasma travava a reabertura).
 - [x] **Editor de textos GRAFICO, fase E3b** (1.41.3; corrige a E3 da 1.41.2): interface ImGui de verdade (barra de menus, abas, divisao em 2 paineis, mouse, dialogos com widgets, textos em portugues) no visual do fwMSX, com os atalhos e as opcoes do Norton Editor 2; menu "Editor" na barra do fwMSX (janela flutuante) e `fwMSX.exe --edit` (standalone). Falta: E4 destaque, E5 completar/snippets, E6 integracao, E7 (`doc/editor-spec.md`).
 - [x] **Editor de textos em janela, fase E3** (1.41.2): `fwMSX.exe --edit`/`--view` (o mesmo `EditorApp` da TUI pintado com ImGui/GLFW; teclado de verdade: Ctrl-Enter, Ctrl-PgUp, Ctrl-2... e Alt sozinho abre o menu; area de transferencia do sistema; `--gui`/`--tui`). Falta: E4 destaque, E5 completar/snippets, E6 integracao, E7 (`doc/editor-spec.md`).

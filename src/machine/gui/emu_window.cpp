@@ -410,6 +410,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     // as anotacoes da ultima vez (texto nao salvo inclusive) voltam: o editor so' pergunta quando o usuario fecha um arquivo
     const std::string editor_session = (std::filesystem::path(options.exe_dir.empty() ? std::string(".") : options.exe_dir) / "fwedit.session").string();
     editor_panel.app().SetEmbedded(true);
+    editor_panel.app().SetSessionPath(editor_session); // o autosave (Options > Editor) grava aqui
     editor_panel.app().LoadSession(editor_session);
     msxdisk::gui::ApplyModernStyle(true);
     ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -1715,6 +1716,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
             dl->AddText(pos, toast_warn ? IM_COL32(255, 190, 90, 255) : IM_COL32(255, 255, 255, 255), toast_text.c_str());
         }
 
+        editor_panel.Tick(); // autosave periodico, com o editor visivel ou escondido
         if (show_editor) editor_panel.DrawWindow(&show_editor);
         if (editor_was_open && !show_editor) editor_panel.app().SaveSession(editor_session); // ao esconder o editor: guarda as anotacoes
         editor_was_open = show_editor;

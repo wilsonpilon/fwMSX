@@ -21,8 +21,8 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 41
-#define FWMSX_VERSION_PATCH 4
+#define FWMSX_VERSION_PATCH 5
 
 #define FWMSX_COMPANY   "Konami"
 #define FWMSX_CODENAME  "Hyper Sports"
-#define FWMSX_SUBTITLE  "Reabrir o editor"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_SUBTITLE  "Autosave do editor"  // so' nas versoes X.Y.Z com Z > 0

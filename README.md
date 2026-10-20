@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.41.4 "Hyper Sports: Reabrir o editor", Konami)
+## Estado atual (v1.41.5 "Hyper Sports: Autosave do editor", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.41.5 autosave do editor (a cada N minutos; so' a sessao de recuperacao ou tambem os arquivos com nome) e abas sem nome noname01, noname02...**
 **1.41.4 o editor do emulador so' esconde ao fechar e guarda as anotacoes (inclusive entre execucoes); corrigido o travamento ao reabrir**
 **1.41.3 o editor de textos GRAFICO (fase E3 refeita): menu "Editor" no fwMSX (janela flutuante) e `fwMSX.exe --edit`, com menus, abas, divisao em 2 paineis, mouse e dialogos de verdade, no visual do fwMSX e com os atalhos do Norton Editor 2**
 **1.41.2 o editor de textos em janela (fase E3): `fwMSX.exe --edit arquivo`, o mesmo editor da TUI com o teclado completo do Norton Editor 2 (Ctrl-Enter, Ctrl-PgUp, Alt sozinho abre o menu)**

@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.5] - 2026-10-20 - "Hyper Sports: Autosave do editor" (Konami)
+
+### Adicionado -- salvamento automatico periodico e nomes noname01.. (pedidos do usuario)
+- **Autosave** (Options > Editor... / "Configuracao do editor"): o campo **"Auto-save every (minutes, 0 = off)"** -- a cada N minutos o editor grava em disco (0 = nunca, o padrao). O usuario escolheu "os dois" modos, entao ha' tambem a caixa **"Also overwrite files that have a name"**:
+  - **so' a sessao** (caixa desmarcada): grava TODAS as abas -- inclusive `noname01..` e o texto nao salvo -- na sessao de recuperacao `fwedit.session`; os arquivos de verdade nunca sao sobrescritos sem voce mandar;
+  - **sessao e arquivos** (caixa marcada): alem da sessao, grava os arquivos que ja' tem nome (o aviso "Salvo automaticamente" aparece na barra de estado). A copia `{` do arquivo ORIGINAL e' feita so' no primeiro autosave (os seguintes nao a trocam pela versao anterior); um Save manual volta a refazer a copia.
+  Os valores ficam no `fwedit.cfg` (`autosave_minutes`, `autosave_files`). O relogio roda a cada quadro mesmo com o editor escondido; na TUI (`--edit` no terminal) por um evento a cada 10 s.
+- **Sem sessao em `--edit` sem argumentos**: o editor standalone e o de terminal, abertos sem arquivos, restauram a ultima sessao e o autosave grava nela; ao sair normalmente (depois das perguntas) a sessao e' apagada. Com arquivos na linha de comando o autosave so' grava neles (se a opcao permitir).
+- **Abas sem nome** agora se chamam **noname01, noname02, noname03...** (o menor numero livre; fechar uma aba, ou salvar com nome, libera o numero). A sessao guarda esses nomes (e abre as sessoes antigas, sem eles). Na TUI o titulo continua "Untitled" como no NE.
+- Testes: `editorui` com 221 verificacoes (nomes, relogio, copia `{`, sessao, configuracao).
+
 ## [1.41.4] - 2026-10-20 - "Hyper Sports: Reabrir o editor" (Konami)
 
 ### Corrigido -- o editor do emulador travava ao ser reaberto (relato do usuario)

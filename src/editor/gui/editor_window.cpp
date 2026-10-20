@@ -78,6 +78,12 @@ int RunEditorWindow(const std::vector<std::string> &args, const std::string &arg
     const std::string exe_dir = fs::absolute(fs::path(argv0), ec).parent_path().string();
     panel.Configure(cfg_dir.empty() ? exe_dir : cfg_dir, fs::current_path(ec).string());
     std::string err;
+    // sem arquivos na linha de comando: volta a ultima sessao (inclusive o texto nao salvo) e o autosave grava nela; com arquivos, o autosave
+    // so' grava neles (se a opcao estiver ligada) -- nao sobrescreve uma sessao que o usuario nao pediu para abrir
+    if (files.empty()) {
+        panel.app().SetSessionPath((fs::path(cfg_dir.empty() ? exe_dir : cfg_dir) / "fwedit.session").string());
+        panel.app().LoadSession(panel.app().SessionPath());
+    }
     for (const std::string &f : files) {
         if (!panel.app().OpenTab(f, err, view)) {
             if (view) {
@@ -101,10 +107,11 @@ int RunEditorWindow(const std::vector<std::string> &args, const std::string &arg
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
+        panel.Tick();
         panel.DrawFullscreen();
 
         const Editor &e = panel.app().Ed();
-        std::string title = "fwEdit - " + (e.Name().empty() ? std::string("Sem nome") : fs::path(e.Name()).filename().string());
+        std::string title = "fwEdit - " + e.Title();
         if (e.Modified()) title += " *";
         if (e.ReadOnly()) title += " [somente leitura]";
         if (title != last_title) {
@@ -124,6 +131,7 @@ int RunEditorWindow(const std::vector<std::string> &args, const std::string &arg
         glfwSwapBuffers(window);
     }
 
+    panel.app().DiscardSession(); // saida limpa (o usuario ja' decidiu o que salvar): a sessao de recuperacao nao serve mais
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

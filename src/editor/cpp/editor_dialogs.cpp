@@ -40,6 +40,8 @@ bool SaveConfigFile(const std::string &path, const Settings &s, const UiSettings
     f << "left_margin=" << s.left_margin << "\n";
     f << "page_length=" << s.page_length << "\n";
     f << "top_margin=" << s.top_margin << "\n";
+    f << "autosave_minutes=" << s.autosave_minutes << "\n";
+    f << "autosave_files=" << s.autosave_files << "\n";
     f << "scheme=" << u.scheme << "\n";
     f << "lines=" << u.lines << "\n";
     f << "scrollbar=" << u.scrollbar << "\n";
@@ -78,6 +80,8 @@ bool LoadConfigFile(const std::string &path, Settings &s, UiSettings &u) {
         else if (k == "left_margin") s.left_margin = std::max(0, v);
         else if (k == "page_length") s.page_length = std::max(1, v);
         else if (k == "top_margin") s.top_margin = std::max(0, v);
+        else if (k == "autosave_minutes") s.autosave_minutes = std::max(0, std::min(v, 1440));
+        else if (k == "autosave_files") s.autosave_files = v != 0;
         else if (k == "scheme") u.scheme = std::max(0, std::min(v, 4));
         else if (k == "lines") u.lines = v;
         else if (k == "scrollbar") u.scrollbar = v != 0;
@@ -827,7 +831,7 @@ void EditorApp::BuildEditorSetup() {
     dlg_.kind = Dialog::EditorSetup;
     dlg_.title = "Editor setup";
     dlg_.w = 62;
-    dlg_.h = 15;
+    dlg_.h = 18;
     const Settings &s = Ed().settings();
     dlg_.ws.push_back(Label(2, 1, "Insert / overstrike mode:"));
     dlg_.ws.push_back(RadioW(0, 0, 4, 2, "Start in insert"));
@@ -843,7 +847,10 @@ void EditorApp::BuildEditorSetup() {
     dlg_.ws.push_back(RadioW(2, 2, 36, 4, "@"));
     dlg_.ws.push_back(CheckW(10, 34, 6, "Delete backup files", s.delete_backup));
     dlg_.ws.push_back(CheckW(11, 34, 8, "Alt alone selects menu", s.alt_selects_menu));
-    OkCancel(dlg_, 11);
+    dlg_.ws.push_back(Label(2, 11, "Auto-save every (minutes, 0 = off):"));
+    dlg_.ws.push_back(InputW(12, 40, 11, 4, std::to_string(s.autosave_minutes), true, true));
+    dlg_.ws.push_back(CheckW(13, 2, 12, "Also overwrite files that have a name", s.autosave_files));
+    OkCancel(dlg_, 14);
     dlg_.BuildFields();
     dlg_.group_sel[0] = static_cast<int>(s.over_mode);
     dlg_.group_sel[1] = static_cast<int>(s.tab_key);

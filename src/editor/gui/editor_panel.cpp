@@ -149,6 +149,10 @@ void EditorPanel::Configure(const std::string &exe_dir, const std::string &cwd) 
     app_.LoadConfig();
 }
 
+void EditorPanel::Tick() {
+    if (app_.AutosaveTick(ImGui::GetTime())) blink_reset_ = ImGui::GetTime();
+}
+
 void EditorPanel::ShowOpenDialog() {
     request_focus_ = true;
     app_.RunMenu(0, 1); // Arquivo > Abrir...
@@ -312,8 +316,7 @@ void EditorPanel::DrawTabs() {
     int to_close = -1;
     for (int i = 0; i < n; ++i) {
         const Editor &e = app_.Win(i);
-        std::string label = e.Name().empty() ? Tr("Untitled") : fs::path(e.Name()).filename().string();
-        if (label == "Untitled") label = "Sem nome";
+        std::string label = e.Title(); // o arquivo, ou noname01, noname02...
         label += "###tab" + std::to_string(i);
         ImGuiTabItemFlags flags = ImGuiTabItemFlags_None;
         if (e.Modified()) flags |= ImGuiTabItemFlags_UnsavedDocument;
@@ -567,7 +570,7 @@ void EditorPanel::DrawPanes(float height) {
         ImGui::BeginGroup();
         const Editor &e = app_.Win(app_.PaneDoc(p));
         const bool act = p == app_.ActivePane();
-        std::string name = e.Name().empty() ? std::string("Sem nome") : fs::path(e.Name()).filename().string();
+        std::string name = e.Title();
         if (e.Modified()) name += " *";
         ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(act ? ImGuiCol_Text : ImGuiCol_TextDisabled));
         ImGui::TextUnformatted(name.c_str());
@@ -739,6 +742,7 @@ void EditorPanel::DrawDialog() {
 // ---------------------------------------------------------------------------------------------------------------
 
 void EditorPanel::DrawContents() {
+    app_.EnsureUntitled();
     wants_kb_ = ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) || NeedsAttention();
     if (wants_kb_) HandleKeyboard();
 
@@ -763,7 +767,7 @@ void EditorPanel::DrawWindow(bool *p_open) {
     }
     bool open = true;
     const Editor &e = app_.Ed();
-    std::string title = "Editor - " + (e.Name().empty() ? std::string("Sem nome") : fs::path(e.Name()).filename().string());
+    std::string title = "Editor - " + e.Title();
     if (e.Modified()) title += " *";
     title += "###fwedit";
     if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) DrawContents();

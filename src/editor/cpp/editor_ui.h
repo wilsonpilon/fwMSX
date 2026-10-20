@@ -117,6 +117,15 @@ public:
     void SetEmbedded(bool e) { embedded_ = e; }
     bool TakeHideRequest() { const bool r = hide_request_; hide_request_ = false; return r; }
     void CancelDialog() { if (HasDialog()) DialogDone(kBtnCancel); }
+    // Abas sem nome recebem noname01, noname02... (o menor numero livre; fechar uma aba libera o numero).
+    void EnsureUntitled();
+    // Salvamento automatico (Options > Editor: a cada N minutos; 0 = nunca). `now` em segundos de qualquer relogio crescente. Grava a sessao
+    // de recuperacao (se SetSessionPath) e, com `autosave_files`, tambem os arquivos que ja' tem nome. Devolve true se salvou agora.
+    void SetSessionPath(const std::string &p) { session_path_ = p; }
+    const std::string &SessionPath() const { return session_path_; }
+    bool AutosaveTick(double now);
+    bool AutosaveNow();
+    void DiscardSession();                            // apaga o arquivo de sessao (saida limpa do editor standalone)
     bool SaveSession(const std::string &path) const;  // grava as abas (inclusive o texto nao salvo); sem nada util, apaga o arquivo
     bool LoadSession(const std::string &path);        // restaura as abas gravadas (so' se o editor ainda esta' vazio) // fechar a janela: o mesmo caminho de Alt-F X (pergunta por arquivos alterados)
     UiSettings &ui() { return ui_; }
@@ -134,7 +143,10 @@ public:
     // --- interface grafica (janela flutuante do fwMSX / editor standalone) ---
     // No modo grafico os arquivos viram ABAS (nao ha' limite de 2 janelas), "2nd window" divide a area em 2 paineis lado a lado,
     // `New`/`Open` abrem uma aba nova e a grade de caracteres (Render) nao e' usada: a interface le' o estado e desenha com widgets.
-    void SetGuiMode(bool g) { gui_mode_ = g; }
+    void SetGuiMode(bool g) {
+        gui_mode_ = g;
+        EnsureUntitled();
+    }
     bool GuiMode() const { return gui_mode_; }
     bool OpenTab(const std::string &path, std::string &err, bool view = false);
     void NewTab();
@@ -224,6 +236,9 @@ private:
     int item_ = 0;
     DialogBox dlg_;
     bool gui_mode_ = false;
+    std::string session_path_;
+    double autosave_next_ = 0;
+    double autosave_period_ = 0;
     bool embedded_ = false;
     bool hide_request_ = false;
     bool split_ = false;

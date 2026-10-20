@@ -162,6 +162,8 @@ struct Settings {
     int page_length = 62;
     int top_margin = 2;
     bool show_bracket = true; // realca o parentese que casa (Display setup: Blinking bracket)
+    int autosave_minutes = 0;     // salvamento automatico periodico (Editor setup); 0 = desligado
+    bool autosave_files = false;  // o autosave tambem grava nos arquivos que ja' tem nome (senao so' a sessao de recuperacao)
 };
 
 struct DocInfo {
@@ -191,7 +193,7 @@ public:
 
     // --- arquivo ---------------------------------------------------------------------------------------------------
     bool Load(const std::string &path, std::string &err);
-    bool Save(std::string &err);                        // grava no nome atual
+    bool Save(std::string &err, bool make_backup = true); // grava no nome atual (make_backup = false: nao refaz a copia { )
     bool SaveAs(const std::string &path, std::string &err);
     bool Merge(const std::string &path, std::string &err); // insere o arquivo no cursor
     bool WriteBlock(const std::string &path, std::string &err); // Block > Output to file
@@ -219,6 +221,12 @@ public:
     void SetCrlf(bool v) { crlf_ = v; }
     void MarkModified() { modified_ = true; ++rev_; }
     const std::string &Name() const { return name_; }
+    // Nome para MOSTRAR: o arquivo (so' o nome, sem a pasta) ou o nome automatico dos sem nome (noname01...); "Untitled" se ainda nao recebeu.
+    std::string Title() const;
+    const std::string &Untitled() const { return untitled_; }
+    void SetUntitled(const std::string &u) { untitled_ = u; }
+    bool AutosavedOnce() const { return autosaved_; }
+    void SetAutosavedOnce(bool v) { autosaved_ = v; }
     void SetName(const std::string &n) { name_ = n; }
     bool Modified() const { return modified_; }
     bool ReadOnly() const { return read_only_; }
@@ -337,6 +345,8 @@ private:
     bool eof_ctrl_z_ = false;
     bool bom_ = false;
     std::string name_;
+    std::string untitled_;   // noname01, noname02...: so' para mostrar (a interface grafica)
+    bool autosaved_ = false; // o autosave ja' guardou a copia { do arquivo original
     std::string message_;
     std::string profile_ = "norton";
     Settings set_;

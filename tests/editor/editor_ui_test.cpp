@@ -645,6 +645,128 @@ void test_embedded_and_session() {
     fs::remove_all(dir);
 }
 
+void test_untitled_names() {
+    const fs::path dir = fs::temp_directory_path() / "fwmsx_editor_untitled_test";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    EditorApp a;
+    a.SetGuiMode(true);
+    check(a.Win(0).Title() == "noname01", "a primeira aba sem nome e' noname01");
+    a.NewTab();
+    a.NewTab();
+    check(a.Win(1).Title() == "noname02" && a.Win(2).Title() == "noname03", "as seguintes: noname02, noname03");
+    a.CloseTab(1);
+    a.NewTab();
+    check(a.WindowCount() == 3 && a.Win(2).Title() == "noname02", "fechar uma aba libera o numero (o menor livre e' reaproveitado)");
+    // arquivo com nome mostra o nome do arquivo; salvar um sem nome libera o numero
+    a.SetActive(0);
+    a.Ed().Type("x");
+    std::string err;
+    check(a.Ed().SaveAs((dir / "doc.txt").string(), err) && a.Ed().Title() == "doc.txt", "salvo com nome: o titulo e' o do arquivo");
+    a.EnsureUntitled();
+    a.NewTab();
+    check(a.Win(3).Title() == "noname01", "o numero do que foi salvo (noname01) volta a ficar livre");
+    // a sessao guarda os nomes automaticos
+    EditorApp b;
+    b.SetGuiMode(true);
+    b.NewTab();
+    b.NewTab();
+    b.CloseTab(0);
+    b.Win(0).Type("dois");
+    b.Win(1).Type("tres");
+    check(b.Win(0).Title() == "noname02" && b.Win(1).Title() == "noname03", "(antes da sessao) noname02 e noname03");
+    const std::string sess = (dir / "s.session").string();
+    check(b.SaveSession(sess), "SaveSession");
+    EditorApp c;
+    c.SetGuiMode(true);
+    check(c.LoadSession(sess) && c.Win(0).Title() == "noname02" && c.Win(1).Title() == "noname03", "a sessao preserva noname02 e noname03");
+    // sessao da 1.41.4 (sem a linha UNT) ainda abre
+    spit(dir / "old.session", std::string("FWEDIT-SESSION 1\nACTIVE 0 1\nDOC\nNAME 0\n\nMOD 1 1 0 3\nTEXT 3\nabc\n"));
+    EditorApp d;
+    d.SetGuiMode(true);
+    check(d.LoadSession((dir / "old.session").string()) && d.Win(0).Text() == "abc" && d.Win(0).Title() == "noname01", "sessao antiga (sem UNT) ainda abre e recebe um noname");
+    EditorApp t; // a TUI nao e' afetada: continua "Untitled"
+    check(t.Win(0).Title() == "Untitled", "sem o modo grafico o titulo e' Untitled (NE)");
+    fs::remove_all(dir);
+}
+
+void test_autosave() {
+    const fs::path dir = fs::temp_directory_path() / "fwmsx_editor_autosave_test";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    spit(dir / "doc.txt", "orig");
+    const std::string sess = (dir / "fwedit.session").string();
+
+    // as opcoes na caixa Editor setup
+    EditorApp a;
+    a.SetGuiMode(true);
+    a.SetSize(80, 25);
+    a.SetSessionPath(sess);
+    check(!a.AutosaveTick(0) && !a.AutosaveTick(100000), "autosave desligado por padrao (0 minutos)");
+    K(a, {"A-o", "e"});
+    check(a.HasDialog() && screen_has(a, "Auto-save every (minutes, 0 = off):") && screen_has(a, "Also overwrite files that have a name"), "Editor setup tem as opcoes de autosave");
+    ed::DialogBox *d = a.CurrentMutable();
+    d->Find(12)->text = "2";
+    d->Find(13)->checked = true;
+    a.DialogEnter();
+    check(!a.HasDialog() && a.Ed().settings().autosave_minutes == 2 && a.Ed().settings().autosave_files, "OK grava os minutos e a opcao de sobrescrever");
+
+    // o relogio
+    std::string err;
+    check(a.OpenTab((dir / "doc.txt").string(), err), "abre o arquivo");
+    a.Ed().Type("X");
+    check(!a.AutosaveTick(1000), "o primeiro quadro so' arma o relogio");
+    check(!a.AutosaveTick(1000 + 119), "antes dos 2 minutos nao salva");
+    check(a.AutosaveTick(1000 + 121), "passados 2 minutos salva");
+    check(slurp(dir / "doc.txt") == "Xorig" && !a.Ed().Modified(), "o arquivo com nome foi gravado");
+    check(slurp(dir / "doc.{xt") == "orig", "a copia { guarda o ORIGINAL");
+    check(fs::exists(sess), "a sessao de recuperacao foi gravada");
+    check(a.Ed().Message() == "Auto-saved", "a barra de estado avisa");
+    a.Ed().Type("Y");
+    check(!a.AutosaveTick(1000 + 200) && a.AutosaveTick(1000 + 121 + 121), "o relogio recomeca depois de cada salvamento");
+    check(slurp(dir / "doc.txt") == "XYorig" && slurp(dir / "doc.{xt") == "orig", "o segundo autosave NAO troca a copia { pela versao anterior");
+    // um Save manual volta a fazer a copia
+    a.Ed().Type("Z");
+    std::string e2;
+    check(a.Ed().Save(e2) && slurp(dir / "doc.{xt") == "XYorig", "Save manual refaz a copia { com a versao anterior");
+
+    // so' a sessao (sem sobrescrever arquivos)
+    EditorApp b;
+    b.SetGuiMode(true);
+    b.SetSessionPath((dir / "b.session").string());
+    b.Ed().settings().autosave_minutes = 1;
+    check(b.OpenTab((dir / "doc.txt").string(), err), "abre o arquivo na outra instancia");
+    b.Ed().Type("Q");
+    b.NewTab();
+    b.Ed().Type("anotacao solta");
+    b.AutosaveTick(0);
+    check(b.AutosaveTick(61) && fs::exists(dir / "b.session"), "so' a sessao: grava a sessao");
+    check(slurp(dir / "doc.txt") == "XYZorig", "so' a sessao: o arquivo de verdade NAO e' sobrescrito");
+    EditorApp r;
+    r.SetGuiMode(true);
+    check(r.LoadSession((dir / "b.session").string()) && r.WindowCount() == 2 && r.Win(1).Text() == "anotacao solta" && r.Win(0).Text() == "QXYZorig" && r.Win(0).Modified(),
+          "a sessao guarda o texto alterado e as anotacoes");
+
+    // desligar (0) para o relogio; arquivo somente leitura nao e' gravado
+    b.Ed().settings().autosave_minutes = 0;
+    for (int i = 0; i < b.WindowCount(); ++i) b.Win(i).settings().autosave_minutes = 0;
+    check(!b.AutosaveTick(100000), "0 minutos desliga");
+    b.DiscardSession();
+    check(!fs::exists(dir / "b.session"), "DiscardSession apaga a sessao");
+
+    // configuracao em arquivo
+    ed::Settings s1;
+    s1.autosave_minutes = 7;
+    s1.autosave_files = true;
+    ed::UiSettings u;
+    std::string cerr;
+    check(ed::SaveConfigFile((dir / "c.cfg").string(), s1, u, cerr), "grava a configuracao");
+    ed::Settings s2;
+    ed::UiSettings u2;
+    check(ed::LoadConfigFile((dir / "c.cfg").string(), s2, u2) && s2.autosave_minutes == 7 && s2.autosave_files, "le' o autosave da configuracao");
+    fs::remove_all(dir);
+}
+
 void test_model_extras() {
     ed::Editor e;
     e.SetText("one two\nthree");
@@ -755,6 +877,8 @@ int main() {
     test_gui_input();
     test_gui_mode();
     test_embedded_and_session();
+    test_untitled_names();
+    test_autosave();
     test_model_extras();
     test_translation();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
