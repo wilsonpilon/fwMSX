@@ -65,6 +65,9 @@ void Editor::NewFile() {
     bom_ = false;
     name_.clear();
     untitled_.clear();
+    lang_ = nullptr;
+    lang_manual_ = false;
+    hl_states_.clear();
     autosaved_ = false;
     m1_set_ = m2_set_ = sel_active_ = false;
     undo_.clear();
@@ -118,6 +121,8 @@ bool Editor::Load(const std::string &path, std::string &err) {
     bom_ = bom;
     name_ = path;
     modified_ = false;
+    lang_manual_ = false;
+    DetectLanguage(); // a linguagem vem da extensao e do inicio do texto
     return true;
 }
 
@@ -172,6 +177,7 @@ bool Editor::SaveAs(const std::string &path, std::string &err) {
         name_ = old;
         return false;
     }
+    if (!lang_manual_) DetectLanguage(); // um "sem nome" salvo como x.asm passa a ser Assembly
     return true;
 }
 

@@ -697,9 +697,14 @@ set(EDITOR_LIB_SOURCES
         src/editor/cpp/editor_i18n.cpp
         src/editor/cpp/editor_ui.cpp
         src/editor/cpp/editor_dialogs.cpp
+        src/editor/cpp/syntax_langs.cpp
+        src/editor/cpp/editor_syntax.cpp
         src/editor/c/ed_text.c
+        src/editor/c/ed_syntax.c
         src/editor/fortran/ed_stats.f90
+        src/editor/fortran/ed_number.f90
         src/editor/asm/ed_indent.asm
+        src/editor/asm/ed_hash.asm
 )
 add_executable(edittest tests/editor/editor_test.cpp ${EDITOR_LIB_SOURCES})
 set_target_properties(edittest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/edittest)
@@ -715,6 +720,14 @@ if (MINGW)
     target_link_options(editorui PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME editor_ui COMMAND editorui)
+
+# syntaxtest: o destaque de sintaxe do editor (fase E4; doc/editor-spec.md).
+add_executable(syntaxtest tests/editor/syntax_test.cpp ${EDITOR_LIB_SOURCES})
+set_target_properties(syntaxtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/syntaxtest)
+if (MINGW)
+    target_link_options(syntaxtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME editor_syntax COMMAND syntaxtest)
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})

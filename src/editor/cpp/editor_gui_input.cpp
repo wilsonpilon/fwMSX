@@ -67,7 +67,36 @@ std::string GuiKeyName(GuiKey key, bool ctrl, bool alt, bool shift) {
     return CanonicalKey(name + base);
 }
 
+Rgb SyntaxRgb(uint8_t cls, bool dark, bool *bold) {
+    if (bold) *bold = false;
+    // tema escuro: no estilo do VS Code Dark+; tema claro: tons mais fechados
+    switch (cls) {
+    case kSynKeyword: if (bold) *bold = false; return dark ? Rgb{86, 156, 214} : Rgb{0, 0, 200};
+    case kSynKeyword2: return dark ? Rgb{78, 201, 176} : Rgb{0, 128, 128};
+    case kSynDirective: return dark ? Rgb{197, 134, 192} : Rgb{175, 0, 219};
+    case kSynComment: return dark ? Rgb{106, 153, 85} : Rgb{0, 128, 0};
+    case kSynString: return dark ? Rgb{206, 145, 120} : Rgb{163, 21, 21};
+    case kSynNumber: return dark ? Rgb{181, 206, 168} : Rgb{9, 134, 88};
+    case kSynLabel: return dark ? Rgb{220, 220, 170} : Rgb{121, 94, 38};
+    case kSynRegister: return dark ? Rgb{156, 220, 254} : Rgb{0, 16, 128};
+    case kSynOperator: return dark ? Rgb{212, 212, 212} : Rgb{60, 60, 60};
+    case kSynLineNo: return dark ? Rgb{133, 133, 133} : Rgb{120, 120, 120};
+    case kSynVariable: return dark ? Rgb{156, 220, 254} : Rgb{0, 16, 128};
+    case kSynBios: if (bold) *bold = false; return dark ? Rgb{79, 193, 255} : Rgb{0, 112, 193};
+    case kSynHeading: if (bold) *bold = true; return dark ? Rgb{86, 156, 214} : Rgb{0, 0, 200};
+    default: return dark ? Rgb{212, 212, 212} : Rgb{30, 30, 30};
+    }
+}
+
 PalRgb PaletteRgb(int scheme, uint8_t style) {
+    if (style >= kSynKeywordSt && style < kStyleCount) { // destaque: a cor da classe sobre o fundo do texto do esquema
+        const PalRgb base = PaletteRgb(scheme, kText);
+        PalRgb p = base;
+        bool bold = false;
+        p.fg = SyntaxRgb(static_cast<uint8_t>(style - kSynKeywordSt + 1), true, &bold);
+        p.bold = bold;
+        return p;
+    }
     const Rgb grey{170, 170, 170}, dark{85, 85, 85}, black{0, 0, 0}, white{255, 255, 255};
     const Rgb blue{0, 0, 170}, cyan{0, 170, 170}, yellow{255, 255, 85}, red{170, 0, 0}, lred{255, 85, 85};
     if (scheme == 1 || scheme == 2) {

@@ -767,6 +767,108 @@ void test_autosave() {
     fs::remove_all(dir);
 }
 
+void test_syntax_in_editor() {
+    const fs::path dir = fs::temp_directory_path() / "fwmsx_editor_syntax_test";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    spit(dir / "a.asm", "  ld a,1 ; x\n");
+    spit(dir / "b.pas", "{ abre\nfecha }\nbegin\n");
+    spit(dir / "c.bas", "FILE \"X.SC2\"\n10 PRINT 1\n");
+    spit(dir / "d.txt", "print 1\n");
+    ed::Editor e;
+    std::string err;
+    check(e.Load((dir / "a.asm").string(), err) && e.Language()->Id() == "z80asm" && !e.LanguageManual(), "Load escolhe a linguagem pela extensao (.asm)");
+    check(e.Load((dir / "c.bas").string(), err) && e.Language()->Id() == "msxbas2rom", "Load de .bas olha o inicio do texto (MSXBAS2ROM)");
+    check(e.Load((dir / "d.txt").string(), err) && e.Language()->Id() == "plain", "texto puro para .txt");
+    check(e.Load((dir / "b.pas").string(), err) && e.Language()->Id() == "pascal", "Pascal para .pas");
+
+    // trechos por linha e o estado de varias linhas
+    std::vector<ed::Span> sp;
+    e.HighlightLine(0, sp);
+    check(sp.size() == 1 && sp[0].cls == ed::kSynComment, "linha 1 de { ... : comentario");
+    e.HighlightLine(1, sp);
+    check(sp.size() == 1 && sp[0].cls == ed::kSynComment && sp[0].to == 7, "linha 2 ('fecha }') ainda e' comentario por causa do estado");
+    e.HighlightLine(2, sp);
+    check(!sp.empty() && sp[0].cls == ed::kSynKeyword, "linha 3 (begin) volta a ser codigo");
+    e.SetCursor({0, 0});
+    e.Key("Del");
+    e.Key("Del"); // apaga o '{' e o espaco: a linha 1 deixa de abrir comentario
+    e.HighlightLine(1, sp);
+    check(sp.empty() || sp[0].cls != ed::kSynComment || sp[0].from > 0, "editar a linha de cima invalida o estado das de baixo");
+
+    // escolha manual
+    e.SetLanguage(ed::LangById("bat"), true);
+    check(e.Language()->Id() == "bat" && e.LanguageManual(), "SetLanguage manual");
+    std::string e2;
+    check(e.SaveAs((dir / "novo.asm").string(), e2) && e.Language()->Id() == "bat", "a escolha manual sobrevive ao Save As");
+    e.SetLanguage(nullptr, false);
+    e.DetectLanguage();
+    check(e.Language()->Id() == "z80asm" && !e.LanguageManual(), "auto: volta a vir da extensao");
+    e.NewFile();
+    check(e.Language()->Id() == "plain", "arquivo novo: texto puro");
+
+    // a grade da TUI usa o destaque
+    ed::EditorApp a;
+    a.SetSize(80, 25);
+    a.Ed().SetText("10 PRINT \"HI\" 'c");
+    a.Ed().SetLanguage(ed::LangById("msxbasic"), true);
+    ed::Grid g;
+    a.Render(g);
+    check(g.at(0, 1).style == ed::SynStyle(ed::kSynLineNo) && g.at(3, 1).style == ed::SynStyle(ed::kSynKeyword) && g.at(9, 1).style == ed::SynStyle(ed::kSynString) &&
+              g.at(14, 1).style == ed::SynStyle(ed::kSynComment) && g.at(2, 1).style == ed::kText,
+          "TUI: a grade pinta numero de linha, comando, string e comentario");
+    a.Ed().settings().syntax = false;
+    a.Render(g);
+    check(g.at(3, 1).style == ed::kText, "TUI: com o destaque desligado volta tudo a texto");
+    a.Ed().settings().syntax = true;
+    K(a, {"A-b", "s"});
+    a.Ed().SetCursor({0, 5});
+    K(a, {"A-b", "s"});
+    a.Render(g);
+    check(g.at(3, 1).style == ed::kBlockSel, "TUI: o bloco marcado vence a cor do destaque");
+
+    // dialogo Language (View > Language...)
+    K(a, {"A-v", "l"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Language && screen_has(a, "(auto)") && screen_has(a, "Assembly Z80") && screen_has(a, "Basic Dignified"),
+          "View > Language... lista as linguagens");
+    check(a.Current()->Find(2)->sel == 2, "o dialogo abre na linguagem atual (MSX-BASIC e' o 3o item: depois de (auto) e Texto)");
+    ed::DialogBox *d = a.CurrentMutable();
+    d->Find(2)->sel = 7; // (auto), plain, msxbasic, dignified, msxbas2rom, nestorbasic, turbobasic, z80asm
+    a.DialogEnter();
+    check(!a.HasDialog() && a.Ed().Language()->Id() == "z80asm" && a.Ed().LanguageManual(), "escolher na lista troca a linguagem");
+    K(a, {"A-v", "l"});
+    a.CurrentMutable()->Find(2)->sel = 0;
+    a.DialogEnter();
+    check(!a.Ed().LanguageManual() && a.Ed().Language()->Id() == "plain", "(auto) volta a detectar (arquivo sem nome = texto puro)");
+
+    // Display setup: a caixa Syntax highlighting
+    K(a, {"A-o", "d"});
+    check(a.HasDialog() && screen_has(a, "Syntax highlighting"), "Display setup tem 'Syntax highlighting'");
+    a.CurrentMutable()->Find(15)->checked = false;
+    a.DialogEnter();
+    check(!a.Ed().settings().syntax, "desmarcar desliga o destaque");
+
+    // configuracao em arquivo e sessao
+    ed::Settings s1;
+    s1.syntax = false;
+    ed::UiSettings u;
+    std::string cerr;
+    check(ed::SaveConfigFile((dir / "c.cfg").string(), s1, u, cerr), "grava a configuracao");
+    ed::Settings s2;
+    ed::UiSettings u2;
+    check(ed::LoadConfigFile((dir / "c.cfg").string(), s2, u2) && !s2.syntax, "a configuracao guarda o destaque");
+    ed::EditorApp b;
+    b.SetGuiMode(true);
+    b.Ed().Type("x");
+    b.Ed().SetLanguage(ed::LangById("pascal"), true);
+    const std::string sess = (dir / "s.session").string();
+    check(b.SaveSession(sess), "SaveSession com linguagem manual");
+    ed::EditorApp c;
+    c.SetGuiMode(true);
+    check(c.LoadSession(sess) && c.Ed().Language()->Id() == "pascal" && c.Ed().LanguageManual(), "a sessao guarda a linguagem escolhida");
+    fs::remove_all(dir);
+}
+
 void test_model_extras() {
     ed::Editor e;
     e.SetText("one two\nthree");
@@ -879,6 +981,7 @@ int main() {
     test_embedded_and_session();
     test_untitled_names();
     test_autosave();
+    test_syntax_in_editor();
     test_model_extras();
     test_translation();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");

@@ -41,6 +41,7 @@ bool SaveConfigFile(const std::string &path, const Settings &s, const UiSettings
     f << "page_length=" << s.page_length << "\n";
     f << "top_margin=" << s.top_margin << "\n";
     f << "autosave_minutes=" << s.autosave_minutes << "\n";
+    f << "syntax=" << s.syntax << "\n";
     f << "autosave_files=" << s.autosave_files << "\n";
     f << "scheme=" << u.scheme << "\n";
     f << "lines=" << u.lines << "\n";
@@ -80,6 +81,7 @@ bool LoadConfigFile(const std::string &path, Settings &s, UiSettings &u) {
         else if (k == "left_margin") s.left_margin = std::max(0, v);
         else if (k == "page_length") s.page_length = std::max(1, v);
         else if (k == "top_margin") s.top_margin = std::max(0, v);
+        else if (k == "syntax") s.syntax = v != 0;
         else if (k == "autosave_minutes") s.autosave_minutes = std::max(0, std::min(v, 1440));
         else if (k == "autosave_files") s.autosave_files = v != 0;
         else if (k == "scheme") u.scheme = std::max(0, std::min(v, 4));
@@ -786,7 +788,7 @@ void EditorApp::BuildDisplay() {
     dlg_.kind = Dialog::DisplaySetup;
     dlg_.title = "Display setup";
     dlg_.w = 64;
-    dlg_.h = 17;
+    dlg_.h = 18;
     dlg_.ws.push_back(Label(2, 1, "Color:"));
     const char *colors[] = {"Color 1", "Color 2", "VGA Monochrome", "Monochrome", "LCD"};
     for (int i = 0; i < 5; ++i) dlg_.ws.push_back(RadioW(0, i, 4, 2 + i, colors[i]));
@@ -797,14 +799,36 @@ void EditorApp::BuildDisplay() {
     dlg_.ws.push_back(CheckW(11, 2, 9, "Blinking bracket", ui_.blinking_bracket));
     dlg_.ws.push_back(CheckW(12, 2, 10, "Zoom window effects", ui_.zoom_effects));
     dlg_.ws.push_back(CheckW(13, 2, 11, "Large cursor", ui_.large_cursor));
+    dlg_.ws.push_back(CheckW(15, 2, 12, "Syntax highlighting", Ed().settings().syntax));
     dlg_.ws.push_back(Label(36, 9, "Tab spacing:"));
     dlg_.ws.push_back(InputW(14, 49, 9, 3, std::to_string(Ed().settings().tab_width), true, true));
-    OkCancel(dlg_, 13);
+    OkCancel(dlg_, 14);
     dlg_.BuildFields();
     // mapeia o esquema atual para a ordem da lista (0 LCD, 1 Color 1, 2 Color 2, 3 VGA mono, 4 mono)
     static const int scheme_to_radio[] = {4, 0, 1, 2, 3};
     dlg_.group_sel[0] = scheme_to_radio[std::max(0, std::min(ui_.scheme, 4))];
     dlg_.group_sel[1] = ui_.lines == 25 ? 0 : ui_.lines == 35 ? 1 : ui_.lines == 43 ? 2 : ui_.lines == 50 ? 3 : 4;
+}
+
+void EditorApp::BuildLanguage() {
+    dlg_ = DialogBox();
+    dlg_.kind = Dialog::Language;
+    dlg_.title = "Language";
+    dlg_.w = 44;
+    dlg_.h = 17;
+    Widget list = ListW(2, 2, 1, 38, 12, "");
+    list.items.push_back("(auto)");
+    int sel = 0;
+    const std::vector<const Lang *> &all = AllLangs();
+    for (size_t i = 0; i < all.size(); ++i) {
+        list.items.push_back(all[i]->Name());
+        if (Ed().LanguageManual() && Ed().Language() == all[i]) sel = static_cast<int>(i) + 1;
+    }
+    list.sel = sel;
+    list.top = std::max(0, sel - 5);
+    dlg_.ws.push_back(list);
+    OkCancel(dlg_, 14);
+    dlg_.BuildFields();
 }
 
 void EditorApp::BuildMouse() {

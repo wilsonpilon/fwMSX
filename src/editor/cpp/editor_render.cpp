@@ -99,18 +99,23 @@ void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
         const std::string &s = lines_[static_cast<size_t>(l)];
         const int tw = std::max(1, set_.tab_width);
         int dc = 0;
+        std::vector<Span> spans; // o destaque de sintaxe desta linha
+        HighlightLine(l, spans);
+        size_t si = 0;
         for (int i = 0; i <= static_cast<int>(s.size()); ++i) {
             const bool eol = i == static_cast<int>(s.size());
             const int w = eol ? 1 : (s[static_cast<size_t>(i)] == '	' ? tw - dc % tw : 1);
             const Pos here{l, i};
             const bool in_block = has_block && ba <= here && here < bb;
             const bool marker = (m1_set_ && here == m1_) || (m2_set_ && here == m2_);
+            while (si < spans.size() && spans[si].to <= i) ++si;
+            const uint8_t cls = (!eol && si < spans.size() && i >= spans[si].from) ? spans[si].cls : static_cast<uint8_t>(kSynNone);
             for (int k = 0; k < w; ++k) {
                 const int x = dc + k - left_;
                 if (x < 0 || x >= width) continue;
                 Cell &c = g.at(x, y0 + row);
                 if (!eol && s[static_cast<size_t>(i)] != '	') c.ch = static_cast<unsigned char>(s[static_cast<size_t>(i)]);
-                c.style = marker ? kBlockMark : (in_block ? kBlockSel : kText);
+                c.style = marker ? kBlockMark : (in_block ? kBlockSel : SynStyle(cls));
                 if (here == bracket) c.style = kBracket;
                 if (marker && c.ch == ' ') c.ch = 0x25AA; // quadradinho onde o marcador esta'
             }

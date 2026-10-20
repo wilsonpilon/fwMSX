@@ -29,7 +29,8 @@ std::string Tr(const std::string &en) {
         // Print
         {"Print Block", "Imprimir bloco"}, {"Eject page", "Ejetar pagina"},
         // View
-        {"Information display", "Informacoes"}, {"Outline display", "Estrutura (outline)"},
+        {"Information display", "Informacoes"}, {"Outline display", "Estrutura (outline)"}, {"Language...", "Linguagem..."},
+        {"Language", "Linguagem"}, {"(auto)", "(automatica)"}, {"Syntax highlighting", "Destaque de sintaxe"}, {"Language:", "Linguagem:"},
         // Options
         {"Display...", "Tela..."}, {"Mouse...", "Mouse..."}, {"Editor...", "Editor..."}, {"Save configuration...", "Salvar configuracao..."},
         // Help

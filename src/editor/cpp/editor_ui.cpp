@@ -286,6 +286,7 @@ bool EditorApp::SaveSession(const std::string &path) const {
         const std::string text = e.Text();
         f << "DOC\n" << "NAME " << e.Name().size() << "\n" << e.Name() << "\n";
         f << "UNT " << e.Untitled() << "\n";
+        if (e.LanguageManual()) f << "LANG " << e.Language()->Id() << "\n"; // a escolha manual da linguagem
         f << "MOD " << (e.Modified() ? 1 : 0) << " " << (e.Crlf() ? 1 : 0) << " " << e.Cursor().line << " " << e.Cursor().col << "\n";
         f << "TEXT " << text.size() << "\n";
         f.write(text.data(), static_cast<std::streamsize>(text.size()));
@@ -312,9 +313,11 @@ bool EditorApp::LoadSession(const std::string &path) {
         if (n) f.read(&name[0], static_cast<std::streamsize>(n));
         std::getline(f, line); // fim da linha do nome
         std::string untitled;
+        std::string lang_id;
         if (!std::getline(f, line)) return false;
-        if (line.rfind("UNT ", 0) == 0) { // sessoes da 1.41.4 nao tem esta linha
-            untitled = line.substr(4);
+        while (line.rfind("UNT ", 0) == 0 || line.rfind("LANG ", 0) == 0) { // linhas opcionais (as sessoes da 1.41.4 nao as tem)
+            if (line[0] == 'U') untitled = line.substr(4);
+            else lang_id = line.substr(5);
             if (!std::getline(f, line)) return false;
         }
         int mod = 0, crlf = 1, cl = 0, cc = 0;
@@ -337,6 +340,8 @@ bool EditorApp::LoadSession(const std::string &path) {
             if (mod || name.empty()) e.MarkModified();
         }
         if (name.empty()) e.SetUntitled(untitled);
+        if (!lang_id.empty() && LangById(lang_id)) e.SetLanguage(LangById(lang_id), true);
+        else e.DetectLanguage();
         e.SetCursor({cl, cc});
         docs.push_back(e);
     }
@@ -779,6 +784,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::About: BuildAbout(); break;
     case Dialog::DisplaySetup: BuildDisplay(); break;
     case Dialog::MouseSetup: BuildMouse(); break;
+    case Dialog::Language: BuildLanguage(); break;
     case Dialog::EditorSetup: BuildEditorSetup(); break;
     case Dialog::SaveConfig: BuildSaveConfig(); break;
     case Dialog::Help: BuildHelp(arg, 0); break;
@@ -1039,9 +1045,21 @@ void EditorApp::DialogDone(int button) {
         Settings &s = e.settings();
         s.tab_width = std::max(1, std::min(32, std::atoi(done.Text(14).c_str())));
         s.show_bracket = ui_.blinking_bracket;
+        s.syntax = done.Checked(15);
         for (Editor &w : wins_) w.settings() = s;
         config_dirty_ = true;
         SetSize(cols_, rows_);
+        break;
+    }
+    case Dialog::Language: {
+        const Widget *l = done.Find(2);
+        const int sel = l ? l->sel : 0;
+        if (sel <= 0) {
+            e.SetLanguage(nullptr, false);
+            e.DetectLanguage();
+        } else {
+            e.SetLanguage(AllLangs()[static_cast<size_t>(sel - 1)], true);
+        }
         break;
     }
     case Dialog::MouseSetup:

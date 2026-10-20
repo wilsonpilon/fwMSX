@@ -17,6 +17,22 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.6 -- "Hyper Sports: Destaque de sintaxe" (Konami) (2026-10-20)
+
+**Pedido do usuario** (fase E4 do editor): destaque de sintaxe para MSX-BASIC, `.BAT`/`.BTM`, `.ASM`, `.PAS`, `.BAS`, `.DMX`, `.AMX` e assim por diante; Basic Dignified com compatibilidade total; MSXBAS2ROM, NestorBASIC e Turbo Basic/Basic Kun como dialetos.
+
+- **Arquitetura**: `ed::Lang` (syntax.h): uma linguagem recebe UMA linha e o estado da anterior (`HlState.mode`: comentario de varias linhas, bloco, cerca de codigo) e devolve `Span{de, ate', classe}`; as classes (`SynClass`, 13) viram estilos de celula (`SynStyle`) na TUI e cores do tema na janela.
+  O editor (`Editor::HighlightLine`) guarda o estado do INICIO de cada linha so' ate' onde ja' foi pedido e o invalida quando o texto muda (`Revision`); linguagens sem estado (BASIC, Batch) nem varrem as linhas de cima. A linguagem do documento (`Language`, `SetLanguage`, `DetectLanguage`) vem do nome/inicio do arquivo e a escolha manual persiste.
+- **Dados x codigo**: as palavras sao tabelas (`WordTable`: hash NASM + comparacao) preenchidas de listas; MSX-BASIC/CALL/MSXBAS2ROM/NestorBASIC vem do man (`syntax_words_gen.inc`), a BIOS vem de `src/asm/cpp/bios_tables.inc` (a tabela do fwasm: o editor e o montador concordam), o resto esta' em `syntax_langs.cpp`.
+- **Achados**: (1) o tokenizador do MSX-BASIC acha palavras DENTRO de nomes (TOTAL = TO + TAL); o editor fatia assim so' corridas todas em MAIUSCULAS (listagens antigas `FORI=1TO10`) e nunca palavras em minusculas ou mistas; (2) `[pk][poke 100,[10]]` do Dignified tem colchetes aninhados: o varredor conta a profundidade;
+  (3) o `.bas` pode ser MSX-BASIC, MSXBAS2ROM ou NestorBASIC: o inicio do texto decide (`FILE "..."`, `CMD <cmd estendido>`, `NB_`); (4) `ImGui::CalcTextSize("M")` arredonda PARA CIMA em pixels inteiros, o que desalinha trechos posicionados por celula.
+- **Escolhas minhas / lacunas** (a rever): a lista de palavras do **Turbo Basic / Basic Kun** e' inicial (so' `while wend repeat until do loop exit turbo`) -- o usuario precisa informar a sintaxe verdadeira; o `.bmx` (tokenizado) nao tem destaque (e' binario); NestorBASIC nao tem lista de palavras alem das funcoes `NB_` e das extensoes CALL; no Markdown nao ha' destaque de HTML nem de tabelas;
+  as cores da TUI usam 16 cores do terminal (os esquemas LCD/mono ganharam cores de destaque, que o NE original nao tinha); a barra de estado da TUI nao mostra a linguagem (so' `View > Language...` mostra a atual).
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 30/30 nos dois; captura da janela com `.asm`, `.bas` e `.pas`.
+- **Fora de escopo / proximos**: E5 completar e snippets (as palavras e a BIOS destas tabelas alimentam o completar), E6 integracao (Executar no MSX, erros -> linha, projeto), E7 (Paragraph/Document format, Print, Outline, Load more...); a sintaxe do Turbo Basic/Basic Kun; `.bmx` como visualizacao.
+
+---
+
 ## v1.41.5 -- "Hyper Sports: Autosave do editor" (Konami) (2026-10-20)
 
 **Pedidos do usuario**: (1) "Sem Nome" nao agrada: **noname01**, e as outras abas noname02, noname03...; (2) fechar sem perguntar esta' ok (editores modernos fazem isso); (3) antes da E4, uma opcao de configuracao com "a cada quantos minutos o editor salva automaticamente o seu conteudo em disco, 0 nao salva periodicamente".

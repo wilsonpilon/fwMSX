@@ -163,6 +163,7 @@ public:
     bool MenuItemEnabled(const MenuItem &it) const { return Enabled(it); }
     DialogBox *CurrentMutable() { return HasDialog() ? &dlg_ : nullptr; }
     void PressDialog(int id) { DialogDone(id); }
+    void ShowLanguage() { ShowDialog(Dialog::Language); } // escolher a linguagem do destaque
     void DialogEnter();                       // Enter no dialogo (nos de arquivo: abre/entra no diretorio)
 
     // --- entrada ---
@@ -209,6 +210,7 @@ private:
     void BuildAbout();
     void BuildDisplay();
     void BuildMouse();
+    void BuildLanguage();
     void BuildEditorSetup();
     void BuildSaveConfig();
     void BuildHelp(int topic, int page);

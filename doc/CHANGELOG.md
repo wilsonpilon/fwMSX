@@ -7,6 +7,21 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.6] - 2026-10-20 - "Hyper Sports: Destaque de sintaxe" (Konami)
+
+### Adicionado -- destaque de sintaxe no editor (fase E4), na TUI e na janela
+- **10 linguagens**, escolhidas pela extensao (e, para `.bas`, pelo inicio do texto): **MSX-BASIC** (`.bas`, `.asc`, `.amx`), **Basic Dignified** (`.dmx`), **MSXBAS2ROM**, **NestorBASIC**, **Turbo Basic / Basic Kun**, **Assembly Z80** (`.asm`, `.z80`, `.inc`, `.s`), **Pascal** (`.pas`),
+  **Batch** (`.bat`, `.btm`, `.cmd`), **Markdown** (`.md`) e texto puro. `View > Language...` troca a linguagem na mao ("(auto)" volta a detectar); a escolha vale ate' o usuario pedir auto e fica na sessao.
+- **MSX-BASIC**: numero de linha, comandos (182 palavras tiradas do man), funcoes, operadores por extenso, `REM` e `'`, strings, numeros (`&H`, `&B`, `&O`, reais com expoente), `CALL <extensao>` e `_EXTENSAO` (96 extensoes de CALL), `?` = PRINT, numeros de linha de `GOTO/GOSUB/THEN/ELSE/ON..GOTO` como rotulos e a listagem compacta em
+  maiusculas (`FORI=1TO10`). **Basic Dignified**: `{rotulo}`, `nome{` / `}`, `define [alias]`, `declare`, `func`/`ret`, `.funcao(...)`, `~variavel`, `##` e `###`/`''` (blocos de varias linhas), remtags `##BB:`. **MSXBAS2ROM**: `FILE`/`TEXT`/`INCLUDE` e `CMD <comando>` (37 comandos). **NestorBASIC**: as 85 funcoes `NB_`.
+- **Assembly Z80** (asMSX/fwasm): mnemonicos (incl. R800), registradores e condicoes, diretivas (com e sem ponto), **chamadas e variaveis da BIOS** (a mesma tabela do montador), rotulos (coluna 0 e locais `.nome`), `;`, `//` e `/* */` de varias linhas, strings/caracteres, numeros `#FF $FF 0xFF 0FFh %1010 101b`.
+  **Pascal**: palavras-chave, tipos, `{ }`, `(* *)` e `//` (varias linhas), `{$...}`, strings com aspa dobrada, `$FF`, `#13`, e as palavras do Kizuna (`bank`, `public`, `extern`). **Batch**: `rem`, `::`, `:rotulo`, `@`, `%VAR%`/`%1`/`%%i`, palavras do MS-DOS/MSX-DOS 2/4DOS. **Markdown**: titulos, listas, codigo em linha e em bloco, negrito, links, citacoes.
+- **Cores**: na TUI cada esquema do NE (LCD, azul, ciano...) ganhou cores de destaque; na janela, as cores seguem o tema (escuro: estilo VS Code Dark+; claro: tons fechados). **Display setup > Syntax highlighting** liga/desliga; a janela mostra a linguagem na barra de estado (clique para mudar).
+- **Quatro linguagens**: C++ (as linguagens), C (`ed_syntax.c`: medir identificador, numero e string), Fortran (`ed_number.f90`: classificar o numero: decimal/hexa/binario/octal/real) e NASM (`ed_hash.asm`: hash FNV-1a que ignora a caixa, chave das tabelas de palavras).
+- Janela: o desenho agora e' por trechos coloridos posicionados por celula (e a largura da celula e' medida em 64 letras: `CalcTextSize` arredonda cada letra para cima e os trechos se afastavam).
+- Gerador das listas: `tools/editor/gen_syntax_words.py` (le' o man e escreve `syntax_words_gen.inc`).
+- Testes: `syntaxtest` (102 verificacoes: nucleo, cada linguagem, estado de varias linhas, deteccao) e `editorui` (246: integracao com o editor, a grade da TUI, o dialogo Language, a sessao).
+
 ## [1.41.5] - 2026-10-20 - "Hyper Sports: Autosave do editor" (Konami)
 
 ### Adicionado -- salvamento automatico periodico e nomes noname01.. (pedidos do usuario)

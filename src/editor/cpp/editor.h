@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "syntax.h"
+
 namespace ed {
 
 constexpr int kDefaultCols = 80;
@@ -37,8 +39,16 @@ enum Style : uint8_t {
     kShadow,      // sombra pontilhada
     kTitleBar,    // barra com o nome do arquivo entre duas janelas
     kBracket,     // o parentese que casa com o que esta' a esquerda do cursor
+    // destaque de sintaxe (um por SynClass, na mesma ordem; use SynStyle)
+    kSynKeywordSt, kSynKeyword2St, kSynDirectiveSt, kSynCommentSt, kSynStringSt, kSynNumberSt, kSynLabelSt, kSynRegisterSt, kSynOperatorSt,
+    kSynLineNoSt, kSynVariableSt, kSynBiosSt, kSynHeadingSt,
     kStyleCount
 };
+
+// O estilo de celula da classe de destaque `cls` (1..13); 0 (sem classe) volta kText.
+inline uint8_t SynStyle(uint8_t cls) {
+    return cls == 0 ? static_cast<uint8_t>(kText) : static_cast<uint8_t>(kSynKeywordSt + cls - 1);
+}
 
 struct Cell {
     uint16_t ch = ' '; // 0-255: o byte do texto; acima: ornamentos (setas, trilho) em Unicode
@@ -93,7 +103,7 @@ enum class Cmd {
     // menu Print
     Print, PrintBlock, EjectPage, PrintSetup,
     // menu View
-    Information, Outline, About,
+    Information, Outline, About, Language,
     // menu Options
     DisplaySetup, MouseSetup, EditorSetup, SaveConfig,
     // ajuda e menu
@@ -103,7 +113,7 @@ enum class Cmd {
 enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
     InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
-    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2
+    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language
 };
 
 struct CmdInfo {
@@ -162,6 +172,7 @@ struct Settings {
     int page_length = 62;
     int top_margin = 2;
     bool show_bracket = true; // realca o parentese que casa (Display setup: Blinking bracket)
+    bool syntax = true;           // destaque de sintaxe (Display setup: Syntax highlighting)
     int autosave_minutes = 0;     // salvamento automatico periodico (Editor setup); 0 = desligado
     bool autosave_files = false;  // o autosave tambem grava nos arquivos que ja' tem nome (senao so' a sessao de recuperacao)
 };
@@ -224,6 +235,15 @@ public:
     // Nome para MOSTRAR: o arquivo (so' o nome, sem a pasta) ou o nome automatico dos sem nome (noname01...); "Untitled" se ainda nao recebeu.
     std::string Title() const;
     const std::string &Untitled() const { return untitled_; }
+    // --- linguagem (destaque de sintaxe) ---
+    // A linguagem vem da extensao do arquivo (Load, SaveAs) e do inicio do texto (.bas: MSX-BASIC, MSXBAS2ROM ou NestorBASIC); o usuario pode
+    // escolher outra (View > Language) e a escolha manual fica ate' ele pedir "auto".
+    const Lang *Language() const;
+    void SetLanguage(const Lang *l, bool manual = true);
+    void DetectLanguage();
+    bool LanguageManual() const { return lang_manual_; }
+    // Trechos coloridos da linha (vazio se o destaque esta' desligado ou a linguagem e' texto puro). Cuida do estado entre linhas.
+    void HighlightLine(int line, std::vector<Span> &out) const;
     void SetUntitled(const std::string &u) { untitled_ = u; }
     bool AutosavedOnce() const { return autosaved_; }
     void SetAutosavedOnce(bool v) { autosaved_ = v; }
@@ -345,6 +365,10 @@ private:
     bool eof_ctrl_z_ = false;
     bool bom_ = false;
     std::string name_;
+    const Lang *lang_ = nullptr; // nullptr = texto puro (a lista de linguagens vem de AllLangs)
+    bool lang_manual_ = false;
+    mutable std::vector<HlState> hl_states_;  // estado do destaque no INICIO de cada linha (so' ate' onde ja' foi pedido)
+    mutable uint64_t hl_rev_ = 0;
     std::string untitled_;   // noname01, noname02...: so' para mostrar (a interface grafica)
     bool autosaved_ = false; // o autosave ja' guardou a copia { do arquivo original
     std::string message_;

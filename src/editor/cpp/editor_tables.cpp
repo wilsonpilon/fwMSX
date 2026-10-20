@@ -113,6 +113,7 @@ const CmdInfo kInfos[] = {
     {Cmd::Information, "information", false, D::Information, true},
     {Cmd::Outline, "outline", false, D::Outline, false},
     {Cmd::About, "about", false, D::About, true},
+    {Cmd::Language, "language", false, D::Language, true},
     {Cmd::DisplaySetup, "display-setup", false, D::DisplaySetup, true},
     {Cmd::MouseSetup, "mouse-setup", false, D::MouseSetup, true},
     {Cmd::EditorSetup, "editor-setup", false, D::EditorSetup, true},
@@ -198,7 +199,8 @@ const std::vector<Menu> &Menus() {
         {"View", 'v', 44,
          {
              {"Information display", 'i', "", Cmd::Information, 0, false, false},
-             {"Outline display", 'o', "", Cmd::Outline, 0, false, false},
+             {"Outline display", 'o', "", Cmd::Outline, 0, true, false},
+             {"Language...", 'l', "", Cmd::Language, 0, false, false},
              {nullptr, 'a', "", Cmd::About, 0, false, true},
          }},
         {"Options", 'o', 50,

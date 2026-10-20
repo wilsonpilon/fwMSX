@@ -99,6 +99,10 @@ std::string DisplayLine(const std::string &s, int tab) {
     return out;
 }
 
+ImU32 ColRgb(Rgb c) {
+    return IM_COL32(c.r, c.g, c.b, 255);
+}
+
 ImU32 WithAlpha(ImU32 c, float a) {
     const int alpha = static_cast<int>(((c >> IM_COL32_A_SHIFT) & 0xFF) * a);
     return (c & ~IM_COL32_A_MASK) | (static_cast<ImU32>(alpha) << IM_COL32_A_SHIFT);
@@ -339,6 +343,13 @@ void EditorPanel::DrawStatus() {
     ImGui::TextUnformatted(left.c_str());
     ImGui::SameLine(0, 24);
     ImGui::TextDisabled("%s", e.ReadOnly() ? "Somente leitura" : (e.InsertMode() ? "Insert" : "Sobrescrever"));
+    ImGui::SameLine(0, 16);
+    ImGui::TextUnformatted(e.Language()->Name().c_str()); // a linguagem do destaque: clicar escolhe outra
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+        ImGui::SetTooltip("Linguagem do destaque de sintaxe (clique para mudar)");
+    }
+    if (ImGui::IsItemClicked(0)) app_.ShowLanguage();
     if (e.settings().word_wrap) {
         ImGui::SameLine(0, 16);
         ImGui::TextDisabled("Quebra automatica");
@@ -410,7 +421,10 @@ void EditorPanel::DrawPane(int pane, ImVec2 size) {
     if (mono_) ImGui::PushFont(mono_, mono_size_);
     ImFont *font = ImGui::GetFont();
     const float fs = ImGui::GetFontSize();
-    const float cw = std::max(1.0f, ImGui::CalcTextSize("M").x);
+    // largura da celula: CalcTextSize arredonda PARA CIMA em pixels inteiros; medindo 64 letras o erro por caractere some (senao os trechos
+    // coloridos, que sao posicionados por celula, se afastam uns dos outros)
+    static const std::string kProbe(64, 'M');
+    const float cw = std::max(1.0f, ImGui::CalcTextSize(kProbe.c_str()).x / 64.0f);
     const float lh = std::ceil(fs * 1.35f);
     const int nlines = ed.LineCount();
     const int digits = std::max(3, static_cast<int>(std::to_string(nlines).size()));
@@ -419,6 +433,8 @@ void EditorPanel::DrawPane(int pane, ImVec2 size) {
 
     const ImU32 bg = ImGui::GetColorU32(ImGuiCol_FrameBg);
     const ImU32 fg = ImGui::GetColorU32(ImGuiCol_Text);
+    const ImVec4 wbg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg); // tema escuro ou claro do fwMSX: escolhe as cores do destaque
+    const bool dark = wbg.x * 0.299f + wbg.y * 0.587f + wbg.z * 0.114f < 0.5f;
     ImGui::PushStyleColor(ImGuiCol_ChildBg, bg);
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
     // o modelo rolou a vista (cursor, PgDn, busca...): a rolagem do ImGui acompanha
@@ -463,15 +479,55 @@ void EditorPanel::DrawPane(int pane, ImVec2 size) {
                 if (l < bb.line) x2 += cw * 0.6f; // a quebra de linha tambem esta' no bloco
                 dl->AddRectFilled(ImVec2(x1, y), ImVec2(x2, y + lh), sel_col);
             }
-            const std::string shown = DisplayLine(s, tab);
-            const int from_col = std::max(0, left_col - 1);
-            if (static_cast<int>(shown.size()) > from_col) {
-                // trechos de varios bytes (acentos) nao sao cortados: o recorte so' acontece em ASCII
-                size_t b = static_cast<size_t>(from_col);
-                while (b < shown.size() && (static_cast<unsigned char>(shown[b]) & 0xC0) == 0x80) ++b;
-                std::string seg = shown.substr(b, static_cast<size_t>(cols) * 2 + 8);
-                dl->AddText(font, fs, ImVec2(origin.x + gutter + static_cast<float>(b) * cw, y + (lh - fs) / 2), fg, seg.c_str(), seg.c_str() + seg.size());
+            // celulas da linha (tabulacao expandida), cada uma com a classe de destaque do byte de origem; desenha por trechos de mesma cor
+            std::vector<Span> spans;
+            ed.HighlightLine(l, spans);
+            const int from_cell = std::max(0, left_col - 1);
+            const int to_cell = from_cell + cols + 4;
+            const float text_y = y + (lh - fs) / 2;
+            int cell = 0;
+            size_t si = 0;
+            std::string run;
+            int run_start = 0;
+            uint8_t run_cls = 0;
+            auto flush = [&]() {
+                if (!run.empty() && run.find_first_not_of(' ') != std::string::npos) {
+                    bool bold = false;
+                    const ImU32 col = run_cls == 0 ? fg : ColRgb(SyntaxRgb(run_cls, dark, &bold));
+                    const ImVec2 pt(origin.x + gutter + static_cast<float>(run_start) * cw, text_y);
+                    dl->AddText(font, fs, pt, col, run.c_str(), run.c_str() + run.size());
+                    if (bold) dl->AddText(font, fs, ImVec2(pt.x + 1, pt.y), col, run.c_str(), run.c_str() + run.size());
+                }
+                run.clear();
+            };
+            auto put = [&](uint32_t cp, uint8_t cls) {
+                if (cell >= from_cell && cell < to_cell) {
+                    if (run.empty()) {
+                        run_start = cell;
+                        run_cls = cls;
+                    } else if (cls != run_cls) {
+                        flush();
+                        run_start = cell;
+                        run_cls = cls;
+                    }
+                    AppendUtf8(run, cp);
+                }
+                ++cell;
+            };
+            for (size_t bi = 0; bi < s.size() && cell < to_cell; ++bi) {
+                const unsigned char ch = static_cast<unsigned char>(s[bi]);
+                while (si < spans.size() && spans[si].to <= static_cast<int>(bi)) ++si;
+                const uint8_t cls = (si < spans.size() && static_cast<int>(bi) >= spans[si].from) ? spans[si].cls : 0;
+                if (ch == '\t') {
+                    const int n = tab - cell % tab;
+                    for (int k = 0; k < n; ++k) put(' ', cls);
+                } else {
+                    uint32_t cp = ch;
+                    if (ch < 32 || ch == 127 || (ch >= 0x80 && ch < 0xA0)) cp = 0xB7; // ponto medio
+                    put(cp, cls);
+                }
             }
+            flush();
         }
         // parentese que casa com o que esta' a esquerda do cursor
         if (is_active && ed.settings().show_bracket && cur.col > 0) {

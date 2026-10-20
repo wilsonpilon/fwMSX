@@ -33,8 +33,31 @@ struct Pal {
     bool underline = false;
 };
 
+// Cores do destaque de sintaxe: uma para o fundo preto (LCD/mono) e outra para o azul (Color 1/2). `style` e' um kSyn*St.
+Pal SynPal(int scheme, uint8_t style) {
+    const bool blue = scheme == 1 || scheme == 2;
+    const Color bg = blue ? Color::Blue : Color::Black;
+    switch (style) {
+    case kSynKeywordSt: return {blue ? Color::YellowLight : Color::CyanLight, bg, true};
+    case kSynKeyword2St: return {blue ? Color::CyanLight : Color::Cyan, bg};
+    case kSynDirectiveSt: return {Color::MagentaLight, bg};
+    case kSynCommentSt: return {blue ? Color::GreenLight : Color::GrayDark, bg};
+    case kSynStringSt: return {blue ? Color::RedLight : Color::YellowLight, bg};
+    case kSynNumberSt: return {blue ? Color::White : Color::GreenLight, bg, blue};
+    case kSynLabelSt: return {blue ? Color::GreenLight : Color::YellowLight, bg, true};
+    case kSynRegisterSt: return {blue ? Color::CyanLight : Color::BlueLight, bg};
+    case kSynOperatorSt: return {Color::White, bg};
+    case kSynLineNoSt: return {blue ? Color::GrayLight : Color::GrayDark, bg};
+    case kSynVariableSt: return {Color::CyanLight, bg};
+    case kSynBiosSt: return {Color::RedLight, bg, true};
+    case kSynHeadingSt: return {Color::YellowLight, bg, true};
+    default: return {Color::White, bg};
+    }
+}
+
 // Os esquemas de cor do NE 2 (Options > Display): 0 LCD, 1 Color 1 (azul), 2 Color 2 (ciano), 3 VGA mono, 4 mono.
 Pal Palette(int scheme, uint8_t style) {
+    if (style >= kSynKeywordSt && style < kStyleCount) return SynPal(scheme, style);
     const Color grey = Color::GrayLight;
     const Color dark = Color::GrayDark;
     const Color black = Color::Black;
