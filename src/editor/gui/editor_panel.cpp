@@ -225,6 +225,8 @@ void EditorPanel::DrawMenuBar() {
     if (!ImGui::BeginMenuBar()) return;
     const std::vector<Menu> &menus = Menus();
     anchors_.assign(menus.size(), ImVec2(0, 0));
+    bar_min_ = ImGui::GetCursorScreenPos();
+    bar_max_ = ImVec2(bar_min_.x + ImGui::GetContentRegionAvail().x, bar_min_.y + ImGui::GetFrameHeight());
     for (int i = 0; i < static_cast<int>(menus.size()); ++i) {
         const std::string label = Tr(menus[static_cast<size_t>(i)].title);
         const bool open = app_.MenuIndex() == i;
@@ -243,64 +245,64 @@ void EditorPanel::DrawMenuBar() {
 }
 
 void EditorPanel::DrawMenuPopup() {
+    // O menu aberto e' uma janela COMUM do ImGui (nao um popup): se o editor for escondido com ele aberto, nao sobra estado preso na pilha de popups.
     const int m = app_.MenuIndex();
-    const bool imgui_open = ImGui::IsPopupOpen("##edmenu");
-    if (m >= 0 && !imgui_open) {
-        if (menu_popup_live_) { // o ImGui fechou (clique fora): o estado do editor acompanha
-            app_.CloseMenuNow();
-            menu_popup_live_ = false;
-            return;
-        }
-        ImGui::OpenPopup("##edmenu");
-        menu_popup_live_ = true;
-    }
-    if (m < 0 && !imgui_open) {
+    if (m < 0) {
         menu_popup_live_ = false;
         return;
     }
-    if (m >= 0 && static_cast<size_t>(m) < anchors_.size()) ImGui::SetNextWindowPos(anchors_[static_cast<size_t>(m)], ImGuiCond_Always);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
-    if (ImGui::BeginPopup("##edmenu", ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav)) {
-        if (m < 0) {
-            ImGui::CloseCurrentPopup();
-        } else {
-            const Menu &menu = Menus()[static_cast<size_t>(m)];
-            float lw = 0, sw = 0;
-            for (const MenuItem &it : menu.items) {
-                if (it.hidden || !it.label) continue;
-                lw = std::max(lw, ImGui::CalcTextSize(Tr(it.label).c_str()).x);
-                sw = std::max(sw, ImGui::CalcTextSize(MnemonicText(menu, it).c_str()).x);
-            }
-            const float total = lw + sw + 56.0f;
-            for (int idx = 0; idx < static_cast<int>(menu.items.size()); ++idx) {
-                const MenuItem &it = menu.items[static_cast<size_t>(idx)];
-                if (it.hidden || !it.label) continue;
-                const bool enabled = app_.MenuItemEnabled(it);
-                ImGui::PushID(idx);
-                ImGui::BeginDisabled(!enabled);
-                if (ImGui::Selectable(Tr(it.label).c_str(), idx == app_.MenuItemIndex(), ImGuiSelectableFlags_None, ImVec2(total, 0))) {
-                    app_.RunMenu(m, idx);
-                    ImGui::CloseCurrentPopup();
-                    ImGui::EndDisabled();
-                    ImGui::PopID();
-                    ImGui::EndPopup();
-                    ImGui::PopStyleVar();
-                    return;
-                }
-                if (ImGui::IsItemHovered() && enabled) app_.SetMenuItem(idx);
-                const std::string sc = MnemonicText(menu, it);
-                if (!sc.empty()) {
-                    ImGui::SameLine(total - ImGui::CalcTextSize(sc.c_str()).x - 4);
-                    ImGui::TextDisabled("%s", sc.c_str());
-                }
-                ImGui::EndDisabled();
-                ImGui::PopID();
-                if (it.separator_after) ImGui::Separator();
-            }
-        }
-        ImGui::EndPopup();
+    if (static_cast<size_t>(m) < anchors_.size()) ImGui::SetNextWindowPos(anchors_[static_cast<size_t>(m)], ImGuiCond_Always);
+    if (!menu_popup_live_) {
+        ImGui::SetNextWindowFocus();
+        menu_popup_live_ = true;
     }
+    int run = -1;
+    bool hovered = false;
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
+                                   ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoScrollbar;
+    if (ImGui::Begin("##edmenu", nullptr, flags)) {
+        const Menu &menu = Menus()[static_cast<size_t>(m)];
+        float lw = 0, sw = 0;
+        for (const MenuItem &it : menu.items) {
+            if (it.hidden || !it.label) continue;
+            lw = std::max(lw, ImGui::CalcTextSize(Tr(it.label).c_str()).x);
+            sw = std::max(sw, ImGui::CalcTextSize(MnemonicText(menu, it).c_str()).x);
+        }
+        const float total = lw + sw + 56.0f;
+        for (int idx = 0; idx < static_cast<int>(menu.items.size()); ++idx) {
+            const MenuItem &it = menu.items[static_cast<size_t>(idx)];
+            if (it.hidden || !it.label) continue;
+            const bool enabled = app_.MenuItemEnabled(it);
+            ImGui::PushID(idx);
+            ImGui::BeginDisabled(!enabled);
+            if (ImGui::Selectable(Tr(it.label).c_str(), idx == app_.MenuItemIndex(), ImGuiSelectableFlags_None, ImVec2(total, 0))) run = idx;
+            if (ImGui::IsItemHovered() && enabled) app_.SetMenuItem(idx);
+            const std::string sc = MnemonicText(menu, it);
+            if (!sc.empty()) {
+                ImGui::SameLine(total - ImGui::CalcTextSize(sc.c_str()).x - 4);
+                ImGui::TextDisabled("%s", sc.c_str());
+            }
+            ImGui::EndDisabled();
+            ImGui::PopID();
+            if (it.separator_after) ImGui::Separator();
+        }
+        // AllowWhenBlockedByActiveItem: no frame do clique o item de menu ja' esta' ativo e, sem esta opcao, o ImGui diria
+        // "nao esta' sobre a janela" -- e o menu fecharia ANTES de o clique virar um item executado.
+        hovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows | ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
+    }
+    ImGui::End();
     ImGui::PopStyleVar();
+    if (run >= 0) {
+        app_.RunMenu(m, run);
+        return;
+    }
+    // clique fora do menu e fora da barra de titulos fecha o menu (como um popup)
+    if (ImGui::IsMouseClicked(0) && !hovered) {
+        const ImVec2 mp = ImGui::GetIO().MousePos;
+        const bool on_bar = mp.x >= bar_min_.x && mp.x <= bar_max_.x && mp.y >= bar_min_.y && mp.y <= bar_max_.y;
+        if (!on_bar) app_.CloseMenuNow();
+    }
 }
 
 void EditorPanel::DrawTabs() {
@@ -703,37 +705,33 @@ void EditorPanel::DrawDialogWidgets(DialogBox &d, float ux, float uy) {
 }
 
 void EditorPanel::DrawDialog() {
+    // A caixa de dialogo tambem e' uma janela COMUM (sem popup modal): e' o que evitava o travamento ao reabrir o editor depois de
+    // fecha-lo com um dialogo aberto. O "modal" e' feito aqui: enquanto ha' dialogo o teclado e' dele e a janela fica na frente.
     DialogBox *d = app_.CurrentMutable();
-    if (!d && !dlg_live_) return;
-    if (d && !dlg_live_) {
-        ImGui::OpenPopup("###eddlg");
-        dlg_live_ = true;
+    if (!d) {
+        dlg_live_ = false;
+        return;
     }
     const float ux = std::max(7.0f, ImGui::GetFontSize() * 0.55f);
     const float uy = ImGui::GetFrameHeightWithSpacing() + 2;
-    if (d) {
-        last_dlg_title_ = d->title.empty() ? std::string("Editor") : Tr(d->title);
-        // a altura vem do conteudo (o ultimo widget), nao da caixa de 25 linhas do terminal
-        int rows = 1;
-        for (const Widget &w : d->ws) rows = std::max(rows, w.y + (w.type == Widget::List ? w.h : 1) + 1);
-        const ImVec2 sz(static_cast<float>(d->w) * ux + 24, static_cast<float>(rows) * uy + 46);
-        ImGui::SetNextWindowSize(sz, ImGuiCond_Always);
-        ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-    }
+    last_dlg_title_ = d->title.empty() ? std::string("Editor") : Tr(d->title);
+    // a altura vem do conteudo (o ultimo widget), nao da caixa de 25 linhas do terminal
+    int rows = 1;
+    for (const Widget &w : d->ws) rows = std::max(rows, w.y + (w.type == Widget::List ? w.h : 1) + 1);
+    const ImVec2 sz(static_cast<float>(d->w) * ux + 24, static_cast<float>(rows) * uy + 46);
+    ImGui::SetNextWindowSize(sz, ImGuiCond_Always);
+    ImGui::SetNextWindowPos(ImGui::GetMainViewport()->GetCenter(), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::SetNextWindowFocus(); // sempre na frente do editor enquanto estiver aberto
+    dlg_live_ = true;
     const std::string title = last_dlg_title_ + "###eddlg";
-    if (ImGui::BeginPopupModal(title.c_str(), nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse)) {
-        if (!d) {
-            ImGui::CloseCurrentPopup();
-            dlg_live_ = false;
-        } else {
-            if (!d->footer.empty()) {
-                ImGui::SetCursorPos(ImVec2(static_cast<float>(d->w) * ux - 40, ImGui::GetWindowHeight() - 26));
-                ImGui::TextDisabled("%s", "mais...");
-            }
-            DrawDialogWidgets(*d, ux, uy);
+    if (ImGui::Begin(title.c_str(), nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove)) {
+        if (!d->footer.empty()) {
+            ImGui::SetCursorPos(ImVec2(static_cast<float>(d->w) * ux - 40, ImGui::GetWindowHeight() - 26));
+            ImGui::TextDisabled("%s", "mais...");
         }
-        ImGui::EndPopup();
+        DrawDialogWidgets(*d, ux, uy);
     }
+    ImGui::End();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -756,6 +754,7 @@ void EditorPanel::DrawContents() {
 }
 
 void EditorPanel::DrawWindow(bool *p_open) {
+    app_.SetEmbedded(true);
     ImGui::SetNextWindowSize(ImVec2(860, 580), ImGuiCond_FirstUseEver);
     ImGui::SetNextWindowPos(ImVec2(80, 60), ImGuiCond_FirstUseEver);
     if (request_focus_) {
@@ -770,10 +769,13 @@ void EditorPanel::DrawWindow(bool *p_open) {
     if (ImGui::Begin(title.c_str(), &open, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse)) DrawContents();
     else wants_kb_ = NeedsAttention();
     ImGui::End();
-    if (!open) app_.RequestExit(); // o X da janela: o mesmo caminho de Arquivo > Sair (pergunta por arquivos alterados)
-    if (app_.QuitRequested()) {
-        *p_open = false;
+    // O X da janela e "Arquivo > Sair" so' ESCONDEM o editor: os arquivos e o texto nao salvo ficam abertos para a proxima vez
+    // (quem trabalha no MSX e anota ideias no editor so' salva no fim). Um dialogo ou menu aberto e' cancelado.
+    if (!open || app_.TakeHideRequest() || app_.QuitRequested()) {
+        app_.CancelDialog();
+        app_.CloseMenuNow();
         app_.ClearQuit();
+        *p_open = false;
         wants_kb_ = false;
     }
 }

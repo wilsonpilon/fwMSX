@@ -111,7 +111,14 @@ public:
     int DividerRows() const { return divider_; }
     bool QuitRequested() const { return quit_; }
     void ClearQuit() { quit_ = false; exit_index_ = -1; confirm_purpose_ = 0; }
-    void RequestExit() { ExecuteCmd(Cmd::Exit, 0); } // fechar a janela: o mesmo caminho de Alt-F X (pergunta por arquivos alterados)
+    void RequestExit() { ExecuteCmd(Cmd::Exit, 0); }
+    // Embutido no fwMSX: "Sair" so' ESCONDE a janela (os arquivos e o texto nao salvo continuam la', para voltar depois);
+    // quem decide o que fazer com o que sobrou e' a sessao (SaveSession/LoadSession).
+    void SetEmbedded(bool e) { embedded_ = e; }
+    bool TakeHideRequest() { const bool r = hide_request_; hide_request_ = false; return r; }
+    void CancelDialog() { if (HasDialog()) DialogDone(kBtnCancel); }
+    bool SaveSession(const std::string &path) const;  // grava as abas (inclusive o texto nao salvo); sem nada util, apaga o arquivo
+    bool LoadSession(const std::string &path);        // restaura as abas gravadas (so' se o editor ainda esta' vazio) // fechar a janela: o mesmo caminho de Alt-F X (pergunta por arquivos alterados)
     UiSettings &ui() { return ui_; }
     const UiSettings &ui() const { return ui_; }
     void SetConfigPaths(const std::string &main_cfg, const std::string &dir_cfg) { cfg_main_ = main_cfg; cfg_dir_ = dir_cfg; }
@@ -217,6 +224,8 @@ private:
     int item_ = 0;
     DialogBox dlg_;
     bool gui_mode_ = false;
+    bool embedded_ = false;
+    bool hide_request_ = false;
     bool split_ = false;
     int pane_[2] = {0, 0};      // modo grafico: a aba mostrada em cada painel quando ha' divisao
     int ap_ = 0;                // painel ativo

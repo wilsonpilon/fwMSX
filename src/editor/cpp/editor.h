@@ -216,6 +216,8 @@ public:
     DocInfo Information() const;
 
     // --- estado ----------------------------------------------------------------------------------------------------
+    void SetCrlf(bool v) { crlf_ = v; }
+    void MarkModified() { modified_ = true; ++rev_; }
     const std::string &Name() const { return name_; }
     void SetName(const std::string &n) { name_ = n; }
     bool Modified() const { return modified_; }

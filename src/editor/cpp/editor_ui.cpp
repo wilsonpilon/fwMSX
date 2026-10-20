@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <cstdlib>
+#include <fstream>
 #include <filesystem>
 #include <unordered_map>
 
@@ -189,6 +191,82 @@ void EditorApp::CloseTab(int i) {
     BuildConfirm({"This file has been changed.", "Save it before closing?"}, {kBtnSave, kBtnDontSave, kBtnCancel}, kBtnDontSave, Dialog::ConfirmExit);
 }
 
+bool EditorApp::SaveSession(const std::string &path) const {
+    std::vector<int> keep;
+    for (int i = 0; i < WindowCount(); ++i) {
+        const Editor &e = wins_[static_cast<size_t>(i)];
+        if (!e.Name().empty() || e.Modified() || e.LineCount() > 1 || !e.Line(0).empty()) keep.push_back(i);
+    }
+    std::error_code ec;
+    if (keep.empty()) {
+        fs::remove(path, ec);
+        return true;
+    }
+    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+    if (!f) return false;
+    f << "FWEDIT-SESSION 1\n";
+    int active_pos = 0;
+    for (size_t k = 0; k < keep.size(); ++k) {
+        if (keep[k] == active_) active_pos = static_cast<int>(k);
+    }
+    f << "ACTIVE " << active_pos << " " << keep.size() << "\n";
+    for (const int i : keep) {
+        const Editor &e = wins_[static_cast<size_t>(i)];
+        const std::string text = e.Text();
+        f << "DOC\n" << "NAME " << e.Name().size() << "\n" << e.Name() << "\n";
+        f << "MOD " << (e.Modified() ? 1 : 0) << " " << (e.Crlf() ? 1 : 0) << " " << e.Cursor().line << " " << e.Cursor().col << "\n";
+        f << "TEXT " << text.size() << "\n";
+        f.write(text.data(), static_cast<std::streamsize>(text.size()));
+        f << "\n";
+    }
+    return static_cast<bool>(f);
+}
+
+bool EditorApp::LoadSession(const std::string &path) {
+    if (!(wins_.size() == 1 && wins_[0].Name().empty() && !wins_[0].Modified() && wins_[0].LineCount() == 1 && wins_[0].Line(0).empty())) return false;
+    std::ifstream f(path, std::ios::binary);
+    if (!f) return false;
+    std::string line;
+    if (!std::getline(f, line) || line != "FWEDIT-SESSION 1") return false;
+    int active_pos = 0;
+    size_t count = 0;
+    if (!std::getline(f, line) || std::sscanf(line.c_str(), "ACTIVE %d %zu", &active_pos, &count) != 2 || count == 0 || count > 64) return false;
+    std::vector<Editor> docs;
+    for (size_t k = 0; k < count; ++k) {
+        size_t n = 0;
+        if (!std::getline(f, line) || line != "DOC") return false;
+        if (!std::getline(f, line) || std::sscanf(line.c_str(), "NAME %zu", &n) != 1) return false;
+        std::string name(n, '\0');
+        if (n) f.read(&name[0], static_cast<std::streamsize>(n));
+        std::getline(f, line); // fim da linha do nome
+        int mod = 0, crlf = 1, cl = 0, cc = 0;
+        if (!std::getline(f, line) || std::sscanf(line.c_str(), "MOD %d %d %d %d", &mod, &crlf, &cl, &cc) != 4) return false;
+        size_t tn = 0;
+        if (!std::getline(f, line) || std::sscanf(line.c_str(), "TEXT %zu", &tn) != 1) return false;
+        std::string text(tn, '\0');
+        if (tn) f.read(&text[0], static_cast<std::streamsize>(tn));
+        std::getline(f, line);
+        if (!f && !f.eof()) return false;
+        Editor e;
+        e.settings() = wins_[0].settings();
+        std::string err;
+        if (!mod && !name.empty() && e.Load(name, err)) {
+            // arquivo sem alteracoes: vale o que esta' no disco agora
+        } else {
+            e.SetText(text);
+            e.SetName(name);
+            e.SetCrlf(crlf != 0);
+            if (mod || name.empty()) e.MarkModified();
+        }
+        e.SetCursor({cl, cc});
+        docs.push_back(e);
+    }
+    wins_ = docs;
+    split_ = false;
+    active_ = std::max(0, std::min(active_pos, WindowCount() - 1));
+    return true;
+}
+
 void EditorApp::RunMenu(int m, int i) {
     const std::vector<Menu> &ms = Menus();
     if (m < 0 || m >= static_cast<int>(ms.size())) return;
@@ -326,6 +404,10 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         }
         return true;
     case Cmd::Exit:
+        if (embedded_) {
+            hide_request_ = true; // so' esconde: o texto fica para a proxima vez
+            return true;
+        }
         exit_index_ = 0;
         confirm_purpose_ = 1;
         NextExitStep();

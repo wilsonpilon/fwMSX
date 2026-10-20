@@ -7,6 +7,18 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.4] - 2026-10-20 - "Hyper Sports: Reabrir o editor" (Konami)
+
+### Corrigido -- o editor do emulador travava ao ser reaberto (relato do usuario)
+- **Sintoma**: digitar no editor, fechar (o editor perguntava se salvava, "nao"), voltar ao emulador e abrir o editor de novo: a janela abria com o texto, mas nao aceitava teclas, os menus nao executavam e nao dava para fecha-la.
+- **Causa**: o dialogo "Salvar?" era um popup MODAL do ImGui. Fechar o editor parava de desenhar a janela com o modal ainda aberto na pilha de popups do ImGui; ele ficava "fantasma" e bloqueava o foco e o mouse da janela quando o editor voltava.
+- **Correcao**: os menus e os dialogos do editor agora sao janelas COMUNS do ImGui (sem popups nem modais: nao sobra estado preso se o editor for escondido com um aberto). O "modal" e' do proprio editor (enquanto ha' dialogo o teclado e' dele e a janela fica na frente).
+  Tambem corrigido um bug que esse refatoramento teria deixado: o clique num item de menu fechava o menu antes de executar (o teste "o mouse esta' sobre o menu?" falhava porque o item ja' estava ativo no frame do clique).
+- **Fechar o editor so' ESCONDE** (o X da janela e "Arquivo > Sair"): sem pergunta, os arquivos e o texto nao salvo continuam abertos para a proxima vez que o editor for aberto (para anotar enquanto se testa no MSX-BASIC e so' salvar no fim). Um dialogo ou menu aberto e' cancelado ao esconder.
+- **Sessao**: `fwedit.session` (ao lado do executavel) guarda as abas -- inclusive o texto nao salvo e o cursor -- ao esconder o editor e ao fechar o emulador, e as restaura na proxima execucao; arquivo sem alteracoes volta relido do disco. Sem nada util a guardar o arquivo e' apagado.
+  No `fwMSX.exe --edit` (standalone) continua perguntando ao fechar.
+- Conferido com cliques e teclas simulados numa janela real: abrir, digitar, fechar pelo X, reabrir (o texto volta e aceita mais texto), Arquivo > Novo cria a aba, Arquivo > Sair esconde. `editorui`: 189 verificacoes (inclui o ciclo esconder/reabrir e a sessao).
+
 ## [1.41.3] - 2026-10-20 - "Hyper Sports: Editor GUI" (Konami)
 
 ### Corrigido o rumo da fase E3: o editor GRAFICO de verdade (substitui a "grade de caracteres em janela" da 1.41.2)

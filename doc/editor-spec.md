@@ -184,3 +184,5 @@ Decisoes: janela flutuante dentro do fwMSX (+ standalone `--edit`); barra de men
 **E3b entregue na 1.41.3**: `ed::gui::EditorPanel` (src/editor/gui/editor_panel.*) -- menus, abas, paineis de texto com rolagem/mouse, dialogos com widgets reais e barra de estado, sobre o mesmo `EditorApp`; menu "Editor" e janela flutuante em `emu_window.cpp`; `editor_window.cpp` = host standalone;
 `editor_i18n.*` (portugues). A grade/paleta da 1.41.2 saiu da GUI (`editor_gui_input` ficou com os nomes de tecla; a paleta RGB so' e' testada).
 **Falta**: mouse/Alt sozinho/AltGr conferidos numa janela real; opcoes de visual (numeros de linha, fonte, divisao empilhada); icone; E4-E7; menus novos (Executar, Montar, Sprites...).
+
+**1.41.4: fechar o editor EMBUTIDO so' esconde (sem pergunta) e as abas, com o texto nao salvo, sao guardadas em `fwedit.session`** (pedido do usuario: anotar enquanto trabalha no MSX e salvar so' no fim). Menus e dialogos da GUI sao janelas comuns do ImGui, nunca popups/modais (um modal esquecido na pilha do ImGui travava a reabertura). O editor standalone (`--edit`) continua perguntando ao sair.

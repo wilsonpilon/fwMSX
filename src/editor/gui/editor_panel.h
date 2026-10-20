@@ -78,6 +78,8 @@ private:
     // menu
     bool menu_popup_live_ = false;
     std::vector<ImVec2> anchors_;
+    ImVec2 bar_min_ = ImVec2(0, 0);
+    ImVec2 bar_max_ = ImVec2(0, 0);
     // dialogo
     bool dlg_live_ = false;
     std::string last_dlg_title_;

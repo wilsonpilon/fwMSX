@@ -17,6 +17,20 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.4 -- "Hyper Sports: Reabrir o editor" (Konami) (2026-10-20)
+
+**Relato do usuario**: o editor aberto pelo menu do fwMSX, fechado e reaberto, abria com o texto anterior mas travado (sem teclado, menus sem efeito, impossivel fechar). Ele tambem quer MANTER o ultimo buffer ("o programador esta trabalhando direto no MSX e quer fazer anotacoes ... para salvar so' no final"), desde que a reabertura deixe continuar editando com os menus funcionais.
+
+- **Diagnostico**: popup modal "fantasma" do ImGui. `OpenPopup`/`BeginPopupModal` mantem o estado na PILHA DE POPUPS do ImGui, nao na janela; quando a janela do editor deixou de ser submetida (escondida) com o dialogo aberto, o modal ficou na pilha e, ao voltar, bloqueava foco/mouse. Reproduzivel: abrir, digitar, X, "Nao salvar", reabrir.
+- **Correcao**: `DrawMenuPopup` e `DrawDialog` usam `ImGui::Begin` de janelas comuns (`SetNextWindowFocus` ao abrir; fechamento por clique fora implementado a mao). Sem popup nao ha' estado fora do painel. **Armadilha achada no caminho**: `IsWindowHovered()` chamado DEPOIS de desenhar o item devolve falso no frame do clique (o item ja' e' o `ActiveId`);
+  e' preciso `ImGuiHoveredFlags_AllowWhenBlockedByActiveItem` -- sem isso o menu fecha antes de executar o item.
+- **Esconder, nao sair**: `EditorApp::SetEmbedded(true)` faz `Cmd::Exit` pedir para esconder (`TakeHideRequest`); `DrawWindow` cancela dialogo/menu e esconde. Os arquivos e o texto ficam. O editor standalone nao e' "embutido" e segue perguntando.
+- **Sessao** (`EditorApp::SaveSession/LoadSession`, formato texto `FWEDIT-SESSION 1`: por aba o nome, alterado?, CRLF, cursor e o TEXTO): grava ao esconder e ao fechar o emulador; restaura no inicio so' se o editor ainda esta' vazio; abas sem alteracoes sao relidas do disco. Sem nada util, apaga o arquivo.
+- **Escolhas minhas** (a rever): o texto de abas "sem nome" e' mantido para sempre ate' o usuario fechar a aba (nao ha' limite nem aviso); a sessao fica em `fwedit.session` ao lado do executavel (nao por usuario); fechar o emulador nao pergunta pelo texto do editor (ele volta na proxima vez).
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 29/29 nos dois; simulacao de mouse/teclado numa janela real (`tools/wincap` + clique por `mouse_event`).
+
+---
+
 ## v1.41.3 -- "Hyper Sports: Editor GUI" (Konami) (2026-10-20)
 
 **Correcao de interpretacao do usuario sobre a fase E3**: "eu quero que o Editor Janela/Windows/GUI seja um programa realmente GUI, integrado inclusive ao menu do fwMSX, ... com a interface igual ou similar graficamente ao fwMSX. Nao quero o mesmo editor, quero apenas os mesmos atalhos e opcoes do menu."

@@ -1280,6 +1280,7 @@ do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [ro
 O editor de textos tambem existe como **interface grafica**, no visual do fwMSX (tema escuro/claro, fonte monoespacada, textos em portugues):
 
 - **Dentro do emulador**: menu **Editor** da barra do fwMSX (Mostrar o editor, Novo arquivo, Abrir arquivo...). Abre uma janela flutuante ao lado da tela do MSX; o emulador continua rodando. Com o editor em foco, o teclado e' dele (as teclas nao vao para o MSX).
+- **Fechar so' esconde**: o X da janela do editor e "Arquivo > Sair" apenas ESCONDEM o editor, sem pergunta: os arquivos e o texto nao salvo continuam la' quando voce o abrir de novo (bom para anotar enquanto testa no MSX-BASIC e salvar so' no fim). As anotacoes tambem sao guardadas em `fwedit.session` (ao lado do executavel) e voltam na proxima execucao do emulador.
 - **Programa separado**: `fwMSX.exe --edit [arquivo [arquivo2]]` (dois arquivos abrem lado a lado) e `fwMSX.exe --view arquivo` (somente leitura). No Linux: `fwmsx --edit --gui arquivo`.
 
 Barra de menus propria (Arquivo, Bloco, Texto, Busca, Imprimir, Exibir, Opcoes, Ajuda) com os itens e os **atalhos do Norton Editor 2** (Ctrl-F, Alt-C, Ctrl-W, Alt-B S...; **Alt sozinho** abre o menu; F1 = ajuda) e as alternativas graficas (Ctrl-S, Ctrl-N, Ctrl-O, Ctrl-V, Ctrl-X). **Abas** por arquivo, **F2** divide a area em 2 paineis lado a lado,

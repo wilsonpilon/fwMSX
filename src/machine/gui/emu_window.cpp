@@ -407,6 +407,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     ed::gui::EditorPanel editor_panel; // o editor de textos (menu Editor)
     editor_panel.LoadFont(io, 17.0f);
     editor_panel.Configure(options.exe_dir, std::filesystem::current_path().string());
+    // as anotacoes da ultima vez (texto nao salvo inclusive) voltam: o editor so' pergunta quando o usuario fecha um arquivo
+    const std::string editor_session = (std::filesystem::path(options.exe_dir.empty() ? std::string(".") : options.exe_dir) / "fwedit.session").string();
+    editor_panel.app().SetEmbedded(true);
+    editor_panel.app().LoadSession(editor_session);
     msxdisk::gui::ApplyModernStyle(true);
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
@@ -491,6 +495,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     std::string asm_message; // resultado do ultimo "Montar e rodar" (menu Depurador)
     bool show_tape_window = false;
     bool show_editor = false; // janela do editor de textos
+    bool editor_was_open = false;
     int state_slot = 1; // slot de save-state atual (1 a kStateSlots)
     // Aviso temporario no canto da tela (salvou/carregou/captura): texto, validade e se e' aviso/erro.
     std::string toast_text;
@@ -1711,6 +1716,8 @@ int RunEmulatorWindow(const WindowOptions &options) {
         }
 
         if (show_editor) editor_panel.DrawWindow(&show_editor);
+        if (editor_was_open && !show_editor) editor_panel.app().SaveSession(editor_session); // ao esconder o editor: guarda as anotacoes
+        editor_was_open = show_editor;
         g_input.ed_capture = show_editor && editor_panel.WantsKeyboard();
         {
             // Tema, letra, moldura e splash ficam gravados em fwmsx.cfg assim que mudam.
@@ -1743,6 +1750,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
     }
     audio_out.Stop();
     glDeleteTextures(1, &texture);
+    editor_panel.app().SaveSession(editor_session); // as anotacoes do editor (texto nao salvo inclusive) voltam na proxima vez
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     {

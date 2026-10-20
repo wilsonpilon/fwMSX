@@ -56,6 +56,11 @@ void spit(const fs::path &p, const std::string &d) {
     f.write(d.data(), static_cast<std::streamsize>(d.size()));
 }
 
+std::string &err_unused() {
+    static std::string e;
+    return e;
+}
+
 std::string many_lines(int n) {
     std::string t;
     for (int i = 1; i <= n; ++i) {
@@ -581,6 +586,65 @@ void test_gui_mode() {
     fs::remove_all(dir);
 }
 
+void test_embedded_and_session() {
+    const fs::path dir = fs::temp_directory_path() / "fwmsx_editor_session_test";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    spit(dir / "nota.txt", "linha um\nlinha dois");
+    const std::string sess = (dir / "fwedit.session").string();
+
+    // Sair no editor embutido so' esconde: nada de pergunta, o texto continua la' e o editor segue funcionando
+    EditorApp a;
+    a.SetGuiMode(true);
+    a.SetEmbedded(true);
+    a.SetSize(80, 25);
+    a.SetStartDir(dir.string());
+    a.Ed().Type("ideia 1");
+    a.RequestExit();
+    check(a.TakeHideRequest() && !a.TakeHideRequest() && !a.HasDialog() && !a.QuitRequested(), "embutido: Sair so' pede para esconder (sem pergunta, sem sair)");
+    check(a.Ed().Text() == "ideia 1" && a.Ed().Modified(), "embutido: o texto nao salvo continua la'");
+    // uma janela escondida com menu e dialogo abertos volta limpa e funcional
+    K(a, {"A-f"});
+    K(a, {"o"});
+    check(a.HasDialog() && a.MenuIndex() < 0, "dialogo aberto antes de esconder");
+    a.CancelDialog();
+    a.OpenMenuAt(1);
+    a.CloseMenuNow();
+    a.ClearQuit();
+    check(!a.HasDialog() && a.MenuIndex() < 0, "esconder cancela dialogo e menu");
+    a.Text(" e mais");
+    check(a.Ed().Text() == "ideia 1 e mais", "depois de voltar o editor aceita texto");
+    K(a, {"A-s", "f"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Find, "depois de voltar os menus funcionam");
+    K(a, {"Esc"});
+    check(!a.HasDialog(), "e os dialogos fecham");
+
+    // sessao: abas, texto nao salvo, cursor
+    a.NewTab();
+    a.Ed().Type("segunda anotacao");
+    check(a.OpenTab((dir / "nota.txt").string(), err_unused(), false), "abre um arquivo em outra aba");
+    a.Ed().SetCursor({1, 3});
+    check(a.SaveSession(sess) && fs::exists(sess), "SaveSession grava a sessao");
+    spit(dir / "nota.txt", "linha um\nlinha dois\nlinha tres"); // o arquivo mudou no disco entre as sessoes
+
+    EditorApp b;
+    b.SetGuiMode(true);
+    b.SetSize(80, 25);
+    check(b.LoadSession(sess), "LoadSession restaura");
+    check(b.WindowCount() == 3, "tres abas restauradas");
+    check(b.Win(0).Text() == "ideia 1 e mais" && b.Win(0).Modified() && b.Win(0).Name().empty(), "aba 1: texto nao salvo volta, ainda alterado");
+    check(b.Win(1).Text() == "segunda anotacao" && b.Win(1).Modified(), "aba 2: idem");
+    check(fs::path(b.Win(2).Name()).filename() == "nota.txt" && !b.Win(2).Modified() && b.Win(2).LineCount() == 3, "aba 3: arquivo sem alteracoes e' relido do disco");
+    check(b.Active() == 2 && b.Ed().Cursor() == Pos{1, 3}, "a aba ativa e o cursor voltam");
+    check(!b.LoadSession(sess), "LoadSession nao sobrescreve um editor que ja' tem conteudo");
+
+    // sem nada util a guardar, a sessao e' apagada
+    EditorApp c;
+    c.SetGuiMode(true);
+    check(c.SaveSession(sess) && !fs::exists(sess), "editor vazio: apaga o arquivo de sessao");
+    fs::remove_all(dir);
+}
+
 void test_model_extras() {
     ed::Editor e;
     e.SetText("one two\nthree");
@@ -690,6 +754,7 @@ int main() {
     test_view_app();
     test_gui_input();
     test_gui_mode();
+    test_embedded_and_session();
     test_model_extras();
     test_translation();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
