@@ -639,3 +639,164 @@ Cada ferramenta precisa ler e gravar o formato que o msxIDE/PaleoBasic ja' usam,
 - Ferramentas de pixel na TUI sao limitadas pelo terminal; decidir quais valem o esforco.
 - O que o usuario ainda USA de verdade dos dois projetos (para nao portar o que ninguem usa) e a ordem de prioridade dele.
 - RESPONDIDO (5.3.0): o fwMSX e' o destino unico; msxIDE e PaleoBasic serao aposentados. Falta so' montar a **lista de paridade** (o que cada um faz hoje, marcando o que ja' existe no fwMSX) para saber quando da' para desliga-los.
+
+### 5.5 Visao registrada (2026-10-20) -- TOPICO 3: o fwMSX como "Sistema Operacional de pobre" (MSX-PoorManOS) -- ponto unico do desenvolvedor MSX
+
+> **Status: so' registro, nada implementado.** Esta e' a "ideia propria" que o usuario avisou antes do depurador avancado. Ela e' o guarda-chuva de 5.3 (IDE) e 5.4 (ferramentas) e da meta de medio prazo MSX-PoorManOS.
+
+#### 5.5.1 A ideia, nas palavras do usuario (resumo)
+
+O fwMSX deve ser **um ponto unico com tudo que um desenvolvedor de MSX precisa** para fazer programas: o usuario entra nele e tem tudo la' dentro. Inclui:
+
+1. **Tudo do PaleoBasic e tudo do msxIDE** (5.3 e 5.4).
+2. **Ferramentas do proprio MSX embutidas**: o **Konpass** ja' interno (depurador/monitor no estilo Konami), e utilitarios que rodam NO MSX emulado, como o **TED** (editor de textos). Ou seja, o fwMSX tem ferramentas para o PC **e** ferramentas para dentro da maquina emulada (e, por tabela, para um MSX real).
+3. **Kizuna como compilador** e uma **versao de PC do Kizuna que funcione dentro do fwMSX e gere `.com` para o MSX** (compilador cruzado integrado; ver 5.3.8).
+4. **Manuais e help** integrados (o `man` ja' faz parte disso).
+5. **Editores**: musica, som, desenho (draw), sprites, telas (5.4).
+6. **Emular outros MSX trocando ROMs** (modelos/maquinas configuraveis).
+7. **Frontend** para o **file-hunter** e para o **msxstuffs** (baixar, navegar, rodar; ja' planejado para o file-hunter).
+
+#### 5.5.2 Leitura do que isto significa (para discutir)
+
+- Tres camadas: (a) **ferramentas de PC** (editor, editores visuais, compilador, projeto); (b) **ferramentas dentro do MSX** (Konpass, TED, utilitarios `.com`, que o fwMSX ja' sabe montar e carregar via `asmrun --dos-disk`); (c) **o acervo/frontend** (file-hunter, msxstuffs, ROMs, maquinas).
+- O que ja' existe e sustenta: fwasm, `asmrun`, `msxdisk`, `man`, Mamute, depurador, fita, TUI e janela, banco de ROMs.
+- O depurador avancado passa a ser o motor do "Konpass interno": decidir se o Konpass e' (1) so' a interface no estilo dele sobre o depurador do fwMSX, ou (2) tambem um `.com` que roda dentro do MSX.
+- Ordem ja' decidida (5.3.0): **o EDITOR vem primeiro**; o resto entra em fatias, cada uma publicada.
+
+#### 5.5.2b Respostas do usuario e levantamento (2026-10-20)
+
+- **Konpass** (https://github.com/Konamiman/Konpass): IDE de assembler + depurador + monitor para MSX, fork do Compass (Compjoetania, 1995; fonte aberto em 2021). **GPLv2**. Programa de MSX-DOS (`KONPASS.COM` + `KONPASS.DAT`), compilado com o **Nestor80 (N80)**; pede MSX2 com 128 KB (256 KB no MSX-DOS 2). Consequencia: roda DENTRO do MSX emulado (camada b), nao como codigo do PC; o fwMSX precisa so' montar/empacotar e dar um disco com ele (e depois integrar o depurador do PC). O N80 volta a ser relevante: o fwasm nao e' o montador dele (pendencia "N80/LK80" adiada).
+- **TED** (https://github.com/riesvriend/msx2026): processador de texto MSX2 de Ries Vriend (1991), revivido para o webmsx.org; Z80, construido com M80/L80 (ou Nestor80); manual EN/NL em `doc/`. **Licenca nao declarada** -- pedir autorizacao antes de distribuir. Tambem roda dentro do MSX emulado.
+- **Kizuna** e' o proprio projeto do usuario (https://github.com/wilsonpilon/kizuna; em `resource/kizuna`): Go, ~27 mil linhas em 79 arquivos fora de `resource/`, depende de `remogatto/z80`. Opcoes: (A) reescrever em C/C++ (clean-room, por fases, como o fwasm; sai com as 4 linguagens); (B) compilar o Go como biblioteca C (`-buildmode=c-shared`/c-archive) e ligar ao fwMSX -- rapido, mas exige a toolchain Go no build, 2 runtimes e complica Linux/Windows dual-ABI. Pendente decidir (o usuario inclina para A, "o trabalho que for preciso").
+- **MSX Stuffs** (https://github.com/wilsonpilon/msxstuff, tambem do usuario): catalogo moderno em Go + Fyne + SQLite (`modernc.org/sqlite`) + Cobra, mais de 3.000 titulos (10 CDs da Nemesis e outras coletaneas incorporadas), pastas `DSK`/`ROM`/`data`/`images`/`pictures`, opcoes por jogo para openMSX/fMSX/blueMSX/ruMSX, GPL-3.0; aviso de que o material sera removido se os detentores objetarem. Para o fwMSX: ler o SQLite do catalogo (o fwMSX ja' tem SQLite) como mais uma fonte do navegador de acervo, ao lado do file-hunter.
+
+#### 5.5.3 Perguntas em aberto
+
+- Konpass: so' interface sobre o depurador do PC, ou tambem programa para o MSX? Qual a fonte/referencia (o Kizuna tem o Konpass?).
+- Kizuna "versao PC": reescrever em C/C++ (clean-room, como o fwasm) ou embutir o fonte do Kizuna compilado? Quais linguagens do Kizuna (5.3.8) primeiro?
+- TED: de onde vem (fonte existente ou escrever um novo em Z80 pelo fwasm)?
+- msxstuffs: o que e' e que API/site expoe (a definir, como o file-hunter).
+- Trocar ROMs/maquinas: ja' existe parte (`--bios`, banco de ROMs); falta o conceito de "perfil de maquina".
+- Licencas e autorizacoes de cada ferramenta de terceiros (ver `LICENSE-THIRD-PARTY.md`).
+
+### 5.6 MAPA MESTRE (2026-10-20) -- o projeto inteiro numa pagina: camadas, decisoes, plano do Kizuna e ordem de trabalho
+
+> Esta secao existe para o usuario NAO SE PERDER depois que o projeto cresceu. Ela junta 5.1 a 5.5 num so' lugar. Quando algo mudar, atualize ESTA secao primeiro. **Nada aqui esta' implementado**, exceto o que a coluna "Hoje" diz que ja' existe.
+
+#### 5.6.1 O objetivo em uma frase
+
+O fwMSX vira o **MSX-PoorManOS**: um ponto unico onde o desenvolvedor MSX escreve, monta, compila, depura, desenha, toca, testa e baixa tudo, sem sair do programa -- e onde tambem ha' ferramentas que rodam DENTRO do MSX emulado (e servem para um MSX real).
+
+#### 5.6.2 As tres camadas
+
+| Camada | O que e' | Exemplos | Hoje |
+|---|---|---|---|
+| **A. Ferramentas de PC** (codigo C/C++/Fortran/NASM do fwMSX) | rodam no PC, na TUI/GUI/console | editor de textos, editores visuais (fonte, sprite, tela, PSG, MML, hexa), montador fwasm, compilador Kizuna, projetos `.msxproject`, `man`, Mamute, depurador | fwasm, `asmrun`, `msxdisk`, `man`, Mamute, depurador basico, fita: **prontos**. Editor, visuais, Kizuna, projetos: **nada** |
+| **B. Ferramentas dentro do MSX** (programas `.com` Z80 que rodam na maquina emulada) | o fwMSX monta/empacota e dá um disco pronto | **Konpass** (GPLv2, Nestor80), **TED** (M80/L80 ou Nestor80; licenca a pedir), utilitarios proprios | `asmrun --dos-disk` ja' monta e roda `.com` no MSX-DOS 1; falta N80, discos de ferramentas e um menu "Ferramentas do MSX" |
+| **C. Acervo e maquinas** | de onde vem o que se roda | file-hunter, **msxstuff** (catalogo SQLite, 3000+ titulos), banco de ROMs, perfis de maquina (trocar BIOS/ROMs) | banco de ROMs e `--bios`: prontos. Navegador file-hunter, leitor do catalogo msxstuff, perfil de maquina: **nada** |
+
+Ferramentas de **ajuda** (`man`, referencia, manuais) atravessam as tres camadas e ja' existem (1.38.x).
+
+#### 5.6.3 Tudo que o usuario pediu, numerado (checklist; marcar quando entregar)
+
+1. [ ] Tudo do PaleoBasic (lista de paridade: falta montar; ver 5.4.1).
+2. [ ] Tudo do msxIDE (idem).
+3. [ ] **Editor de textos** TUI+GUI (executar-no-MSX; MSX-BASIC, Basic Dignified, Assembly; Markdown/ASCII/PDF) -- **PRIMEIRO item** (5.3.0).
+4. [ ] Projeto = um arquivo SQLite `.msxproject`, export/import para pasta para o git (5.3.0, 5.3.7).
+5. [ ] Receita de build no estilo `Obifile` do Kizuna, extensivel (5.3.0).
+6. [ ] Atalhos IGUAIS na TUI e na GUI, prioridade ao console (5.3.0).
+7. [ ] Konpass embutido (camada B, disco pronto) + depurador avancado do PC como motor do "Konpass interno" (5.6.5).
+8. [ ] TED embutido (camada B; pedir autorizacao).
+9. [ ] Kizuna dentro do fwMSX, gerando `.com` para o MSX (5.6.4).
+10. [ ] Manuais e help (feito; manter).
+11. [ ] Editores: fonte, sprites, telas, draw, PSG/som, MML/musica, SEE Tracker, hexadecimal (5.4).
+12. [ ] Emular outros MSX trocando ROMs ("perfil de maquina").
+13. [ ] Frontend do file-hunter.
+14. [ ] Frontend do msxstuff (ler o SQLite do catalogo).
+15. [ ] Aposentar msxIDE e PaleoBasic quando a paridade fechar.
+16. [ ] Depurador avancado (condicionais, E/S, trace, linha de fonte, simbolos de MegaROM, breakpoints que sobrevivem a troca de cartucho).
+
+#### 5.6.4 Plano do Kizuna em C/C++ (porte por fases) -- decisao provisoria do usuario: reescrever
+
+**Origem**: `resource/kizuna` (Go, v4.11.0 "Kakuchou", ~25 mil linhas em `pkg/` mais ~1,9 mil em `cmd/`; muitos testes que viram os nossos casos dourados). Alvo do codigo gerado: **MSX2+ / MSX-DOS 2 / mapper**, o que o fwMSX ja' emula.
+
+Tamanho de cada peca (linhas de Go, sem testes, aproximado) e destino:
+
+| Peca Kizuna | Papel | Tamanho | Destino no fwMSX |
+|---|---|---|---|
+| `KAJI80` | assembler Z80 modular (gera `.MOB`) | ~4,5 mil | **nao portar o front-end**: o fwasm ja' cobre o asMSX. Falta o fwasm gerar objeto relocavel `.MOB` (ou portar so' a saida). Decidir. |
+| `MUSUBI` | linker, smart-linking, bancos, trampolins | ~1,1 mil + testes | **portar** (fase 1: o nucleo de tudo) |
+| `HAKO` / `MOBDUMP` | bibliotecario `.hlib` / inspetor `.MOB` | pequenos | **portar** (fase 1) |
+| `WIRTH80` | compilador Pascal (TP4-like, units, `BANK`) | ~1,4 mil | **portar** (fase 3) |
+| `DIGNAC` | compilador MSX-BASIC Dignified | ~4,3 mil | **portar** (fase 4; ligado a ideia do usuario para o Basic Dignified) |
+| `MSXLIB` | biblioteca padrao (BDOS/BIOS/VDP/PSG, texto, matematica) | codigo-fonte em Pascal/asm/dados | **copiar como recurso** (nao e' Go), reaproveitar os testes `z80sim` |
+| `OBI` / `Obifile` | orquestrador de build | ~0,6 mil | **portar** (fase 2) e integrar ao `.msxproject` (5.3.7) |
+| `z80sim` (simulador nos testes) | simulador Z80 para testar | testes | **nao portar**: o fwMSX ja' tem Z80 proprio |
+
+Fases propostas (cada uma e' uma release 1.x; so' avanca com os casos dourados passando):
+
+- **K0 -- Estudo e fixtures**: ler o formato `.MOB`/`.hlib`, o `Obifile`, a ABI de chamada entre linguagens e o mapa de bancos; exportar os testes do Kizuna (entrada -> saida esperada, byte a byte) para `tests/kizuna/golden/` -- a mesma tecnica do fwasm com o asMSX.
+- **K1 -- Objeto e linker**: `.MOB` (ler/gravar), `MOBDUMP`, `HAKO`, `MUSUBI` (smart-linking, bancos, trampolins). Comando `kizuna link`. Prova: linkar objetos montados pelo Kizuna Go e conferir o `.com` byte a byte.
+- **K2 -- Obi + projeto**: `Obifile` lido e executado dentro do fwMSX, ligado ao `.msxproject`; "Compilar e rodar" no emulador (`asmrun`).
+- **K3 -- Pascal (WIRTH80)**: lexer/parser/codegen; units; `PUBLIC/EXTERN/BANK`.
+- **K4 -- Basic Dignified (DIGNAC)**: idem; tipos reais/SINGLE.
+- **K5 -- MSXLIB e extensoes**: biblioteca padrao embutida; `Obifile` ganha as extensoes pedidas pelo usuario.
+- **K6 -- Integracao**: erros com `arquivo:linha`, simbolos do `MUSUBI` no depurador (na linha do `sym`/`src`), menu e janela.
+
+Regra das 4 linguagens: C++ (front-ends), C (nucleos), Fortran (calculo/tabelas, ex.: aritmetica real do DIGNAC) e NASM (rotinas quentes, ex.: busca de simbolos), distribuidos como foi no fwasm. **Risco**: ~25 mil linhas e' um projeto do tamanho do fwasm somado ao Mamute; por isso as fases e o gate de casos dourados.
+**Rota B (descartada por ora)**: compilar o Go como biblioteca C -- rapida, mas obriga a ter Go no build e dois runtimes. Registrada caso a reescrita empaque.
+
+**Decisao de arquitetura (2026-10-20): NUCLEO UNICO, DUAS "CARAS"** (em vez de dois assemblers independentes):
+
+| Peca | Papel | Equivalente historico |
+|---|---|---|
+| **Nucleo compartilhado** | tabela/codificacao de instrucoes Z80, expressoes, simbolos, macros, `IF`/`REPT` (o que o fwasm ja' tem, com 6.600 casos) | - |
+| **fwasm** | front-end asMSX, saida ABSOLUTA (binario posicionado, `.rom`, `.cas`...). Continua clone fiel do asMSX | asMSX |
+| **kaji80** | front-end estilo M80 (o usuario o ve' como "clone moderno do kit M80/L80"), saida RELOCAVEL `.MOB`, simbolos `PUBLIC`/`EXTERN`, bancos | M80 |
+| **musubi** | linker (smart-linking, bancos, trampolins) | L80 |
+
+Motivo: o que e' caro (instrucoes, expressoes, macros) e' igual; so' o dialeto e o tipo de saida mudam. Dois codigos separados dobrariam a manutencao. A saida `.MOB` resolve o achado de que o MUSUBI so' le' objeto relocavel. A verificar na fase K0: o quanto a sintaxe do KAJI80 (v4.11 ja' tem "recursos ao estilo asMSX") coincide com a do fwasm.
+
+**Por que o Kizuna existe (palavras do usuario)**: o MBasic 5 e o Turbo Pascal 3 sao para CP/M convertidos ao MSX-DOS: nao dao suporte total nem ao MSX1, e nenhum a MSX2, MSX2+, mapper, HD, MSX-DOS 2, SCC, FM etc. O Kizuna recria BASIC, Pascal e Assembly **modernos** para essas capacidades.
+**Escopo de linguagens (fixo)**: so' **BASIC (Dignified), Pascal e Assembly**. **Nao havera C** no Kizuna, nem a curto nem a medio prazo: C para MSX ja' tem SDCC + MSXgl, que muita gente usa, e ninguem quer aprender mais um dialeto de C.
+**MSXgl**: so' as IDEIAS (organizacao da biblioteca, modulos, nomes de recursos); rotinas em ASM podem ser aproveitadas **traduzidas para o nosso sistema** (conferir a licenca do MSXgl antes de copiar qualquer trecho). A biblioteca propria e' o `MSXLIB` do Kizuna. Nao se clona o SDCC nem o formato `.rel` do SDCC.
+
+#### 5.6.4b Projeto vizinho (outro repositorio, fora do fwMSX): suite de produtividade para MSX
+
+O usuario pretende recriar, em outro projeto, um **WordStar 3+**, um **dBase II++** e um **SuperCalc 2+** que abram os arquivos ORIGINAIS mas aproveitem uma MSX2+ com 512 KB de RAM e MSX-DOS 2 no minimo. Relacao com o fwMSX: seriam programas `.com` feitos com o Kizuna (camada B) e testados/depurados no emulador. Isto reforca que o Kizuna precisa de mapper, HD e MSX-DOS 2 de verdade. Nao faz parte do escopo do fwMSX.
+
+#### 5.6.5 Konpass e o depurador avancado
+
+O Konpass e' o Compass (1995) transformado em IDE/depurador/monitor para MSX-DOS. Ha' DOIS usos distintos, que nao se excluem:
+1. **Dentro do MSX** (camada B): disco pronto com `KONPASS.COM/.DAT`, montado do fonte com o Nestor80. Exige trazer o **N80** (montador do Konamiman) para o fluxo -- ou montar o Konpass fora e embutir o binario (GPLv2 permite, com os avisos).
+2. **No PC** (camada A): o depurador avancado do fwMSX (item 16) copia as IDEIAS do Konpass/Compass (monitor, simbolos, trace) sem copiar codigo. O Mamute ja' tem o estilo SUPER-X.
+Sugestao: fazer o (1) primeiro (barato, entrega valor imediato) e o (2) como parte do depurador avancado.
+
+#### 5.6.6 Fontes externas e licencas (uma tabela so')
+
+| Projeto | Donos/Licenca | Uso previsto | Cuidado |
+|---|---|---|---|
+| asMSX 1.2.0 | GPLv3 | oraculo de testes do fwasm | codigo do fwasm nao deriva dele |
+| Konpass | Konamiman, GPLv2 (fork do Compass) | camada B | GPLv2: avisos e fonte; ver incompatibilidade com GPLv3 se o fwMSX for GPLv3 |
+| TED (msx2026) | Ries Vriend; **sem licenca declarada** | camada B | **pedir autorizacao** antes de distribuir |
+| Kizuna | usuario (Wilson Pilon) | porte para C/C++ | e' do proprio usuario: sem restricao |
+| msxstuff | usuario; GPL-3.0 | frontend camada C | o catalogo e' do usuario; o CONTEUDO (jogos) tem dono: manter o aviso de remocao |
+| file-hunter | terceiro | baixador/navegador | sem midia na versao final |
+| PaleoBasic / msxIDE | usuario | portar comportamento | aposentados depois da paridade |
+| Nestor80 (N80) | Konamiman | montar Konpass/TED | adiado ate' ser preciso |
+
+#### 5.6.7 Ordem de trabalho sugerida (a rever pelo usuario)
+
+1. **Editor de textos** TUI+GUI (item 3) -- decidido pelo usuario como o primeiro.
+2. **Projeto `.msxproject`** + `Obifile` (itens 4, 5) -- o editor precisa de projeto.
+3. **Depurador avancado** (item 16) -- alimenta Konpass interno e o Kizuna.
+4. **Camada B barata**: disco com Konpass e TED (item 7, 8), depois de trazer o N80 e a autorizacao do TED.
+5. **Editores visuais** na ordem de 5.4.5 (hexa, fonte, sprite, PSG/MML, telas, SEE).
+6. **Kizuna K0..K6** (item 9), em paralelo ao item 5 quando houver folego.
+7. **Camada C**: perfil de maquina, navegador do file-hunter, leitor do msxstuff.
+8. **Lista de paridade** e aposentadoria do msxIDE/PaleoBasic (item 15).
+
+#### 5.6.8 Decisoes ja' tomadas x ainda abertas
+
+Tomadas: mesmo `fwMSX.exe`; projeto = SQLite `.msxproject`; atalhos iguais TUI/GUI; editor primeiro; `Obifile` extensivel; msxIDE/PaleoBasic aposentados no fim; Kizuna reescrito em C/C++ (provisorio, 2026-10-20); Konpass/TED rodam dentro do MSX; nucleo de assembler unico com duas caras (fwasm absoluto = asMSX, kaji80 relocavel = estilo M80); Kizuna so' BASIC, Pascal e Assembly (sem C); MSXgl so' ideias e ASM traduzido.
+Abertas: fonte/licenca do TED; sintaxe do KAJI80 x fwasm (verificar em K0); trazer o N80 (e quando); formato do perfil de maquina; como acessar o file-hunter; ordem final de 5.6.7; a lista de paridade.
