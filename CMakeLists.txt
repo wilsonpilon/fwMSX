@@ -692,6 +692,9 @@ set(EDITOR_LIB_SOURCES
         src/editor/cpp/editor_tables.cpp
         src/editor/cpp/editor_file.cpp
         src/editor/cpp/editor_render.cpp
+        src/editor/cpp/editor_keys.cpp
+        src/editor/cpp/editor_ui.cpp
+        src/editor/cpp/editor_dialogs.cpp
         src/editor/c/ed_text.c
         src/editor/fortran/ed_stats.f90
         src/editor/asm/ed_indent.asm
@@ -702,6 +705,14 @@ if (MINGW)
     target_link_options(edittest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME editor COMMAND edittest)
+
+# editorui: a aplicacao do editor (menus abertos, dialogos, duas janelas, mouse, configuracao), sem terminal.
+add_executable(editorui tests/editor/editor_ui_test.cpp ${EDITOR_LIB_SOURCES})
+set_target_properties(editorui PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/editorui)
+if (MINGW)
+    target_link_options(editorui PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME editor_ui COMMAND editorui)
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})
@@ -898,6 +909,7 @@ add_executable(fwMSX
         ${FWASM_LIB_SOURCES} src/asm/cpp/cli.cpp
         ${TERM_LIB_SOURCES}
         ${TUI_LIB_SOURCES}
+        ${EDITOR_LIB_SOURCES} src/editor/cpp/editor_tui.cpp
         ${ROMDB_LIB_SOURCES}
         ${Z80_LIB_SOURCES}
         ${Z80_DEBUG_SESSION_SOURCES}

@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.41.0 "Hyper Sports", Konami)
+## Estado atual (v1.41.1 "Hyper Sports: Editor na TUI", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.41.1 o editor de textos na TUI (fase E2): `fwMSXc --edit arquivo` / `--view arquivo` com a tela, os menus, os dialogos, as duas janelas e o mouse do Norton Editor 2**
 **1.41.0 o editor de textos, fase E1: o nucleo do editor estilo Norton Editor 2 (teclas e menus do NE 2, blocos, busca, desfazer, modo somente leitura `view`), ainda sem tela (TUI na proxima fase)**
 **1.40.5 o montador na TUI: `asmrun` monta e CARREGA (ROM, fita ou disco), simbolos e linhas do fonte no depurador (`break loop`, `break jogo.asm:42`, `sym`, `src`), marcadores `.break`/`.debug` funcionando no Z80, BOM/UTF-8 no fwasm**
 **1.40.4 Mamute: fita cassete em todos os pontos -- `.cas`, `.tsx` e `.wav` (ler e gravar) no emulador (`tape new/list/seek/save/put/load`), no depurador (`break tapin`), no Mamute (`TAPE`, `R`, `TLOAD`, `TSAVE`, `A OT>jogo.cas`) e no fwasm (`.TSX`)**

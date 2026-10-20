@@ -208,6 +208,20 @@ const std::vector<Menu> &Menus() {
              {"Editor...", 'e', "", Cmd::EditorSetup, 0, true, false},
              {"Save configuration...", 's', "", Cmd::SaveConfig, 0, false, false},
          }},
+        // O menu "F1=Help" (so' abre por F1 ou pelo mouse; nao tem letra de Alt)
+        {"F1=Help", 0, 70,
+         {
+             {"General", 'g', "", Cmd::Help, 0, false, false},
+             {"Keys", 'k', "", Cmd::Help, 1, false, false},
+             {"File", 'f', "", Cmd::Help, 2, false, false},
+             {"Block", 'b', "", Cmd::Help, 3, false, false},
+             {"Text-layout", 't', "", Cmd::Help, 4, false, false},
+             {"Search", 's', "", Cmd::Help, 5, false, false},
+             {"Print", 'p', "", Cmd::Help, 6, false, false},
+             {"View", 'v', "", Cmd::Help, 7, false, false},
+             {"Options", 'o', "", Cmd::Help, 8, true, false},
+             {"About", 'a', "", Cmd::About, 0, false, false},
+         }},
     };
     return menus;
 }

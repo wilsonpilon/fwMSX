@@ -32,6 +32,13 @@ void Grid::PaintRow(int y, Style style) {
 void Editor::SetSize(int cols, int rows) {
     cols_ = std::max(20, cols);
     rows_ = std::max(4, rows);
+    text_rows_ = rows_ - 2;
+    Reveal();
+}
+
+void Editor::SetViewSize(int cols, int text_rows) {
+    cols_ = std::max(20, cols);
+    text_rows_ = std::max(1, text_rows);
     Reveal();
 }
 
@@ -71,11 +78,21 @@ void Editor::Render(Grid &g) const {
     }
     g.Put(cols_ - 10, 0, "F1=Help", kBar);
 
-    // --- texto ---
+    RenderBody(g, 1, true);
+    RenderStatus(g, rows_ - 1);
+}
+
+void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
     const int h = TextRows();
     Pos ba, bb;
     const bool has_block = BlockRange(ba, bb);
-    const int width = cols_ - 1;
+    const int width = scrollbar ? cols_ - 1 : cols_;
+    Pos bracket{-1, -1};
+    if (set_.show_bracket && cur_.col > 0) {
+        const std::string &cl = lines_[static_cast<size_t>(cur_.line)];
+        const char c = cl[static_cast<size_t>(cur_.col - 1)];
+        if (c == ')' || c == ']' || c == '}' || c == '>') MatchScan({cur_.line, cur_.col - 1}, bracket);
+    }
     for (int row = 0; row < h; ++row) {
         const int l = top_ + row;
         if (l >= LineCount()) continue;
@@ -84,16 +101,17 @@ void Editor::Render(Grid &g) const {
         int dc = 0;
         for (int i = 0; i <= static_cast<int>(s.size()); ++i) {
             const bool eol = i == static_cast<int>(s.size());
-            const int w = eol ? 1 : (s[static_cast<size_t>(i)] == '\t' ? tw - dc % tw : 1);
+            const int w = eol ? 1 : (s[static_cast<size_t>(i)] == '	' ? tw - dc % tw : 1);
             const Pos here{l, i};
             const bool in_block = has_block && ba <= here && here < bb;
             const bool marker = (m1_set_ && here == m1_) || (m2_set_ && here == m2_);
             for (int k = 0; k < w; ++k) {
                 const int x = dc + k - left_;
                 if (x < 0 || x >= width) continue;
-                Cell &c = g.at(x, 1 + row);
-                if (!eol && s[static_cast<size_t>(i)] != '\t') c.ch = static_cast<unsigned char>(s[static_cast<size_t>(i)]);
+                Cell &c = g.at(x, y0 + row);
+                if (!eol && s[static_cast<size_t>(i)] != '	') c.ch = static_cast<unsigned char>(s[static_cast<size_t>(i)]);
                 c.style = marker ? kBlockMark : (in_block ? kBlockSel : kText);
+                if (here == bracket) c.style = kBracket;
                 if (marker && c.ch == ' ') c.ch = 0x25AA; // quadradinho onde o marcador esta'
             }
             dc += w;
@@ -101,18 +119,19 @@ void Editor::Render(Grid &g) const {
         }
     }
 
+    if (!scrollbar) return;
     // --- barra de rolagem vertical ---
-    PutWide(g, cols_ - 1, 1, 0x2191, kScrollArrow);
-    PutWide(g, cols_ - 1, h, 0x2193, kScrollArrow);
+    PutWide(g, cols_ - 1, y0, 0x2191, kScrollArrow);
+    PutWide(g, cols_ - 1, y0 + h - 1, 0x2193, kScrollArrow);
     const int track = std::max(0, h - 2);
-    for (int i = 0; i < track; ++i) PutWide(g, cols_ - 1, 2 + i, 0x2591, kScrollTrack);
+    for (int i = 0; i < track; ++i) PutWide(g, cols_ - 1, y0 + 1 + i, 0x2591, kScrollTrack);
     if (track > 0) {
         const int thumb = LineCount() <= 1 ? 0 : std::min(track - 1, cur_.line * track / LineCount());
-        PutWide(g, cols_ - 1, 2 + thumb, 0x2588, kScrollThumb);
+        PutWide(g, cols_ - 1, y0 + 1 + thumb, 0x2588, kScrollThumb);
     }
+}
 
-    // --- barra de estado ---
-    const int sy = rows_ - 1;
+void Editor::RenderStatus(Grid &g, int sy) const {
     g.PaintRow(sy, kBar);
     PutWide(g, 0, sy, 0x2190, kBar);
     if (modified_) g.Put(2, sy, "*", kBar);

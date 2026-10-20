@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.41.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.41.1)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.41.0, publicada em `main`):**
+**Funcionando (v1.41.1, publicada em `main`):**
+- [x] **Editor de textos na TUI, fase E2** (1.41.1): `fwMSXc --edit`/`--view` (tela do Norton Editor 2: menus abertos, 17 dialogos, F1=Help paginada, duas janelas com Window Differences, mouse, cores do NE, configuracao `fwedit.cfg`); `ed::EditorApp` + `editor_tui.cpp`; testes `editorui` (117) e `edittest`. Falta: E3 janela, E4-E7 (`doc/editor-spec.md`).
 - [x] **Editor de textos, fase E1** (1.41.0): o NUCLEO do editor estilo Norton Editor 2 (`src/editor/`, `ed::Editor`, `doc/editor-spec.md`): buffer, cursor, Insert/Over, blocos, busca, desfazer, modo somente leitura `view`, as teclas e os 49 mnemonicos do NE, grade 80x25 com a tela do NE. Sem tela ainda (E2 = TUI, E3 = janela).
 - [x] **Montador na TUI e base do depurador avancado** (1.40.5): `asmrun` (monta e CARREGA: ROM/MegaROM como cartucho, `.basic` por fita montada na hora, `.msxdos` num disco de sistema), menu Montador na TUI e item na janela; simbolos e arquivo:linha no depurador (`break loop`, `break jogo.asm:42`,
   `sym`, `src`, eventos com `sym=`/`src=`, `dis` com rotulos, painel Z80 Debugger); marcadores `.break`/`.debug` do fonte funcionando no Z80 (`markers`); BOM/UTF-8 no fwasm. Ver `debug-spec.md`, secao 8.

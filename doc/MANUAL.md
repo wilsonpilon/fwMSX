@@ -1275,7 +1275,23 @@ continua tendo prioridade.
 **Limites**: o JSON do Vampier nao e' usado (so' o SQL). O parser do file-hunter depende do layout atual
 do site. Montar a maquina pelo banco (layout por nome) ainda nao existe. Ver [romdb-spec.md](romdb-spec.md).
 
-## Editor de textos (1.41.0, fase E1 -- ainda sem tela)
+## Editor de textos (1.41.1, fase E2 -- na TUI)
+
+Abra o editor no terminal com o executavel de console:
+
+```
+fwMSXc.exe --edit [arquivo [arquivo2]]     (um arquivo que nao existe abre como novo, com esse nome)
+fwMSXc.exe --view arquivo                  (somente leitura: so' o que nao destroi nada funciona)
+```
+
+A tela e' a do **Norton Editor 2**: menu no alto (`File Block Text-layout Search Print View Options`, mais `F1=Help`), texto, barra de rolagem e a barra de estado `Line= Col= nome Insert WW=`. Menus: **Alt+letra** ou **F10**; setas, Enter, a letra do item e Esc. Atalhos de teclado do NE
+(`F1 > Keys` mostra todos): Ctrl-F/Ctrl-R buscam e trocam, Alt-C/Ctrl-C continuam, Ctrl-] acha o parentese, Ctrl-W/Alt-W apagam palavra, Alt-K apaga a linha, Ctrl-U restaura o que foi apagado, Alt-B S marca o bloco, F2 abre a segunda janela, Alt-F X sai.
+Teclas **alternativas** onde o terminal entrega mal (Alt-Setas no lugar de Ctrl-Setas, Alt-PgUp, Alt-Enter, F10) e as **modernas** (Alt-Backspace desfaz, Ctrl-Ins/Shift-Ins/Shift-Del copiam/colam/recortam, Shift+setas selecionam). O **mouse** posiciona o cursor, arrasta para marcar um bloco, rola e aciona menus e botoes.
+
+Dialogos: Tab/Shift-Tab entre os campos, espaco e setas mudam, **Enter = botao padrao `[ ]`**, **Esc = Cancel**, a **inicial do botao** o aciona. `Options > Display` escolhe as cores (LCD, azul, ciano, mono), `Options > Save configuration` grava `fwedit.cfg` (ao lado do executavel ou no diretorio atual).
+`--dump [--keys "A-f o ..."] [--size 80x25]` imprime a tela e sai (sem terminal; serve para testes). Detalhes e o que ainda falta: `doc/editor-spec.md`.
+
+## Editor de textos (1.41.0, fase E1 -- o nucleo)
 
 A 1.41.0 entrega o NUCLEO do editor de textos do fwMSX, no estilo do **Norton Editor 2** (projeto completo em `doc/editor-spec.md`). Ele ainda nao tem tela: a TUI (menus e dialogos do NE) vem na proxima fase e a janela depois; por enquanto o que existe e' o modelo, coberto pelo teste `edittest` (`ctest -R editor`).
 

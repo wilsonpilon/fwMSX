@@ -1087,6 +1087,20 @@ bool Editor::ReplaceNext(const std::string &find, const std::string &repl, bool 
     return true;
 }
 
+bool Editor::ReplaceHere(int n, const std::string &repl) {
+    if (!Writable() || n < 0) return false;
+    const int len = static_cast<int>(lines_[static_cast<size_t>(cur_.line)].size());
+    if (cur_.col + n > len) return false;
+    BeginGroup(false);
+    const Pos at = cur_;
+    DoDelete(at, {at.line, at.col + n});
+    cur_ = DoInsert(at, repl);
+    found_here_ = false;
+    goal_dcol_ = DisplayCol(cur_);
+    Reveal();
+    return true;
+}
+
 int Editor::ReplaceAll(const std::string &find, const std::string &repl, bool match_case) {
     if (!Writable() || find.empty()) return 0;
     BeginGroup(false);
@@ -1119,20 +1133,22 @@ bool Editor::GoToLine(int line1) {
     return line1 >= 1 && line1 <= LineCount();
 }
 
-bool Editor::MatchBracketCmd() {
-    const std::string &s = lines_[static_cast<size_t>(cur_.line)];
-    if (cur_.col >= static_cast<int>(s.size())) return false;
-    const char c = s[static_cast<size_t>(cur_.col)];
+bool Editor::MatchScan(Pos from, Pos &out) const {
+    if (from.line < 0 || from.line >= LineCount()) return false;
+    const std::string &s = lines_[static_cast<size_t>(from.line)];
+    if (from.col < 0 || from.col >= static_cast<int>(s.size())) return false;
+    const char c = s[static_cast<size_t>(from.col)];
     static const char open[] = "([{<";
     static const char close[] = ")]}>";
+    if (c == 0) return false;
     const char *o = std::strchr(open, c);
     const char *k = std::strchr(close, c);
-    if (c == 0 || (!o && !k)) return false;
+    if (!o && !k) return false;
     const char mate = o ? close[o - open] : open[k - close];
     const int dir = o ? 1 : -1;
     int depth = 0;
-    int l = cur_.line;
-    int col = cur_.col;
+    int l = from.line;
+    int col = from.col;
     for (;;) {
         const std::string &t = lines_[static_cast<size_t>(l)];
         for (; col >= 0 && col < static_cast<int>(t.size()); col += dir) {
@@ -1142,7 +1158,7 @@ bool Editor::MatchBracketCmd() {
             } else if (x == mate) {
                 --depth;
                 if (depth == 0) {
-                    MoveTo({l, col});
+                    out = {l, col};
                     return true;
                 }
             }
@@ -1150,6 +1166,47 @@ bool Editor::MatchBracketCmd() {
         l += dir;
         if (l < 0 || l >= LineCount()) return false;
         col = dir > 0 ? 0 : static_cast<int>(lines_[static_cast<size_t>(l)].size()) - 1;
+    }
+}
+
+bool Editor::MatchBracketCmd() {
+    Pos m;
+    if (!MatchScan(cur_, m)) return false;
+    MoveTo(m);
+    return true;
+}
+
+bool Editor::MatchOf(Pos from, Pos &out) const {
+    return MatchScan(from, out);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// mouse
+// ---------------------------------------------------------------------------------------------------------------
+
+Pos Editor::ScreenToPos(int x, int row) const {
+    const int line = std::max(0, std::min(top_ + row, LineCount() - 1));
+    return {line, ColFromDisplay(line, std::max(0, x) + left_)};
+}
+
+void Editor::SelectBlock(Pos a, Pos b) {
+    if (a == b) {
+        m1_set_ = m2_set_ = false;
+        return;
+    }
+    m1_ = a < b ? a : b;
+    m2_ = a < b ? b : a;
+    m1_set_ = m2_set_ = true;
+    sel_active_ = true;
+}
+
+void Editor::ScrollView(int dy) {
+    const int h = std::max(1, TextRows());
+    top_ = std::max(0, std::min(top_ + dy, LineCount() - 1));
+    const int line = std::max(top_, std::min(cur_.line, std::min(top_ + h - 1, LineCount() - 1)));
+    if (line != cur_.line) {
+        cur_.line = line;
+        cur_.col = ColFromDisplay(line, goal_dcol_);
     }
 }
 

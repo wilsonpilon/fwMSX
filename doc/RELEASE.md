@@ -17,6 +17,21 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.41.1 -- "Hyper Sports: Editor na TUI" (Konami) (2026-10-20)
+
+**Pedido do usuario**: "fase E2" do editor de textos (`doc/editor-spec.md`): a tela do Norton Editor 2 na TUI com menus, dialogos, 2a janela e mouse, e os comandos `edit`/`view`. Replicar o MAXIMO do original (62 telas de referencia em `images/`).
+
+- **Arquitetura**: `ed::EditorApp` (src/editor/cpp/editor_ui.*, editor_dialogs.cpp) sobre o modelo `ed::Editor`: recebe teclas por nome e mouse, devolve uma grade. O FTXUI so' entra em `editor_tui.cpp` (entrada do terminal -> teclas/mouse; grade -> cores). Tudo o resto e' testado sem terminal.
+- **O modelo ganhou**: `RenderBody`/`RenderStatus` (varias janelas), `SetViewSize`, `ScreenToPos`/`SelectBlock`/`ScrollView` (mouse), `ReplaceHere` (busca interativa), parentese que casa realcado, `SetName`; o menu **F1=Help** entrou em `Menus()`.
+- **Dialogos como dados**: `Widget` (Label, Input, Radio, Check, Button, List) em posicoes absolutas, `DialogBox::Key/ClickAt`; cada caixa do NE tem uma funcao `Build*`; o desenho e' uma borda dupla com sombra. Os dialogos de arquivo listam o diretorio (mascara com `*` e `?`, `[sub]`, `..`, unidades `[-C-]` no Windows).
+- **Teclas do terminal**: convencoes do console decididas aqui: 0x08 = Ctrl-Backspace (desindentar), 0x7F = Backspace, 0x00 = Ctrl-2, 0x1D = Ctrl-]; ESC + caractere = Alt; sequencias `ESC [ 1 ; m X` e `ESC [ n ; m ~` do xterm para setas e Home/End/Ins/Del/PgUp/PgDn/F1-F12 com Shift/Alt/Ctrl.
+- **Escolhas minhas** (a rever): a ajuda e' o nosso texto (a do NE e' da Symantec); o Replace pergunta ocorrencia por ocorrencia (o NE faz "optionally replaces"); Open com arquivo alterado pergunta antes; a mensagem passageira cobre o nome do arquivo na barra de estado; "Display lines" so' limita a altura usada (o terminal manda no tamanho); os textos da interface ficam em INGLES, como os menus do NE.
+- **Nao verificado em terminal real** (so' modelo e `--dump`): como o FTXUI entrega Alt+letra, Ctrl+setas e o mouse no Windows Terminal/conhost e no Linux; cursor piscando; as cores nos esquemas. Quem testar: `fwMSXc.exe --edit arquivo`.
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 29/29 nos dois.
+- **Fora de escopo / proximos**: E3 (janela ImGui), E4 destaque de sintaxe, E5 completar e snippets, E6 integracao (Executar no MSX, erros -> linha, projeto), E7 (Paragraph/Document format, Print, Outline, Load more/Write to cursor/Top of file); `edit`/`view` dentro do console/TUI de menus (hoje so' como programa `--edit`/`--view`); a pagina `man editor`; o perfil fwEditor.
+
+---
+
 ## v1.41.0 -- "Hyper Sports" (Konami) (2026-10-20)
 
 **Pedido do usuario**: "siga pela fase E1" do editor de textos (projeto em `doc/editor-spec.md`): o nucleo, estilo Norton Editor 2, com os mesmos recursos e atalhos na TUI e na janela. Decisoes anteriores: perfil de teclas Norton como padrao + teclas modernas alternativas + perfil opcional "fwEditor";

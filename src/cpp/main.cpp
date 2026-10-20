@@ -88,6 +88,7 @@
 #include "splash/splash.h"
 #include "term/term_app.h"
 #include "tui/tui_app.h"
+#include "editor/cpp/editor_tui.h"
 #include "machine/cli.h"
 #include "tape/cli/cas_tool.h"
 #include "tapedb/cli.h"
@@ -203,6 +204,21 @@ int main(int argc, char* argv[]) {
         std::vector<std::string> tokens(argv + 2, argv + argc);
         splash::HandleTerminalArgs(tokens, argv[0]); // splash so' com --splash
         return tui::RunTui(tokens, argv[0]);
+    }
+    // --edit / --view: o editor de textos (estilo Norton Editor 2) em tela cheia no terminal; --view = somente leitura
+    if (argc > 1 && (std::string(argv[1]) == "--edit" || std::string(argv[1]) == "--view")) {
+        const bool as_view = std::string(argv[1]) == "--view";
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        bool dump = false;
+        for (const std::string &t : tokens) dump = dump || t == "--dump";
+#ifdef _WIN32
+        if (g_gui_on_terminal && !dump) {
+            std::cerr << "fwmsx " << argv[1] << ": use o fwMSXc.exe (versao de console) para o editor de textos:\n"
+                         "  fwMSXc.exe " << argv[1] << " arquivo" << std::endl;
+            return 2;
+        }
+#endif
+        return ed::RunEditorTui(tokens, argv[0], as_view);
     }
     // --mon / --mamute: o console ja' dentro do monitor Z80 (sem emulador = so' offline; com --attach <porta> tambem online)
     if (argc > 1 && (std::string(argv[1]) == "--cli" || std::string(argv[1]) == "--mon" || std::string(argv[1]) == "--mamute")) {

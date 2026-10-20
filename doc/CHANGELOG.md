@@ -7,6 +7,21 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.41.1] - 2026-10-20 - "Hyper Sports: Editor na TUI" (Konami)
+
+### Adicionado -- o editor de textos no terminal (fase E2)
+- **`fwMSXc.exe --edit [arquivo [arquivo2]]`** e **`--view arquivo`** (somente leitura): o editor estilo Norton Editor 2 em tela cheia no terminal (FTXUI). Arquivo que nao existe abre como novo, com o nome dado. `--dump [--keys "A-f o ..."] [--size CxL]` imprime a tela sem terminal (teste de fumaca).
+- **A tela do NE 2**: barra de menu (`File Block Text-layout Search Print View Options  F1=Help`), menus em caixa com sombra, letra de atalho em destaque, itens desabilitados em cinza (no `view`, os destrutivos), barra de estado `Line= Col= nome Insert WW= Auto`, barra de rolagem.
+- **Menus abertos**: Alt+letra ou F10 abrem; setas, Enter, a letra do item, Esc; o menu **F1=Help** (General, Keys, File, Block, Text-layout, Search, Print, View, Options, About) com a ajuda paginada (Next/Previous/Cancel, rodape "More"); o texto da ajuda e' nosso e a lista de teclas e' gerada das tabelas.
+- **Caixas de dialogo do NE 2** (campos, radios, caixas de marcar, botoes pela inicial, Tab/Shift-Tab, Enter = botao padrao, Esc = Cancel): Open/Save as/Merge/2nd window (lista de arquivos com mascara `*.ME`, lista de diretorios e unidades), Search for text, Search & Replace (pergunta a cada ocorrencia: Yes/No/All/Cancel),
+  Find line, Indent/Unindent, Output to file, Text-layout setup, Print setup, Information display, About, Display/Mouse/Editor setup, Save configuration (arquivo atual ou do diretorio), perguntas de saida ("This file has been changed. Save it before exiting?") e "starting at..." (Top/Cursor/Cancel).
+- **Duas janelas** (F2): a barra do meio com o nome da janela de cima, divisor movel (Ctrl-2/Alt-2, alternativas Alt-Seta), Close window, **Window Differences** (Alt-S D), e a saida pergunta por cada arquivo alterado.
+- **Mouse**: clicar posiciona o cursor, arrastar marca um bloco, a roda rola, setas e trilho da barra de rolagem, clique nos menus, itens, botoes, campos e listas dos dialogos.
+- **Cores** do NE (Options > Display): LCD, Color 1 (azul), Color 2 (ciano), VGA mono, mono; Display lines; scrollbar; parentese que casa realcado; cursor grande.
+- **Configuracao** (`fwedit.cfg`, ao lado do executavel e/ou no diretorio atual): tabulacao, Tab key, backup, Insert/Over inicial, margens, cores, mouse, impressao; o editor pergunta ao sair se a configuracao mudou.
+- **Teclas do terminal** (`editor_keys`): bytes de controle e sequencias de escape viram nomes de tecla (Ctrl-W, Alt-X, Ctrl-Esquerda, Shift-Direita, Del, F1-F12, Ctrl-Backspace = 0x08, Ctrl-2 = 0x00...), testadas com texto puro.
+- Testes: `editorui` (117 verificacoes: teclas do terminal, menus, dialogos, configuracao, janelas, mouse, view) alem do `edittest` da 1.41.0.
+
 ## [1.41.0] - 2026-10-20 - "Hyper Sports" (Konami)
 
 ### Adicionado -- o editor de textos (fase E1: o nucleo, estilo Norton Editor 2)

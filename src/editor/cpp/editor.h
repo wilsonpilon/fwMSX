@@ -28,6 +28,14 @@ enum Style : uint8_t {
     kScrollTrack, // trilho da barra de rolagem
     kScrollThumb, // "elevador" da barra de rolagem
     kScrollArrow, // setas da barra de rolagem
+    kPanel,       // menus e caixas de dialogo (fundo)
+    kPanelHot,    // letra de atalho nos menus e botoes
+    kPanelSel,    // item de menu / botao / campo com o foco
+    kPanelOff,    // item de menu desabilitado
+    kPanelField,  // campo de texto de um dialogo
+    kShadow,      // sombra pontilhada
+    kTitleBar,    // barra com o nome do arquivo entre duas janelas
+    kBracket,     // o parentese que casa com o que esta' a esquerda do cursor
     kStyleCount
 };
 
@@ -152,6 +160,7 @@ struct Settings {
     int left_margin = 0;
     int page_length = 62;
     int top_margin = 2;
+    bool show_bracket = true; // realca o parentese que casa (Display setup: Blinking bracket)
 };
 
 struct DocInfo {
@@ -193,6 +202,7 @@ public:
     Dialog TakeDialog();                                // o dialogo pedido pelo ultimo comando (e limpa)
     int HelpTopic() const { return help_topic_; }
     bool Find(const std::string &text, bool match_case, bool backwards);
+    bool ReplaceHere(int n, const std::string &repl);   // troca os n caracteres do cursor por repl (busca interativa)
     int ReplaceAll(const std::string &find, const std::string &repl, bool match_case); // do cursor ao fim; devolve quantos
     bool ReplaceNext(const std::string &find, const std::string &repl, bool match_case, bool backwards);
     bool GoToLine(int line1);                           // 1-based
@@ -206,6 +216,7 @@ public:
 
     // --- estado ----------------------------------------------------------------------------------------------------
     const std::string &Name() const { return name_; }
+    void SetName(const std::string &n) { name_ = n; }
     bool Modified() const { return modified_; }
     bool ReadOnly() const { return read_only_; }
     void SetReadOnly(bool v) { read_only_ = v; }
@@ -236,10 +247,21 @@ public:
 
     // --- tela ------------------------------------------------------------------------------------------------------
     void SetSize(int cols, int rows);                   // a janela inteira (menu + texto + estado)
-    int TextRows() const { return rows_ - 2; }
-    void Render(Grid &grid) const;
-    bool CursorScreen(int &x, int &y) const;            // onde fica o cursor na grade
+    void SetViewSize(int cols, int text_rows);          // so' a area de texto (uma janela de varias)
+    int TextRows() const { return text_rows_; }
+    void Render(Grid &grid) const;                      // barra de menu + texto + barra de estado
+    // So' a area de texto (e a barra de rolagem) nas linhas [y0, y0 + TextRows()) da grade.
+    void RenderBody(Grid &grid, int y0, bool scrollbar = true) const;
+    void RenderStatus(Grid &grid, int y) const;         // a barra de estado do NE na linha y
+    bool CursorScreen(int &x, int &y) const;            // onde fica o cursor na grade (linha 1 = primeira do texto)
     int TopLine() const { return top_; }
+    // mouse: (x, row) sao relativos a area de texto desta janela
+    Pos ScreenToPos(int x, int row) const;
+    void SelectBlock(Pos a, Pos b);                     // marca o bloco entre a e b (arrastar o mouse)
+    void ScrollView(int dy);                            // roda do mouse: rola sem mover o cursor para fora da tela
+    void SetMessage(const std::string &m) { message_ = m; }
+    bool MatchOf(Pos from, Pos &out) const;             // o parentese que casa com o de `from`
+    int BodyWidth() const { return cols_; }
 
 private:
     struct Op {
@@ -275,6 +297,7 @@ private:
     void BlockIndentImpl(int amount, bool out);
     void CenterLineCmd();
     bool MatchBracketCmd();
+    bool MatchScan(Pos from, Pos &out) const;
     bool TextInBlockCmd();
     void DoUndo(bool redo);
     bool DispatchMenuLetter(char menu, const std::string &canon);
@@ -294,6 +317,7 @@ private:
     int left_ = 0;
     int cols_ = kDefaultCols;
     int rows_ = kDefaultRows;
+    int text_rows_ = kDefaultRows - 2;
     bool insert_ = true;
     bool modified_ = false;
     bool read_only_ = false;
