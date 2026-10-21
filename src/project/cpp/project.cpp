@@ -28,7 +28,7 @@ namespace prj {
 namespace {
 
 constexpr int kSchema = 2; // 2: lapides (tombstones) e historico (revisions)
-constexpr int64_t kRevMaxBytes = 2 * 1024 * 1024; // arquivo maior que isso (um .dsk) nao entra no historico: encheria o banco
+constexpr int64_t kRevMaxBytes = 8 * 1024 * 1024; // acima disso (um .dsk) nao entra no historico: encheria o banco; 8 MiB cobre as maiores ROMs de MSX
 // As tabelas do esquema 2: IF NOT EXISTS serve ao Create e a' migracao de um projeto do esquema 1 (que so' ganha as tabelas, nada muda nos dados).
 const char *const kTables =
     "CREATE TABLE IF NOT EXISTS tombstones(path TEXT PRIMARY KEY, hash TEXT NOT NULL, removed INTEGER NOT NULL);"

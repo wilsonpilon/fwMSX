@@ -17,11 +17,17 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.6 -- "Yie Ar Kung-Fu: Historico de ROMs grandes" (Konami) (2026-10-21)
+
+**Pedido do usuario**: subir o limite de 2 MiB para 8 MiB, pois ja existem ROMs desse tamanho. Constante `kRevMaxBytes` em `project.cpp`. Validado: Windows e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.43.5 -- "Yie Ar Kung-Fu: Historico e remocoes" (Konami) (2026-10-21)
 
 **Pedido do usuario**: esgotar a parte de projetos; escolheu *Remocoes propagando* e *Revisoes + nomes com maiusculas* (Build lendo do banco e Obifile ficam para depois).
 - **Desenho**: a lapide guarda o HASH do que foi tirado, nao so' o nome: o outro PC so' oferece apagar a copia se ela ainda for igual (sem perder trabalho) e distingue a que mudou. Apagar continua sendo sempre decisao do usuario (padrao do dialogo = manter); `--prune` so' apaga o que e' igual e esta' no historico.
-- **Historico no mesmo banco** (nao arquivo a parte): continua sendo UM arquivo para copiar entre PCs. Custo controlado: 10 versoes, teto de 2 MiB por versao.
+- **Historico no mesmo banco** (nao arquivo a parte): continua sendo UM arquivo para copiar entre PCs. Custo controlado: 10 versoes, teto de 8 MiB por versao (subiu de 2 na 1.43.6).
 - **Decisao minha** (a rever): renomear deixa lapide do nome antigo (propaga a troca de nome, mas o outro PC pergunta antes de apagar a copia antiga); o historico nao cobre arquivos grandes.
 - **Achado no teste**: `--prune` num PC que nao tem a pasta toda tira do projeto o que "sumiu" da pasta (comportamento que ja' existia para `DiskDeleted`) e agora deixa lapide; o teste de dois PCs passou a copiar a pasta inteira.
 - Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).

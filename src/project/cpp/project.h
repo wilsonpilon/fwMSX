@@ -104,7 +104,7 @@ public:
     std::vector<FileInfo> List(const std::string &prefix = "") const;
 
     // --- historico e remocoes ---
-    // Toda vez que um arquivo e' sobrescrito com conteudo diferente, ou tirado, a versao anterior (ate' 2 MiB) vai para o historico.
+    // Toda vez que um arquivo e' sobrescrito com conteudo diferente, ou tirado, a versao anterior (ate' 8 MiB) vai para o historico.
     std::vector<Revision> Revisions(const std::string &path) const; // da mais nova para a mais velha
     bool GetRevision(int64_t id, std::vector<uint8_t> &data) const;
     // Volta o arquivo a uma versao do historico (o projeto E a copia da pasta); a versao de agora tambem entra no historico. Serve para arquivo tirado.

@@ -17,6 +17,7 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-19)
 
+- **1.43.6 "Yie Ar Kung-Fu: Historico de ROMs grandes" (publicada)**: teto do historico de versoes 2 -> 8 MiB.
 - **1.43.5 "Yie Ar Kung-Fu: Historico e remocoes" (publicada)**: `.msxproject` esquema 2 (revisions + tombstones), restaurar versoes, remocao propagando (Sync pergunta), colisao de maiusculas, config do manifesto adotada. **Falta (projetos)**: Build/Dignified lendo do banco, Obifile.
 - **1.43.4 "Yie Ar Kung-Fu: Menu de contexto" (publicada)**: menu de contexto da arvore (`EditorApp::ProjectDo`; popup na janela, `Actions...` no TUI). Usuario quer ESGOTAR a parte de projetos antes de outros itens. **Falta (projetos)**: Build/Dignified lendo do banco, Obifile, revisions, remocoes propagando entre PCs, nomes que diferem so em maiusculas, config do manifesto lida apenas na importacao.
 - **1.43.3 "Yie Ar Kung-Fu: Arvore no TUI" (publicada)**: `Project > Files...` e' uma arvore com pastas recolhiveis (`ProjectTreeEnter`, `tree_folded_`). **Falta**: Build/Dignified lendo do banco, Obifile.

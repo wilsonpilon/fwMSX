@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.5 "Yie Ar Kung-Fu: Historico e remocoes", Konami)
+## Estado atual (v1.43.6 "Yie Ar Kung-Fu: Historico de ROMs grandes", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 

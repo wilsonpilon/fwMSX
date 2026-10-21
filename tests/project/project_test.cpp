@@ -263,9 +263,12 @@ void TestHistoryAndRemoval(const fs::path &dir) {
     check(a.SetConfig("revisions.keep", "0", err) && a.Put("src/y.txt", B("a"), err) && a.Put("src/y.txt", B("b"), err) && a.Revisions("src/y.txt").empty(),
           "revisions.keep=0 desliga");
     a.SetConfig("revisions.keep", "10", err);
-    a.Put("src/big.bin", std::vector<uint8_t>(3 * 1024 * 1024, 1), err);
-    a.Put("src/big.bin", std::vector<uint8_t>(3 * 1024 * 1024, 2), err);
-    check(a.Revisions("src/big.bin").empty(), "arquivo grande (> 2 MiB) nao entra no historico");
+    a.Put("src/big.bin", std::vector<uint8_t>(9 * 1024 * 1024, 1), err);
+    a.Put("src/big.bin", std::vector<uint8_t>(9 * 1024 * 1024, 2), err);
+    check(a.Revisions("src/big.bin").empty(), "arquivo grande (> 8 MiB) nao entra no historico");
+    a.Put("src/rom.bin", std::vector<uint8_t>(6 * 1024 * 1024, 1), err);
+    a.Put("src/rom.bin", std::vector<uint8_t>(6 * 1024 * 1024, 2), err);
+    check(a.Revisions("src/rom.bin").size() == 1, "ROM de 6 MiB (abaixo de 8 MiB) entra no historico");
 
     // restaurar: projeto E pasta; a versao de agora tambem vai para o historico (desfazer o desfazer)
     check(a.Sync(pcA.string(), false, *std::make_unique<prj::SyncSummary>(), err), "sincroniza a pasta");
