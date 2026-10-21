@@ -1,4 +1,4 @@
-fwMSX -- como retomar (atualizado em 2026-10-19, ao encerrar o dia: ultima release 1.40.5 "Antarctic Adventure: Montador na TUI"; depois dela so' documentacao)
+fwMSX -- como retomar (atualizado em 2026-10-21, ao encerrar o dia: ultima release 1.42.2 "Road Fighter: Erros de execucao no fonte")
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
@@ -14,15 +14,28 @@ as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.
    explicam o PORQUE.
 
 == Na MESMA maquina ==
-claude --resume 5fb1dd20-66b4-4cec-af35-733733127add     (sessao das fases 1-4 do Mamute e da fita, 2026-10-19)
-(sessoes anteriores: 01cab35e-2c27-4a73-925c-1b6cabeafdda)
+claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao do editor E5/E6 e do Basic Dignified, 2026-10-20/21)
+(sessoes anteriores: 5fb1dd20-66b4-4cec-af35-733733127add = Mamute e fita; 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
 == O projeto em duas linhas ==
 fwMSX: emulador de MSX1/MSX2/MSX2+ de ESTUDO (Wilson Pilon), em C, C++, Assembly (NASM, ABI dupla Win64/SysV) e Fortran; cada fase relevante exercita as 4
 linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo: integrar ao msxide num utilitario "MSX-PoorManOS".
 
-== Estado ao encerrar (2026-10-19) ==
-- Ultima versao publicada: 1.40.5 "Antarctic Adventure: Montador na TUI" (Konami). main == origin/main; tags 1.36.0 a 1.40.5, branches v1.36.x a v1.40.5;
+== Estado ao encerrar (2026-10-21) ==
+- Ultima versao publicada: 1.42.2 "Road Fighter: Erros de execucao no fonte" (Konami), commit c006de23, tag 1.42.2, branch v1.42.2, pushed. ctest 31/31 em Windows e Linux/WSL.
+- 1.41.x = O EDITOR do IDE (doc/editor-spec.md): modelo `ed::Editor` + `ed::EditorApp` (menus e dialogos como dados), TUI (FTXUI) e GUI (ImGui `EditorPanel`) so' desenham.
+  E1-E5 (1.41.0-1.41.8): nucleo, janelas/abas, busca, blocos, destaque de sintaxe (inclusive MSX-BASIC KUN), numeros de linha, completar palavras (Alt-/) e snippets.
+  E6 parte 1 (1.41.9 "Hyper Sports"): menu Build/Montar (F9 monta o buffer via fwasm, F5 executa no MSX, F8/Shift-F8 mensagens, Messages..., Ctrl-F1 ajuda da palavra pelo `man`).
+- 1.42.0 "Road Fighter": BASIC DIGNIFIED nosso (src/badig, doc/badig-spec.md): clone byte-a-byte do badig.py v2.2.1 (.dmx -> .amx -> .bmx tokenizado, .lmx), nas 4 linguagens
+  (C++ lexer/parser/tokenizador, C tabela de palavras, Fortran arredondamento BCD, NASM prefixo). Comandos `badig` e `badigrun` (disco temporario com .bmx + AUTOEXEC.BAS; precisa de
+  --disk), `fwmsx --badig`, `man badig`, badig.cfg (INI ao lado do exe) + remtags `##BB:`, Montar > Dignified setup (2 paginas). Testes: badigtest (golden gerado pelo python
+  real com tools/badig_compare/compare.py) + editorui + controltest.
+- 1.42.1: NestorBASIC (biblioteca badig/nbasic.dmx + NBASIC.BIN ao lado do exe; include emendado no namespace do programa e podado), arquivos de apoio no disco (`##BB:disk_files=`, `nbasic`), snippet `nbload`.
+- 1.42.2: erro de execucao do BASIC -> linha do .dmx (Montar > BASIC line..., Result::line_map, MapBasicLine, ParseBasicErrorLine). O usuario digita a mensagem; falta o salto automatico lendo a tela do MSX.
+- Em aberto do Dignified: salto automatico apos o F5; NestorBASIC rodando de verdade (MSX2 + mapper + DOS); Basic DignifieR (classico -> Dignified) e tokenizador inverso; integracao com o `.msxproject`.
+- Em aberto do editor: E6 parte 2 (`.msxproject` SQLite + receita/Obifile, simbolos do projeto no completar, menus Sprites/Telas/Som, `man editor`); E7 (texto de escritorio: paragrafo/documento, impressao, outline); snippets com espelhamento.
+- Jogos (Y) ja' usados: Nemesis 1.32, Penguin Adventure 1.33, Metal Gear 1.34, Vampire Killer 1.35, Salamander 1.36, Knightmare 1.37, Antarctic Adventure 1.40, Hyper Sports 1.41, Road Fighter 1.42. Proximo jogo novo: Yie Ar Kung-Fu (lista no CLAUDE.md).
+- (Historico do dia 2026-10-19 abaixo.) Ultima versao daquele dia: 1.40.5 "Antarctic Adventure: Montador na TUI" (Konami). main == origin/main; tags 1.36.0 a 1.40.5, branches v1.36.x a v1.40.5;
   releases do GitHub com zip + tar.gz. ctest 27/27 em Windows (build.ps1) e Linux/WSL (build.sh).
 - 1.40.5: MONTADOR NA TUI + base do depurador avancado. `asmrun [-z] [-n] [--dos-disk]` (monta e CARREGA: ROM/MegaROM = cartucho, .basic = fita montada na hora + BLOAD digitado, .msxdos = copia do msxdos1.dsk + ENTER da data + nome);
   src/debug/cpp/symbols.* (simbolos e arquivo:linha no Debugger): `break loop`, `break jogo.asm:42`, `sym`, `src`, eventos `sym=`/`src=`; marcadores .break/.debug no Z80 (`Machine::CheckMarkers`, `markers on|off`); menu Montador na TUI (8 menus) e item na janela;
@@ -44,10 +57,10 @@ linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo
   acima (ver "Proximos passos", item 1). O ultimo commit de codigo/release e' o da 1.40.5 (tag 1.40.5); o HEAD de main pode estar alguns commits de documentacao a frente.
 
 == Regras de release (CLAUDE.md tem o texto completo; resumo do que ja' deu retrabalho) ==
-- Versao X.Y.Z: X = empresa (1 = Konami), Y = jogo NOVO de MSX (proximo: Hyper Sports 1.41, depois a lista do CLAUDE.md), Z = patch com subtitulo. Na duvida: patch.
+- Versao X.Y.Z: X = empresa (1 = Konami), Y = jogo NOVO de MSX (proximo jogo novo: Yie Ar Kung-Fu, depois a lista do CLAUDE.md), Z = patch com subtitulo. Na duvida: patch.
 - Bumpar src/common/version.h ANTES do primeiro build de qualquer rodada (o build nomeia o pacote em dist/ pela versao do header).
 - Build Windows: `powershell -NoProfile -ExecutionPolicy Bypass -File .\build.ps1` (de preferencia pela ferramenta PowerShell) e Linux: `wsl -e bash -lc 'cd /mnt/e/fwMSX && ./build.sh'`;
-  os DOIS precisam fechar com ctest 100% (27 suites). Matar fwMSX.exe/fwMSXc.exe/mamutetest antes de recompilar.
+  os DOIS precisam fechar com ctest 100% (31 suites em 2026-10-21). Matar fwMSX.exe/fwMSXc.exe/mamutetest antes de recompilar.
 - Docs vivos no MESMO commit da feature: doc/SPEC.md (5.0), CHANGELOG, RELEASE, o doc/*-spec.md da area, README, MANUAL, OUTLINE, este resume.txt.
 - `git add` com caminhos explicitos (nunca -A/.); commit termina com `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`;
   `git tag X.Y.Z` (SEM "v") + `git branch vX.Y.Z`; `git push origin main X.Y.Z vX.Y.Z`;
@@ -70,7 +83,9 @@ linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo
 resource/menu.alf (fonte binaria sem relacao), tools/asmdiff/__pycache__, binarios de teste soltos em dist/ (asmtest, controltest, mamutetest, ... o usuario
 ainda nao respondeu se quer remove-los do git), resource/asmsx.exe (oraculo do montador; *.exe e' ignorado), resource/Amazonia64kV5/ (nao rastreado), dist/roms/.
 
-== Proximos passos (ordem; nada em andamento, o trabalho de 2026-10-19 terminou na 1.40.5 + estudos no SPEC) ==
+== Proximos passos (nada em andamento; em 2026-10-21 o ultimo pedido, erros de execucao -> .dmx, foi entregue na 1.42.2. Perguntar ao usuario qual item do "Em aberto" acima seguir.) ==
+(A lista abaixo e' de 2026-10-19; o item 1, o IDE, esta' em andamento: editor feito ate' E6 parte 1, Basic Dignified feito.)
+Pegadinha nova: scripts/edicoes com `\` (ex.: "\\n") sao corrompidos pelo shell; use Write/Edit. Arquivos abertos no IDE do usuario podem estar travados para Python (use Edit).
 0. A IDEIA PROPRIA DO USUARIO: ele avisou que tem uma ideia para implementar ANTES do depurador avancado e que a conta na proxima sessao. PERGUNTAR (AskUserQuestion) antes de codar.
 1. O IDE DO fwMSX (estudo de viabilidade ja' registrado em doc/SPEC.md secoes 5.3 e 5.4; NADA implementado). Decisoes do usuario (5.3.0):
    - o IDE e' o MESMO fwMSX.exe (janela, --tui, console, terminal; mesma ponte de comandos);
@@ -96,7 +111,7 @@ ainda nao respondeu se quer remove-los do git), resource/asmsx.exe (oraculo do m
 == Mapa rapido do codigo ==
 src/z80 (CPU + depurador de sessao) | src/memmap (slots/mappers) | src/vdp, ppi, psg, scc, fm, fdc, rtc | src/tape + src/tapedb (fita) | src/machine (maquina + janela ImGui)
 src/control (ponte de comandos: command.cpp) | src/repl, src/tui, src/term (console, TUI de menus, modo terminal) | src/mamute (monitor) | src/asm (fwasm) |
-src/man (man/help) | src/debug (depurador) | src/msxdisk, src/diskfmt, src/romdb | tests/z80, tests/asm, tests/tapedb | tools/ (assets, asmdiff, wincap, compare com o fMSX)
+src/man (man/help) | src/debug (depurador) | src/editor (editor: cpp modelo+app, gui ImGui) | src/badig (Basic Dignified: cpp, c, fortran, asm, lib) | tools/badig_compare | src/msxdisk, src/diskfmt, src/romdb | tests/z80, tests/asm, tests/tapedb | tools/ (assets, asmdiff, wincap, compare com o fMSX)
 Referencias de terceiros so' para estudo: resource/ (fMSX, openMSX, makeTSX, fmsxgo, paleobasic...). Por subsistema: doc/<nome>-spec.md.
 
 == Comparacoes e ferramentas fora do ctest ==
