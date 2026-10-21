@@ -1353,11 +1353,11 @@ void test_project_editor() {
           "renomeia no projeto E a copia solta");
     check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles && screen_has(a, "neu.asm"), "a arvore volta no mesmo item");
     a.PressDialog(ed::kBtnActions);
-    K(a, {"Down", "Down", "Down", "Down", "Down", "Enter"}); // Remove from the project
+    K(a, {"Down", "Down", "Down", "Down", "Down", "Down", "Down", "Enter"}); // Remove from the project
     check(!a.ProjectRef().Has("src/neu.asm") && fs::exists(dir / "src/neu.asm"), "tirar do projeto mantem a copia da pasta");
     check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles, "e a arvore volta");
     a.PressDialog(ed::kBtnActions); // a lista encolheu: o item marcado e' o a.bas
-    K(a, {"Down", "Down", "Down", "Down", "Enter"}); // Add a file from the folder...
+    K(a, {"Down", "Down", "Down", "Down", "Down", "Enter"}); // Add a file from the folder...
     check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectAddFile && a.Current()->Find(1)->text == "src/", "Add: propoe a pasta do item");
     if (a.HasDialog() && a.CurrentMutable()->Find(1)) a.CurrentMutable()->Find(1)->text = "src/neu.asm";
     a.DialogEnter();
@@ -1369,6 +1369,23 @@ void test_project_editor() {
     if (a.HasDialog() && a.CurrentMutable()->Find(1)) a.CurrentMutable()->Find(1)->text = "src/novo.asm";
     a.DialogEnter();
     check(a.ProjectRef().Has("src/novo.asm") && !a.ProjectRef().Has("src/neu.asm"), "renomeia de volta");
+    // (renomear deixa uma lapide do nome antigo: e' o que leva a troca de nome aos outros PCs)
+    auto has_tomb = [&](const std::string &p) {
+        const auto r = a.ProjectRef().Removed();
+        return std::find(r.begin(), r.end(), p) != r.end();
+    };
+    // arquivo tirado volta pelo historico: Remove -> Removed files... -> History -> Enter
+    a.PressDialog(ed::kBtnActions);
+    K(a, {"Down", "Down", "Down", "Down", "Down", "Down", "Down", "Enter"}); // Remove from the project
+    check(!a.ProjectRef().Has("src/novo.asm") && has_tomb("src/novo.asm"), "tirado: fica a lapide");
+    a.PressDialog(ed::kBtnActions);
+    K(a, {"Down", "Down", "Down", "Down", "Down", "Down", "Enter"}); // Removed files...
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectRemoved && screen_has(a, "src/novo.asm"), "Removed files... lista o tirado");
+    K(a, {"Down", "Enter"}); // (neu.asm, a lapide do nome antigo, vem antes de novo.asm)
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectHistory && screen_has(a, "bytes"), "e mostra o historico dele");
+    K(a, {"Enter"});
+    check(a.ProjectRef().Has("src/novo.asm") && !has_tomb("src/novo.asm") && fs::exists(dir / "src/novo.asm"), "Enter restaura: projeto e pasta, sem lapide");
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles, "a arvore volta");
     K(a, {"Esc"});
     check(!a.HasDialog(), "Esc fecha a arvore");
 

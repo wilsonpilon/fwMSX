@@ -417,8 +417,10 @@ void EditorPanel::DrawProjectTree(float height) {
             item("Atualizar o projeto com a copia da pasta", ProjAct::Push);
             item("Restaurar a copia da pasta a partir do projeto", ProjAct::Pull);
             item("Renomear...", ProjAct::Rename);
+            item("Historico (versoes anteriores)...", ProjAct::History);
         }
         item("Adicionar arquivo da pasta...", ProjAct::Add);
+        item("Arquivos tirados (trazer de volta)...", ProjAct::Removed);
         item(dir ? "Tirar a pasta do projeto (as copias ficam)" : "Tirar do projeto (a copia fica)", ProjAct::Remove);
         ImGui::EndPopup();
         if (acted) tree_age_ = 1 << 30; // a lista muda: reler ja' no proximo quadro

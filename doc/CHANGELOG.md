@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.5] - 2026-10-21 - "Yie Ar Kung-Fu: Historico e remocoes" (Konami)
+
+### Adicionado -- historico de versoes, remocoes que viajam entre PCs, nomes seguros (E6 parte 2, fatia 6)
+- **Esquema 2 do `.msxproject`**: tabelas `revisions` e `tombstones` (projetos do esquema 1 abrem e migram sozinhos; um fwMSX antigo recusa o novo).
+- **Historico por arquivo**: sobrescrever com conteudo diferente, ou tirar do projeto, guarda a versao anterior (as ultimas 10; `project set revisions.keep N`, 0 desliga; arquivo acima de 2 MiB, como um `.dsk`, nao entra). Mesmo conteudo (ou so' o fim de linha) nao cria versao. `Project::Revisions/GetRevision/Restore`; console `project rev <caminho>` e `project restore <caminho> <id>`; editor: *Actions... > History (previous versions)...* (Enter volta a ela; a versao de agora tambem vai para o historico).
+- **Remocao que viaja**: tirar um arquivo deixa uma lapide com o hash. No outro PC o Sync mostra "removed from project (asks)": *Project* apaga a copia da pasta (ela fica no historico), *Folder* mantem e traz de volta; o padrao nunca apaga. Se a copia mudou depois, avisa que mudou. `project sync --prune` so' apaga a copia que e' IGUAL ao removido; `project purge <caminho>` apaga na mao. *Tirar do projeto* na propria pasta nao fica reclamando da copia que ficou (a base guarda `!hash`).
+- **Arquivos tirados**: *Actions... > Removed files...* (e o clique direito na janela) lista as lapides; Enter abre o historico do arquivo para traz-lo de volta. Renomear deixa a lapide do nome antigo, que e' o que leva a troca de nome aos outros PCs.
+- **Nomes que so' diferem em maiusculas** (`SRC/X.BAS` x `src/x.bas`) sao recusados com uma mensagem (colidiriam no Windows).
+- **Config do manifesto**: o Sync adota as chaves de `[config]` de `msxproject.txt` que o banco ainda nao tem (nunca troca as que ele tem; manifesto de outro projeto e' ignorado).
+- Testes: `project` (114 verificacoes: historico, limite, restaurar, colisao, dois PCs, migracao do esquema 1, config do manifesto), `editorui` (History/Removed files pela arvore).
+
 ## [1.43.4] - 2026-10-21 - "Yie Ar Kung-Fu: Menu de contexto" (Konami)
 
 ### Adicionado -- menu de contexto da arvore do projeto (E6 parte 2, fatia 5)

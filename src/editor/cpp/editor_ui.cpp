@@ -875,7 +875,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::MouseSetup: BuildMouse(); break;
     case Dialog::Language: BuildLanguage(); break;
     case Dialog::Errors: BuildMessagesDialog(); break;
-    case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: case Dialog::ProjectActions: case Dialog::ProjectRename: case Dialog::ProjectAddFile: break; // montados por quem abre
+    case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: case Dialog::ProjectActions: case Dialog::ProjectRename: case Dialog::ProjectAddFile: case Dialog::ProjectHistory: case Dialog::ProjectRemoved: break; // montados por quem abre
     case Dialog::EditorSetup: BuildEditorSetup(); break;
     case Dialog::SaveConfig: BuildSaveConfig(); break;
     case Dialog::Help: BuildHelp(arg, 0); break;
@@ -1193,6 +1193,18 @@ void EditorApp::DialogDone(int button) {
     case Dialog::ProjectActions: {
         const Widget *l = done.Find(2);
         if (button == kBtnOk && l && l->sel >= 0 && l->sel < static_cast<int>(act_list_.size())) ProjectDo(act_list_[static_cast<size_t>(l->sel)], act_path_, true);
+        else ProjectBackToFiles();
+        break;
+    }
+    case Dialog::ProjectHistory: {
+        const Widget *l = done.Find(2);
+        if (button == kBtnOk && l && l->sel >= 0 && l->sel < static_cast<int>(hist_revs_.size())) ProjectRestoreRevision(hist_revs_[static_cast<size_t>(l->sel)].id);
+        ProjectBackToFiles();
+        break;
+    }
+    case Dialog::ProjectRemoved: {
+        const Widget *l = done.Find(2);
+        if (button == kBtnOk && l && l->sel >= 0 && l->sel < static_cast<int>(removed_list_.size())) ProjectDo(ProjAct::History, removed_list_[static_cast<size_t>(l->sel)], act_from_files_);
         else ProjectBackToFiles();
         break;
     }

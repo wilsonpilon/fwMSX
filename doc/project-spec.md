@@ -88,4 +88,13 @@ da pasta sem `.msxsync` (o "clone do GitHub"), caminho malicioso. `controltest`:
 - **Arvore** (so' na janela grafica): `EditorPanel::DrawProjectTree`, pastas = nos, arquivos = folhas, clique = `EditorApp::OpenProjectFile`. Ordem com `/` antes dos demais caracteres para agrupar as pastas.
 - **Arvore no TUI (1.43.3)**: o dialogo *Files...* e' a arvore (`ProjectFilesDialog`/`ProjectTreeEnter`): `[-] pasta/` + arquivos recuados; Enter recolhe/expande (reconstroi o dialogo no mesmo item) ou abre.
 - **Menu de contexto (1.43.4)**: `ProjAct` {Open, Push, Pull, Rename, Add, Remove}; `EditorApp::ProjectDo` e' o unico caminho (popup do ImGui via `ProjectAct`; no TUI o botao Actions... do Files... abre `Dialog::ProjectActions`, e Rename/Add pedem o texto em `ProjectRename`/`ProjectAddFile`). Renomear: mover a copia solta + `Drop` + `Push`; tirar do projeto nunca apaga a copia da pasta.
-- Em aberto: Build/Dignified lendo do banco, `Obifile`, revisions, remocoes propagando, nomes que so' diferem em maiusculas.
+- Em aberto: Build/Dignified lendo do banco, `Obifile`.
+
+## 10. Historico, remocoes e nomes (1.43.5, esquema 2)
+
+- **Tabelas** (criadas por `kTables`, tambem na migracao do esquema 1): `revisions(id,path,hash,content,size,mtime,saved)` e `tombstones(path,hash,removed)`.
+- **Historico**: `Project::Archive` (chamado por `PutRaw` quando o hash muda e por `Remove`) copia a linha atual para `revisions` com `INSERT..SELECT`, pula se a ultima versao tem o mesmo hash ou se passa de 2 MiB, e corta para `revisions.keep` (padrao 10). `Restore` = `Put` (que arquiva a de agora) + `Pull`.
+- **Lapide**: `Remove` arquiva, grava `(path, hash)` e apaga a linha; `PutRaw` apaga a lapide. No `StatusImpl`, arquivo so' na pasta COM lapide vira `ProjectRemoved` (copia igual ao hash) ou `RemovedChanged`, ambos `Ask`. `Sync` os lista em `removed`; com `prune` apaga so' o `ProjectRemoved`. `DeleteLoose` apaga a copia (e a base). `Drop` mantem a copia e grava `!hash` na base, que faz o Status ignorar essa copia nesta pasta.
+- **Maiusculas**: `PutRaw` recusa nome com `lower(path)` igual ao de outro arquivo (ASCII).
+- **Manifesto**: `AdoptManifestConfig` (no inicio do `Sync`) copia as chaves de `[config]` que o banco nao tem, se o `id=` bate.
+- **Editor**: `ProjAct::History` (`Dialog::ProjectHistory`) e `ProjAct::Removed` (`Dialog::ProjectRemoved`); a pergunta da remocao reaproveita o dialogo de conflito (padrao = manter a copia).

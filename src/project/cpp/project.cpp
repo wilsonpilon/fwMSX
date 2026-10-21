@@ -27,7 +27,14 @@ namespace prj {
 
 namespace {
 
-constexpr int kSchema = 1;
+constexpr int kSchema = 2; // 2: lapides (tombstones) e historico (revisions)
+constexpr int64_t kRevMaxBytes = 2 * 1024 * 1024; // arquivo maior que isso (um .dsk) nao entra no historico: encheria o banco
+// As tabelas do esquema 2: IF NOT EXISTS serve ao Create e a' migracao de um projeto do esquema 1 (que so' ganha as tabelas, nada muda nos dados).
+const char *const kTables =
+    "CREATE TABLE IF NOT EXISTS tombstones(path TEXT PRIMARY KEY, hash TEXT NOT NULL, removed INTEGER NOT NULL);"
+    "CREATE TABLE IF NOT EXISTS revisions(id INTEGER PRIMARY KEY, path TEXT NOT NULL, hash TEXT NOT NULL, content BLOB NOT NULL,"
+    " size INTEGER NOT NULL, mtime INTEGER NOT NULL, saved INTEGER NOT NULL);"
+    "CREATE INDEX IF NOT EXISTS revisions_path ON revisions(path,id);";
 const char *const kManifest = "msxproject.txt"; // gerado na raiz; nao e' um arquivo do projeto
 const char *const kSidecar = ".msxsync";         // o hash da ultima sincronizacao de cada arquivo, DESTA pasta (nao viaja no banco)
 
@@ -195,6 +202,8 @@ const char *StateName(State s) {
     case State::OnlyDisk: return "so na pasta";
     case State::OnlyProject: return "so no projeto";
     case State::DiskDeleted: return "sumiu da pasta";
+    case State::ProjectRemoved: return "tirado do projeto";
+    case State::RemovedChanged: return "tirado do projeto, pasta mudou";
     }
     return "?";
 }
@@ -252,7 +261,8 @@ bool Project::Create(const std::string &file, const std::string &name, std::stri
               "CREATE TABLE config(key TEXT PRIMARY KEY, value TEXT NOT NULL);"
               "CREATE TABLE files(id INTEGER PRIMARY KEY, path TEXT UNIQUE NOT NULL, kind TEXT NOT NULL, content BLOB NOT NULL,"
               " size INTEGER NOT NULL, hash TEXT NOT NULL, mtime INTEGER NOT NULL);",
-              err)) {
+              err) ||
+        !Exec(kTables, err)) {
         Close();
         fs::remove(file, ec);
         return false;
@@ -301,6 +311,12 @@ bool Project::Open(const std::string &file, std::string &err) {
     }
     Exec("PRAGMA journal_mode=DELETE;PRAGMA synchronous=FULL;", err);
     err.clear();
+    if (std::atoi(schema.c_str()) < kSchema) { // projeto antigo: ganha as tabelas novas e passa a ser do esquema atual
+        if (!Exec(kTables, err) || !SetMeta("schema", std::to_string(kSchema), err)) {
+            Close();
+            return false;
+        }
+    }
     return true;
 }
 
@@ -377,6 +393,22 @@ bool Project::PutRaw(const std::string &path, const std::vector<uint8_t> &data, 
     bool text = false;
     const std::string by_ext = KindOf(path, &text);
     const std::string k = kind.empty() ? by_ext : kind;
+    {
+        // dois nomes que so' diferem em maiusculas viram um so' no Windows (e no macOS): recusa em vez de um sobrescrever o outro na pasta
+        Stmt c(db_, "SELECT path FROM files WHERE lower(path)=lower(?1) AND path<>?1");
+        if (c.ok()) {
+            c.Text(1, path);
+            if (c.Step()) return err = "o nome colide com '" + c.Col(0) + "' (so' difere em maiusculas): " + path, false;
+        }
+    }
+    const std::string new_hash = HashBytes(data, text);
+    {
+        Stmt h(db_, "SELECT hash FROM files WHERE path=?1");
+        if (h.ok()) {
+            h.Text(1, path);
+            if (h.Step() && h.Col(0) != new_hash) Archive(path); // sobrescrita com conteudo diferente: a versao de agora vai para o historico
+        }
+    }
     Stmt q(db_,
            "INSERT INTO files(path,kind,content,size,hash,mtime) VALUES(?1,?2,?3,?4,?5,?6) "
            "ON CONFLICT(path) DO UPDATE SET kind=?2,content=?3,size=?4,hash=?5,mtime=?6");
@@ -385,9 +417,14 @@ bool Project::PutRaw(const std::string &path, const std::vector<uint8_t> &data, 
     q.Text(2, k);
     q.Blob(3, data);
     q.Int(4, static_cast<int64_t>(data.size()));
-    q.Text(5, HashBytes(data, text));
+    q.Text(5, new_hash);
     q.Int(6, mtime < 0 ? NowSec() : mtime);
     if (!q.Done()) return err = sqlite3_errmsg(db_), false;
+    Stmt t(db_, "DELETE FROM tombstones WHERE path=?1"); // voltou ao projeto: a lapide nao vale mais
+    if (t.ok()) {
+        t.Text(1, path);
+        t.Done();
+    }
     return true;
 }
 
@@ -424,12 +461,132 @@ bool Project::Has(const std::string &path_in) const {
 }
 
 bool Project::Remove(const std::string &path_in, std::string &err) {
+    const std::string path = NormalizePath(path_in);
+    std::string hash;
+    {
+        Stmt h(db_, "SELECT hash FROM files WHERE path=?1");
+        if (!h.ok()) return err = sqlite3_errmsg(db_), false;
+        h.Text(1, path);
+        if (!h.Step()) return err = "nao esta' no projeto: " + path_in, false;
+        hash = h.Col(0);
+    }
+    Archive(path); // tirar nao perde o conteudo: fica no historico
+    {
+        // a lapide leva a remocao para os outros PCs: la' a copia da pasta, se ainda for igual a este hash, sera' oferecida para apagar
+        Stmt t(db_, "INSERT OR REPLACE INTO tombstones(path,hash,removed) VALUES(?1,?2,?3)");
+        if (!t.ok()) return err = sqlite3_errmsg(db_), false;
+        t.Text(1, path);
+        t.Text(2, hash);
+        t.Int(3, NowSec());
+        if (!t.Done()) return err = sqlite3_errmsg(db_), false;
+    }
     Stmt q(db_, "DELETE FROM files WHERE path=?1");
     if (!q.ok()) return err = sqlite3_errmsg(db_), false;
-    q.Text(1, NormalizePath(path_in));
+    q.Text(1, path);
     if (!q.Done()) return err = sqlite3_errmsg(db_), false;
-    if (sqlite3_changes(db_) == 0) return err = "nao esta' no projeto: " + path_in, false;
     return true;
+}
+
+// O historico guarda as ultimas `revisions.keep` versoes de cada arquivo (padrao 10; 0 desliga). So' guarda se o conteudo mudou em relacao a' ultima.
+bool Project::Archive(const std::string &path) {
+    const int keep = std::atoi(GetConfig("revisions.keep", "10").c_str());
+    if (keep <= 0) return true;
+    std::string hash;
+    {
+        Stmt q(db_, "SELECT hash,size FROM files WHERE path=?1");
+        if (!q.ok()) return false;
+        q.Text(1, path);
+        if (!q.Step() || q.ColInt(1) > kRevMaxBytes) return true;
+        hash = q.Col(0);
+    }
+    {
+        Stmt l(db_, "SELECT hash FROM revisions WHERE path=?1 ORDER BY id DESC LIMIT 1");
+        if (l.ok()) {
+            l.Text(1, path);
+            if (l.Step() && l.Col(0) == hash) return true;
+        }
+    }
+    {
+        Stmt ins(db_, "INSERT INTO revisions(path,hash,content,size,mtime,saved) SELECT path,hash,content,size,mtime,?2 FROM files WHERE path=?1");
+        if (!ins.ok()) return false;
+        ins.Text(1, path);
+        ins.Int(2, NowSec());
+        if (!ins.Done()) return false;
+    }
+    Stmt pr(db_, "DELETE FROM revisions WHERE path=?1 AND id NOT IN (SELECT id FROM revisions WHERE path=?1 ORDER BY id DESC LIMIT ?2)");
+    if (!pr.ok()) return false;
+    pr.Text(1, path);
+    pr.Int(2, keep);
+    return pr.Done();
+}
+
+std::vector<Revision> Project::Revisions(const std::string &path_in) const {
+    std::vector<Revision> v;
+    Stmt q(db_, "SELECT id,hash,size,mtime,saved FROM revisions WHERE path=?1 ORDER BY id DESC");
+    if (!q.ok()) return v;
+    q.Text(1, NormalizePath(path_in));
+    while (q.Step()) {
+        Revision r;
+        r.id = q.ColInt(0);
+        r.hash = q.Col(1);
+        r.size = q.ColInt(2);
+        r.mtime = q.ColInt(3);
+        r.saved = q.ColInt(4);
+        v.push_back(r);
+    }
+    return v;
+}
+
+bool Project::GetRevision(int64_t id, std::vector<uint8_t> &data) const {
+    Stmt q(db_, "SELECT content FROM revisions WHERE id=?1");
+    if (!q.ok()) return false;
+    q.Int(1, id);
+    if (!q.Step()) return false;
+    const int n = sqlite3_column_bytes(q.get(), 0);
+    const uint8_t *p = static_cast<const uint8_t *>(sqlite3_column_blob(q.get(), 0));
+    data.assign(p, p + (p ? n : 0));
+    return true;
+}
+
+bool Project::Restore(const std::string &path_in, int64_t id, const std::string &root, std::string &err) {
+    const std::string path = NormalizePath(path_in);
+    if (!PathOk(path)) return err = "caminho invalido dentro do projeto: " + path_in, false;
+    {
+        Stmt q(db_, "SELECT path FROM revisions WHERE id=?1");
+        if (!q.ok()) return err = sqlite3_errmsg(db_), false;
+        q.Int(1, id);
+        if (!q.Step() || q.Col(0) != path) return err = "essa versao nao e' de " + path_in, false;
+    }
+    std::vector<uint8_t> data;
+    if (!GetRevision(id, data)) return err = "versao nao encontrada", false;
+    if (!Put(path, data, err)) return false; // a versao de agora (se for diferente) entra no historico antes de ser trocada
+    return Pull(path, root, err);
+}
+
+std::vector<std::string> Project::Removed() const {
+    std::vector<std::string> v;
+    Stmt q(db_, "SELECT path FROM tombstones ORDER BY path");
+    while (q.ok() && q.Step()) v.push_back(q.Col(0));
+    return v;
+}
+
+bool Project::Tombs(std::map<std::string, std::string> &out) const {
+    Stmt q(db_, "SELECT path,hash FROM tombstones");
+    if (!q.ok()) return false;
+    while (q.Step()) out[q.Col(0)] = q.Col(1);
+    return true;
+}
+
+bool Project::DeleteLoose(const std::string &path_in, const std::string &root, std::string &err) {
+    const std::string path = NormalizePath(path_in);
+    if (!PathOk(path)) return err = "caminho invalido: " + path_in, false;
+    if (Has(path)) return err = path + " ainda esta' no projeto", false;
+    auto base = LoadBase(root);
+    std::error_code ec;
+    fs::remove(fs::path(root) / path, ec);
+    if (ec) return err = "nao foi possivel apagar " + path + ": " + ec.message(), false;
+    base.erase(path);
+    return SaveBase(root, base, err);
 }
 
 std::vector<FileInfo> Project::List(const std::string &prefix) const {
@@ -498,6 +655,8 @@ bool Project::SaveBase(const std::string &root, const std::map<std::string, std:
 bool Project::StatusImpl(const std::string &root, const std::map<std::string, std::string> &base, std::vector<SyncItem> &out, std::string &err) {
     std::map<std::string, Row> rows;
     if (!Rows(rows)) return err = sqlite3_errmsg(db_), false;
+    std::map<std::string, std::string> tombs;
+    Tombs(tombs);
     const std::map<std::string, DiskFile> disk = ScanDisk(root);
     std::set<std::string> all;
     for (const auto &kv : rows) all.insert(kv.first);
@@ -545,6 +704,19 @@ bool Project::StatusImpl(const std::string &root, const std::map<std::string, st
                 it.suggest = Action::Ask;
                 it.newer = Action::Pull;
             }
+        } else if (tombs.count(p)) {
+            // tirado do projeto (aqui ou em outro PC) e a pasta ainda tem a copia: apagar e' decisao do usuario (Ask), nunca automatica
+            std::vector<uint8_t> bytes;
+            bool text = false;
+            KindOf(p, &text);
+            if (!ReadFile(fs::path(root) / p, bytes)) {
+                err = "nao foi possivel ler " + p;
+                return false;
+            }
+            const std::string dh = HashBytes(bytes, text);
+            if (bh == "!" + tombs[p] && dh == tombs[p]) continue; // esta pasta ja' decidiu ficar com a copia solta fora do projeto
+            it.state = dh == tombs[p] ? State::ProjectRemoved : State::RemovedChanged;
+            it.suggest = Action::Ask;
         } else {
             it.state = State::OnlyDisk; // nunca se apaga uma copia solta: o que so' existe na pasta volta para o projeto
             it.suggest = Action::Push;
@@ -605,7 +777,14 @@ bool Project::Drop(const std::string &path, const std::string &root, std::string
     auto base = LoadBase(root);
     const std::string p = NormalizePath(path);
     if (!Remove(p, err)) return false;
-    base.erase(p);
+    // A copia solta fica (Drop nunca a apaga). Para esta pasta nao reclamar dela a cada Sync ("tirado do projeto, apagar?"), a base guarda "!" + o
+    // hash tirado: enquanto a copia continuar igual a ele, o Status a ignora. Outros PCs nao tem esse "!" e continuam sendo avisados.
+    std::map<std::string, std::string> t;
+    Tombs(t);
+    std::error_code ec;
+    const auto it = t.find(p);
+    if (it != t.end() && fs::exists(fs::path(root) / p, ec)) base[p] = "!" + it->second;
+    else base.erase(p);
     return SaveBase(root, base, err);
 }
 
@@ -624,6 +803,7 @@ bool Project::Sync(const std::string &root, bool prune, SyncSummary &s, std::str
     std::error_code ec;
     fs::create_directories(root, ec);
     auto base = LoadBase(root);
+    AdoptManifestConfig(root);
     std::vector<SyncItem> items;
     if (!StatusImpl(root, base, items, err)) return false;
     if (!Exec("BEGIN;", err)) return false;
@@ -662,6 +842,23 @@ bool Project::Sync(const std::string &root, bool prune, SyncSummary &s, std::str
         case State::Conflict:
             s.conflicts.push_back(it);
             break;
+        case State::ProjectRemoved:
+            if (prune) { // a copia e' IGUAL ao que foi tirado e continua no historico: pode ir
+                std::error_code rec;
+                fs::remove(fs::path(root) / it.path, rec);
+                if (rec) {
+                    s.errors.push_back(it.path + ": " + rec.message());
+                } else {
+                    base.erase(it.path);
+                    ++s.deleted_copies;
+                }
+            } else {
+                s.removed.push_back(it);
+            }
+            break;
+        case State::RemovedChanged:
+            s.removed.push_back(it); // mudou depois de tirado: nunca apaga sozinho
+            break;
         }
     }
     std::string e2;
@@ -683,6 +880,32 @@ bool Project::Export(const std::string &root, std::string &err) {
         if (!PullOne(kv.first, root, base, err)) return false;
     }
     return SaveBase(root, base, err) && WriteManifest(root, err);
+}
+
+// O manifesto (msxproject.txt) vai para o git: quem clona e sincroniza traz as chaves de [config] que o banco ainda nao conhece. As que o banco ja' tem
+// NAO sao trocadas (o banco e' a fonte; o manifesto e' uma copia legivel). Manifesto de outro projeto (id diferente) e' ignorado.
+void Project::AdoptManifestConfig(const std::string &root) {
+    std::ifstream f(fs::path(root) / kManifest, std::ios::binary);
+    if (!f) return;
+    std::string line, section, id;
+    std::vector<std::pair<std::string, std::string>> cfg;
+    while (std::getline(f, line)) {
+        if (!line.empty() && line.back() == '\r') line.pop_back();
+        if (line.empty() || line[0] == '#') continue;
+        if (line[0] == '[') {
+            section = line;
+            continue;
+        }
+        const size_t eq = line.find('=');
+        if (eq == std::string::npos) continue;
+        if (section.empty() && line.compare(0, eq, "id") == 0) id = line.substr(eq + 1);
+        else if (section == "[config]") cfg.emplace_back(line.substr(0, eq), line.substr(eq + 1));
+    }
+    if (id != Id()) return;
+    std::string e;
+    for (const auto &kv : cfg) {
+        if (!kv.first.empty() && GetConfig(kv.first, "\x01") == "\x01") SetConfig(kv.first, kv.second, e);
+    }
 }
 
 bool Project::WriteManifest(const std::string &root, std::string &err) const {

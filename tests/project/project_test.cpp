@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -240,6 +241,105 @@ void TestImportAndSafety(const fs::path &dir) {
     check(!m.Export(root, err) && err.find("invalido") != std::string::npos, "Export tambem recusa");
 }
 
+// Historico (as ultimas versoes de cada arquivo), lapides (a remocao viaja entre PCs) e nomes que so' diferem em maiusculas.
+void TestHistoryAndRemoval(const fs::path &dir) {
+    std::string err;
+    const fs::path pcA = dir / "hA", pcB = dir / "hB";
+    fs::create_directories(pcA);
+    prj::Project a;
+    check(a.Create((pcA / "h.msxproject").string(), "Hist", err), "cria o projeto do historico");
+
+    // --- historico ---
+    check(a.Put("src/x.bas", B("v1\n"), err) && a.Put("src/x.bas", B("v2\n"), err) && a.Put("src/x.bas", B("v3\n"), err), "tres versoes");
+    auto revs = a.Revisions("src/x.bas");
+    check(revs.size() == 2, "o historico guarda as anteriores (v1 e v2), nao a atual");
+    std::vector<uint8_t> d;
+    check(!revs.empty() && a.GetRevision(revs[0].id, d) && d == B("v2\n"), "a mais nova do historico e' a v2");
+    check(a.Put("src/x.bas", B("v3\n"), err) && a.Revisions("src/x.bas").size() == 2, "regravar o mesmo conteudo nao cria versao");
+    check(a.Put("src/x.bas", B("v3\r\n"), err) && a.Revisions("src/x.bas").size() == 2, "so' o fim de linha mudou: igual para o hash, nao cria versao");
+    for (int i = 4; i <= 20; ++i) a.Put("src/x.bas", B("v" + std::to_string(i) + "\n"), err);
+    check(a.Revisions("src/x.bas").size() == 10, "padrao: as ultimas 10");
+    check(a.SetConfig("revisions.keep", "3", err) && a.Put("src/x.bas", B("v21\n"), err) && a.Revisions("src/x.bas").size() == 3, "revisions.keep corta o excesso");
+    check(a.SetConfig("revisions.keep", "0", err) && a.Put("src/y.txt", B("a"), err) && a.Put("src/y.txt", B("b"), err) && a.Revisions("src/y.txt").empty(),
+          "revisions.keep=0 desliga");
+    a.SetConfig("revisions.keep", "10", err);
+    a.Put("src/big.bin", std::vector<uint8_t>(3 * 1024 * 1024, 1), err);
+    a.Put("src/big.bin", std::vector<uint8_t>(3 * 1024 * 1024, 2), err);
+    check(a.Revisions("src/big.bin").empty(), "arquivo grande (> 2 MiB) nao entra no historico");
+
+    // restaurar: projeto E pasta; a versao de agora tambem vai para o historico (desfazer o desfazer)
+    check(a.Sync(pcA.string(), false, *std::make_unique<prj::SyncSummary>(), err), "sincroniza a pasta");
+    revs = a.Revisions("src/x.bas");
+    const int64_t old_id = revs.back().id;
+    check(a.GetRevision(old_id, d), "versao antiga existe");
+    const std::vector<uint8_t> old_data = d;
+    check(a.Restore("src/x.bas", old_id, pcA.string(), err), "restaura: " + err);
+    check(a.Get("src/x.bas", d) && d == old_data && Slurp(pcA / "src/x.bas") == std::string(old_data.begin(), old_data.end()), "o projeto e a pasta voltaram");
+    check(StateOf(a, pcA.string(), "src/x.bas") == prj::State::InSync, "e ficam em sincronia");
+    check(!a.Restore("src/y.txt", old_id, pcA.string(), err) && err.find("nao e' de") != std::string::npos, "versao de outro arquivo e' recusada");
+
+    // --- nomes que so' diferem em maiusculas ---
+    check(!a.Put("SRC/X.BAS", B("z"), err) && err.find("colide") != std::string::npos, "SRC/X.BAS colide com src/x.bas");
+    check(a.Put("src/x2.bas", B("z"), err), "nome diferente de verdade entra");
+
+    // --- remocao propagando ---
+    // PC A tira um arquivo; o PC B (que ja' o tinha, em sincronia) recebe o .msxproject e e' avisado
+    check(a.Put("docs/old.md", B("# velho\n"), err), "arquivo que sera' tirado");
+    a.Sync(pcA.string(), false, *std::make_unique<prj::SyncSummary>(), err);
+    a.Close();
+    fs::create_directories(pcB);
+    fs::copy_file(pcA / "h.msxproject", pcB / "h.msxproject");
+    fs::copy(pcA / "docs", pcB / "docs", fs::copy_options::recursive);
+    fs::copy(pcA / "src", pcB / "src", fs::copy_options::recursive); // B tem a pasta inteira (senao o --prune tiraria o que 'sumiu' dela)
+    fs::copy_file(pcA / ".msxsync", pcB / ".msxsync"); // B ja' estava sincronizado com o projeto
+    check(a.Open((pcA / "h.msxproject").string(), err), "reabre A");
+    check(a.Drop("docs/old.md", pcA.string(), err), "A tira docs/old.md do projeto");
+    check(fs::exists(pcA / "docs/old.md") && StateOf(a, pcA.string(), "docs/old.md") == static_cast<prj::State>(-1),
+          "em A a copia da pasta fica e Status nao reclama dela (a pasta decidiu ficar)");
+    check(a.Revisions("docs/old.md").size() == 1 && a.Removed().size() == 1, "tirar guarda o conteudo no historico e deixa a lapide");
+    a.Close();
+    fs::copy_file(pcA / "h.msxproject", pcB / "h.msxproject", fs::copy_options::overwrite_existing); // o .msxproject novo viaja para B
+    prj::Project b;
+    check(b.Open((pcB / "h.msxproject").string(), err), "abre em B");
+    check(StateOf(b, pcB.string(), "docs/old.md") == prj::State::ProjectRemoved, "em B: tirado do projeto, copia igual -> pergunta (nunca apaga sozinho)");
+    prj::SyncSummary s;
+    check(b.Sync(pcB.string(), false, s, err) && s.removed.size() == 1 && s.removed[0].path == "docs/old.md" && fs::exists(pcB / "docs/old.md"), "Sync lista e NAO apaga");
+    Spit(pcB / "docs/old.md", "# velho, mas mexi\n");
+    check(StateOf(b, pcB.string(), "docs/old.md") == prj::State::RemovedChanged, "se a copia mudou depois: RemovedChanged");
+    check(b.Sync(pcB.string(), true, s, err) && s.deleted_copies == 0 && fs::exists(pcB / "docs/old.md"), "--prune tambem nao apaga o que mudou");
+    Spit(pcB / "docs/old.md", "# velho\n");
+    check(b.Sync(pcB.string(), true, s, err) && s.deleted_copies == 1 && !fs::exists(pcB / "docs/old.md"), "--prune apaga a copia igual (esta' no historico)");
+    check(b.Put("docs/old.md", B("# de volta\n"), err) && b.Removed().empty(), "voltar ao projeto apaga a lapide");
+    // o usuario escolhe apagar a copia depois (DeleteLoose) e traz de volta
+    check(b.Remove("docs/old.md", err), "tira de novo");
+    Spit(pcB / "docs/old.md", "# de volta\n");
+    check(!b.DeleteLoose("docs/old.md", pcB.string(), err) || !fs::exists(pcB / "docs/old.md"), "DeleteLoose apaga a copia");
+    check(!b.Has("docs/old.md"), "e continua fora do projeto");
+    const auto rv = b.Revisions("docs/old.md");
+    check(!rv.empty() && b.Restore("docs/old.md", rv[0].id, pcB.string(), err) && b.Has("docs/old.md") && fs::exists(pcB / "docs/old.md"),
+          "Restore traz de volta um arquivo tirado (projeto e pasta)");
+
+    // --- o manifesto traz a configuracao que o banco ainda nao tem ---
+    b.SetConfig("machine", "MSX2", err);
+    b.WriteManifest(pcB.string(), err);
+    prj::Project c;
+    check(c.Create((dir / "hC.msxproject").string(), "Outro", err), "outro projeto");
+    c.Close();
+    b.DelConfig("machine");
+    check(b.Sync(pcB.string(), false, s, err) && b.GetConfig("machine") == "MSX2", "Sync adota do manifesto a chave que o banco nao tinha");
+    b.SetConfig("machine", "MSX1", err);
+    check(b.Sync(pcB.string(), false, s, err) && b.GetConfig("machine") == "MSX1", "mas nunca troca a que o banco ja' tem");
+
+    // --- projeto do esquema 1 abre e migra ---
+    b.Close();
+    sqlite3 *db = nullptr;
+    sqlite3_open((pcB / "h.msxproject").string().c_str(), &db);
+    sqlite3_exec(db, "DROP TABLE tombstones; DROP TABLE revisions; UPDATE meta SET value='1' WHERE key='schema';", nullptr, nullptr, nullptr);
+    sqlite3_close(db);
+    check(b.Open((pcB / "h.msxproject").string(), err), "projeto do esquema 1 abre");
+    check(b.Put("n.txt", B("1"), err) && b.Put("n.txt", B("2"), err) && b.Revisions("n.txt").size() == 1 && b.Removed().empty(), "e ja' tem o historico e as lapides (migrou)");
+}
+
 } // namespace
 
 int main() {
@@ -252,6 +352,7 @@ int main() {
     TestDatabase(dir);
     TestSync(dir);
     TestImportAndSafety(dir);
+    TestHistoryAndRemoval(dir);
 
     fs::remove_all(dir, ec);
     std::printf("project: %d verificacoes, %d falhas\n", g_checks, g_failures);

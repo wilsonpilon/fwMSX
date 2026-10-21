@@ -67,7 +67,7 @@ enum Btn { kBtnOk = 1, kBtnCancel, kBtnNext, kBtnPrev, kBtnYes, kBtnNo, kBtnAll,
            kBtnHelp, kBtnSkip, kBtnProject, kBtnFolder, kBtnActions };
 
 // O que o menu de contexto de um arquivo/pasta do projeto faz (a arvore do TUI e da janela grafica).
-enum class ProjAct { Open, Push, Pull, Rename, Add, Remove };
+enum class ProjAct { Open, Push, Pull, Rename, Add, Remove, History, Removed };
 
 struct DialogBox {
     Dialog kind = Dialog::None;
@@ -292,6 +292,7 @@ private:
     void ProjectDo(ProjAct a, const std::string &path, bool from_files);
     void ProjectRenameDo(const std::string &from, const std::string &to);
     void ProjectAddDo(const std::string &rel);
+    void ProjectRestoreRevision(int64_t id);                       // volta hist_path_ a uma versao do historico (projeto e pasta)
     void ProjectBackToFiles() { if (act_from_files_) ProjectFilesDialog(act_row_); } // depois de uma acao, a arvore volta no mesmo item
     void ProjectOpenFile(const std::string &path);
     void ProjectAddCurrent();
@@ -305,6 +306,9 @@ private:
     std::string act_path_;                                // o alvo do menu de contexto aberto (pasta termina em '/')
     std::vector<ProjAct> act_list_;                       // as linhas do dialogo Actions
     int act_row_ = 0;
+    std::string hist_path_;                               // o arquivo cujo historico o dialogo mostra
+    std::vector<prj::Revision> hist_revs_;                // as linhas do dialogo History (a mesma ordem)
+    std::vector<std::string> removed_list_;               // as linhas do dialogo Removed files
     bool act_from_files_ = false;                         // veio do Files...: depois da acao a arvore reabre
     std::set<std::string> tree_folded_;                  // as pastas recolhidas ("src/"), lembradas entre aberturas do dialogo
     std::vector<prj::FileInfo> project_list_; // o que o dialogo Files... mostra (o indice da lista = o indice aqui)

@@ -131,6 +131,14 @@ SINCRONIZAR (projeto x pasta)
                              pull <caminho>   fica o projeto
                              push <caminho>   fica a pasta
                            O que sumiu da pasta so' sai do projeto com --prune.
+                           O que foi TIRADO do projeto (em outro PC) e ainda
+                           tem copia aqui so' e' listado; --prune apaga a copia
+                           se ela nao mudou (o conteudo fica no historico).
+  rev <caminho>            historico do arquivo: as ultimas versoes (padrao 10,
+                           project set revisions.keep N; 0 desliga)
+  restore <caminho> <id>   volta o arquivo a uma versao (projeto e pasta); serve
+                           tambem para um arquivo tirado
+  purge <caminho>          apaga a copia da pasta de um arquivo que saiu do projeto
   export <pasta>           extrai TUDO (o projeto vence) e grava o manifesto
   import <pasta> <novo>    cria um projeto novo a partir de uma pasta (o
                            clone do GitHub): usa o manifesto msxproject.txt

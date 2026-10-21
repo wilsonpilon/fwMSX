@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -34,7 +35,7 @@ std::string Size(int64_t n) {
 
 Result Commander::ProjectCmd(const std::vector<std::string> &t) {
     static const char *kUse =
-        "project: use new <arq.msxproject> [nome] | open <arq> | close | info | ls [prefixo] | add <arq> [caminho] | get <caminho> <destino> | rm <caminho> | "
+        "project: use new <arq.msxproject> [nome] | open <arq> | close | info | ls [prefixo] | add <arq> [caminho] | get <caminho> <destino> | rm <caminho> | rev <caminho> | restore <caminho> <id> | purge <caminho> | "
         "set [chave [valor...]] | root [pasta] | status [pasta] | sync [--prune] [pasta] | pull <caminho> | push <caminho> | export <pasta> | import <pasta> <novo.msxproject>";
     if (t.size() < 2) return Err(kUse);
     std::string sub = t[1];
@@ -140,6 +141,26 @@ Result Commander::ProjectCmd(const std::vector<std::string> &t) {
         const bool had_copy = prj::PathOk(path) && fs::remove(fs::path(root) / path, ec); // a copia solta sai junto: senao voltaria no proximo sync
         return Ok("removido " + path + (had_copy ? " (e a copia solta)" : ""));
     }
+    if (sub == "rev") {
+        if (t.size() < 3) return Err("project rev: use project rev <caminho>");
+        const auto revs = project_->Revisions(t[2]);
+        if (revs.empty()) return Ok("sem historico para " + prj::NormalizePath(t[2]));
+        std::string out;
+        for (const prj::Revision &r : revs) {
+            out += (out.empty() ? "" : "\n") + std::to_string(r.id) + "  " + r.hash.substr(0, 10) + "  " + Size(r.size) + "  guardada em " + std::to_string(r.saved);
+        }
+        return Ok(out);
+    }
+    if (sub == "restore") {
+        if (t.size() < 4) return Err("project restore: use project restore <caminho> <id>");
+        if (!project_->Restore(t[2], std::atoll(t[3].c_str()), root_of(""), err)) return Err("project restore: " + err);
+        return Ok("restaurado " + prj::NormalizePath(t[2]) + " (versao " + t[3] + ")");
+    }
+    if (sub == "purge") {
+        if (t.size() < 3) return Err("project purge: use project purge <caminho>");
+        if (!project_->DeleteLoose(t[2], root_of(""), err)) return Err("project purge: " + err);
+        return Ok("apagada a copia da pasta: " + prj::NormalizePath(t[2]));
+    }
     if (sub == "set") {
         if (t.size() == 2) {
             std::string out;
@@ -188,6 +209,11 @@ Result Commander::ProjectCmd(const std::vector<std::string> &t) {
         if (!project_->Sync(root, prune, s, err)) return Err("project sync: " + err);
         std::string out = std::to_string(s.pulled) + " projeto->pasta, " + std::to_string(s.pushed) + " pasta->projeto, " + std::to_string(s.same) + " igual(is)";
         if (s.dropped) out += ", " + std::to_string(s.dropped) + " tirado(s) do projeto";
+        if (s.deleted_copies) out += ", " + std::to_string(s.deleted_copies) + " copia(s) da pasta apagada(s) (tiradas do projeto)";
+        for (const prj::SyncItem &i : s.removed) {
+            out += "\ntirado do projeto" + std::string(i.state == prj::State::RemovedChanged ? ", mas a copia da pasta MUDOU depois" : "") + ": " + i.path +
+                   " -> project purge " + i.path + " (apaga a copia) ou project push " + i.path + " (traz de volta ao projeto)";
+        }
         for (const prj::SyncItem &i : s.deleted) out += "\nsumiu da pasta (use --prune para tirar do projeto, ou project pull para restaurar): " + i.path;
         for (const prj::SyncItem &i : s.conflicts) {
             out += "\nCONFLITO " + i.path + ": os dois mudaram; o mais novo e' " + (i.newer == prj::Action::Pull ? "o projeto" : "a pasta") +

@@ -119,7 +119,7 @@ enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
     InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
     About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference, BadigSetup, BasicLine,
-    ProjectNew, ProjectOpen, ProjectFiles, ProjectSync, ProjectConflict, ProjectActions, ProjectRename, ProjectAddFile
+    ProjectNew, ProjectOpen, ProjectFiles, ProjectSync, ProjectConflict, ProjectActions, ProjectRename, ProjectAddFile, ProjectHistory, ProjectRemoved
 };
 
 struct CmdInfo {

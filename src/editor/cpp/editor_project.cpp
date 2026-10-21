@@ -3,6 +3,7 @@
 // O editor continua trabalhando nos arquivos da PASTA do projeto (o modelo, o Build e o Dignified nao mudam); o projeto acompanha: todo arquivo salvo
 // dentro da pasta vai tambem para o banco, e "Sync..." compara os dois lados. A copia mais nova e' a sugestao da lista; um conflito pergunta.
 #include <algorithm>
+#include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <set>
@@ -25,6 +26,8 @@ std::string Describe(const prj::SyncItem &i) {
     case prj::State::OnlyDisk: return "new in folder -> project   " + i.path;
     case prj::State::OnlyProject: return "only in project -> folder  " + i.path;
     case prj::State::DiskDeleted: return "deleted in folder (asks)   " + i.path;
+    case prj::State::ProjectRemoved: return "removed from project (asks)   " + i.path;
+    case prj::State::RemovedChanged: return "removed from project, folder copy CHANGED (asks)   " + i.path;
     }
     return i.path;
 }
@@ -191,6 +194,7 @@ void EditorApp::ProjectSyncApply() {
     }
     sync_queue_ = s.conflicts;
     sync_queue_.insert(sync_queue_.end(), s.deleted.begin(), s.deleted.end());
+    sync_queue_.insert(sync_queue_.end(), s.removed.begin(), s.removed.end());
     sync_pos_ = 0;
     ProjectReloadBuffers(sync_before_);
     std::string m = "Sync: " + std::to_string(s.pulled) + " to folder, " + std::to_string(s.pushed) + " to project, " + std::to_string(s.same) + " equal";
@@ -213,6 +217,11 @@ void EditorApp::ProjectAskNext() {
         BuildConfirm({it.path + "  " + pos, "Changed in the project AND in the folder.", std::string("The newer copy is the ") + (proj_newer ? "project's" : "folder's") + ".",
                       "Keep which one?"},
                      {kBtnProject, kBtnFolder, kBtnSkip, kBtnCancel}, proj_newer ? kBtnProject : kBtnFolder, Dialog::ProjectConflict);
+    } else if (it.state == prj::State::ProjectRemoved || it.state == prj::State::RemovedChanged) { // tirado do projeto (talvez em outro PC)
+        const bool changed = it.state == prj::State::RemovedChanged;
+        BuildConfirm({it.path + "  " + pos, changed ? "Removed from the project, but the folder copy changed since." : "Removed from the project (on another PC?).",
+                      "Project = delete the folder copy (it stays in the history).", "Folder = keep it and add it back to the project."},
+                     {kBtnProject, kBtnFolder, kBtnSkip, kBtnCancel}, kBtnFolder, Dialog::ProjectConflict); // o padrao nunca apaga
     } else { // sumiu da pasta
         BuildConfirm({it.path + "  " + pos, "Deleted from the folder.", "Project = restore the file; Folder = remove it from the project."},
                      {kBtnProject, kBtnFolder, kBtnSkip, kBtnCancel}, kBtnProject, Dialog::ProjectConflict);
@@ -227,7 +236,10 @@ void EditorApp::ProjectAnswer(int button) {
     std::error_code ec;
     const bool disk_exists = fs::exists(fs::path(project_root_) / it.path, ec);
     bool ok = true;
-    if (button == kBtnProject) ok = project_.Pull(it.path, project_root_, err);
+    if (it.state == prj::State::ProjectRemoved || it.state == prj::State::RemovedChanged) {
+        if (button == kBtnProject) ok = project_.DeleteLoose(it.path, project_root_, err);
+        else if (button == kBtnFolder) ok = project_.Push(it.path, project_root_, err);
+    } else if (button == kBtnProject) ok = project_.Pull(it.path, project_root_, err);
     else if (button == kBtnFolder) ok = disk_exists ? project_.Push(it.path, project_root_, err) : project_.Drop(it.path, project_root_, err);
     if (!ok) Msg("Project: " + err);
     ProjectReloadBuffers(before);
@@ -322,8 +334,10 @@ void EditorApp::ProjectActionsDialog(int row) {
         add(ProjAct::Push, "Update the project from the folder copy");
         add(ProjAct::Pull, "Restore the folder copy from the project");
         add(ProjAct::Rename, "Rename...");
+        add(ProjAct::History, "History (previous versions)...");
     }
     add(ProjAct::Add, "Add a file from the folder...");
+    add(ProjAct::Removed, "Removed files (bring one back)...");
     add(ProjAct::Remove, dir ? "Remove the folder from the project (the folder copies stay)" : "Remove from the project (the folder copy stays)");
     BuildProjectList(Dialog::ProjectActions, "Actions: " + act_path_, items, 0);
 }
@@ -363,6 +377,33 @@ void EditorApp::ProjectDo(ProjAct a, const std::string &path, bool from_files) {
         BuildSimpleInput(Dialog::ProjectAddFile, "Add file", "File (in the project folder):", slash == std::string::npos ? std::string() : path.substr(0, slash + 1), 44);
         return;
     }
+    case ProjAct::History: {
+        if (dir) break;
+        hist_path_ = path;
+        hist_revs_ = project_.Revisions(path);
+        if (hist_revs_.empty()) {
+            Msg("No history for " + path + " yet (it keeps the last " + project_.GetConfig("revisions.keep", "10") + " versions)");
+            break;
+        }
+        std::vector<std::string> items;
+        for (const prj::Revision &r : hist_revs_) {
+            char when[32] = "?";
+            const std::time_t t = static_cast<std::time_t>(r.saved);
+            if (const std::tm *tm = std::localtime(&t)) std::strftime(when, sizeof(when), "%Y-%m-%d %H:%M", tm);
+            items.push_back(std::string(when) + "   " + std::to_string(r.size) + " bytes   #" + std::to_string(r.id));
+        }
+        BuildProjectList(Dialog::ProjectHistory, "History of " + path + "  (Enter: go back to it)", items, 0);
+        return;
+    }
+    case ProjAct::Removed: {
+        removed_list_ = project_.Removed();
+        if (removed_list_.empty()) {
+            Msg("No removed files");
+            break;
+        }
+        BuildProjectList(Dialog::ProjectRemoved, "Removed files  (Enter: see their history)", removed_list_, 0);
+        return;
+    }
     case ProjAct::Remove: {
         int n = 0;
         for (const prj::FileInfo &f : project_.List()) {
@@ -373,6 +414,15 @@ void EditorApp::ProjectDo(ProjAct a, const std::string &path, bool from_files) {
     }
     }
     ProjectBackToFiles();
+}
+
+// Voltar o arquivo a uma versao do historico: o projeto e a pasta; abas abertas e intactas recarregam. A versao de agora entra no historico.
+void EditorApp::ProjectRestoreRevision(int64_t id) {
+    std::string err;
+    const auto before = ProjectStamps();
+    if (!project_.Restore(hist_path_, id, project_root_, err)) Msg("Project: " + err);
+    else Msg("Restored " + hist_path_ + " (the previous content is in the history)");
+    ProjectReloadBuffers(before);
 }
 
 // Renomear leva a copia solta junto (se existir) e as abas abertas; o projeto tira o nome antigo e recebe o novo, ja' em sincronia.

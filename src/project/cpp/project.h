@@ -40,7 +40,9 @@ enum class State {
     Conflict,       // os dois mudaram (ou nunca foram sincronizados e diferem)
     OnlyDisk,       // existe so' na pasta
     OnlyProject,    // existe so' no projeto (nunca foi extraido para esta pasta)
-    DiskDeleted     // foi sincronizado e sumiu da pasta; o projeto ainda tem a versao da ultima sincronizacao
+    DiskDeleted,    // foi sincronizado e sumiu da pasta; o projeto ainda tem a versao da ultima sincronizacao
+    ProjectRemoved, // foi tirado do projeto (talvez em outro PC) e a copia da pasta ainda e' IGUAL ao que foi tirado
+    RemovedChanged  // foi tirado do projeto, mas a copia da pasta mudou depois: apagar perderia trabalho
 };
 enum class Action { None, Push, Pull, Drop, Ask }; // Push = pasta -> projeto; Pull = projeto -> pasta; Drop = tirar do projeto; Ask = o usuario decide
 const char *StateName(State s);
@@ -58,7 +60,16 @@ struct SyncSummary {
     int same = 0, pushed = 0, pulled = 0, dropped = 0;
     std::vector<SyncItem> conflicts; // ficam como estao: o usuario escolhe (Pull/Push)
     std::vector<SyncItem> deleted;   // sumiram da pasta; so' saem do projeto com `prune`
+    std::vector<SyncItem> removed;   // sairam do projeto; a copia da pasta so' e' apagada com `prune` (e se nao mudou) ou se o usuario mandar
+    int deleted_copies = 0;          // copias da pasta apagadas por `prune`
     std::vector<std::string> errors;
+};
+
+// Uma versao anterior de um arquivo, guardada no banco (as ultimas `revisions.keep` de cada um, 10 por padrao, 0 = sem historico).
+struct Revision {
+    int64_t id = 0;
+    std::string hash;
+    int64_t size = 0, mtime = 0, saved = 0; // mtime = a data do arquivo naquela versao; saved = quando foi guardada
 };
 
 class Project {
@@ -92,6 +103,17 @@ public:
     bool Remove(const std::string &path, std::string &err);
     std::vector<FileInfo> List(const std::string &prefix = "") const;
 
+    // --- historico e remocoes ---
+    // Toda vez que um arquivo e' sobrescrito com conteudo diferente, ou tirado, a versao anterior (ate' 2 MiB) vai para o historico.
+    std::vector<Revision> Revisions(const std::string &path) const; // da mais nova para a mais velha
+    bool GetRevision(int64_t id, std::vector<uint8_t> &data) const;
+    // Volta o arquivo a uma versao do historico (o projeto E a copia da pasta); a versao de agora tambem entra no historico. Serve para arquivo tirado.
+    bool Restore(const std::string &path, int64_t id, const std::string &root, std::string &err);
+    // Arquivos tirados do projeto (com a lapide que propaga a remocao para os outros PCs).
+    std::vector<std::string> Removed() const;
+    // Apaga a copia da pasta de um arquivo que saiu do projeto (o conteudo continua no historico).
+    bool DeleteLoose(const std::string &path, const std::string &root, std::string &err);
+
     // --- as copias soltas ---
     // Salvar um arquivo do editor: grava no banco E na pasta e marca os dois como iguais.
     bool Save(const std::string &path, const std::vector<uint8_t> &data, const std::string &root, std::string &err);
@@ -118,6 +140,9 @@ private:
     bool Meta(const std::string &key, std::string &value) const;
     bool SetMeta(const std::string &key, const std::string &value, std::string &err);
     bool Rows(std::map<std::string, Row> &out) const;
+    bool Tombs(std::map<std::string, std::string> &out) const; // caminho -> hash do que foi tirado
+    bool Archive(const std::string &path);                     // guarda a versao atual no historico (se mudou)
+    void AdoptManifestConfig(const std::string &root);         // chaves de [config] do manifesto que o banco ainda nao tem
     bool PutRaw(const std::string &path, const std::vector<uint8_t> &data, const std::string &kind, int64_t mtime, std::string &err);
     bool PullOne(const std::string &path, const std::string &root, std::map<std::string, std::string> &base, std::string &err);
     bool PushOne(const std::string &path, const std::string &root, std::map<std::string, std::string> &base, std::string &err);
