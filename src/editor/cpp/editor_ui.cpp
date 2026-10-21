@@ -32,7 +32,7 @@ bool IsAppCmd(Cmd c) {
     switch (c) {
     case Cmd::Window2: case Cmd::CloseWindow: case Cmd::DividerUp: case Cmd::DividerDown: case Cmd::WindowDiff:
     case Cmd::New: case Cmd::Exit: case Cmd::Outline: case Cmd::Print: case Cmd::PrintBlock: case Cmd::EjectPage:
-    case Cmd::Assemble: case Cmd::RunMsx: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord: case Cmd::BadigSetup:
+    case Cmd::Assemble: case Cmd::RunMsx: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord: case Cmd::BadigSetup: case Cmd::BasicLine:
         return true;
     default:
         return false;
@@ -523,6 +523,13 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         badig_edit_ = badig::LoadDefaults();
         BuildBadigSetup(0);
         return true;
+    case Cmd::BasicLine:
+        if (basic_map_.empty()) {
+            Msg("BASIC line: convert a Basic Dignified source first (F9)");
+            return false;
+        }
+        ShowDialog(Dialog::BasicLine);
+        return true;
     case Cmd::Outline:
     case Cmd::Print:
     case Cmd::PrintBlock:
@@ -808,6 +815,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::Find: BuildFind(false); break;
     case Dialog::Replace: BuildFind(true); break;
     case Dialog::LineNumber: BuildSimpleInput(d, "Find line", "Line number:", "", 8); break;
+    case Dialog::BasicLine: BuildSimpleInput(d, "BASIC line", "Line or error:", "", 30); break;
     case Dialog::BlockIndent: BuildSimpleInput(d, "Indent", "Amount:", "4", 4); break;
     case Dialog::BlockUnindent: BuildSimpleInput(d, "Unindent", "Amount:", "4", 4); break;
     case Dialog::BlockOutput: BuildSimpleInput(d, "Output to file", "File name:", "", 40); break;
@@ -1055,6 +1063,9 @@ void EditorApp::DialogDone(int button) {
         if (!t.empty()) e.GoToLine(std::atoi(t.c_str()));
         break;
     }
+    case Dialog::BasicLine:
+        BasicLineGoto(done.Text(1));
+        break;
     case Dialog::BlockIndent:
         e.Indent(std::max(1, std::atoi(done.Text(1).c_str())));
         break;

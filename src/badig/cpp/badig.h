@@ -56,8 +56,16 @@ struct Options {
     std::string dest;                // o .amx (vazio = o nome do fonte com a extensao .amx)
 };
 
+// Uma linha do BASIC gerado (.amx) e a linha do Dignified que a originou (a tabela do relatorio -lnr).
+struct LineMapEntry {
+    int basic = 0;       // numero da linha BASIC
+    std::string file;    // o fonte como o Badig o viu (o .dmx ou um .include)
+    int line = 0;        // base 1; 0 = linha gerada pelo Badig (cabecalho REM, rotinas automaticas...)
+};
+
 struct Result {
     bool ok = false;
+    std::vector<LineMapEntry> line_map;         // sempre preenchida (nao so' com -lnr): leva um erro de execucao do BASIC de volta ao fonte
     std::string amx_path, bmx_path, lmx_path;   // vazios se nao foram gerados
     std::string amx;                            // o texto do .amx (bytes latin1, linhas CRLF)
     std::vector<uint8_t> bmx;                   // o BASIC tokenizado
@@ -92,6 +100,12 @@ struct DiskFile {
     std::string host, msx;
 };
 bool CollectDiskFiles(const Result &r, std::vector<DiskFile> &out, std::string &err);
+
+// O numero da linha BASIC de uma mensagem de execucao ("Syntax error in 130", "Type mismatch in 40"), ou um numero solto ("130"): o ultimo
+// numero do texto, depois de " in " se houver. 0 se nao achou.
+int ParseBasicErrorLine(const std::string &text);
+// A linha do fonte que gerou a linha BASIC `basic`. false se o BASIC nao tem essa linha; `entry.line` = 0 quando e' linha gerada pelo Badig.
+bool MapBasicLine(const Result &r, int basic, LineMapEntry &entry);
 
 // Onde fica o badig.cfg: quem hospeda o programa (a janela, o terminal, o editor) diz uma vez; vazio = sem arquivo (so' os padroes).
 void SetConfigPath(const std::string &path);

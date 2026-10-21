@@ -21,8 +21,8 @@
 
 #define FWMSX_VERSION_MAJOR 1
 #define FWMSX_VERSION_MINOR 42
-#define FWMSX_VERSION_PATCH 1
+#define FWMSX_VERSION_PATCH 2
 
 #define FWMSX_COMPANY   "Konami"
 #define FWMSX_CODENAME  "Road Fighter"
-#define FWMSX_SUBTITLE  "NestorBASIC e arquivos de apoio"  // so' nas versoes X.Y.Z com Z > 0
+#define FWMSX_SUBTITLE  "Erros de execucao no fonte"  // so' nas versoes X.Y.Z com Z > 0

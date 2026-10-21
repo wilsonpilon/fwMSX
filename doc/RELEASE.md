@@ -17,6 +17,15 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.42.2 -- "Road Fighter: Erros de execucao no fonte" (Konami) (2026-10-21)
+
+**Pedido do usuario**: "levar erros de execucao do BASIC de volta a linha do .dmx" (item em aberto da 1.42.1).
+- **Desenho**: o original faz isso no openMSX lendo a saida do emulador; aqui o fwMSX nao tem canal de texto da tela para o editor, entao o caminho e' o mais simples e robusto: a tabela de linhas (a do `-lnr`) agora vem sempre no `Result` e o editor a guarda da ultima conversao; o usuario informa a mensagem (ou o numero) em *Montar > BASIC line...*.
+- **Nao feito (decisao a rever)**: ler a mensagem direto da tela do MSX depois do F5 e saltar sozinho; precisaria de um gancho que leia a VRAM/nome-table da maquina.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100%.
+
+---
+
 ## v1.42.1 -- "Road Fighter: NestorBASIC e arquivos de apoio" (Konami) (2026-10-20)
 
 **Pedido do usuario**: "refinar o Dignified (NBasic e arquivos de apoio sao os mais uteis para rodar programas reais)".

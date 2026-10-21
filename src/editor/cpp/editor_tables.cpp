@@ -122,6 +122,7 @@ const CmdInfo kInfos[] = {
     {Cmd::ErrorList, "error-list", false, D::None, true},
     {Cmd::HelpWord, "help-word", false, D::None, true},
     {Cmd::BadigSetup, "badig-setup", false, D::None, true},
+    {Cmd::BasicLine, "basic-line", false, D::None, true},
     {Cmd::DisplaySetup, "display-setup", false, D::DisplaySetup, true},
     {Cmd::MouseSetup, "mouse-setup", false, D::MouseSetup, true},
     {Cmd::EditorSetup, "editor-setup", false, D::EditorSetup, true},
@@ -227,6 +228,7 @@ const std::vector<Menu> &Menus() {
              {"Next message", 'n', "F8", Cmd::NextError, 0, false, false},
              {"Previous message", 'p', "Shift-F8", Cmd::PrevError, 0, false, false},
              {"Messages...", 'm', "", Cmd::ErrorList, 0, true, false},
+             {"BASIC line...", 'l', "", Cmd::BasicLine, 0, false, false},
              {"Dignified setup...", 'd', "", Cmd::BadigSetup, 0, false, false},
          }},
         // O menu "F1=Help" (so' abre por F1 ou pelo mouse; nao tem letra de Alt)

@@ -249,6 +249,7 @@ private:
     bool BuildRun();
     void BuildStep(int dir);
     void BuildGoto(int i);
+    void BasicLineGoto(const std::string &text); // erro de execucao do BASIC ("Syntax error in 130") -> a linha do .dmx
     void BuildErrors();
     void BuildMessagesDialog();
     bool HelpOnWord();
@@ -296,7 +297,8 @@ private:
     int build_cur_ = -1;
     badig::Options badig_edit_;  // a configuracao do Basic Dignified enquanto o dialogo esta' aberto
     int badig_page_ = 0;
-    std::string build_name_;    // o nome com que o montador viu o fonte (as mensagens do proprio fonte trazem este nome)
+    std::vector<badig::LineMapEntry> basic_map_; // linha BASIC -> linha do fonte, da ultima conversao Dignified
+    std::string build_name_;   // o nome com que o montador viu o fonte (as mensagens do proprio fonte trazem este nome)
     std::string build_src_;     // arquivo montado por ultimo (caminho completo; vazio = buffer sem nome)
     std::function<std::string(const std::string &)> run_hook_;
     std::function<std::string(const std::string &)> help_hook_;

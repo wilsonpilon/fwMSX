@@ -7,6 +7,13 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.42.2] - 2026-10-21 - "Road Fighter: Erros de execucao no fonte" (Konami)
+
+### Adicionado -- do erro do BASIC de volta ao `.dmx`
+- **Montar > BASIC line...** (editor): o programa rodou e parou com `Syntax error in 130`? Digite a mensagem (ou so' `130`) e o cursor vai para a linha do `.dmx` (ou do `.include`, abrindo a aba na janela grafica) que gerou a linha 130. Usa a tabela de linhas da ultima conversao (F9/F5), a mesma do relatorio `-lnr`. Linha gerada pelo proprio Badig (cabecalho REM...) avisa que nao tem linha de fonte.
+- API: `badig::Result::line_map` (sempre preenchida, sem precisar de `-lnr`), `badig::MapBasicLine` e `badig::ParseBasicErrorLine` (o numero depois de " in "; fora de 1..65529 = nao e' linha).
+- Testes: `badigtest` (mapa de linhas e extracao do numero), `editorui` (dialogo, cursor na linha certa, avisos).
+
 ## [1.42.1] - 2026-10-20 - "Road Fighter: NestorBASIC e arquivos de apoio" (Konami)
 
 ### Adicionado -- o Basic Dignified roda programas reais

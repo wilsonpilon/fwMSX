@@ -10,7 +10,7 @@ std::string Tr(const std::string &en) {
         // --- menus ---
         {"File", "Arquivo"}, {"Block", "Bloco"}, {"Text-layout", "Texto"}, {"Search", "Busca"}, {"Print", "Imprimir"},
         {"View", "Exibir"}, {"Options", "Opcoes"}, {"F1=Help", "Ajuda"}, {"Build", "Montar"},
-        {"Assemble / Convert", "Montar / Converter"}, {"Dignified setup...", "Config. Basic Dignified..."}, {"Run on MSX", "Executar no MSX"}, {"Next message", "Proxima mensagem"},
+        {"Assemble / Convert", "Montar / Converter"}, {"BASIC line...", "Linha do BASIC..."}, {"Dignified setup...", "Config. Basic Dignified..."}, {"Run on MSX", "Executar no MSX"}, {"Next message", "Proxima mensagem"},
         {"Previous message", "Mensagem anterior"}, {"Messages...", "Mensagens..."}, {"On word", "Sobre a palavra"},
         // File
         {"New", "Novo"}, {"Open...", "Abrir..."}, {"Save", "Salvar"}, {"Save As...", "Salvar como..."}, {"Merge...", "Mesclar..."},
@@ -45,7 +45,7 @@ std::string Tr(const std::string &en) {
         {"Search for text", "Localizar texto"}, {"Search & Replace", "Localizar e substituir"}, {"Find:", "Localizar:"}, {"Replace:", "Substituir por:"},
         {"Upper/lower case must match", "Diferenciar maiusculas de minusculas"}, {"Search backwards", "Procurar para tras"},
         {"Replace this occurrence?", "Substituir esta ocorrencia?"},
-        {"Find line", "Ir para a linha"}, {"Line number:", "Numero da linha:"}, {"Indent", "Indentar"}, {"Unindent", "Desindentar"},
+        {"Find line", "Ir para a linha"}, {"Line number:", "Numero da linha:"}, {"BASIC line", "Linha do BASIC"}, {"Line or error:", "Linha ou erro:"}, {"Indent", "Indentar"}, {"Unindent", "Desindentar"},
         {"Amount:", "Quantidade:"}, {"Output to file", "Gravar bloco em arquivo"},
         {"Text-layout setup", "Configuracao do texto"}, {"Line Length:", "Tamanho da linha:"}, {"1st line margin:", "Margem da 1a linha:"},
         {"Left Margin:", "Margem esquerda:"}, {"Begin formatting at:", "Comecar a formatar:"}, {"Top of paragraph", "No inicio do paragrafo"},

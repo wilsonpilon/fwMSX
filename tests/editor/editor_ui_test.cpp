@@ -1182,6 +1182,27 @@ void test_badig_build() {
     check(slurp(dir / "prog.amx").find("goto 40") != std::string::npos, "o label virou numero de linha");
     check(slurp(dir / "prog.bmx").size() > 8 && static_cast<unsigned char>(slurp(dir / "prog.bmx")[0]) == 0xFF, "o .bmx e' BASIC tokenizado (FF...)");
 
+    // erro de execucao do BASIC -> linha do .dmx: a linha BASIC do "goto" (4a linha do fonte) vem do .amx convertido
+    {
+        const std::string amx = slurp(dir / "prog.amx");
+        const size_t g = amx.find("goto 40");
+        const size_t bol = amx.rfind('\n', g) == std::string::npos ? 0 : amx.rfind('\n', g) + 1;
+        const int basic = std::atoi(amx.c_str() + bol);
+        check(g != std::string::npos && basic > 0, "acha a linha BASIC do goto no .amx");
+        a.Ed().SetCursor({0, 0});
+        K(a, {"A-u", "l"});
+        check(a.HasDialog(), "Build > BASIC line... abre o dialogo");
+        a.CurrentMutable()->Find(1)->text = "Syntax error in " + std::to_string(basic);
+        a.DialogEnter();
+        check(!a.HasDialog() && a.Ed().Cursor().line == 3, "a linha BASIC do erro leva a' 4a linha do .dmx");
+        check(a.Ed().Message().find("source line 4") != std::string::npos, "a mensagem diz a linha do fonte");
+        K(a, {"A-u", "l"});
+        a.CurrentMutable()->Find(1)->text = "Syntax error in 99999";
+        a.DialogEnter();
+        check(a.Ed().Message().find("no line number") != std::string::npos || a.Ed().Message().find("no such line") != std::string::npos,
+              "numero fora da faixa / inexistente: aviso");
+    }
+
     // buffer sem nome: so' confere
     EditorApp u;
     u.SetSize(80, 25);

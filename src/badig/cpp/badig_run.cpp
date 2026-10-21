@@ -631,6 +631,14 @@ Result Convert(const Options &base, const std::vector<std::string> &cli_args, co
             log.Log(5, "Generating Classic code.");
             gen = par.Generate();
             log.Log(5, std::to_string(gen.c_code.size()) + " lines created.");
+            for (size_t i = 1; i < gen.line_report.size(); ++i) { // a primeira entrada e' a linha "antes do inicio" (o relatorio -lnr tambem a tira)
+                const auto &lr = gen.line_report[i];
+                LineMapEntry m;
+                m.basic = static_cast<int>(lr.line);
+                m.file = lr.file;
+                m.line = lr.dig_line;
+                res.line_map.push_back(m);
+            }
 
             if (o.var_report) {
                 std::vector<std::pair<std::string, std::string>> v(gen.declares.items.begin(), gen.declares.items.end());
@@ -728,6 +736,40 @@ Result Convert(const Options &base, const std::vector<std::string> &cli_args, co
     res.diags.insert(res.diags.begin(), diags.begin(), diags.end());
     AddLog(res, log.lines);
     return res;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// erros de execucao do BASIC -> linha do fonte
+// ---------------------------------------------------------------------------------------------------------------
+
+int ParseBasicErrorLine(const std::string &text) {
+    // a mensagem do MSX termina com " in 130"; um numero solto tambem serve. Sem " in ", vale o ultimo numero do texto.
+    size_t from = text.rfind(" in ");
+    const size_t start = from == std::string::npos ? 0 : from + 4;
+    long long found = 0;
+    for (size_t i = start; i < text.size();) {
+        if (std::isdigit(static_cast<unsigned char>(text[i]))) {
+            long long v = 0;
+            while (i < text.size() && std::isdigit(static_cast<unsigned char>(text[i]))) {
+                if (v < 100000) v = v * 10 + (text[i] - '0');
+                ++i;
+            }
+            found = v;
+        } else {
+            ++i;
+        }
+    }
+    return found > 65529 ? 0 : static_cast<int>(found); // o maior numero de linha do MSX BASIC e' 65529
+}
+
+bool MapBasicLine(const Result &r, int basic, LineMapEntry &entry) {
+    for (const LineMapEntry &m : r.line_map) {
+        if (m.basic == basic) {
+            entry = m;
+            return true;
+        }
+    }
+    return false;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

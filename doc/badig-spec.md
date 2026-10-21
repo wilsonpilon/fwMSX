@@ -72,7 +72,7 @@ erro** (mensagens identicas as do original). 376 verificacoes em `badigtest`.
 - **Basic DignifieR** (classico -> Dignified, `msxbader.py`) e o **tokenizador inverso** (`.bmx` -> texto): nao portados.
 - Opcoes do msxIDE que nao vieram: NBasic (garantir `include "nbasic.dmx"` e a rotina de carga do `nbasic.bin`), autocompletar do msxIDE, e a
   copia de **arquivos de apoio** (`.bin`, dados) da pasta do fonte para o disco de execucao.
-- Erros de execucao do BASIC (`Syntax error in 130`) levados de volta a' linha do `.dmx` pela tabela `-lnr` (o original faz isso no openMSX).
+- Salto automatico do erro de execucao: ler a mensagem da tela do MSX depois do F5 (hoje o usuario digita a mensagem em *Montar > BASIC line...*, ver secao 8).
 - Integracao com o projeto `.msxproject` (E6, parte 2): fontes, configuracao e saidas dentro do projeto.
 
 ## 7. NestorBASIC e arquivos de apoio (1.42.1)
@@ -82,3 +82,9 @@ erro** (mensagens identicas as do original). 376 verificacoes em `badigtest`.
 - **Fluxo**: as funcoes sao alvos de `GOSUB` e o codigo cai onde o include esta': ele vai depois do `END` (o snippet `nbload` do editor faz assim).
 - **Disco de execucao**: `badig::CollectDiskFiles` junta os `disk_files` (nomes/mascaras da pasta do fonte, 8.3 estrito, em maiusculas) e o `NBASIC.BIN` (com `nbasic`, ou se o fonte inclui `nbasic.dmx`; procura na pasta do fonte e em `badig/`). Opcoes: `##BB:disk_files=`, `##BB:nbasic=true`, `--disk_files`, `--nbasic`, `badig.cfg` secao `[FWMSX]`, dialogo pagina 2.
 - Testes: `badigtest` (biblioteca, poda, mascaras, nome invalido, arquivo inexistente), `controltest` (um programa BASIC le o arquivo de apoio no disco de execucao, no emulador).
+
+## 8. Erros de execucao -> linha do fonte (1.42.2)
+
+- `Result::line_map` (`LineMapEntry{basic, file, line}`) vem de qualquer conversao, sem `-lnr`: e' a tabela de linhas do gerador (a primeira entrada, "antes do inicio", fica de fora, como no relatorio). `line = 0` = linha gerada pelo Badig.
+- `ParseBasicErrorLine("Syntax error in 130")` = 130: o numero depois de " in " (ou o ultimo numero do texto); 0 se nao ha' ou passa de 65529. `MapBasicLine(result, 130, entry)` acha o arquivo e a linha.
+- Editor: *Montar > BASIC line...* (`Cmd::BasicLine`, `Dialog::BasicLine`) usa o mapa da ultima conversao Dignified do `EditorApp` e passa pelo mesmo `BuildGoto` das mensagens (abre a aba do `.include` na janela grafica).

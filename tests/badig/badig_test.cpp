@@ -194,6 +194,18 @@ void test_units() {
     check(!r.bmx.empty() && r.bmx[0] == 0xFF && r.bmx.size() > 8, "o .bmx tokenizado comeca por FF");
     check(r.bmx[r.bmx.size() - 1] == 0 && r.bmx[r.bmx.size() - 2] == 0, "e termina com 0000");
 
+    // erro de execucao do BASIC -> linha do fonte (a tabela de linhas vem sempre, sem -lnr)
+    {
+        badig::LineMapEntry m;
+        check(badig::MapBasicLine(r, 30, m) && m.line == 1 && fs::path(m.file).filename() == "x.dmx", "BASIC 30 = linha 1 do .dmx");
+        check(badig::MapBasicLine(r, 50, m) && m.line == 4, "BASIC 50 = linha 4 do .dmx (o goto)");
+        check(!badig::MapBasicLine(r, 55, m) && !badig::MapBasicLine(r, 0, m), "linha BASIC que nao existe");
+        check(badig::ParseBasicErrorLine("Syntax error in 130") == 130 && badig::ParseBasicErrorLine("Type mismatch in 40\r\nOk") == 40 &&
+                  badig::ParseBasicErrorLine("130") == 130 && badig::ParseBasicErrorLine("in 10 in 20") == 20 && badig::ParseBasicErrorLine("Syntax error") == 0 &&
+                  badig::ParseBasicErrorLine("Error in 70000") == 0,
+              "extrai o numero da linha da mensagem do BASIC");
+    }
+
     // gravando
     r = badig::Convert(base, {}, &text, true);
     check(r.ok && fs::exists(dir / "x.amx") && fs::exists(dir / "x.bmx"), "write_files grava .amx e .bmx ao lado do fonte");
