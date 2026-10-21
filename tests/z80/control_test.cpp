@@ -460,6 +460,40 @@ void TestAsmRunDos(const std::string &src_dir, const std::string &bios) {
     std::filesystem::remove_all(dir);
 }
 
+// project: o .msxproject (SQLite) e as copias soltas, pela ponte de comandos
+void TestProjectCmd(const std::string &bios) {
+    const std::string dir = TempPath("fwmsx_project_dir");
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir + "/src");
+    WriteText(dir + "/src/jogo.bas", "10 PRINT \"oi\"\n");
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine para o comando project");
+        return;
+    }
+    control::Commander cmd(host);
+    check(!cmd.Execute("project info").ok, "project: sem projeto aberto = err");
+    const control::Result n = cmd.Execute("project new \"" + dir + "/jogo.msxproject\" Jogo");
+    check(n.ok && std::filesystem::exists(dir + "/jogo.msxproject"), "project new: cria o .msxproject");
+    check(cmd.Execute("project add \"" + dir + "/src/jogo.bas\"").ok, "project add: um arquivo da pasta do projeto");
+    check(Contains(cmd.Execute("project ls").text, "src/jogo.bas") && Contains(cmd.Execute("project ls").text, "basic"), "project ls: caminho relativo e tipo");
+    check(cmd.Execute("project set machine MSX2").ok && Contains(cmd.Execute("project set machine").text, "MSX2"), "project set / get da configuracao");
+    WriteText(dir + "/src/jogo.bas", "10 PRINT \"editado fora\"\n");
+    check(Contains(cmd.Execute("project status").text, "pasta mudou: src/jogo.bas"), "project status: a copia solta mudou");
+    const control::Result s = cmd.Execute("project sync");
+    check(s.ok && Contains(s.text, "1 pasta->projeto"), "project sync: a edicao da pasta entra no projeto");
+    check(std::filesystem::exists(dir + "/msxproject.txt"), "project sync: grava o manifesto");
+    check(cmd.Execute("project get src/jogo.bas \"" + dir + "/saida.bas\"").ok && std::filesystem::file_size(dir + "/saida.bas") > 10, "project get: tira o arquivo do projeto");
+    check(cmd.Execute("project close").ok && cmd.Execute("project open \"" + dir + "/jogo.msxproject\"").ok && Contains(cmd.Execute("project info").text, "machine = MSX2"),
+          "project open: a configuracao persiste");
+    check(!cmd.Execute("project add \"" + dir + "/src/jogo.bas\" ../fora.bas").ok, "project add: caminho que sai da raiz = err");
+    check(cmd.Execute("project rm src/jogo.bas").ok && !std::filesystem::exists(dir + "/src/jogo.bas"), "project rm: tira do projeto e apaga a copia solta");
+    cmd.Execute("project close"); // o Windows nao apaga um arquivo aberto
+    std::filesystem::remove_all(dir);
+}
+
 // badig / badigrun: converte um .dmx (Basic Dignified); badigrun monta o disco (.bmx + AUTOEXEC.BAS) e o DISK BASIC roda o programa sozinho
 void TestBadigRun(const std::string &bios) {
     const std::string dir = TempPath("fwmsx_badig_dir");
@@ -1091,6 +1125,7 @@ int main() {
     TestAsmRun(bios);
     TestAsmRunDos(FWMSX_SOURCE_DIR, bios);
     TestBadigRun(bios);
+    TestProjectCmd(bios);
     TestDebugView(bios);
     TestDbgUiCommand(bios);
     TestKeyboard(FWMSX_SOURCE_DIR, bios);

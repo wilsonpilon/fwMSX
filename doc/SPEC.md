@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.42.2)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.43.0)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.42.2, publicada em `main`):**
+**Funcionando (v1.43.0, publicada em `main`):**
+- [x] **Projeto `.msxproject`** (1.43.0, E6 parte 2 fatia 1): UM arquivo SQLite com tudo + copias soltas numa pasta sincronizadas por hash de base (conflito = perguntar, mais novo sugerido), `project export/import` + manifesto para o GitHub, comando `project` e `man project`. Falta: integracao com o editor, `Obifile`, migracao PaleoBasic/msxIDE. Ver `doc/project-spec.md`.
 - [x] **Basic Dignified: erros de execucao no fonte** (1.42.2): *Montar > BASIC line...* leva `Syntax error in 130` a' linha do `.dmx` pela tabela de linhas da ultima conversao (`Result::line_map`). Ver `doc/badig-spec.md`.
 - [x] **Basic Dignified: NestorBASIC e arquivos de apoio** (1.42.1): biblioteca `badig/nbasic.dmx` (funcoes `.NB_*` no mesmo namespace, so' as chamadas ficam), `NBASIC.BIN` e `disk_files` no disco do `badigrun`/F5, snippet `nbload`. Ver `doc/badig-spec.md`.
 - [x] **Basic Dignified Suite (clone nosso)** (1.42.0): `fwmsx --badig` / comando `badig` convertem `.dmx` em `.amx` e no BASIC tokenizado `.bmx` (+ `.lmx` e relatorios), IGUAL ao `badig.py` v2.2.1 byte a byte (golden tests); `badigrun` converte, monta um disco com `AUTOEXEC.BAS` e roda no DISK BASIC; no editor `F9`/`F5`/`F8` e a tela *Montar > Dignified setup...* (`badig.cfg`). Ver `doc/badig-spec.md`. Falta: Basic DignifieR, NBasic, arquivos de apoio no disco, erros de execucao -> linha do `.dmx`.

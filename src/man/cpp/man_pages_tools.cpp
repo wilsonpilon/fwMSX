@@ -96,6 +96,65 @@ EXEMPLOS
 VER TAMBEM
   dignified, asm, asmrun)MAN");
 
+    add("project", "project <new|open|close|info|ls|add|get|rm|set|root|status|sync|pull|push|export|import> ...",
+        "o projeto .msxproject: UM arquivo com tudo, e as copias soltas numa pasta",
+        R"MAN(DESCRICAO
+  Um projeto e' UM arquivo SQLite (.msxproject) que guarda tudo: fontes em
+  BASIC/Dignified/Assembly/Pascal, sprites, telas, musicas, MML/DML, notas em
+  Markdown, PDF, discos .dsk, fitas .tsx/.cas e a configuracao (modelo do MSX,
+  opcoes do emulador...). Para levar o projeto a outro PC basta copiar esse
+  arquivo.
+
+  Alem disso o projeto mantem COPIAS SOLTAS numa pasta (src/jogo.bas,
+  discos/jogo.dsk...), em sincronia com o arquivo. A pasta padrao e' a que
+  contem o .msxproject; "project root" muda.
+
+COMANDOS
+  new <arq> [nome]         cria o projeto (o arquivo nao pode existir)
+  open <arq> | close       abre / fecha
+  info | ls [prefixo]      resumo e lista de arquivos (tipo, tamanho, caminho)
+  add <arq> [caminho]      poe um arquivo no projeto (e na pasta)
+  get <caminho> <destino>  tira um arquivo do projeto para um destino qualquer
+  rm <caminho>             tira do projeto e apaga a copia solta
+  set [chave [valor]]      configuracao do projeto; set -d chave apaga
+  root [pasta]             a pasta das copias soltas
+
+SINCRONIZAR (projeto x pasta)
+  status [pasta]           mostra o que difere e o que fazer
+  sync [--prune] [pasta]   aplica o que nao perde trabalho:
+                             so' a pasta mudou     -> pasta para o projeto
+                             so' o projeto mudou   -> projeto para a pasta
+                             arquivo novo na pasta -> entra no projeto
+                             so' no projeto        -> extrai para a pasta
+                           Se os DOIS mudaram e' CONFLITO: nada e' mexido, o
+                           comando diz qual lado e' o mais novo e voce decide
+                             pull <caminho>   fica o projeto
+                             push <caminho>   fica a pasta
+                           O que sumiu da pasta so' sai do projeto com --prune.
+  export <pasta>           extrai TUDO (o projeto vence) e grava o manifesto
+  import <pasta> <novo>    cria um projeto novo a partir de uma pasta (o
+                           clone do GitHub): usa o manifesto msxproject.txt
+
+  O "mais novo" e' so' uma sugestao: a comparacao usa o hash da ultima
+  sincronizacao (guardado em .msxsync, na pasta), nao so' a data, porque a data
+  muda com git clone, zip e relogios diferentes. Em arquivos de TEXTO o fim de
+  linha (LF x CRLF) nao conta como alteracao.
+
+GITHUB
+  Versione a PASTA (as copias soltas + msxproject.txt), nao o .msxproject: o
+  banco binario nao tem diff nem merge. Ponha *.msxproject e .msxsync no
+  .gitignore. Depois de um clone: project import <pasta> <novo.msxproject>.
+
+EXEMPLOS
+  project new jogo.msxproject "Meu Jogo"
+  project add src/jogo.bas
+  project set machine MSX2
+  project sync
+  project status
+
+VER TAMBEM
+  badig, asm)MAN");
+
     add("romdb", "romdb <comando> [opcoes]", "banco de ROMs: downloads, busca, verificacao",
         R"MAN(DESCRICAO
   Banco de ROMs (roms/roms.db ao lado do executavel; --roms <pasta> muda a

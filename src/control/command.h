@@ -23,6 +23,10 @@ namespace mamute {
 class Monitor;
 } // namespace mamute
 
+namespace prj {
+class Project;
+} // namespace prj
+
 namespace control {
 
 struct Result {
@@ -93,6 +97,10 @@ private:
     Result AsmRun(const std::vector<std::string> &t);
     // badig / badigrun: converte um .dmx (Basic Dignified) em .amx/.bmx; badigrun tambem monta um disco com o .bmx e o AUTOEXEC.BAS, insere em A: e reinicia.
     Result BadigCmd(const std::vector<std::string> &t, bool run);
+    // project: o .msxproject (SQLite) e as copias soltas numa pasta (src/control/project_cmd.cpp; doc/project-spec.md).
+    Result ProjectCmd(const std::vector<std::string> &t);
+    std::unique_ptr<prj::Project> project_;
+    std::string project_root_; // a pasta das copias soltas do projeto aberto (vazio = a pasta do .msxproject)
 
     Host &host_;
     // O monitor Mamute (comando `mon`): criado na primeira vez que alguem o usa; a maquina so' e' ligada a ele DURANTE

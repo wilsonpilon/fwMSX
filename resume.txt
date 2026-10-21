@@ -21,7 +21,14 @@ claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao do editor E5/E6
 fwMSX: emulador de MSX1/MSX2/MSX2+ de ESTUDO (Wilson Pilon), em C, C++, Assembly (NASM, ABI dupla Win64/SysV) e Fortran; cada fase relevante exercita as 4
 linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo: integrar ao msxide num utilitario "MSX-PoorManOS".
 
-== Estado ao encerrar (2026-10-21) ==
+== Atualizacao 2026-10-21 (noite): 1.43.0 "Yie Ar Kung-Fu" = o PROJETO .msxproject ==
+- src/project (4 linguagens), doc/project-spec.md, comando `project` (src/control/project_cmd.cpp), `man project`, projecttest. UM arquivo SQLite com tudo + copias soltas numa pasta,
+  sincronizadas por hash de base (.msxsync local); conflito = perguntar (o mais novo e' so' sugestao); GitHub = versionar a PASTA + manifesto msxproject.txt (project import recria o banco).
+  Decisoes do usuario: hash de base + perguntar; pasta + manifesto no git; journal tradicional (sem WAL). ctest 32/32.
+- Proximas fatias: integracao com o editor (abrir/salvar pelo projeto via Project::Save, arvore, dialogo de conflito, aviso de "mais novo" ao abrir), Build/Dignified lendo do projeto,
+  Obifile, migracao PaleoBasic/msxIDE, remocoes entre PCs, revisions. Proximo jogo novo (Y): ver lista no CLAUDE.md (Yie Ar Kung-Fu ja' usado).
+
+== Estado ao encerrar (2026-10-21, antes do projeto) ==
 - Ultima versao publicada: 1.42.2 "Road Fighter: Erros de execucao no fonte" (Konami), commit c006de23, tag 1.42.2, branch v1.42.2, pushed. ctest 31/31 em Windows e Linux/WSL.
 - 1.41.x = O EDITOR do IDE (doc/editor-spec.md): modelo `ed::Editor` + `ed::EditorApp` (menus e dialogos como dados), TUI (FTXUI) e GUI (ImGui `EditorPanel`) so' desenham.
   E1-E5 (1.41.0-1.41.8): nucleo, janelas/abas, busca, blocos, destaque de sintaxe (inclusive MSX-BASIC KUN), numeros de linha, completar palavras (Alt-/) e snippets.

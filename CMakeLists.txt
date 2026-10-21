@@ -390,6 +390,7 @@ set(MSXDISK_CORE_SOURCES
 set(CONTROL_LIB_SOURCES
         src/control/command.cpp
         src/control/server.cpp
+        src/control/project_cmd.cpp
         ${MAMUTE_LIB_SOURCES}
         ${MSXDISK_CORE_SOURCES}
 )
@@ -460,8 +461,18 @@ set(BADIG_LIB_SOURCES
         src/badig/asm/badig_str.asm
 )
 
-# O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto.
-list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES})
+# O projeto .msxproject (SQLite + copias soltas): C++ (banco e sincronizacao), C (tipo pela extensao), Fortran (caminho seguro), NASM (hash sem CR).
+# doc/project-spec.md. Usa o SHA-1 do romdb e o sqlite3.
+set(PROJECT_LIB_SOURCES
+        src/project/cpp/project.cpp
+        src/project/c/prj_kind.c
+        src/project/fortran/prj_path.f90
+        src/project/asm/prj_text.asm
+        src/romdb/core/hash.cpp
+)
+
+# O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto. O comando `project` do console usa o projeto.
+list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${PROJECT_LIB_SOURCES})
 
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
@@ -764,6 +775,20 @@ if (MINGW)
     target_link_options(badigtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME badig COMMAND badigtest)
+
+# projecttest: o .msxproject (banco, configuracao, caminhos), as copias soltas sincronizadas por hash de base, conflitos, copia para outro PC e import de pasta.
+add_executable(projecttest tests/project/project_test.cpp ${PROJECT_LIB_SOURCES})
+set_target_properties(projecttest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/projecttest)
+target_link_libraries(projecttest PRIVATE sqlite3)
+if (MINGW)
+    target_link_options(projecttest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME project COMMAND projecttest)
+
+# o controle (comando `project`) carrega o projeto, que precisa do sqlite3
+foreach (t repltest controltest asme2etest mamutetest)
+    target_link_libraries(${t} PRIVATE sqlite3)
+endforeach ()
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})

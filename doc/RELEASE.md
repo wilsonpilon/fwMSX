@@ -17,6 +17,18 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.0 -- "Yie Ar Kung-Fu" (Konami) (2026-10-21)
+
+**Pedido do usuario**: o `.msxproject` como UM arquivo SQLite com todo o projeto + copias soltas na pasta, extraidas ao copiar para outro PC, com sugestao do lado mais novo; facil de copiar entre PCs e de mover para o GitHub.
+- **Pesquisa antes de codar** (apresentada ao usuario): "o mais novo ganha" pela data engana (git clone, zip, relogios); SQLite binario no git nao tem diff/merge e incha; WAL deixa `-wal/-shm` e copiar so' o arquivo perde gravacoes. O usuario escolheu: hash de base + perguntar, pasta + manifesto no git, journal tradicional.
+- **Achado de desenho**: o hash de base NAO pode ficar no banco (copiar o `.msxproject` para outro PC faria a pasta nova parecer "tudo apagado" e o sync apagaria o projeto); fica no `.msxsync`, dentro da pasta, com o id do projeto. Sem base, o que difere vira conflito e nada e' apagado.
+- **Regras de seguranca de dados**: nunca se apaga copia solta; o que sumiu da pasta so' sai do projeto com `--prune`; conflito nao e' resolvido sozinho.
+- **Escolhas minhas** (a rever): so' a configuracao do manifesto e' lida no import (o sync a regrava a partir do banco); remocoes em outro PC nao propagam; tipos por extensao em tabela fixa (C); a pasta padrao e' a do `.msxproject`.
+- **Nao feito** (proximas fatias): integracao com o editor (abrir/salvar pelo projeto, arvore, dialogo de conflito), build/Dignified lendo do projeto, `Obifile`, migracao dos projetos do PaleoBasic/msxIDE, `revisions`.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.42.2 -- "Road Fighter: Erros de execucao no fonte" (Konami) (2026-10-21)
 
 **Pedido do usuario**: "levar erros de execucao do BASIC de volta a linha do .dmx" (item em aberto da 1.42.1).

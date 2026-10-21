@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.0] - 2026-10-21 - "Yie Ar Kung-Fu" (Konami)
+
+### Adicionado -- o projeto `.msxproject` (fase E6 parte 2, fatia 1)
+- **Um arquivo SQLite com tudo**: fontes, sprites, telas, musicas, MML/DML, notas, PDF, discos, fitas e a configuracao do projeto; copiar o `.msxproject` leva o projeto inteiro a outro PC. Journal tradicional (sem `-wal`/`-shm`): o arquivo unico e' sempre completo.
+- **Copias soltas sincronizadas**: o projeto mantem os arquivos tambem numa pasta (a do `.msxproject`, ou a que o usuario escolher em cada PC). A sincronizacao compara cada arquivo com o hash da ultima sincronizacao (`.msxsync`, local): so' um lado mudou = sugere/aplica a direcao certa; os dois mudaram = **conflito**, nada e' mexido e o comando diz qual lado e' o mais novo. Em texto, LF x CRLF nao conta como alteracao.
+- **GitHub**: `project export` / `import` + manifesto `msxproject.txt` (nome, id, configuracao, tipos): versiona-se a pasta e o `.msxproject` fica no `.gitignore`; depois de um clone `project import <pasta> <novo.msxproject>` recria o banco.
+- Comando `project new|open|close|info|ls|add|get|rm|set|root|status|sync|pull|push|export|import` (console, TUI, ponte de comandos) e `man project`.
+- Seguranca: todo caminho passa pela validacao em Fortran (nada de `../`, `C:`, caminho absoluto) ao entrar e ao extrair.
+- Nas 4 linguagens: C++ (banco/sincronizacao), C (tipo pela extensao), Fortran (caminho seguro), NASM (hash sem CR). Ver `doc/project-spec.md`.
+- Testes: `projecttest` (75), `controltest` com o comando `project`.
+
 ## [1.42.2] - 2026-10-21 - "Road Fighter: Erros de execucao no fonte" (Konami)
 
 ### Adicionado -- do erro do BASIC de volta ao `.dmx`

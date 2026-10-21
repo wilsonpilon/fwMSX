@@ -17,6 +17,7 @@
 #include "../mamute/cpp/mamute_monitor.h"
 #include "../mamute/cpp/mamute_online.h"
 #include "../msxdisk/core/disk_image.h"
+#include "../project/cpp/project.h"
 #include "../tape/cpp/cas_format.h"
 #include "../z80/debug/z80_disasm.h"
 
@@ -55,6 +56,7 @@ const char *kHelp =
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
     "Basic Dignified: badig [opcoes] <fonte.dmx> (gera .amx e .bmx) badigrun <fonte.dmx> (converte, monta o disco e executa) | "
+    "projeto: project <new|open|close|info|ls|add|get|rm|set|root|status|sync|pull|push|export|import> (ver man project) | "
     "montador e simbolos: asmrun [-z] [-n] [--dos-disk <arq>] <fonte.asm> sym [load <arq.sym>|clear|list [txt]|<nome|end>] src [n] markers <on|off> | "
     "monitor Mamute: mon [linha] (ver doc/mamute-spec.md)";
 
@@ -712,6 +714,7 @@ Result Commander::Execute(const std::string &line) {
     if (cmd == "asmrun") return AsmRun(t);
     if (cmd == "badig") return BadigCmd(t, false);
     if (cmd == "badigrun") return BadigCmd(t, true);
+    if (cmd == "project") return ProjectCmd(t);
 
     if (cmd == "events") {
         // A assinatura e' feita pelo servidor TCP (por conexao); aqui so' valida a sintaxe.
