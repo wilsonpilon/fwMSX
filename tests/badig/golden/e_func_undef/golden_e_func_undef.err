@@ -1,0 +1,4 @@
+*** e_func_undef.dmx: (1,1): Function not defined: .nope
+    .nope()
+    ^
+    Conversion stopped.

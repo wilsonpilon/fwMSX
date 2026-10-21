@@ -106,7 +106,7 @@ enum class Cmd {
     // menu View
     Information, Outline, About, Language,
     // menu Build (fase E6): montar o fonte do buffer, executar no MSX, navegar pelas mensagens, ajuda da palavra
-    Assemble, RunMsx, NextError, PrevError, ErrorList, HelpWord,
+    Assemble, RunMsx, NextError, PrevError, ErrorList, HelpWord, BadigSetup,
     // menu Options
     DisplaySetup, MouseSetup, EditorSetup, SaveConfig,
     // ajuda e menu
@@ -116,7 +116,7 @@ enum class Cmd {
 enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
     InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
-    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference
+    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference, BadigSetup
 };
 
 struct CmdInfo {

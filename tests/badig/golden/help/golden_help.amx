@@ -1,0 +1,7 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 print "this is a helper code."
+40 print "Saved on another file."
+50 zz=5
+60 print "include define"
+70 goto 70 '<start >start

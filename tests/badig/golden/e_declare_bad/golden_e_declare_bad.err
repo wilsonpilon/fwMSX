@@ -1,0 +1,4 @@
+*** e_declare_bad.dmx: (1,12): Invalid declared short variable: cde
+    declare ab:cde
+    -----------^
+    Conversion stopped.

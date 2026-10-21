@@ -1,0 +1,4 @@
+*** e_define_pos.dmx: (1,10): define must be at the start of a line.
+    print 1: define [a][1]
+    ---------^
+    Conversion stopped.

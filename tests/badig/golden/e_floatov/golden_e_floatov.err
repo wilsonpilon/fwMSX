@@ -1,0 +1,4 @@
+*** e_floatov.amx: (3,8): Float overflow: 1
+    30 a=1 E+70
+    -------^
+    Conversion stopped.

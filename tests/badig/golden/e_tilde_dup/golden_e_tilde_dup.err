@@ -1,0 +1,4 @@
+*** e_tilde_dup.dmx: (2,2): Long variable already declared: longname longname:ln
+    ~longname = 1
+    -^
+    Conversion stopped.

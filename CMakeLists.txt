@@ -447,8 +447,21 @@ set(FWASM_LIB_SOURCES
         src/tape/cpp/tsx_writer.cpp # a diretiva .TSX do fwasm (o mesmo escritor da fita)
 )
 
+# O clone do Basic Dignified Suite (.dmx -> .amx -> .bmx): C++ (lexer/parser), C (tabela do tokenizador), Fortran (digitos BCD), NASM (prefixo).
+# doc/badig-spec.md. O comando `badig` do console e o menu Build do editor usam a mesma biblioteca.
+set(BADIG_LIB_SOURCES
+        src/badig/cpp/badig_base.cpp
+        src/badig/cpp/badig_lex.cpp
+        src/badig/cpp/badig_parse.cpp
+        src/badig/cpp/badig_msxtok.cpp
+        src/badig/cpp/badig_run.cpp
+        src/badig/c/badig_tok.c
+        src/badig/fortran/badig_num.f90
+        src/badig/asm/badig_str.asm
+)
+
 # O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto.
-list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES})
+list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES})
 
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
@@ -709,6 +722,7 @@ set(EDITOR_LIB_SOURCES
         src/editor/asm/ed_indent.asm
         src/editor/asm/ed_hash.asm
         ${FWASM_LIB_SOURCES}
+        ${BADIG_LIB_SOURCES}
 )
 add_executable(edittest tests/editor/editor_test.cpp ${EDITOR_LIB_SOURCES})
 set_target_properties(edittest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/edittest)
@@ -732,6 +746,24 @@ if (MINGW)
     target_link_options(syntaxtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME editor_syntax COMMAND syntaxtest)
+
+# O clone do Basic Dignified Suite (.dmx -> .amx -> .bmx): C++ (lexer/parser), C (tabela do tokenizador), Fortran (digitos BCD), NASM (prefixo). doc/badig-spec.md
+# (BADIG_LIB_SOURCES esta' definida junto do fwasm, acima: o controle e o editor tambem a usam)
+# badigcli: so' o conversor, para conferir contra o badig.py (tools/badig_compare)
+add_executable(badigcli tests/badig/badig_cli.cpp ${BADIG_LIB_SOURCES})
+set_target_properties(badigcli PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/badigcli)
+if (MINGW)
+    target_link_options(badigcli PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+
+# badigtest: o clone confere byte a byte com o badig.py original (tests/badig/golden) e testa o resto (argumentos, configuracao, remtags, mensagens).
+add_executable(badigtest tests/badig/badig_test.cpp ${BADIG_LIB_SOURCES})
+set_target_properties(badigtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/badigtest)
+target_compile_definitions(badigtest PRIVATE BADIG_TEST_DIR="${CMAKE_SOURCE_DIR}/tests/badig")
+if (MINGW)
+    target_link_options(badigtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME badig COMMAND badigtest)
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.
 add_executable(diskfmttest tests/z80/diskfmt_test.cpp ${DISKFMT_LIB_SOURCES} src/msxdisk/core/msxdos1_boot.cpp ${FDC_LIB_SOURCES})

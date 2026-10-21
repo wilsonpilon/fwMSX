@@ -1,0 +1,8 @@
+var_bool = true
+condition = false
+if condition then var_bool = not var_bool
+var1++ :var2--
+var3 += 20 :var4 -= 10
+var5 *= 2 : var6 /= 4 : var7 ^= 3
+print x or y
+print x xor y, a and b

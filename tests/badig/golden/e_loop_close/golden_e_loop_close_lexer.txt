@@ -1,0 +1,1 @@
+e_loop_close.dmx lexer output6 tokens00 | 01 | PROGRAM | PROGRAM00 | 01 | NEWLINE | \r01 | 01 | D_SYMBOL | }01 | 02 | NEWLINE | \r02 | 01 | D_IDNTTP | PROGRAM02 | 08 | EOF | EOF

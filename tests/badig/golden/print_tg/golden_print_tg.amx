@@ -1,0 +1,6 @@
+10 ? "a"
+20 ? "b"
+30 IF A GOTO 10
+40 IF A GOTO 50 ELSE GOTO 50 '>x >y
+50 X=1 '<x <y
+60 ? X;Y

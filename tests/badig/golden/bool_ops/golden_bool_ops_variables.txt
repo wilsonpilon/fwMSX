@@ -1,0 +1,10 @@
+10 variables assignedzz:var_bool
+zy:condition
+zx:var1
+zw:var2
+zv:var3
+zu:var4
+zt:var5
+zs:var6
+zr:var7
+zq:program

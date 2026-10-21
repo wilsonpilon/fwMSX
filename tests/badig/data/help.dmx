@@ -1,0 +1,7 @@
+print "this is a helper code."
+print "Saved on another file."
+helper_value = 5
+define [defonly][print "include define"]
+[defonly]
+{start}
+goto {start}

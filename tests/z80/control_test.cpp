@@ -460,6 +460,50 @@ void TestAsmRunDos(const std::string &src_dir, const std::string &bios) {
     std::filesystem::remove_all(dir);
 }
 
+// badig / badigrun: converte um .dmx (Basic Dignified); badigrun monta o disco (.bmx + AUTOEXEC.BAS) e o DISK BASIC roda o programa sozinho
+void TestBadigRun(const std::string &bios) {
+    const std::string dir = TempPath("fwmsx_badig_dir");
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    const std::string src = dir + "/hello.dmx";
+    WriteText(src, "[?](5,5) \"badig run ok\"\nfor n = 1 to 3\n  total = total + n\nnext\nprint total\n{fim}\ngoto {fim}\n");
+
+    // sem disquete: converte e explica
+    {
+        machine::MachineConfig config;
+        config.bios_path = bios;
+        TestHost host(config);
+        if (!host.ok()) {
+            check(false, "Machine sem disquete para o badig");
+            return;
+        }
+        control::Commander cmd(host);
+        const control::Result c = cmd.Execute("badig \"" + src + "\"");
+        check(c.ok && std::filesystem::exists(dir + "/hello.amx") && std::filesystem::exists(dir + "/hello.bmx"), "badig: gerou o .amx e o .bmx ao lado do fonte");
+        const control::Result n = cmd.Execute("badigrun \"" + src + "\"");
+        check(!n.ok && Contains(n.text, "interface de disquete"), "badigrun: sem interface de disquete = erro explicando");
+        check(!cmd.Execute("badig \"" + dir + "/nao_existe.dmx\"").ok, "badig: fonte inexistente = err");
+    }
+
+    // com disquete: o DISK BASIC executa o AUTOEXEC.BAS, que roda o .bmx tokenizado
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    config.disk_interface = true;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine com interface de disquete para o badigrun");
+        return;
+    }
+    control::Commander cmd(host);
+    const control::Result r = cmd.Execute("badigrun \"" + src + "\"");
+    check(r.ok && Contains(r.text, "HELLO.BMX"), "badigrun: montou o disco (HELLO.BMX + AUTOEXEC.BAS) e reiniciou");
+    if (!r.ok) std::printf("    %s\n", r.text.c_str());
+    Frames(host, cmd, 2500);
+    check(VramHas(host.machine(), "badig run ok"), "badigrun: o .bmx tokenizado pelo clone RODOU no BASIC (texto na tela)");
+    check(VramHas(host.machine(), " 6"), "badigrun: o laco FOR/NEXT calculou 1+2+3 = 6");
+    std::filesystem::remove_all(dir);
+}
+
 void TestDebugger(const std::string &bios) {
     machine::MachineConfig config;
     config.bios_path = bios;
@@ -1035,6 +1079,7 @@ int main() {
     TestDebugger(bios);
     TestAsmRun(bios);
     TestAsmRunDos(FWMSX_SOURCE_DIR, bios);
+    TestBadigRun(bios);
     TestDebugView(bios);
     TestDbgUiCommand(bios);
     TestKeyboard(FWMSX_SOURCE_DIR, bios);

@@ -1,0 +1,1 @@
+e_keep_pos.dmx lexer output10 tokens00 | 01 | PROGRAM | PROGRAM00 | 01 | NEWLINE | \r01 | 01 | C_INSTRC | print01 | 07 | C_NUMBER | 101 | 08 | C_INSTSP | :01 | 10 | D_INSTRC | keep01 | 15 | D_TGLREM | #a01 | 17 | NEWLINE | \r02 | 01 | D_IDNTTP | PROGRAM02 | 08 | EOF | EOF

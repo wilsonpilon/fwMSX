@@ -1153,6 +1153,95 @@ void test_build() {
     fs::remove_all(dir);
 }
 
+void test_badig_build() {
+    const fs::path dir = fs::temp_directory_path() / "fwedit_badig";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    badig::SetConfigPath((dir / "badig.cfg").string());
+
+    // converter o buffer .dmx: o erro leva a' linha; o que esta' certo grava .amx e .bmx ao lado do arquivo
+    EditorApp a;
+    a.SetSize(80, 25);
+    const fs::path src = dir / "prog.dmx";
+    spit(src, "print \"a\"\n");
+    std::string err;
+    check(a.Open(src.string(), err), "abre o .dmx");
+    check(a.Ed().Language() && a.Ed().Language()->Id() == "dignified", "a extensao .dmx escolhe o Basic Dignified");
+    a.Ed().SetText("print \"a\"\n{top}\nx = 1\ngoto {nowhere}\n");
+    K(a, {"F9"});
+    check(a.BuildMessages().size() == 1 && !a.BuildMessages()[0].warning && a.BuildMessages()[0].line == 4 &&
+              a.BuildMessages()[0].text.find("Label does not exist") == 0,
+          "F9 num .dmx: o erro vira mensagem com a linha do .dmx");
+    check(a.Ed().Cursor().line == 3 && a.Ed().Message().find("Convert: 1 error(s)") == 0, "o cursor vai para a linha do erro");
+    check(!fs::exists(dir / "prog.amx"), "com erro nada e' gravado");
+
+    a.Ed().SetText("print \"a\"\n{top}\nx = 1\ngoto {top}\n");
+    K(a, {"F9"});
+    check(a.BuildMessages().empty() && a.Ed().Message().rfind("Converted: ", 0) == 0, "converte sem erro");
+    check(fs::exists(dir / "prog.amx") && fs::exists(dir / "prog.bmx"), "grava o .amx e o .bmx ao lado do fonte");
+    check(slurp(dir / "prog.amx").find("goto 40") != std::string::npos, "o label virou numero de linha");
+    check(slurp(dir / "prog.bmx").size() > 8 && static_cast<unsigned char>(slurp(dir / "prog.bmx")[0]) == 0xFF, "o .bmx e' BASIC tokenizado (FF...)");
+
+    // buffer sem nome: so' confere
+    EditorApp u;
+    u.SetSize(80, 25);
+    u.Ed().SetLanguage(ed::LangById("dignified"), true);
+    u.Ed().SetText("print 1\n");
+    K(u, {"F9"});
+    check(u.Ed().Message().find("not saved") != std::string::npos, "sem nome: converte mas nao grava");
+
+    // executar: o gancho recebe o caminho do .dmx
+    EditorApp c;
+    c.SetSize(80, 25);
+    c.SetEmbedded(true);
+    std::string got;
+    c.SetRunHook([&](const std::string &p) { got = p; return std::string(); });
+    check(c.Open(src.string(), err), "abre o .dmx para executar");
+    K(c, {"F5"});
+    check(got == c.Ed().Name() && c.TakeHideRequest(), "F5 num .dmx converte e chama o gancho com o caminho do .dmx");
+
+    // um .include com erro abre a aba do arquivo (janela grafica)
+    spit(dir / "inc.dmx", "print 1\ngoto {nope}\n");
+    EditorApp g;
+    g.SetSize(80, 25);
+    g.SetGuiMode(true);
+    check(g.OpenTab(src.string(), err), "abre o principal");
+    g.Ed().SetText("include \"inc.dmx\"\nprint 2\n");
+    K(g, {"F9"});
+    check(g.BuildMessages().size() == 1 && g.BuildMessages()[0].line == 2 && !g.BuildMessages()[0].path.empty(), "o erro do include traz o caminho do include");
+    check(g.Ed().Name().find("inc.dmx") != std::string::npos && g.Ed().Cursor().line == 1, "a janela abre o include na linha do erro");
+
+    // a tela de configuracao: duas paginas, OK grava o badig.cfg
+    EditorApp s;
+    s.SetSize(80, 25);
+    K(s, {"A-u", "d"});
+    check(s.HasDialog() && screen_has(s, "Basic Dignified setup (1/2)") && screen_has(s, "Strip all spaces"), "Build > Dignified setup... abre a pagina 1");
+    s.CurrentMutable()->Find(24)->checked = true;       // strip spaces
+    s.CurrentMutable()->Find(20)->text = "100";          // line start
+    s.CurrentMutable()->Find(29)->text = "16";           // lmx
+    s.PressDialog(ed::kBtnNext);
+    check(s.HasDialog() && screen_has(s, "(2/2)") && screen_has(s, "Lexer tokens"), "Next abre a pagina 2");
+    s.CurrentMutable()->Find(30)->checked = true;        // label report
+    s.PressDialog(ed::kBtnPrev);
+    check(s.CurrentMutable()->Find(24)->checked && s.CurrentMutable()->Find(20)->text == "100", "Prev volta com os valores da pagina 1");
+    s.PressDialog(ed::kBtnNext);
+    s.DialogEnter();
+    check(!s.HasDialog() && s.Ed().Message().find("saved") != std::string::npos, "OK grava");
+    const badig::Options l = badig::LoadDefaults();
+    check(l.strip_spaces && l.line_start == 100 && l.tk_list == 16 && l.label_report && !l.lexer_report, "o badig.cfg tem o que a tela mostrou");
+    K(s, {"A-u", "d"});
+    check(s.CurrentMutable()->Find(24)->checked, "a tela reabre com o que foi gravado");
+    s.PressDialog(ed::kBtnCancel);
+
+    // as opcoes valem na proxima conversao: sem espacos, a partir da linha 100
+    a.Ed().SetText("print \"a\"\n");
+    K(a, {"F9"});
+    check(slurp(dir / "prog.amx").rfind("100'Converted", 0) == 0, "a configuracao gravada vale na conversao (-ss, linha inicial)");
+
+    badig::SetConfigPath("");
+    fs::remove_all(dir);
+}
+
 int main() {
     test_key_names();
     test_menus();
@@ -1171,6 +1260,7 @@ int main() {
     test_translation();
     test_complete_and_numbers();
     test_build();
+    test_badig_build();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

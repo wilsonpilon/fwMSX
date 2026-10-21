@@ -11,6 +11,7 @@
 #include <fstream>
 
 #include "../asm/cpp/cli.h"
+#include "../badig/cpp/badig.h"
 #include "../common/version.h"
 #include "../debug/c/dbg_flow.h"
 #include "../mamute/cpp/mamute_monitor.h"
@@ -53,6 +54,7 @@ const char *kHelp =
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
+    "Basic Dignified: badig [opcoes] <fonte.dmx> (gera .amx e .bmx) badigrun <fonte.dmx> (converte, monta o disco e executa) | "
     "montador e simbolos: asmrun [-z] [-n] [--dos-disk <arq>] <fonte.asm> sym [load <arq.sym>|clear|list [txt]|<nome|end>] src [n] markers <on|off> | "
     "monitor Mamute: mon [linha] (ver doc/mamute-spec.md)";
 
@@ -708,6 +710,8 @@ Result Commander::Execute(const std::string &line) {
     }
 
     if (cmd == "asmrun") return AsmRun(t);
+    if (cmd == "badig") return BadigCmd(t, false);
+    if (cmd == "badigrun") return BadigCmd(t, true);
 
     if (cmd == "events") {
         // A assinatura e' feita pelo servidor TCP (por conexao); aqui so' valida a sintaxe.
@@ -1095,6 +1099,55 @@ Result Commander::AsmRun(const std::vector<std::string> &t) {
         dbgr.set_markers(true);
         out += "; o fonte tem .break/.debug: marcadores ligados";
     }
+    return Ok(out);
+}
+
+// badig [opcoes do badig.py] <fonte.dmx> | badigrun <fonte.dmx>
+Result Commander::BadigCmd(const std::vector<std::string> &t, bool run) {
+    namespace fs = std::filesystem;
+    const std::string name = run ? "badigrun" : "badig";
+    std::vector<std::string> args(t.begin() + 1, t.end());
+    if (args.empty()) return Err(name + ": use " + name + (run ? " <fonte.dmx>" : " [opcoes] <fonte.dmx> (ver fwmsx --badig)"));
+
+    const badig::Options base = badig::LoadDefaults();
+    badig::Result r = badig::Convert(base, args, nullptr, true);
+    std::string out;
+    for (const std::string &l : r.log) out += l + "\n";
+    while (!out.empty() && out.back() == '\n') out.pop_back();
+    if (!r.ok) return Err(out.empty() ? name + ": a conversao falhou" : out);
+    if (!run) return Ok(out);
+
+    if (r.bmx.empty()) return Err(name + ": o .bmx nao foi gerado (ligue a opcao de tokenizar)");
+    machine::Machine &mm = host_.machine();
+    if (!mm.has_disk_interface()) return Err(name + ": a maquina nao tem interface de disquete (inicie o emulador com --disk); o .bmx foi gerado: " + r.bmx_path);
+
+    // o disco: so' o programa e o AUTOEXEC.BAS que o roda (o DISK BASIC executa o AUTOEXEC.BAS ao ligar)
+    std::string stem = fs::path(r.bmx_path).stem().string();
+    std::string msx;
+    for (const char c : stem) {
+        const unsigned char u = static_cast<unsigned char>(std::toupper(static_cast<unsigned char>(c)));
+        msx.push_back((std::isalnum(u) || u == '_') ? static_cast<char>(u) : '_');
+    }
+    if (msx.empty()) msx = "PROGRAM";
+    if (msx.size() > 8) msx.resize(8);
+
+    const fs::path tmp = fs::temp_directory_path();
+    const fs::path autoexec = tmp / (stem + "_autoexec.bas");
+    {
+        std::ofstream f(autoexec, std::ios::binary | std::ios::trunc);
+        f << "10 RUN \"" << msx << ".BMX\"\r\n";
+        if (!f) return Err(name + ": nao foi possivel gravar o AUTOEXEC.BAS temporario");
+    }
+    msxdisk::DiskError derr = msxdisk::DiskError::None;
+    msxdisk::DiskImage img = msxdisk::DiskImage::CreateBlank();
+    if (!img.AddFile(r.bmx_path, msx + ".BMX", 0x20, &derr)) return Err(name + ": nao foi possivel copiar o .bmx para o disco");
+    if (!img.AddFile(autoexec, "AUTOEXEC.BAS", 0x20, &derr)) return Err(name + ": nao foi possivel copiar o AUTOEXEC.BAS para o disco");
+    const std::string dsk = (tmp / (stem + "_badig.dsk")).string();
+    if (!img.Save(dsk, &derr)) return Err(name + ": nao foi possivel gravar o disco temporario '" + dsk + "'");
+    std::string error;
+    if (!mm.InsertDisk(0, dsk, error)) return Err(name + ": " + error);
+    mm.Reset();
+    out += (out.empty() ? "" : "\n") + std::string("disco ") + dsk + " (" + msx + ".BMX + AUTOEXEC.BAS) em A:; maquina reiniciada: o DISK BASIC roda o programa sozinho";
     return Ok(out);
 }
 

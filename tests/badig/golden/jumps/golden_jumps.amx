@@ -1,0 +1,32 @@
+100 'Converted with Basic Dignified
+105 'https://github.com/farique1/basic-dignified
+110 goto 110 '<a >a
+115 gosub 165 '>b
+120 on x goto 110,165,,110 '>a >b >a
+125 if x then 110 else 165 '>a >b
+130 if x then goto 110 else gosub 165 '>a >b
+135 restore 110 '>a
+140 run 110 '>a
+145 resume next
+150 data 1,2,"a,b",c d,
+155 data "quoted":print "after"
+160 data adata b
+165 call zz(1) '<b
+170 call zy:print "x"
+175 _hello
+180 _hello(1,2)
+185 print "a";"b",
+190 a$=left$("abc",2)+mid$(b$,1,1)+chr$(65)
+195 screen 2,2:color 15,4,4
+200 print using "##.##";1.5
+205 open "a:file" for input as #1
+210 input #1,a$
+215 line(0,0)-(10,10),1,bf
+220 paint(5,5),2
+225 locate 1,1:print spc(2)tab(3)
+230 defusr1=&HC000
+235 x=usr1(0)
+240 else
+245 tron:troff
+250 if a=1 then 100
+255 for i=1 to 10 step 2:next i

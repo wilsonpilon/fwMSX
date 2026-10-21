@@ -1,0 +1,4 @@
+*** e_declare_short.dmx: (1,9): Declared variable too short: a
+    declare a:bb
+    --------^
+    Conversion stopped.

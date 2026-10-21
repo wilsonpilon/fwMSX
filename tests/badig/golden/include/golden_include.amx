@@ -1,0 +1,16 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 print "This is the main file."
+40 '
+50 print "this is a helper code."
+60 print "Saved on another file."
+70 zz=5
+80 print "include define"
+90 goto 90 '<start >start
+100 '
+110 print "This is the main file again."
+120 sh=1
+130 zy=2
+140 x=zy+sh
+150 print "main define"
+160 goto 160 '<start >start

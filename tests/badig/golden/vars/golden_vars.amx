@@ -1,0 +1,14 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 if fd$="cake" and dk=3 then end
+40 zz$="belly full"
+50 sleep=10
+60 print zz$
+70 zy%=zy%+1
+80 zx=4
+90 ab=5
+100 zw#=1.5
+110 print zw#,zw
+120 fd$="x"
+130 x=1:y$="a"
+140 a1=2

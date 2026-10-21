@@ -1,0 +1,4 @@
+*** e_define_dup.dmx: (1,16): Define name duplicated: a
+    define [a][1],[a][2]
+    ---------------^
+    Conversion stopped.

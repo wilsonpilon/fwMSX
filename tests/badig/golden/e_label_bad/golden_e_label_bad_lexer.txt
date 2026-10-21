@@ -1,0 +1,1 @@
+e_label_bad.dmx lexer output9 tokens00 | 01 | PROGRAM | PROGRAM00 | 01 | NEWLINE | \r01 | 01 | D_SYMBOL | {01 | 02 | C_NUMBER | 101 | 03 | D_IDNTTP | abc01 | 06 | D_SYMBOL | }01 | 07 | NEWLINE | \r02 | 01 | D_IDNTTP | PROGRAM02 | 08 | EOF | EOF

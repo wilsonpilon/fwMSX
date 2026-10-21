@@ -1,0 +1,16 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 print "press A to toggle" '<start
+40 if inkey$<>"A" then goto 40 '>@
+50 a$=inkey$ '<loop
+60 print "press B to exit"
+70 if a$="A" then goto 30 '>start
+80 if a$="B" then goto 130 '*loop
+90 c=c+1 '<inner
+100 if c>3 then goto 120 '*inner
+110 goto 90 '>inner
+120 goto 50 '>loop
+130 on x goto 30,50 '>start >loop
+140 gosub 160 '>sub
+150 end
+160 return '<sub

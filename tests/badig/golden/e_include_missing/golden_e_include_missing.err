@@ -1,0 +1,4 @@
+*** e_include_missing.dmx: (1,9): File not found: nofile.dmx
+    include "nofile.dmx"
+    --------^
+    Conversion stopped.

@@ -1,0 +1,19 @@
+##BB:arguments=-lbr -lnr
+{start}
+print "press A to toggle"
+if inkey$ <> "A" then goto {@}
+loop{
+    a$ = inkey$
+    print "press B to exit"
+    if a$ = "A" then goto {start}
+    if a$ = "B" then exit
+    inner{
+        c = c + 1
+        if c > 3 then exit
+    }
+}
+on x goto {start},{loop}
+gosub {sub}
+end
+{sub}
+return

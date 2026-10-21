@@ -1,0 +1,4 @@
+*** e_tilde_short.dmx: (1,2): Can't use ~ on a short named variable: ab
+    ~ab = 1
+    -^
+    Conversion stopped.

@@ -1,0 +1,4 @@
+*** e_numstart.dmx: (1,1): Line starting with number: 10
+    10 print "n"
+    ^
+    Conversion stopped.

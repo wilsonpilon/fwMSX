@@ -63,10 +63,64 @@ std::string Editor::WordAtCursor() const {
 // montar
 // ---------------------------------------------------------------------------------------------------------------
 
+// Basic Dignified: converte o texto do buffer (.dmx) em .amx e .bmx pelo clone do badig.py (src/badig). Os erros e avisos do Badig viram as mesmas
+// mensagens do montador (F8 / Shift-F8 / Messages...); o erro de um .include abre a aba do arquivo.
+bool EditorApp::BuildDignified() {
+    Editor &e = Ed();
+    const std::string path = e.Name();
+    const bool unnamed = path.empty() || (path.rfind("noname", 0) == 0 && fs::path(path).extension().empty());
+
+    badig::Options o = badig::LoadDefaults();
+    o.source = unnamed ? std::string("noname.dmx") : path;
+    const std::string text = e.Text();
+    const badig::Result r = badig::Convert(o, {}, &text, !unnamed); // sem nome: so' confere (nada e' gravado)
+
+    build_msgs_.clear();
+    build_cur_ = -1;
+    build_src_ = path;
+    build_name_ = o.source;
+    int errors = 0, warnings = 0;
+    for (const badig::Diag &d : r.diags) {
+        BuildMsg b;
+        b.file = d.file;
+        b.line = d.line;
+        b.warning = d.level == 2;
+        b.text = d.text;
+        if (!d.file.empty() && d.file != o.source) b.path = d.file; // um .include
+        (b.warning ? warnings : errors)++;
+        build_msgs_.push_back(b);
+    }
+
+    if (!r.ok) {
+        if (errors == 0) { // falha sem posicao (argumento invalido...): a primeira linha do registro
+            BuildMsg b;
+            b.text = r.log.empty() ? std::string("conversion failed") : r.log.front();
+            build_msgs_.push_back(b);
+            errors = 1;
+        }
+        size_t first = 0;
+        while (first < build_msgs_.size() && build_msgs_[first].warning) ++first;
+        if (first >= build_msgs_.size()) first = 0;
+        BuildGoto(static_cast<int>(first));
+        Msg("Convert: " + std::to_string(errors) + " error(s), " + std::to_string(warnings) + " warning(s)  [" + std::to_string(first + 1) + "/" +
+            std::to_string(build_msgs_.size()) + "] " + build_msgs_[first].text);
+        return false;
+    }
+    std::string done = "Converted: " + std::to_string(r.line_count) + " lines";
+    if (!r.bmx.empty()) done += ", " + std::to_string(r.bmx.size()) + " bytes tokenized";
+    if (unnamed) done += " (not saved: the file has no name)";
+    else if (!r.bmx_path.empty()) done += " -> " + fs::path(r.bmx_path).filename().string();
+    else done += " -> " + fs::path(r.amx_path).filename().string();
+    if (warnings) done += ", " + std::to_string(warnings) + " warning(s)";
+    Msg(done);
+    return true;
+}
+
 bool EditorApp::BuildAssemble() {
     Editor &e = Ed();
+    if (e.Language() && e.Language()->Id() == "dignified") return BuildDignified();
     if (!e.Language() || e.Language()->Id() != "z80asm") {
-        Msg("Assemble: this is not a Z80 assembly source (View > Language)");
+        Msg("Assemble: this is not a Z80 assembly or Basic Dignified source (View > Language)");
         return false;
     }
     const std::string path = e.Name();
@@ -179,7 +233,7 @@ void EditorApp::BuildGoto(int i) {
         }
         if (target < 0) target = active_;
     } else { // um .include: abre a aba se ainda nao esta' aberta (so' na janela grafica; na TUI as duas janelas sao do usuario)
-        const std::string inc = (src.has_parent_path() ? src.parent_path() / m.file : fs::path(m.file)).string();
+        const std::string inc = !m.path.empty() ? m.path : (src.has_parent_path() ? src.parent_path() / m.file : fs::path(m.file)).string();
         for (int w = 0; w < WindowCount(); ++w) {
             std::error_code ec;
             if (Win(w).Name() == inc || (!Win(w).Name().empty() && fs::equivalent(Win(w).Name(), inc, ec))) target = w;

@@ -91,6 +91,8 @@ public:
 private:
     // asmrun: monta um fonte .asm do disco, grava as saidas ao lado dele, carrega o resultado na maquina e entrega os simbolos e as linhas ao depurador.
     Result AsmRun(const std::vector<std::string> &t);
+    // badig / badigrun: converte um .dmx (Basic Dignified) em .amx/.bmx; badigrun tambem monta um disco com o .bmx e o AUTOEXEC.BAS, insere em A: e reinicia.
+    Result BadigCmd(const std::vector<std::string> &t, bool run);
 
     Host &host_;
     // O monitor Mamute (comando `mon`): criado na primeira vez que alguem o usa; a maquina so' e' ligada a ele DURANTE

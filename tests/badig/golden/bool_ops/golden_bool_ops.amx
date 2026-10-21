@@ -1,0 +1,10 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 zz=-1
+40 zy=0
+50 if zy then zz=not zz
+60 zx=zx+1:zw=zw-1
+70 zv=zv+20:zu=zu-10
+80 zt=zt*2:zs=zs/4:zr=zr^3
+90 print x or y
+100 print x xor y,a and b

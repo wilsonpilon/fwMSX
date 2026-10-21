@@ -1,0 +1,4 @@
+*** e_hex_overflow.amx: (3,9): Number overflow: fffff
+    30 a=&HFFFFF
+    --------^
+    Conversion stopped.

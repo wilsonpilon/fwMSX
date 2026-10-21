@@ -578,7 +578,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
     control::Commander ctl_commander(ctl_host);
     // Build > Run on MSX do editor: o mesmo `asmrun` do console (monta o arquivo gravado, carrega e entrega os simbolos ao depurador)
     editor_panel.app().SetRunHook([&ctl_commander](const std::string &path) -> std::string {
-        const control::Result res = ctl_commander.Execute("asmrun \"" + path + "\"");
+        std::string ext = std::filesystem::path(path).extension().string();
+        for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        const char *cmd = (ext == ".dmx" || ext == ".bad") ? "badigrun" : "asmrun"; // Basic Dignified: converte e roda por disco
+        const control::Result res = ctl_commander.Execute(std::string(cmd) + " \"" + path + "\"");
         return res.ok ? std::string() : res.text;
     });
     control::Server ctl_server;

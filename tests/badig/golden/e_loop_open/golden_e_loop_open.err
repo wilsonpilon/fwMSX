@@ -1,0 +1,4 @@
+*** e_loop_open.dmx: (1,1): Loop label not closed from: loop
+    loop{
+    ^
+    Conversion stopped.

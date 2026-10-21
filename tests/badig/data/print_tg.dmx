@@ -1,0 +1,9 @@
+##BB:arguments=-cp ? -tg t -ca -rh
+print "a"
+? "b"
+if a then goto 10
+if a then goto {x} else goto {y}
+{x}
+{y}
+x = 1
+print x;y

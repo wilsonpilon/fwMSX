@@ -1,0 +1,4 @@
+*** e_declare_kw.dmx: (1,9): Variable is a reserved keyword: print
+    declare print:pp
+    --------^
+    Conversion stopped.

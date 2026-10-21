@@ -1,0 +1,1 @@
+e_define_unbal.dmx lexer output11 tokens00 | 01 | PROGRAM | PROGRAM00 | 01 | NEWLINE | \r01 | 01 | D_INSTRC | define01 | 08 | D_SYMBOL | [01 | 09 | D_IDNTTP | a01 | 10 | D_SYMBOL | ]01 | 11 | D_SYMBOL | [01 | 12 | D_IDNTTP | x01 | 13 | NEWLINE | \r02 | 01 | D_IDNTTP | PROGRAM02 | 08 | EOF | EOF

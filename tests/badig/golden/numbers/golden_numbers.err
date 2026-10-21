@@ -1,0 +1,4 @@
+*** numbers.dmx: (7,35): Token incomplete: &B
+    a=&H1F:b=&hFFFF:c=&O17:d=&B1010:e=&B:f=&H
+    ----------------------------------^
+    Conversion stopped.

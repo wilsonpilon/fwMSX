@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include "../../badig/cpp/badig.h"
 #include "editor.h"
 
 namespace ed {
@@ -100,6 +101,7 @@ struct BuildMsg {
     int line = 0;       // base 1; 0 = mensagem geral
     bool warning = false;
     std::string text;   // so' o texto, sem "arquivo, line N:"
+    std::string path;   // um .include: o caminho para abrir (vazio = o proprio fonte)
 };
 
 class EditorApp {
@@ -241,6 +243,9 @@ private:
     void ContinueAfterConfirm();
     // menu Build (editor_build.cpp)
     bool BuildAssemble();
+    bool BuildDignified();
+    void BuildBadigSetup(int page);
+    void ReadBadigPage(const DialogBox &d, int page);
     bool BuildRun();
     void BuildStep(int dir);
     void BuildGoto(int i);
@@ -289,6 +294,8 @@ private:
     // menu Build
     std::vector<BuildMsg> build_msgs_;
     int build_cur_ = -1;
+    badig::Options badig_edit_;  // a configuracao do Basic Dignified enquanto o dialogo esta' aberto
+    int badig_page_ = 0;
     std::string build_name_;    // o nome com que o montador viu o fonte (as mensagens do proprio fonte trazem este nome)
     std::string build_src_;     // arquivo montado por ultimo (caminho completo; vazio = buffer sem nome)
     std::function<std::string(const std::string &)> run_hook_;

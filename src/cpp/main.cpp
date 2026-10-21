@@ -84,6 +84,7 @@
 #include "diskfmt/cpp/cli.h"
 #include "repl/repl.h"
 #include "asm/cpp/cli.h"
+#include "badig/cpp/badig.h"
 #include "mamute/cpp/mamute_config.h"
 #include "splash/splash.h"
 #include "term/term_app.h"
@@ -162,6 +163,8 @@ int main(int argc, char* argv[]) {
         // o mamute.cfg (configuracao inicial do monitor) mora ao lado do executavel
         std::error_code ec;
         mamute::SetConfigDir(std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path().string());
+        // o badig.cfg (opcoes do Basic Dignified) tambem mora ao lado do executavel
+        badig::SetConfigPath((std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path() / "badig.cfg").string());
     }
     // Sem argumento nenhum, com o core de emulacao (Z80+VDP+PSG+mapa de
     // memoria+maquina) ja existindo de verdade, abre a maquina completa em
@@ -256,6 +259,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--asm") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return fwasm::RunAsmCommand(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--badig") { // converte .dmx (Basic Dignified) em .amx e .bmx
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return badig::RunBadigCommand(tokens, badig::ConfigPath());
     }
     if (argc > 1 && std::string(argv[1]) == "--disknew") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);

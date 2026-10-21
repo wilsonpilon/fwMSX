@@ -7,6 +7,18 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.42.0] - 2026-10-20 - "Road Fighter" (Konami)
+
+### Adicionado -- o Basic Dignified Suite, clone nosso (`.dmx` -> `.amx` -> `.bmx` tokenizado)
+- **`fwmsx --badig`** e o comando **`badig`** do console: le um programa em BASIC Dignified (`.dmx`: sem numeros de linha, com labels e loop labels, defines com argumentos, variaveis de nome longo, funcoes, includes, toggles, `true`/`false`, `++`/`+=`, Unicode -> MSX...) e gera o BASIC ASCII (`.amx`), o **BASIC tokenizado do MSX (`.bmx`)** e, se pedido, a listagem do tokenizador (`.lmx`) e os relatorios (`-lbr -lnr -var -lex -par`). Todas as opcoes e as remtags `##BB:` do `badig.py` v2.2.1.
+- **Igual ao original, byte a byte**: o clone foi escrito a partir do `badig.py` e do `msxbatoken.py` (resource/basic-dignified) e conferido contra eles por `tools/badig_compare/compare.py`: 14 programas de recursos, o exemplo real **Change Graph Kit** (30 KB), 33 casos de erro (mensagens identicas, com a linha do codigo e o `^`), os numeros do tokenizador (reais simples/duplos, expoentes, `&H/&O/&B`) e as combinacoes de opcoes. Os arquivos de referencia moram em `tests/badig/golden` e o `ctest badig` os confere sem precisar do Python.
+- **`badigrun <fonte.dmx>`** (console, ponte de controle e editor): converte, monta um disquete com o `.bmx` e um `AUTOEXEC.BAS`, insere em A: e reinicia; o DISK BASIC roda o programa sozinho (precisa de interface de disquete). Testado de ponta a ponta no `controltest`.
+- **Editor**: `F9` converte o texto da aba `.dmx` (sem precisar salvar) e leva o cursor ao erro; `F8`/`Shift-F8`/*Messages...* andam pelos erros e avisos (o erro de um `.include` abre a aba dele); `F5` converte e executa no emulador. O menu Build escolhe pela linguagem da aba: `.dmx` -> Basic Dignified, `.asm` -> fwasm.
+- **Tela de configuracao** (a do msxIDE, so' com o que vale para o MSX e o fwMSX): *Montar > Dignified setup...*, duas paginas -- linha inicial/passo/TAB, cabecalho REM, tirar espacos, maiusculas, Unicode, PRINT x `?`, THEN/GOTO, tokenizar, `.lmx`, apagar o `.amx`, relatorios, niveis de mensagem. Grava o `badig.cfg` ao lado do executavel (os nomes do `badig.ini`).
+- `man badig`; o comando `help` lista `badig`/`badigrun`.
+- Nucleo nas 4 linguagens: **C++** (lexer, parser em 5 passadas, tokenizador), **C** (a tabela de palavras do tokenizador), **Fortran** (arredondamento dos digitos BCD) e **NASM** (prefixo sem caixa, o laco quente do tokenizador).
+- Testes: `badigtest` 376 verificacoes; `editorui` 307; `controltest` com o E2E do `badigrun`.
+
 ## [1.41.9] - 2026-10-20 - "Hyper Sports: Montar e executar" (Konami)
 
 ### Adicionado -- fase E6 do editor (primeira parte): menu Build e ajuda da palavra

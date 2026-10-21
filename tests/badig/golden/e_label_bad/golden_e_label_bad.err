@@ -1,0 +1,4 @@
+*** e_label_bad.dmx: (1,3): Closing "}" not found.
+    {1abc}
+    --^
+    Conversion stopped.

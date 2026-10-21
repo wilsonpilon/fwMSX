@@ -10,7 +10,7 @@ std::string Tr(const std::string &en) {
         // --- menus ---
         {"File", "Arquivo"}, {"Block", "Bloco"}, {"Text-layout", "Texto"}, {"Search", "Busca"}, {"Print", "Imprimir"},
         {"View", "Exibir"}, {"Options", "Opcoes"}, {"F1=Help", "Ajuda"}, {"Build", "Montar"},
-        {"Assemble", "Montar (assemble)"}, {"Run on MSX", "Executar no MSX"}, {"Next message", "Proxima mensagem"},
+        {"Assemble / Convert", "Montar / Converter"}, {"Dignified setup...", "Config. Basic Dignified..."}, {"Run on MSX", "Executar no MSX"}, {"Next message", "Proxima mensagem"},
         {"Previous message", "Mensagem anterior"}, {"Messages...", "Mensagens..."}, {"On word", "Sobre a palavra"},
         // File
         {"New", "Novo"}, {"Open...", "Abrir..."}, {"Save", "Salvar"}, {"Save As...", "Salvar como..."}, {"Merge...", "Mesclar..."},

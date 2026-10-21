@@ -1,0 +1,7 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 if a$="" then for f=1 to 10:locate 1,1:? f:next:locate 1,3:? "All done.":end
+40 print "Hello word"
+50 a=1:b=2
+60 c=3:d=4
+70 x=5:y=6

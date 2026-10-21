@@ -44,6 +44,54 @@ EXEMPLOS
 VER TAMBEM
   fwasm, cart, dis)MAN");
 
+    add("badig", "badig [opcoes] <fonte.dmx> [saida.amx]", "Basic Dignified: converte .dmx em .amx e no BASIC tokenizado .bmx",
+        R"MAN(DESCRICAO
+  Clone do Basic Dignified Suite (v2.2.1, de Fred Rique) para o MSX: le o
+  programa em BASIC Dignified (.dmx: sem numeros de linha, com labels,
+  defines, funcoes, variaveis de nome longo, includes...) e gera
+
+    .amx   o BASIC ASCII classico, linhas numeradas
+    .bmx   o mesmo programa tokenizado, o formato do arquivo .BAS do MSX
+    .lmx   a listagem do tokenizador (opcional)
+
+  E' o mesmo programa do "fwmsx --badig". Na janela do editor: F9 converte o
+  texto da aba (e leva o cursor ao erro), F5 converte e roda no emulador.
+
+COMANDOS
+  badig <opcoes> <fonte.dmx>   converte e grava ao lado do fonte
+  badigrun <fonte.dmx>         converte, monta um disquete com o .bmx e um
+                               AUTOEXEC.BAS que o roda, insere em A: e
+                               reinicia (precisa de interface de disquete)
+
+OPCOES (as do badig.py)
+  -ls N  linha inicial (10)     -lp N  passo (10)     -rh  sem o cabecalho REM
+  -ss    tira todos os espacos  -ca    maiusculas     -tl N  tamanho do TAB
+  -tr    traduz Unicode para os graficos do MSX (fonte em UTF-8)
+  -cp ?|p     troca PRINT por ? (ou o contrario)
+  -tg t|g     tira o THEN antes do GOTO (t) ou o GOTO depois do THEN/ELSE (g)
+  -lbr -lnr -var -lex -par    relatorios: labels, linhas, variaveis, tokens
+  -prr   mostra os relatorios na tela em vez de gravar
+  -asc   o arquivo ja' e' BASIC ASCII: so' tokeniza
+  --no_tokenize   so' gera o .amx    --tk_list N   gera o .lmx (N bytes/linha)
+  --tk_del_ascii  apaga o .amx depois de tokenizar
+
+REMTAGS (no proprio fonte, valem sobre as opcoes)
+  ##BB:arguments=-ss -ca     mais argumentos
+  ##BB:export_file=nome      nome do .amx
+  ##BB:tk_tokenize=false     ##BB:tk_list=16     ##BB:tk_del_ascii=true
+
+CONFIGURACAO
+  As opcoes ficam no badig.cfg (ao lado do executavel), com os nomes do
+  badig.ini original. No editor: Montar > Dignified setup...
+
+EXEMPLOS
+  badig jogo.dmx
+  badig -ss -ca --tk_list 16 jogo.dmx
+  badigrun jogo.dmx
+
+VER TAMBEM
+  dignified, asm, asmrun)MAN");
+
     add("romdb", "romdb <comando> [opcoes]", "banco de ROMs: downloads, busca, verificacao",
         R"MAN(DESCRICAO
   Banco de ROMs (roms/roms.db ao lado do executavel; --roms <pasta> muda a

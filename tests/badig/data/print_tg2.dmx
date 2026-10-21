@@ -1,0 +1,7 @@
+##BB:arguments=-cp p -tg g -ss
+? "a"
+print "b"
+if a then goto {x} else goto {y}
+{x}
+{y}
+if a then print 1 else print 2

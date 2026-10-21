@@ -1,0 +1,15 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 up$="a":gosub 110:zz$=chr$(ch) '>.upper
+40 print zz$
+50 up$="b":gosub 110 '>.upper
+60 zy=3:zx=4:gosub 130:zw=zv:zu=zt '>.pair
+70 zy=1:gosub 130 '>.pair
+80 zy=7:gosub 130 '>.pair
+90 if a=1 then up$="c":gosub 110 else up$="d":gosub 110 '>.upper >.upper
+100 end
+110 ch=asc(up$)-32 '<.upper
+120 return
+130 zv=zy+zx '<.pair
+140 zt=zy-zx
+150 return

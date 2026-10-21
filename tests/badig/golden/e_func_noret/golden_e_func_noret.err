@@ -1,0 +1,4 @@
+*** e_func_noret.dmx: (1,6): Func without ret: .a
+    func .a()
+    -----^
+    Conversion stopped.

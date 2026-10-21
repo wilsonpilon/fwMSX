@@ -1,0 +1,1 @@
+e_declare_kw.dmx lexer output9 tokens00 | 01 | PROGRAM | PROGRAM00 | 01 | NEWLINE | \r01 | 01 | D_INSTRC | declare01 | 09 | C_INSTRC | print01 | 14 | C_INSTSP | :01 | 15 | D_IDNTTP | pp01 | 17 | NEWLINE | \r02 | 01 | D_IDNTTP | PROGRAM02 | 08 | EOF | EOF

@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.41.9 "Hyper Sports: Montar e executar", Konami)
+## Estado atual (v1.42.0 "Road Fighter", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.42.0 o Basic Dignified Suite e' nosso: `fwmsx --badig prog.dmx` gera o `.amx` e o BASIC tokenizado `.bmx` (igual ao badig.py original), F9/F5 no editor convertem e rodam no emulador, e ha' a tela de configuracao**
 **1.41.9 o editor tem o menu Build: F9 monta o fonte Z80 do buffer e leva o cursor ao erro, F5 executa no MSX, Ctrl-F1 abre o manual da palavra**
 **1.41.8 o editor completa palavras (Alt-/) e expande snippets (Tab), e mostra numeros de linha na TUI e na janela**
 **1.41.7 o destaque conhece o MSX-BASIC KUN de verdade: blocos `_TURBO ON/OFF`, remtags `'#I` `'#C` `'#N` e os comandos que o compilador recusa em vermelho**

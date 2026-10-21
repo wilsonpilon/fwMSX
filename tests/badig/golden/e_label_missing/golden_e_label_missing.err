@@ -1,0 +1,4 @@
+*** e_label_missing.dmx: (1,7): Label does not exist: nowhere
+    goto {nowhere}
+    ------^
+    Conversion stopped.

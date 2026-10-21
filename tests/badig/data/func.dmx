@@ -1,0 +1,18 @@
+##BB:arguments=-lbr
+letter$ = .upper("a")
+print letter$
+.upper("b")
+first, second = .pair(3, 4)
+.pair()
+.pair(7)
+if a = 1 then .upper("c") else .upper("d")
+end
+
+func .upper(up$)
+    ch = asc(up$) - 32
+ret chr$(ch)
+
+func .pair(left = 1, right = 2)
+    total = left + right
+    diff = left - right
+ret total, diff

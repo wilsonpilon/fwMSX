@@ -32,7 +32,7 @@ bool IsAppCmd(Cmd c) {
     switch (c) {
     case Cmd::Window2: case Cmd::CloseWindow: case Cmd::DividerUp: case Cmd::DividerDown: case Cmd::WindowDiff:
     case Cmd::New: case Cmd::Exit: case Cmd::Outline: case Cmd::Print: case Cmd::PrintBlock: case Cmd::EjectPage:
-    case Cmd::Assemble: case Cmd::RunMsx: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord:
+    case Cmd::Assemble: case Cmd::RunMsx: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord: case Cmd::BadigSetup:
         return true;
     default:
         return false;
@@ -519,6 +519,10 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
     case Cmd::HelpWord:
         HelpOnWord();
         return true;
+    case Cmd::BadigSetup:
+        badig_edit_ = badig::LoadDefaults();
+        BuildBadigSetup(0);
+        return true;
     case Cmd::Outline:
     case Cmd::Print:
     case Cmd::PrintBlock:
@@ -922,6 +926,24 @@ void EditorApp::DialogDone(int button) {
     Editor &e = Ed();
     std::string err;
 
+    // --- Basic Dignified: duas paginas; OK grava o badig.cfg ---
+    if (kind == Dialog::BadigSetup) {
+        if (button == kBtnCancel) return;
+        ReadBadigPage(done, badig_page_);
+        if (button == kBtnNext) {
+            BuildBadigSetup(1);
+            return;
+        }
+        if (button == kBtnPrev) {
+            BuildBadigSetup(0);
+            return;
+        }
+        std::string serr;
+        if (badig::ConfigPath().empty()) Msg("Basic Dignified: no configuration file");
+        else if (!badig::SaveConfig(badig::ConfigPath(), badig_edit_, serr)) Msg("Basic Dignified: " + serr);
+        else Msg("Basic Dignified options saved");
+        return;
+    }
     // --- ajuda: paginas ---
     if (kind == Dialog::Help) {
         if (button == kBtnNext) BuildHelp(done.help_topic, done.page + 1);

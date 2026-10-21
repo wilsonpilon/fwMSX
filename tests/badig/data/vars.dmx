@@ -1,0 +1,15 @@
+##BB:arguments=-var -prr
+declare food:fd, drink:dk
+declare zq, xv
+if food$ = "cake" and drink = 3 then end
+result$ = "belly full"
+~sleep = 10
+print result$
+counter% = counter% + 1
+tiny = 4
+ab = 5
+other_long_name# = 1.5
+print other_long_name#, other_long_name
+food$ = "x"
+x = 1: y$ = "a"
+a1 = 2

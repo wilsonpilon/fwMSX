@@ -1,0 +1,11 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 rem this will stay
+40 ' this also will stay
+50 'This will stay
+60 print "x"' trailing comment
+70 print "y"'' double after code
+80 print "z"
+90 'alone block with ' quotes
+100 'and a second line
+110 a=1

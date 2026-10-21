@@ -1,0 +1,4 @@
+*** e_keep_pos.dmx: (1,10): keep must be at the start of a line.
+    print 1: keep #a
+    ---------^
+    Conversion stopped.

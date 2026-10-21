@@ -17,6 +17,18 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.42.0 -- "Road Fighter" (Konami) (2026-10-20)
+
+**Pedido do usuario**: colocou o Basic Dignified Suite em `resource/basic-dignified` e o msxIDE em `resource/msxide`: "nao vamos usar o badig em python, vamos fazer um clone nosso nas nossas linguagens do projeto. Quero o programa processando o arquivo DMX e gerando o BMX tokenizado e processado [...] procure recriar a tela de configuracao [...] Importante e tokenizar o arquivo ASCII no final".
+- **Pesquisa antes de codar** (regra do CLAUDE.md): o `compiler.bas` do msxIDE e' uma reescrita por linhas e parcial (sem remtags, toggles, `true`/`false`, compostos); o `badig.py` v2.2.1 e' completo (Lexer + Parser em 5 passadas + modulo MSX + tokenizador). O usuario escolheu (AskUserQuestion) portar o **original**, guardar a configuracao num `badig.cfg` global (mais as remtags do fonte) e executar por **disco temporario + RUN**.
+- **Como ficou igual**: o original e' um lexer por prefixo que cresce enquanto algum grupo regex casa o prefixo inteiro; `Description::Classify` faz o papel do `commands.match` com as listas de palavras e padroes escritos a mao (nenhum `std::regex` no caminho quente). Os tokens sao compartilhados entre as listas (`shared_ptr`), `Position.copy()` soma 1 a coluna, e as quirks viram requisito: o `PROGRAM` final vira `zz`, os nomes curtos descem de `zz` a `aa`. No tokenizador o texto hexadecimal do original foi mantido (a aritmetica de digitos fica igual) e so' as contas dos reais usam `strtod`/`pow`/`printf("%.*f")` como o Python faz com `int * float` e `'%.*f'`.
+- **Divergencias deliberadas**: tokenizar e' padrao; `.amx` sempre CRLF; so' o sistema MSX; `exit` fora de loop avisa em vez de quebrar; colunas do `-tr` contam caracteres.
+- **Escolhas minhas** (a rever): o disco de execucao leva so' o `.bmx` e o `AUTOEXEC.BAS` (sem os arquivos de apoio da pasta); o nome no disco e' o nome do fonte em 8 caracteres maiusculos; o `badig.cfg` fica ao lado do executavel (como o `fwedit.cfg`); a tela de configuracao tem duas paginas porque cabe nos 80x25 da TUI; `Montar > Messages...` deixou de ter separador acima.
+- **Nao feito**: Basic DignifieR (classico -> Dignified) e o tokenizador inverso; NBasic do msxIDE (`include "nbasic.dmx"` e a rotina de carga); copiar arquivos de apoio para o disco; levar os erros de execucao do BASIC de volta a' linha do `.dmx`; projeto `.msxproject`.
+- Validado: Windows (`build.ps1`) e Linux (WSL, `build.sh`), `ctest` 100%; captura da janela real (`fwMSX.exe --edit t.dmx`, F9 sobre um `goto {nowhere}`) e do `fwMSXc.exe --edit --dump` com a tela de configuracao; `controltest`: o programa convertido roda no DISK BASIC e imprime `badig run ok` e `6`.
+
+---
+
 ## v1.41.9 -- "Hyper Sports: Montar e executar" (Konami) (2026-10-20)
 
 **Pedido do usuario**: "sim pode seguir por a E6". A E6 do `editor-spec.md` (Integracao) e' grande; esta versao entrega a parte que usa o que o fwMSX ja' tem (fwasm, `asmrun`, `man`) e deixa o projeto `.msxproject` para a proxima.

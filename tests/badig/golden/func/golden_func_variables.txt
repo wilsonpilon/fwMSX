@@ -1,0 +1,8 @@
+8 variables assignedzz:letter
+zy:left
+zx:right
+zw:first
+zv:total
+zu:second
+zt:diff
+zs:program

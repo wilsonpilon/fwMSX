@@ -1,0 +1,4 @@
+*** e_func_more.dmx: (3,1): Function arguments mismatch.
+    .a(1,2)
+    ^
+    Conversion stopped.

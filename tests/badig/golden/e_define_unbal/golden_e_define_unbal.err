@@ -1,0 +1,4 @@
+*** e_define_unbal.dmx: (1,13): Unbalanced []
+    define [a][x
+    ------------^
+    Conversion stopped.

@@ -1,0 +1,13 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 if a$="1" then print "one"
+40 if a$="2" then print "two"
+50 locate 10,10:? "ten by ten"
+60 locate 0,0:? "origin"
+70 if inkey$<>chr$(13)goto 70 '>@
+80 poke 100,30
+90 poke 100,10
+100 pk(5):pk
+110 print "snake"
+120 print "[ifa] inside a string stays"
+130 locate 1,2:? "nested ";poke 100,7

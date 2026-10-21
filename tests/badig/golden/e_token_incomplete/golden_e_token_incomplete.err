@@ -1,0 +1,4 @@
+*** e_token_incomplete.dmx: (1,4): Token incomplete: .
+    x=5.
+    ---^
+    Conversion stopped.

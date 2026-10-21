@@ -1,0 +1,13 @@
+print "This is the main file."
+'
+include "help.dmx"
+'
+print "This is the main file again."
+declare shared:sh
+shared = 1
+inc_var = 2
+x = inc_var + shared
+define [defonly][print "main define"]
+[defonly]
+{start}
+goto {start}

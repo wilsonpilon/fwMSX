@@ -1,0 +1,1 @@
+e_func_noret.dmx lexer output12 tokens00 | 01 | PROGRAM | PROGRAM00 | 01 | NEWLINE | \r01 | 01 | D_INSTRC | func01 | 06 | D_FUNCNM | .a01 | 08 | C_SYMBOL | (01 | 09 | C_SYMBOL | )01 | 10 | NEWLINE | \r02 | 01 | C_INSTRC | print02 | 07 | C_NUMBER | 102 | 08 | NEWLINE | \r03 | 01 | D_IDNTTP | PROGRAM03 | 08 | EOF | EOF

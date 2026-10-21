@@ -1,0 +1,4 @@
+*** e_func_args.dmx: (1,9): Function definition only takes variables: 1
+    func .a(1)
+    --------^
+    Conversion stopped.

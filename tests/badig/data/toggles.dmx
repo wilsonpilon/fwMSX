@@ -1,0 +1,12 @@
+keep #b #d
+#a print "this will not be converted"
+#b print "this will be converted"
+print "this also will be converted"
+#c
+print "This will not be converted"
+print "And neither will this"
+#c
+#d
+print "kept block"
+#d
+x = 3 #z

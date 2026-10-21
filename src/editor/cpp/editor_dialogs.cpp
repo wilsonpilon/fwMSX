@@ -877,6 +877,97 @@ void EditorApp::BuildReference(const std::string &title, const std::string &text
     dlg_.BuildFields();
 }
 
+// A configuracao do Basic Dignified (a mesma tela do msxIDE, so' com o que vale para o MSX e o fwMSX), em duas paginas. Os campos tem os nomes
+// do badig.ini / msxbatoken.ini; OK grava o badig.cfg ao lado do executavel.
+void EditorApp::BuildBadigSetup(int page) {
+    badig_page_ = page;
+    const badig::Options &o = badig_edit_;
+    dlg_ = DialogBox();
+    dlg_.kind = Dialog::BadigSetup;
+    dlg_.title = page == 0 ? "Basic Dignified setup (1/2)" : "Basic Dignified setup (2/2)";
+    dlg_.w = 66;
+    dlg_.h = 19;
+    if (page == 0) {
+        dlg_.ws.push_back(Label(2, 1, "Line start:"));
+        dlg_.ws.push_back(InputW(20, 14, 1, 6, std::to_string(o.line_start), true, true));
+        dlg_.ws.push_back(Label(24, 1, "Step:"));
+        dlg_.ws.push_back(InputW(21, 30, 1, 5, std::to_string(o.line_step), true, true));
+        dlg_.ws.push_back(Label(40, 1, "Tab length:"));
+        dlg_.ws.push_back(InputW(22, 52, 1, 3, std::to_string(o.tab_length), true, true));
+        dlg_.ws.push_back(CheckW(23, 2, 3, "REM header (Converted with Basic Dignified)", o.rem_header));
+        dlg_.ws.push_back(CheckW(24, 2, 4, "Strip all spaces", o.strip_spaces));
+        dlg_.ws.push_back(CheckW(25, 2, 5, "Capitalize instructions", o.capitalise_all));
+        dlg_.ws.push_back(CheckW(26, 2, 6, "Translate Unicode to MSX characters (UTF-8 source)", o.translate));
+        dlg_.ws.push_back(Label(2, 8, "PRINT:"));
+        dlg_.ws.push_back(RadioW(0, 0, 14, 8, "keep"));
+        dlg_.ws.push_back(RadioW(0, 1, 24, 8, "always ?"));
+        dlg_.ws.push_back(RadioW(0, 2, 40, 8, "always PRINT"));
+        dlg_.ws.push_back(Label(2, 9, "THEN / GOTO:"));
+        dlg_.ws.push_back(RadioW(1, 0, 14, 9, "keep"));
+        dlg_.ws.push_back(RadioW(1, 1, 24, 9, "drop THEN before GOTO"));
+        dlg_.ws.push_back(RadioW(1, 2, 14, 10, "drop GOTO after THEN/ELSE"));
+        dlg_.ws.push_back(CheckW(27, 2, 12, "Tokenize: write the .bmx program (MSX tokenized BASIC)", o.tokenize));
+        dlg_.ws.push_back(CheckW(28, 2, 13, "Delete the .amx after tokenizing", o.tk_del_ascii));
+        dlg_.ws.push_back(Label(2, 14, "List file (.lmx), bytes per line (0 = none, max 32):"));
+        dlg_.ws.push_back(InputW(29, 56, 14, 3, std::to_string(o.tk_list), true, true));
+        dlg_.ws.push_back(ButtonW(kBtnNext, 8, 16, "Next >", false));
+        dlg_.ws.push_back(ButtonW(kBtnOk, 24, 16, "OK", true));
+        dlg_.ws.push_back(ButtonW(kBtnCancel, 34, 16, "Cancel", false));
+        dlg_.BuildFields();
+        dlg_.group_sel[0] = o.convert_print == "?" ? 1 : o.convert_print == "p" ? 2 : 0;
+        dlg_.group_sel[1] = o.strip_then_goto == "t" ? 1 : o.strip_then_goto == "g" ? 2 : 0;
+    } else {
+        dlg_.ws.push_back(Label(2, 1, "Reports (saved next to the .amx, or printed):"));
+        dlg_.ws.push_back(CheckW(30, 2, 3, "Label and function flow as a REM at each line end (-lbr)", o.label_report));
+        dlg_.ws.push_back(CheckW(31, 2, 4, "Line correspondence: BASIC line - Dignified line (-lnr)", o.line_report));
+        dlg_.ws.push_back(CheckW(32, 2, 5, "Long variable names and their short names (-var)", o.var_report));
+        dlg_.ws.push_back(CheckW(33, 2, 6, "Lexer tokens (-lex)", o.lexer_report));
+        dlg_.ws.push_back(CheckW(34, 2, 7, "Parser tokens (-par)", o.parser_report));
+        dlg_.ws.push_back(CheckW(35, 2, 8, "Show the reports in the console instead of saving (-prr)", o.print_report));
+        dlg_.ws.push_back(Label(2, 10, "Messages level (0 = silent .. 5 = every pass):"));
+        dlg_.ws.push_back(InputW(36, 50, 10, 3, std::to_string(o.verbose), true, true));
+        dlg_.ws.push_back(Label(2, 11, "Tokenizer messages level (0 .. 5):"));
+        dlg_.ws.push_back(InputW(37, 50, 11, 3, std::to_string(o.tk_verbose), true, true));
+        dlg_.ws.push_back(Label(2, 13, "F5 (Run on MSX) builds a disk with the .bmx and an AUTOEXEC.BAS."));
+        dlg_.ws.push_back(ButtonW(kBtnPrev, 8, 16, "< Prev", false));
+        dlg_.ws.push_back(ButtonW(kBtnOk, 24, 16, "OK", true));
+        dlg_.ws.push_back(ButtonW(kBtnCancel, 34, 16, "Cancel", false));
+        dlg_.BuildFields();
+    }
+}
+
+void EditorApp::ReadBadigPage(const DialogBox &d, int page) {
+    auto num = [&](int id, int def, int lo, int hi) {
+        const std::string t = d.Text(id);
+        if (t.empty() || t.find_first_not_of("0123456789") != std::string::npos) return def;
+        return std::max(lo, std::min(hi, std::atoi(t.c_str())));
+    };
+    badig::Options &o = badig_edit_;
+    if (page == 0) {
+        o.line_start = num(20, o.line_start, 1, 65535);
+        o.line_step = num(21, o.line_step, 1, 9999);
+        o.tab_length = num(22, o.tab_length, 1, 16);
+        o.rem_header = d.Checked(23);
+        o.strip_spaces = d.Checked(24);
+        o.capitalise_all = d.Checked(25);
+        o.translate = d.Checked(26);
+        o.convert_print = d.Group(0) == 1 ? "?" : d.Group(0) == 2 ? "p" : "";
+        o.strip_then_goto = d.Group(1) == 1 ? "t" : d.Group(1) == 2 ? "g" : "";
+        o.tokenize = d.Checked(27);
+        o.tk_del_ascii = d.Checked(28);
+        o.tk_list = num(29, o.tk_list, 0, 32);
+    } else {
+        o.label_report = d.Checked(30);
+        o.line_report = d.Checked(31);
+        o.var_report = d.Checked(32);
+        o.lexer_report = d.Checked(33);
+        o.parser_report = d.Checked(34);
+        o.print_report = d.Checked(35);
+        o.verbose = num(36, o.verbose, 0, 5);
+        o.tk_verbose = num(37, o.tk_verbose, 0, 5);
+    }
+}
+
 void EditorApp::BuildMouse() {
     dlg_ = DialogBox();
     dlg_.kind = Dialog::MouseSetup;

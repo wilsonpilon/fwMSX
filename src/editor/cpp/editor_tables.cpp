@@ -121,6 +121,7 @@ const CmdInfo kInfos[] = {
     {Cmd::PrevError, "prev-error", false, D::None, true},
     {Cmd::ErrorList, "error-list", false, D::None, true},
     {Cmd::HelpWord, "help-word", false, D::None, true},
+    {Cmd::BadigSetup, "badig-setup", false, D::None, true},
     {Cmd::DisplaySetup, "display-setup", false, D::DisplaySetup, true},
     {Cmd::MouseSetup, "mouse-setup", false, D::MouseSetup, true},
     {Cmd::EditorSetup, "editor-setup", false, D::EditorSetup, true},
@@ -221,11 +222,12 @@ const std::vector<Menu> &Menus() {
         // O menu Build (fase E6): nao existe no NE; fica entre Options e F1=Help
         {"Build", 'u', 59,
          {
-             {"Assemble", 'a', "F9", Cmd::Assemble, 0, false, false},
+             {"Assemble / Convert", 'a', "F9", Cmd::Assemble, 0, false, false},
              {"Run on MSX", 'r', "F5", Cmd::RunMsx, 0, true, false},
              {"Next message", 'n', "F8", Cmd::NextError, 0, false, false},
              {"Previous message", 'p', "Shift-F8", Cmd::PrevError, 0, false, false},
-             {"Messages...", 'm', "", Cmd::ErrorList, 0, false, false},
+             {"Messages...", 'm', "", Cmd::ErrorList, 0, true, false},
+             {"Dignified setup...", 'd', "", Cmd::BadigSetup, 0, false, false},
          }},
         // O menu "F1=Help" (so' abre por F1 ou pelo mouse; nao tem letra de Alt)
         {"F1=Help", 0, 70,

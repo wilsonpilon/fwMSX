@@ -1,0 +1,18 @@
+##BB:arguments=-lbr -var
+define [ifa][if a$ = ],[enter][chr$(13)]
+define [pause][if inkey$<>[" "] goto {@}]
+define [pk][poke 100,[10]]
+define [two][[pk](5):[pk]]
+define [snake_name][print "snake"]
+
+[ifa]"1" then print "one"
+[ifa]"2" then print "two"
+[?](10,10)"ten by ten"
+[?]"origin"
+[pause]([enter])
+[pk](30)
+[pk]
+[two]
+[snake_name]
+print "[ifa] inside a string stays"
+[?](1,2) "nested ";[pk](7)

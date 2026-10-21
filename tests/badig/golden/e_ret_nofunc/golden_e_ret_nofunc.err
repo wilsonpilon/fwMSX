@@ -1,0 +1,4 @@
+*** e_ret_nofunc.dmx: (1,1): Ret without function.
+    ret
+    ^
+    Conversion stopped.

@@ -1,0 +1,6 @@
+10 'Converted with Basic Dignified
+20 'https://github.com/farique1/basic-dignified
+30 print "this will be converted"
+40 print "this also will be converted"
+50 print "kept block"
+60 x=3#z

@@ -1,0 +1,1 @@
+e_int_overflow.dmx lexer output8 tokens00 | 01 | PROGRAM | PROGRAM00 | 01 | NEWLINE | \r01 | 01 | D_IDNTTP | a%01 | 03 | C_SYMBOL | =01 | 04 | C_NUMBER | 4000001 | 09 | NEWLINE | \r02 | 01 | D_IDNTTP | PROGRAM02 | 08 | EOF | EOF

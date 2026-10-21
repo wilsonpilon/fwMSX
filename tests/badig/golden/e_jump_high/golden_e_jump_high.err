@@ -1,0 +1,4 @@
+*** e_jump_high.amx: (3,12): Line number jump too high: 70000
+    30 goto 70000
+    -----------^
+    Conversion stopped.
