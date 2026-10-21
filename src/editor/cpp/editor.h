@@ -312,7 +312,7 @@ public:
     void Render(Grid &grid) const;                      // barra de menu + texto + barra de estado
     // So' a area de texto (e a barra de rolagem) nas linhas [y0, y0 + TextRows()) da grade.
     void RenderBody(Grid &grid, int y0, bool scrollbar = true) const;
-    void RenderStatus(Grid &grid, int y) const;         // a barra de estado do NE na linha y
+    void RenderStatus(Grid &grid, int y, const std::string &project = std::string()) const; // a barra de estado do NE na linha y (+ o nome do projeto aberto)
     bool CursorScreen(int &x, int &y) const;            // onde fica o cursor na grade (linha 1 = primeira do texto)
     int TopLine() const { return top_; }
     int LeftCol() const { return left_; }

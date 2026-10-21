@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.2 -- "Yie Ar Kung-Fu: Projeto lembrado" (Konami) (2026-10-21)
+
+**Pedido do usuario**: "Lembrar do ultimo projeto e arvore de arquivos e nome do projeto na barra de status".
+- **Decisao**: o ultimo projeto vai num arquivo proprio (`fwedit.project`), nao no `fwedit.cfg`: a configuracao so' e' gravada por pedido ("Save configuration"), e abrir um projeto e' um fato que deve valer na sessao seguinte sozinho. Fechar de proposito esquece; New/Open (troca) nao.
+- **Decisao minha** (a rever): ao reabrir na partida so' avisa, nao abre a lista do Sync (nao interromper quem so' quer editar).
+- A arvore existe so' na janela grafica (no TUI o *Files...* ja' lista); `ProjectOpenFile` e' reaproveitado, entao clicar tem o mesmo comportamento do *Files...*.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.43.1 -- "Yie Ar Kung-Fu: Projeto no editor" (Konami) (2026-10-21)
 
 **Pedido do usuario**: "vamos para o editor" (fatia 2 do `.msxproject`); migracao dos projetos do PaleoBasic/msxIDE dispensada (serao abandonados); renomear o fwMSX fica para depois.

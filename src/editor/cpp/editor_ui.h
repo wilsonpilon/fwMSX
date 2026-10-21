@@ -122,8 +122,11 @@ public:
     // o projeto com a pasta (a copia mais nova e' a sugestao; conflito pergunta).
     bool ProjectNew(const std::string &file, std::string &err);
     bool ProjectOpen(const std::string &file, std::string &err);
-    void ProjectClose();
+    void ProjectClose(bool forget = true); // forget = false: so' troca de projeto (New/Open); true = o usuario fechou, nao reabre na proxima vez
+    bool ProjectRestore();                 // reabre o ultimo projeto (fwedit.project ao lado do fwedit.cfg); false se nao havia ou sumiu
+    std::string ProjectName() const { return project_.IsOpen() ? project_.Name() : std::string(); }
     bool HasProject() const { return project_.IsOpen(); }
+    void OpenProjectFile(const std::string &path) { ProjectOpenFile(path); } // a arvore da janela grafica: abre (extraindo antes, se so' existir no projeto)
     prj::Project &ProjectRef() { return project_; }
     const std::string &ProjectRoot() const { return project_root_; }
     void ProjectFlush();  // leva para o banco os arquivos salvos desde a ultima vez (chamado depois de cada tecla, clique e salvamento automatico)
@@ -268,6 +271,8 @@ private:
     void BuildReference(const std::string &title, const std::string &text);
     void BuildProjectList(Dialog kind, const std::string &title, const std::vector<std::string> &items, int sel); // editor_dialogs.cpp
     // menu Project (editor_project.cpp)
+    std::string ProjectMemoPath() const;                        // fwedit.project: guarda o ultimo projeto entre sessoes ("" sem configuracao)
+    void ProjectRemember() const;
     std::string ProjectRel(const std::string &abs_path) const;  // o caminho dentro do projeto, ou "" se o arquivo esta' fora da pasta
     void ProjectSyncStart();                                    // compara; se ha' diferencas mostra a lista (OK aplica o que e' seguro)
     void ProjectSyncApply();

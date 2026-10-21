@@ -1384,7 +1384,42 @@ void test_project_editor() {
     a.CurrentMutable()->Find(1)->text = (dir / "nao_existe.msxproject").string();
     a.DialogEnter();
     check(a.Ed().Message().find("Project:") == 0, "projeto inexistente: mensagem de erro");
+
+    // a barra de estado mostra o nome do projeto
     a.ProjectClose();
+    a.Ed().ClearMessage();
+    check(!screen_has(a, "[p]"), "sem projeto a barra de estado nao mostra nome");
+    std::string oerr;
+    check(a.ProjectOpen((dir / "p.msxproject").string(), oerr), "reabre p.msxproject");
+    a.Ed().ClearMessage();
+    check(!a.ProjectName().empty() && screen_has(a, "[" + a.ProjectName().substr(0, 9) + "]"), "a barra de estado mostra [nome do projeto]");
+    const std::string pname = a.ProjectName();
+    a.ProjectClose();
+
+    // lembrar o ultimo projeto entre sessoes (fwedit.project ao lado do fwedit.cfg)
+    {
+        EditorApp s1;
+        s1.SetSize(80, 25);
+        s1.SetConfigPaths((dir / "memo.cfg").string(), "");
+        check(!s1.ProjectRestore(), "sem fwedit.project: nada a reabrir");
+        check(s1.ProjectOpen((dir / "p.msxproject").string(), oerr) && fs::exists(dir / "fwedit.project"), "abrir grava o fwedit.project");
+        s1.ProjectClose(false);
+        check(fs::exists(dir / "fwedit.project"), "trocar de projeto nao esquece");
+        EditorApp s2;
+        s2.SetSize(80, 25);
+        s2.SetConfigPaths((dir / "memo.cfg").string(), "");
+        s2.LoadConfig();
+        check(s2.HasProject() && s2.ProjectName() == pname && s2.Ed().Message().find("reopened") != std::string::npos,
+              "a sessao seguinte reabre o ultimo projeto");
+        s2.ProjectClose(); // o usuario fechou: nao volta
+        check(!fs::exists(dir / "fwedit.project"), "fechar de proposito apaga o fwedit.project");
+        EditorApp s3;
+        s3.SetConfigPaths((dir / "memo.cfg").string(), "");
+        s3.LoadConfig();
+        check(!s3.HasProject(), "e a proxima sessao comeca sem projeto");
+        spit(dir / "fwedit.project", (dir / "sumiu.msxproject").string() + "\n");
+        check(!s3.ProjectRestore() && !s3.HasProject(), "projeto que sumiu: ignora sem reclamar");
+    }
 
     fs::remove_all(dir);
 }

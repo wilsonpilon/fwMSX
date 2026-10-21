@@ -53,6 +53,7 @@ namespace {
 // Colunas das etiquetas da barra de estado, como no NE 2 (80 colunas).
 constexpr int kColLine = 4;
 constexpr int kColCol = 15;
+constexpr int kColProject = 22;
 constexpr int kColName = 36;
 constexpr int kColMode = 58;
 constexpr int kColWw = 66;
@@ -145,12 +146,14 @@ void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
     }
 }
 
-void Editor::RenderStatus(Grid &g, int sy) const {
+void Editor::RenderStatus(Grid &g, int sy, const std::string &project) const {
     g.PaintRow(sy, kBar);
     PutWide(g, 0, sy, 0x2190, kBar);
     if (modified_) g.Put(2, sy, "*", kBar);
     g.Put(kColLine, sy, "Line=" + std::to_string(cur_.line + 1), kBar);
     g.Put(kColCol, sy, "Col=" + std::to_string(DisplayCol(cur_) + 1), kBar);
+    // o projeto aberto fica entre a coluna e o nome do arquivo (cabem 11 colunas: "[" + 9 + "]")
+    if (!project.empty()) g.Put(kColProject, sy, "[" + project.substr(0, 9) + "]", kBar);
     std::string name = name_.empty() ? "Untitled" : name_;
     if (name.size() > 20) name = name.substr(name.size() - 20);
     g.Put(kColName, sy, name, kBar);

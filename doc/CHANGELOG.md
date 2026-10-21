@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.2] - 2026-10-21 - "Yie Ar Kung-Fu: Projeto lembrado" (Konami)
+
+### Adicionado -- o projeto fica a' vista e volta sozinho (E6 parte 2, fatia 3)
+- **Ultimo projeto lembrado entre sessoes**: abrir/criar um projeto grava o caminho em `fwedit.project` (ao lado do `fwedit.cfg`, sem precisar de "Save configuration"); a proxima sessao o reabre sozinha ("Project X reopened"). *Close project* de proposito apaga o arquivo (nao volta); projeto que sumiu (outro PC, pasta apagada) e' ignorado sem reclamar. A diferenca com o disco nao abre sozinha na partida: *Project > Sync...*.
+- **Nome do projeto na barra de status**: TUI `[nome]` entre `Col=` e o nome do arquivo (ate' 9 letras); janela grafica `Projeto: nome`.
+- **Arvore de arquivos na janela grafica**: com um projeto aberto, painel a' esquerda com as pastas (abrem/fecham) e os arquivos do projeto; clicar abre (extrai antes, se so' existir no banco; binarios avisam). A lista e' relida a cada ~60 quadros.
+- Teste `editorui`: barra de status com e sem projeto; memoria do ultimo projeto (grava, reabre, fechar esquece, projeto sumido ignorado).
+
 ## [1.43.1] - 2026-10-21 - "Yie Ar Kung-Fu: Projeto no editor" (Konami)
 
 ### Adicionado -- o `.msxproject` dentro do editor (E6 parte 2, fatia 2)

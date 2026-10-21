@@ -366,10 +366,73 @@ void EditorPanel::DrawStatus() {
         ImGui::SameLine(0, 16);
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotHistogram), "alterado");
     }
+    if (app_.HasProject()) {
+        ImGui::SameLine(0, 16);
+        ImGui::TextDisabled("Projeto: %s", app_.ProjectName().c_str());
+    }
     if (!e.Message().empty()) {
         ImGui::SameLine(0, 24);
         ImGui::TextColored(ImGui::GetStyleColorVec4(ImGuiCol_PlotLines), "%s", Tr(e.Message()).c_str());
     }
+}
+
+// A arvore do projeto: pastas viram nos que abrem e fecham, cada arquivo e' uma folha; clicar abre. A lista e' ordenada com '/' antes de qualquer
+// outro caractere para que os arquivos de uma pasta fiquem juntos (senao "a/x", "a.b", "a/y" abririam a pasta "a" duas vezes).
+void EditorPanel::DrawProjectTree(float height) {
+    if (tree_project_ != app_.ProjectRoot() || ++tree_age_ > 60) {
+        tree_project_ = app_.ProjectRoot();
+        tree_age_ = 0;
+        tree_files_.clear();
+        for (const prj::FileInfo &f : app_.ProjectRef().List()) tree_files_.push_back(f.path);
+        auto key = [](std::string s) {
+            std::replace(s.begin(), s.end(), '/', '\x01');
+            return s;
+        };
+        std::sort(tree_files_.begin(), tree_files_.end(), [&](const std::string &a, const std::string &b) { return key(a) < key(b); });
+    }
+    if (!ImGui::BeginChild("##ptree", ImVec2(210, height), ImGuiChildFlags_Borders)) {
+        ImGui::EndChild();
+        return;
+    }
+    ImGui::TextDisabled("%s", app_.ProjectName().c_str());
+    ImGui::Separator();
+    struct Level {
+        std::string name;
+        bool open;
+    };
+    std::vector<Level> stack;
+    auto all_open = [&] { return stack.empty() || stack.back().open; };
+    auto pop_to = [&](size_t n) {
+        while (stack.size() > n) {
+            if (stack.back().open) ImGui::TreePop();
+            stack.pop_back();
+        }
+    };
+    for (const std::string &path : tree_files_) {
+        std::vector<std::string> parts;
+        for (size_t p = 0, q; p <= path.size(); p = q + 1) {
+            q = path.find('/', p);
+            if (q == std::string::npos) q = path.size();
+            parts.push_back(path.substr(p, q - p));
+        }
+        const size_t ndirs = parts.size() - 1;
+        size_t common = 0;
+        while (common < stack.size() && common < ndirs && stack[common].name == parts[common]) ++common;
+        pop_to(common);
+        std::string prefix; // o caminho da pasta ate' aqui: o id do no (duas pastas "src" em lugares diferentes nao podem colidir)
+        for (size_t d = 0; d < common; ++d) prefix += parts[d] + "/";
+        for (size_t d = common; d < ndirs; ++d) {
+            prefix += parts[d] + "/";
+            const bool o = all_open() && ImGui::TreeNodeEx((parts[d] + "###" + prefix).c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+            stack.push_back({parts[d], o});
+        }
+        if (!all_open()) continue;
+        ImGui::TreeNodeEx(path.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s",
+                          parts.back().c_str());
+        if (ImGui::IsItemClicked(0)) app_.OpenProjectFile(path);
+    }
+    pop_to(0);
+    ImGui::EndChild();
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -849,7 +912,12 @@ void EditorPanel::DrawContents() {
     // reserva a barra de estado: um separador, uma linha de texto e o respiro inferior da janela
     const float status_h = ImGui::GetTextLineHeightWithSpacing() + ImGui::GetStyle().ItemSpacing.y * 2 + ImGui::GetStyle().WindowPadding.y + 4;
     const float avail = ImGui::GetContentRegionAvail().y;
-    DrawPanes(std::max(40.0f, avail - status_h));
+    const float body_h = std::max(40.0f, avail - status_h);
+    if (app_.HasProject()) {
+        DrawProjectTree(body_h);
+        ImGui::SameLine();
+    }
+    DrawPanes(body_h);
     DrawStatus();
     DrawMenuPopup();
     DrawDialog();

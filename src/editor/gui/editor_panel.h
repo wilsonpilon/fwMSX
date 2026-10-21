@@ -58,6 +58,7 @@ private:
     void DrawPanes(float height);
     void DrawPane(int pane, ImVec2 size);
     void DrawStatus();
+    void DrawProjectTree(float height);  // o painel da esquerda com os arquivos do projeto aberto (clicar abre)
     void DrawDialog();
     void DrawDialogWidgets(DialogBox &d, float ux, float uy);
     void ContextMenu(Editor &ed);
@@ -87,6 +88,10 @@ private:
     int last_active_ = -1;
     PaneState panes_[2];
     std::vector<LenCache> len_cache_;
+    // arvore do projeto: a lista vem do banco, entao e' guardada e so' relida de tempos em tempos (e quando o projeto muda)
+    std::vector<std::string> tree_files_;
+    std::string tree_project_;
+    int tree_age_ = 1 << 30;
 };
 
 // Carrega uma fonte monoespacada do sistema (ou a embutida do ImGui) e a devolve.

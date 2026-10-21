@@ -4,6 +4,7 @@
 // dentro da pasta vai tambem para o banco, e "Sync..." compara os dois lados. A copia mais nova e' a sugestao da lista; um conflito pergunta.
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 
 #include "editor_ui.h"
 
@@ -40,28 +41,65 @@ long long Stamp(const std::string &name) {
 // ---------------------------------------------------------------------------------------------------------------
 
 bool EditorApp::ProjectNew(const std::string &file, std::string &err) {
-    ProjectClose();
+    ProjectClose(false);
     if (!project_.Create(file, std::string(), err)) return false;
     last_project_ = file;
     project_root_ = project_.DefaultRoot();
     for (Editor &w : wins_) w.SetProjectSeen(w.SaveCount()); // o que ja' foi salvo antes nao e' do projeto: entra pelo Sync
+    ProjectRemember();
     return true;
 }
 
 bool EditorApp::ProjectOpen(const std::string &file, std::string &err) {
-    ProjectClose();
+    ProjectClose(false);
     if (!project_.Open(file, err)) return false;
     last_project_ = file;
     project_root_ = project_.DefaultRoot();
     for (Editor &w : wins_) w.SetProjectSeen(w.SaveCount());
+    ProjectRemember();
     return true;
 }
 
-void EditorApp::ProjectClose() {
+void EditorApp::ProjectClose(bool forget) {
     project_.Close();
     project_root_.clear();
     sync_queue_.clear();
     sync_pos_ = 0;
+    if (forget) { // quem fechou de proposito nao quer o projeto de volta na proxima sessao (o Open project... ainda o propoe nesta)
+        std::error_code ec;
+        if (!ProjectMemoPath().empty()) fs::remove(ProjectMemoPath(), ec);
+    }
+}
+
+// O ultimo projeto fica num arquivinho proprio (e nao no fwedit.cfg): a configuracao so' e' gravada quando o usuario pede, e abrir um projeto e'
+// um fato que deve valer na proxima sessao sem precisar de "Save configuration".
+std::string EditorApp::ProjectMemoPath() const {
+    return cfg_main_.empty() ? std::string() : fs::path(cfg_main_).replace_filename("fwedit.project").string();
+}
+
+void EditorApp::ProjectRemember() const {
+    const std::string p = ProjectMemoPath();
+    if (p.empty()) return;
+    std::error_code ec;
+    std::ofstream f(p, std::ios::trunc);
+    if (f) f << fs::absolute(last_project_, ec).string() << "\n";
+}
+
+bool EditorApp::ProjectRestore() {
+    const std::string p = ProjectMemoPath();
+    std::ifstream f(p);
+    std::string line;
+    if (p.empty() || !f || !std::getline(f, line)) return false;
+    while (!line.empty() && (line.back() == '\r' || line.back() == ' ')) line.pop_back();
+    std::error_code ec;
+    if (line.empty() || !fs::exists(line, ec)) return false; // sumiu (outro PC, pasta apagada): fica sem projeto, sem reclamar
+    std::string err;
+    if (!ProjectOpen(line, err)) {
+        Msg("Project: " + err);
+        return false;
+    }
+    Msg("Project " + project_.Name() + " reopened (Project > Sync... to compare)");
+    return true;
 }
 
 std::string EditorApp::ProjectRel(const std::string &abs_path) const {

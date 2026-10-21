@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.43.1)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.43.2)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.43.1, publicada em `main`):**
+**Funcionando (v1.43.2, publicada em `main`):**
+- [x] **Projeto lembrado** (1.43.2): o ultimo projeto reabre sozinho (`fwedit.project`), o nome aparece na barra de status e a janela grafica ganha a arvore de arquivos do projeto. Ver `doc/project-spec.md` secao 8.
 - [x] **Projeto no editor** (1.43.1): menu Project (New/Open/Close/Files/Add/Sync); salvar dentro da pasta leva o arquivo ao `.msxproject`; Sync lista as diferencas com a direcao sugerida e conflito pergunta (Project/Folder/Skip, o mais novo e' o padrao). Ver `doc/project-spec.md` secao 7 e `doc/editor-spec.md`.
 - [x] **Projeto `.msxproject`** (1.43.0, E6 parte 2 fatia 1): UM arquivo SQLite com tudo + copias soltas numa pasta sincronizadas por hash de base (conflito = perguntar, mais novo sugerido), `project export/import` + manifesto para o GitHub, comando `project` e `man project`. Falta: integracao com o editor, `Obifile`, migracao PaleoBasic/msxIDE. Ver `doc/project-spec.md`.
 - [x] **Basic Dignified: erros de execucao no fonte** (1.42.2): *Montar > BASIC line...* leva `Syntax error in 130` a' linha do `.dmx` pela tabela de linhas da ultima conversao (`Result::line_map`). Ver `doc/badig-spec.md`.

@@ -94,6 +94,7 @@ void EditorApp::LoadConfig() {
     if (!cfg_main_.empty()) LoadUserSnippets(fs::path(cfg_main_).replace_filename("fwedit.snippets").string());
     if (!cfg_dir_.empty()) LoadUserSnippets(fs::path(cfg_dir_).replace_filename("fwedit.snippets").string());
     Ed().NewFile(); // aplica o modo inicial de Insert/Over
+    ProjectRestore(); // o projeto da sessao anterior (se o usuario nao o fechou)
 }
 
 bool EditorApp::Open(const std::string &path, std::string &err, bool view) {
@@ -554,7 +555,7 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
             Msg("No project open");
             return false;
         }
-        ProjectClose();
+        ProjectClose(true);
         Msg("Project closed");
         return true;
     case Cmd::ProjectFiles:
@@ -1383,7 +1384,7 @@ void EditorApp::Render(Grid &g) const {
         const std::string name = wins_[0].Name().empty() ? "Untitled" : wins_[0].Name();
         g.Put(std::max(0, (cols_ - static_cast<int>(name.size())) / 2), y, name, kTitleBar);
     }
-    Ed().RenderStatus(g, rows_ - 1);
+    Ed().RenderStatus(g, rows_ - 1, ProjectName());
     if (menu_ >= 0) RenderMenu(g);
     if (HasDialog()) RenderDialog(g);
 }
