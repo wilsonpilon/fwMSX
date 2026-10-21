@@ -305,6 +305,18 @@ void Logger::Fatal(const std::string &desc, const Token *tok) {
 // arquivos
 // ---------------------------------------------------------------------------------------------------------------
 
+namespace {
+SourceReader g_source_reader;
+} // namespace
+
+void SetSourceReader(SourceReader r) { g_source_reader = std::move(r); }
+
+bool SourceReadable(const std::string &path) {
+    std::string tmp;
+    if (g_source_reader && g_source_reader(path, tmp)) return true;
+    return static_cast<bool>(std::ifstream(path));
+}
+
 CodePtr LoadFile(const std::string &path, const std::string *text, int tab_length, Logger &log, const Token *tk) {
     auto code = std::make_shared<Code>();
     code->push_back({0, "PROGRAM", path});
@@ -313,6 +325,8 @@ CodePtr LoadFile(const std::string &path, const std::string *text, int tab_lengt
     std::string data;
     if (text) {
         data = *text;
+    } else if (g_source_reader && g_source_reader(path, data)) {
+        // veio do projeto
     } else {
         std::ifstream f(path, std::ios::binary);
         if (!f) log.Fatal("File not found: " + path, tk);

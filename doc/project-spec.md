@@ -88,7 +88,13 @@ da pasta sem `.msxsync` (o "clone do GitHub"), caminho malicioso. `controltest`:
 - **Arvore** (so' na janela grafica): `EditorPanel::DrawProjectTree`, pastas = nos, arquivos = folhas, clique = `EditorApp::OpenProjectFile`. Ordem com `/` antes dos demais caracteres para agrupar as pastas.
 - **Arvore no TUI (1.43.3)**: o dialogo *Files...* e' a arvore (`ProjectFilesDialog`/`ProjectTreeEnter`): `[-] pasta/` + arquivos recuados; Enter recolhe/expande (reconstroi o dialogo no mesmo item) ou abre.
 - **Menu de contexto (1.43.4)**: `ProjAct` {Open, Push, Pull, Rename, Add, Remove}; `EditorApp::ProjectDo` e' o unico caminho (popup do ImGui via `ProjectAct`; no TUI o botao Actions... do Files... abre `Dialog::ProjectActions`, e Rename/Add pedem o texto em `ProjectRename`/`ProjectAddFile`). Renomear: mover a copia solta + `Drop` + `Push`; tirar do projeto nunca apaga a copia da pasta.
-- Em aberto: Build/Dignified lendo do banco, `Obifile`.
+- Em aberto: `Obifile`.
+
+## 11. Build lendo do projeto (1.43.7)
+
+- `badig::SetSourceReader(fn)` (em `badig.h`, guardado em `badig_base.cpp`): o `LoadFile` do `include` e o `SourceReadable` (a checagem "existe?" do include e da biblioteca) consultam o leitor antes do disco. Vazio = so' disco.
+- Editor: `EditorApp::ProjectSourceReader()` traduz o caminho para o relativo do projeto (`ProjectRel`) e devolve `Project::Get`; `BuildDignified` liga o leitor num escopo RAII (`BadigReaderScope`) so' durante `badig::Convert`. O `DiskFiles` do `BuildAssemble` recebe o mesmo tipo de leitor (tenta `dir+path`, depois `path`) antes do disco.
+- Fora do escopo: `disk_files` (arquivos do .dsk) e o Run (F5), que leem a pasta.
 
 ## 10. Historico, remocoes e nomes (1.43.5, esquema 2)
 

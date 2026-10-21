@@ -1423,6 +1423,36 @@ void test_project_editor() {
     K(a, {"A-j", "s"});
     check(!a.HasDialog() && a.Ed().Message().find("in sync") != std::string::npos, "tudo igual: so' uma mensagem");
 
+    // Build lendo do banco: o include/incbin sai do .msxproject antes da pasta (a copia da pasta esta' quebrada de proposito)
+    {
+        auto bytes = [](const std::string &s) { return std::vector<uint8_t>(s.begin(), s.end()); };
+        check(a.ProjectRef().Put("src/lib.asm", bytes("answer equ 42\n"), err) && a.ProjectRef().Put("src/lib.dmx", bytes("x = 1\n"), err), "libs so' no projeto");
+        spit(dir / "src/lib.asm", "@@@ isto nao monta\n"); // a copia atrasada/quebrada da pasta
+        spit(dir / "src/lib.dmx", "@@@ isto nao converte ((\n");
+        spit(dir / "src/m.asm", "org 0x8000\ninclude \"lib.asm\"\n ld a,answer\n ret\n");
+        spit(dir / "src/m.dmx", "include \"lib.dmx\"\nprint x\n");
+        check(a.ProjectRef().Put("src/m.asm", bytes("org 0x8000\ninclude \"lib.asm\"\n ld a,answer\n ret\n"), err), "m.asm no projeto");
+        a.OpenProjectFile("src/m.asm");
+        K(a, {"F9"});
+        check(a.Ed().Message().rfind("Assemble OK", 0) == 0, "F9: o include do montador sai do projeto, nao da pasta quebrada");
+        a.OpenProjectFile("src/m.dmx");
+        K(a, {"F9"});
+        check(a.Ed().Message().rfind("Converted", 0) == 0, "F9 no .dmx: o include do Dignified sai do projeto");
+        // o que o projeto nao tem continua saindo da pasta
+        spit(dir / "src/solo.dmx", "y = 2\n");
+        spit(dir / "src/m2.dmx", "include \"solo.dmx\"\nprint y\n");
+        check(a.Open((dir / "src/m2.dmx").string(), err), "abre o m2.dmx da pasta (fora do projeto)");
+        K(a, {"F9"});
+        check(a.Ed().Message().rfind("Converted", 0) == 0, "include que so' existe na pasta cai no disco");
+        for (const char *p : {"src/lib.asm", "src/lib.dmx", "src/m.asm", "src/m.dmx", "src/m2.dmx", "src/solo.dmx"}) {
+            a.ProjectRef().Remove(p, err);
+            fs::remove(dir / p);
+        }
+        for (const char *p : {"src/m.amx", "src/m.bmx", "src/m2.amx", "src/m2.bmx"}) fs::remove(dir / p); // o F9 do Dignified grava ao lado do fonte
+        check(a.HasProject() && a.ProjectRef().List().size() == 2, "volta aos 2 arquivos");
+        while (a.HasDialog()) K(a, {"Esc"});
+    }
+
     // fechar; reabrir pelo menu
     K(a, {"A-j", "c"});
     check(!a.HasProject(), "Close project");

@@ -165,7 +165,9 @@ Fechadas pelas telas (2026-10-20): (1) a tabela de teclas do NE 2 esta' completa
 Respondidas em 1c: perfil Norton padrao + teclas modernas alternativas + perfil "fwEditor" opcional; teclas alternativas para o que o terminal entrega mal; Load more/Write to cursor/Top of file serao implementados (baixa prioridade); modo somente leitura `view`.
 Em aberto: (3) como a barra de menus comporta os novos menus (80 colunas); (10) desenhar o perfil "fwEditor" (so' depois do Norton funcionar); (11) a tabela das teclas alternativas (uma por tecla problematica); (4) arquivos grandes (o NE tem "Load more"): e' preciso ou basta carregar tudo?; (5) tema padrao: cinza do NE ou escuro moderno?; (6) varios arquivos abertos: 2 janelas como o NE, ou abas tambem?; (7) NE 2 e' da Symantec: o fwMSX copia o JEITO (menus/teclas), nunca codigo nem textos de ajuda do original.
 
-## 7. Estado (atualizado em 2026-10-20)
+## 7. Estado (atualizado em 2026-10-21)
+
+**1.43.7**: o Build (F9/F5) com um projeto aberto le `include`/`incbin` do banco `.msxproject` antes da pasta (ver `doc/project-spec.md` secao 11).
 
 **E1 entregue na 1.41.0**: `src/editor/{cpp,c,fortran,asm}`, `tests/editor/editor_test.cpp` (`ctest` editor). Feito: buffer e cursor, Insert/Over, desfazer/refazer, blocos, busca/troca, ir para linha, parentese casado, as teclas do NE 2 (40) e as alternativas, os 49 mnemonicos de menu, modo somente leitura (`ItemEnabled`), arquivo
 (CRLF/LF, Ctrl-Z, BOM, backup, Merge, Output to file), Text-layout simples (Center line, Word wrap, Auto indent, tabs, quebras de pagina), Information, grade 80x25 como a tela do NE.

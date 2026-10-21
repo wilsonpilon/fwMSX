@@ -444,7 +444,7 @@ void SpliceLibraryIncludes(std::vector<TokPtr> &toks, const Cfg &cfg, Logger &lo
         if (a.tok != "D_INSTRC" || a.UVal() != "INCLUDE" || b.tok != "C_LITQUO") continue;
         const std::string name = PyStripWs(PyStrip(b.val, "\""));
         if (name.empty() || IsAbsPath(name)) continue;
-        if (std::ifstream(JoinPath(cfg.file_path, name))) continue; // um arquivo do usuario: namespace proprio
+        if (SourceReadable(JoinPath(cfg.file_path, name))) continue; // um arquivo do usuario: namespace proprio
         const std::string lib = JoinPath(LibraryDir(), name);
         if (!std::ifstream(lib)) continue;
 

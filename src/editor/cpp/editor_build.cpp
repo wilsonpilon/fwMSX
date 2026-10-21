@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <unordered_set>
 
 extern "C" {
@@ -22,11 +23,17 @@ namespace ed {
 
 namespace {
 
-// Includes e incbin saem da pasta do fonte (o mesmo criterio do `asmrun`).
+// Includes e incbin saem da pasta do fonte (o mesmo criterio do `asmrun`). Com um projeto aberto, o banco `.msxproject` vale ANTES do disco: e' a
+// fonte da verdade, e a copia da pasta pode estar atrasada (outro PC, Sync ainda nao feito). `proj` devolve false para o que o projeto nao tem.
+using ProjectGet = std::function<bool(const std::string &abs_path, std::vector<uint8_t> &data)>;
+
 class DiskFiles : public fwasm::FileProvider {
 public:
-    explicit DiskFiles(std::string dir) : dir_(std::move(dir)) {}
-    bool Read(const std::string &path, std::vector<uint8_t> &data) override { return ReadAll(path, data) || ReadAll(dir_ + path, data); }
+    DiskFiles(std::string dir, ProjectGet proj) : dir_(std::move(dir)), proj_(std::move(proj)) {}
+    bool Read(const std::string &path, std::vector<uint8_t> &data) override {
+        if (proj_ && (proj_(dir_ + path, data) || proj_(path, data))) return true;
+        return ReadAll(path, data) || ReadAll(dir_ + path, data);
+    }
 
 private:
     static bool ReadAll(const std::string &p, std::vector<uint8_t> &data) {
@@ -36,6 +43,13 @@ private:
         return true;
     }
     std::string dir_;
+    ProjectGet proj_;
+};
+
+// Poe o leitor do projeto no Badig durante uma conversao e tira ao sair (qualquer retorno), para nao vazar para outro uso (badigcli, testes).
+struct BadigReaderScope {
+    explicit BadigReaderScope(badig::SourceReader r) { badig::SetSourceReader(std::move(r)); }
+    ~BadigReaderScope() { badig::SetSourceReader({}); }
 };
 
 bool IsBasicFamily(const Lang *l) {
@@ -65,6 +79,17 @@ std::string Editor::WordAtCursor() const {
 
 // Basic Dignified: converte o texto do buffer (.dmx) em .amx e .bmx pelo clone do badig.py (src/badig). Os erros e avisos do Badig viram as mesmas
 // mensagens do montador (F8 / Shift-F8 / Messages...); o erro de um .include abre a aba do arquivo.
+badig::SourceReader EditorApp::ProjectSourceReader() const {
+    if (!project_.IsOpen()) return {};
+    return [this](const std::string &p, std::string &data) {
+        const std::string rel = ProjectRel(p);
+        std::vector<uint8_t> b;
+        if (rel.empty() || !project_.Get(rel, b)) return false;
+        data.assign(b.begin(), b.end());
+        return true;
+    };
+}
+
 bool EditorApp::BuildDignified() {
     Editor &e = Ed();
     const std::string path = e.Name();
@@ -73,6 +98,7 @@ bool EditorApp::BuildDignified() {
     badig::Options o = badig::LoadDefaults();
     o.source = unnamed ? std::string("noname.dmx") : path;
     const std::string text = e.Text();
+    BadigReaderScope scope(ProjectSourceReader());
     const badig::Result r = badig::Convert(o, {}, &text, !unnamed); // sem nome: so' confere (nada e' gravado)
 
     build_msgs_.clear();
@@ -129,7 +155,10 @@ bool EditorApp::BuildAssemble() {
     std::string dir;
     if (!path.empty() && fs::path(path).has_parent_path()) dir = fs::path(path).parent_path().string() + "/";
 
-    DiskFiles files(dir);
+    DiskFiles files(dir, [this](const std::string &p, std::vector<uint8_t> &d) {
+        const std::string rel = ProjectRel(p);
+        return !rel.empty() && project_.Get(rel, d);
+    });
     fwasm::AsmOptions opts;
     const fwasm::AsmResult r = fwasm::Assemble(name, e.Text(), opts, &files);
 

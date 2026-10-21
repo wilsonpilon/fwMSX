@@ -684,7 +684,7 @@ void Parser::IncludeFile() {
     if (!IsAbsPath(include_file)) {
         include_file = JoinPath(cfg_.file_path, include_file);
         // nao ha' um na pasta do fonte: a biblioteca do fwMSX (o nbasic.dmx)
-        if (!std::ifstream(include_file) && !LibraryDir().empty()) {
+        if (!SourceReadable(include_file) && !LibraryDir().empty()) {
             const std::string lib = JoinPath(LibraryDir(), as_written);
             if (std::ifstream(lib)) include_file = lib;
         }

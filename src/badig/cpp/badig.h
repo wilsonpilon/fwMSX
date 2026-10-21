@@ -7,6 +7,7 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -93,6 +94,12 @@ bool SaveConfig(const std::string &path, const Options &o, std::string &err);
 // A pasta da biblioteca (ao lado do executavel, badig/): o nbasic.dmx que `include "nbasic.dmx"` acha quando nao ha' um na pasta do fonte, e o NBASIC.BIN.
 void SetLibraryDir(const std::string &dir);
 const std::string &LibraryDir();
+
+// Leitor de fontes que vale ANTES do disco para os .include (o editor com um projeto aberto: o fonte e' o do banco `.msxproject`, nao a copia da pasta,
+// que pode estar atrasada). Devolve false = "nao tenho": cai no disco. Vazio (padrao) = so' o disco. `path` e' como o Badig o abriria.
+using SourceReader = std::function<bool(const std::string &path, std::string &data)>;
+void SetSourceReader(SourceReader r);
+bool SourceReadable(const std::string &path); // o leitor tem, ou o arquivo existe em disco
 
 // Os arquivos que vao para o disquete de execucao alem do .bmx e do AUTOEXEC.BAS: os `disk_files` e, com NestorBASIC, o NBASIC.BIN. host = onde esta';
 // msx = o nome 8.3 em maiusculas no disco. false + `err` se um nome nao serve, um arquivo nao existe ou o NBASIC.BIN nao foi achado.

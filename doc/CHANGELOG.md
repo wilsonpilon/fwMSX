@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.7] - 2026-10-21 - "Yie Ar Kung-Fu: Build lendo do projeto" (Konami)
+
+### Alterado -- Build e Basic Dignified leem o banco do projeto (E6 parte 2, fatia 7)
+- Com um projeto aberto, o `include` do Basic Dignified e o `include`/`incbin` do montador saem do `.msxproject` ANTES da pasta; o que o projeto nao tem continua saindo do disco. A copia da pasta pode estar atrasada (outro PC, Sync ainda nao feito) e o Build nao se engana mais com ela.
+- Badig: `SetSourceReader`/`SourceReadable` (gancho de leitura de fontes; vazio = so' disco, entao `badigcli` nao muda). Editor: `EditorApp::ProjectSourceReader` e o `DiskFiles` do montador ganharam o leitor do projeto.
+- O texto do arquivo aberto continua sendo o do BUFFER (como antes); so' os arquivos incluidos mudam de origem.
+- Teste `editorui`: lib so' no banco e copia quebrada na pasta -> F9 monta (`.asm`) e converte (`.dmx`); include so' na pasta cai no disco.
+
 ## [1.43.6] - 2026-10-21 - "Yie Ar Kung-Fu: Historico de ROMs grandes" (Konami)
 
 ### Alterado

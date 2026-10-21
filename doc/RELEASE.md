@@ -17,6 +17,17 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.7 -- "Yie Ar Kung-Fu: Build lendo do projeto" (Konami) (2026-10-21)
+
+**Pedido do usuario**: fazer o Build e o Dignified lerem do projeto e encerrar a parte de projetos do dia.
+- **Desenho**: o banco e' a fonte da verdade (o Sync so' o espelha na pasta). Um gancho de leitura no Badig e no `FileProvider` do montador consulta o projeto primeiro e cai no disco se o projeto nao tem o arquivo. Sem projeto aberto o gancho e' vazio: nada muda para `badigcli`, `asmrun` ou quem nao usa projeto. O gancho e' ligado so' durante a conversao (escopo RAII) para nao vazar.
+- **Nao mexido**: o `disk_files` do Dignified (arquivos para o .dsk) continua lendo da pasta; o Run (F5) continua pedindo ao `asmrun` o arquivo gravado em disco, que o Sync mantem igual.
+- **Achado no teste**: o F9 do Dignified grava `.amx`/`.bmx` ao lado do fonte; esses arquivos novos fazem o Open do projeto abrir o dialogo de Sync (so' na pasta), entao o teste os apaga ao limpar.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+- **Fica para depois (projetos)**: `Obifile` (receita de build; precisa do desenho do que ela guarda).
+
+---
+
 ## v1.43.6 -- "Yie Ar Kung-Fu: Historico de ROMs grandes" (Konami) (2026-10-21)
 
 **Pedido do usuario**: subir o limite de 2 MiB para 8 MiB, pois ja existem ROMs desse tamanho. Constante `kRevMaxBytes` em `project.cpp`. Validado: Windows e Linux (WSL), `ctest` 100% (32).
