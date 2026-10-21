@@ -86,4 +86,5 @@ da pasta sem `.msxsync` (o "clone do GitHub"), caminho malicioso. `controltest`:
 - **`fwedit.project`**: uma linha com o caminho absoluto do ultimo `.msxproject`, ao lado do `fwedit.cfg` (`ProjectMemoPath`). Gravado por `ProjectNew/Open`; `ProjectClose(true)` (o usuario fechou) o apaga; `ProjectClose(false)` e' so' a troca. `LoadConfig` chama `ProjectRestore`: reabre sem abrir o Sync, e se o arquivo sumiu nao faz nada.
 - **Barra de status**: `Editor::RenderStatus(grid, y, project)`; no TUI `[nome]` na coluna 22 (9 letras); na janela `Projeto: nome`.
 - **Arvore** (so' na janela grafica): `EditorPanel::DrawProjectTree`, pastas = nos, arquivos = folhas, clique = `EditorApp::OpenProjectFile`. Ordem com `/` antes dos demais caracteres para agrupar as pastas.
-- Em aberto: Build/Dignified lendo do banco, `Obifile`, arvore com menu de contexto (adicionar/remover), arvore no TUI.
+- **Arvore no TUI (1.43.3)**: o dialogo *Files...* e' a arvore (`ProjectFilesDialog`/`ProjectTreeEnter`): `[-] pasta/` + arquivos recuados; Enter recolhe/expande (reconstroi o dialogo no mesmo item) ou abre.
+- Em aberto: Build/Dignified lendo do banco, `Obifile`, arvore com menu de contexto (adicionar/remover).

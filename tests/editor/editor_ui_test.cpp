@@ -1332,10 +1332,14 @@ void test_project_editor() {
 
     // Project > Files...: lista os arquivos; Enter abre o escolhido
     K(a, {"A-j", "f"});
-    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles && screen_has(a, "src/a.bas") && screen_has(a, "asm"), "Files... lista os arquivos com o tipo");
-    a.Current();
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles && screen_has(a, "[-] src/") && screen_has(a, "a.bas") && screen_has(a, "asm"),
+          "Files... lista a ARVORE: pasta aberta e arquivos com o tipo");
+    K(a, {"Enter"}); // a primeira linha e' a pasta: recolhe
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles && screen_has(a, "[+] src/") && !screen_has(a, "a.bas"), "Enter na pasta recolhe (o dialogo fica)");
     K(a, {"Enter"});
-    check(!a.HasDialog() && fs::path(a.Ed().Name()).filename() == "a.bas", "Enter abre o arquivo escolhido");
+    check(a.HasDialog() && screen_has(a, "[-] src/") && screen_has(a, "novo.asm"), "Enter de novo expande");
+    K(a, {"Down", "Enter"});
+    check(!a.HasDialog() && fs::path(a.Ed().Name()).filename() == "a.bas", "Enter no arquivo abre");
 
     // alteracao so' na pasta (editor externo): o Sync sugere pasta -> projeto e aplica
     spit(dir / "src/novo.asm", "org 0x8000\n");

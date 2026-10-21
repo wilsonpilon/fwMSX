@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <set>
 
 #include "editor_ui.h"
 
@@ -237,7 +238,9 @@ void EditorApp::ProjectAnswer(int button) {
 // arquivos do projeto
 // ---------------------------------------------------------------------------------------------------------------
 
-void EditorApp::ProjectFilesDialog() {
+// A lista de arquivos como ARVORE: cada pasta e' uma linha "[-] pasta/" (Enter recolhe, "[+]" expande) e cada arquivo, recuado sob a sua pasta,
+// abre com Enter. Como o dialogo fecha no Enter, recolher/expandir reconstroi a lista no mesmo item (ver DialogDone).
+void EditorApp::ProjectFilesDialog(int sel) {
     if (!project_.IsOpen()) {
         Msg("No project open (Project > Open project)");
         return;
@@ -247,13 +250,54 @@ void EditorApp::ProjectFilesDialog() {
         Msg("The project has no files yet (Project > Sync... brings the files of the folder)");
         return;
     }
+    // '/' antes de qualquer outro caractere: os arquivos de uma pasta ficam juntos ("a/x", "a.b", "a/y" abririam a pasta "a" duas vezes)
+    auto key = [](std::string s) {
+        std::replace(s.begin(), s.end(), '/', '\x01');
+        return s;
+    };
+    std::vector<const prj::FileInfo *> sorted;
+    for (const prj::FileInfo &f : project_list_) sorted.push_back(&f);
+    std::sort(sorted.begin(), sorted.end(), [&](const prj::FileInfo *a, const prj::FileInfo *b) { return key(a->path) < key(b->path); });
+
     std::vector<std::string> items;
-    for (const prj::FileInfo &f : project_list_) {
-        std::string kind = f.kind;
-        kind.resize(std::max<size_t>(kind.size(), 10), ' ');
-        items.push_back(kind + " " + f.path);
+    tree_rows_.clear();
+    std::set<std::string> seen;
+    for (const prj::FileInfo *f : sorted) {
+        std::vector<std::string> parts;
+        for (size_t p = 0, q; p <= f->path.size(); p = q + 1) {
+            q = f->path.find('/', p);
+            if (q == std::string::npos) q = f->path.size();
+            parts.push_back(f->path.substr(p, q - p));
+        }
+        const size_t ndirs = parts.size() - 1;
+        std::string prefix;
+        bool hidden = false; // algum ancestral recolhido: nada abaixo dele aparece
+        for (size_t d = 0; d < ndirs; ++d) {
+            prefix += parts[d] + "/";
+            const bool folded = tree_folded_.count(prefix) != 0;
+            if (seen.insert(prefix).second && !hidden) {
+                tree_rows_.emplace_back(prefix, true);
+                items.push_back(std::string(d * 2, ' ') + (folded ? "[+] " : "[-] ") + parts[d] + "/");
+            }
+            hidden = hidden || folded;
+        }
+        if (hidden) continue;
+        tree_rows_.emplace_back(f->path, false);
+        items.push_back(std::string(ndirs * 2, ' ') + "    " + parts.back() + "   (" + f->kind + ")");
     }
-    BuildProjectList(Dialog::ProjectFiles, "Project files: " + project_.Name(), items, 0);
+    BuildProjectList(Dialog::ProjectFiles, "Project files: " + project_.Name() + "  (Enter: open / fold)", items, sel);
+}
+
+// Enter numa linha da arvore: pasta recolhe/expande e a lista volta no mesmo item; arquivo abre.
+void EditorApp::ProjectTreeEnter(int row) {
+    if (row < 0 || row >= static_cast<int>(tree_rows_.size())) return;
+    const auto [path, is_dir] = tree_rows_[static_cast<size_t>(row)];
+    if (!is_dir) {
+        ProjectOpenFile(path);
+        return;
+    }
+    if (!tree_folded_.erase(path)) tree_folded_.insert(path);
+    ProjectFilesDialog(row);
 }
 
 void EditorApp::ProjectOpenFile(const std::string &path) {

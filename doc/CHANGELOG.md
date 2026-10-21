@@ -7,6 +7,12 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.3] - 2026-10-21 - "Yie Ar Kung-Fu: Arvore no TUI" (Konami)
+
+### Alterado -- Project > Files... virou arvore (E6 parte 2, fatia 4)
+- No TUI (e no dialogo da janela) o *Files...* mostra as pastas como linhas `[-] pasta/` com os arquivos recuados embaixo (`nome   (tipo)`); **Enter numa pasta recolhe** (`[+]`) ou expande e a lista volta no mesmo item; **Enter num arquivo abre**. As pastas recolhidas sao lembradas entre aberturas.
+- Teste `editorui`: arvore, recolher, expandir, abrir.
+
 ## [1.43.2] - 2026-10-21 - "Yie Ar Kung-Fu: Projeto lembrado" (Konami)
 
 ### Adicionado -- o projeto fica a' vista e volta sozinho (E6 parte 2, fatia 3)

@@ -5,6 +5,7 @@
 #pragma once
 
 #include <functional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -280,7 +281,8 @@ private:
     void ProjectAnswer(int button);
     void ProjectReloadBuffers(const std::vector<std::pair<std::string, long long>> &before);
     std::vector<std::pair<std::string, long long>> ProjectStamps() const;
-    void ProjectFilesDialog();
+    void ProjectFilesDialog(int sel = 0);
+    void ProjectTreeEnter(int row);
     void ProjectOpenFile(const std::string &path);
     void ProjectAddCurrent();
 
@@ -289,6 +291,8 @@ private:
     std::string last_project_;                // o ultimo .msxproject aberto: Open project... o propoe de novo
     std::vector<prj::SyncItem> sync_queue_;  // conflitos e apagados que esperam a resposta do usuario
     size_t sync_pos_ = 0;
+    std::vector<std::pair<std::string, bool>> tree_rows_; // as linhas da arvore do Files...: (caminho, e' pasta)
+    std::set<std::string> tree_folded_;                   // as pastas recolhidas ("src/"), lembradas entre aberturas do dialogo
     std::vector<prj::FileInfo> project_list_; // o que o dialogo Files... mostra (o indice da lista = o indice aqui)
     std::vector<std::pair<std::string, long long>> sync_before_;
     std::vector<Editor> wins_;

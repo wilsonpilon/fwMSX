@@ -17,6 +17,14 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.3 -- "Yie Ar Kung-Fu: Arvore no TUI" (Konami) (2026-10-21)
+
+**Pedido do usuario**: "Arvore na TUI por hora".
+- **Desenho**: sem painel lateral (a grade de 80 colunas do TUI nao tem lugar para ele): a arvore mora no dialogo *Files...*, que ja' existia. Como o dialogo fecha no Enter, recolher/expandir o reconstroi no mesmo item (`ProjectTreeEnter`), com as pastas recolhidas guardadas em `tree_folded_`.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.43.2 -- "Yie Ar Kung-Fu: Projeto lembrado" (Konami) (2026-10-21)
 
 **Pedido do usuario**: "Lembrar do ultimo projeto e arvore de arquivos e nome do projeto na barra de status".

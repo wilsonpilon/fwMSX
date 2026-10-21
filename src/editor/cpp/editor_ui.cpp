@@ -1186,7 +1186,7 @@ void EditorApp::DialogDone(int button) {
     }
     case Dialog::ProjectFiles: {
         const Widget *l = done.Find(2);
-        if (button == kBtnOk && l && l->sel >= 0 && l->sel < static_cast<int>(project_list_.size())) ProjectOpenFile(project_list_[static_cast<size_t>(l->sel)].path);
+        if (button == kBtnOk && l) ProjectTreeEnter(l->sel);
         break;
     }
     case Dialog::ProjectSync:
