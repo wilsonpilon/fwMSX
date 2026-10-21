@@ -89,7 +89,10 @@ bool Ignored(const std::string &rel) {
         const size_t n = std::char_traits<char>::length(suf);
         return base.size() >= n && std::equal(base.end() - static_cast<long>(n), base.end(), suf, [](char a, char b) { return std::tolower(static_cast<unsigned char>(a)) == b; });
     };
-    return ends(".msxproject") || ends(".msxproject-journal") || ends(".msxproject-wal") || ends(".msxproject-shm");
+    if (ends(".msxproject") || ends(".msxproject-journal") || ends(".msxproject-wal") || ends(".msxproject-shm")) return true;
+    // copia de seguranca do editor do fwMSX (Save refaz READ.ME como READ.{E; o caractere de backup pode ser { ~ @)
+    const size_t dot = base.rfind('.');
+    return dot != std::string::npos && dot + 1 < base.size() && base.size() - dot >= 3 && (base[dot + 1] == '{' || base[dot + 1] == '~' || base[dot + 1] == '@');
 }
 
 struct DiskFile {
@@ -148,6 +151,14 @@ private:
 // ---------------------------------------------------------------------------------------------------------------
 // funcoes soltas
 // ---------------------------------------------------------------------------------------------------------------
+
+bool IsIgnored(const std::string &rel) {
+    if (Ignored(rel)) return true;
+    for (size_t i = 0; i < rel.size(); ++i) { // qualquer pasta que comece com ponto (.git, .vscode)
+        if (rel[i] == '.' && (i == 0 || rel[i - 1] == '/')) return true;
+    }
+    return false;
+}
 
 std::string NormalizePath(const std::string &path) {
     std::string p = path;

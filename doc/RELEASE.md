@@ -17,6 +17,18 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.1 -- "Yie Ar Kung-Fu: Projeto no editor" (Konami) (2026-10-21)
+
+**Pedido do usuario**: "vamos para o editor" (fatia 2 do `.msxproject`); migracao dos projetos do PaleoBasic/msxIDE dispensada (serao abandonados); renomear o fwMSX fica para depois.
+- **Desenho**: o editor continua trabalhando nos arquivos da PASTA (modelo, Build e Dignified nao mudam); o projeto acompanha por `Project::Push` depois de cada gravacao (contador `Editor::SaveCount` x `ProjectSeen`, conferido depois de cada tecla/clique/dialogo). Assim todos os caminhos de salvamento (menu, atalho, autosave, F5/F9) passam pelo mesmo gancho e o modelo nao ganhou dependencia do projeto.
+- **Decisoes minhas** (a rever): a lista do Sync abre sozinha ao criar/abrir um projeto com diferencas; arquivo salvo na pasta entra no projeto sozinho (sem perguntar); *Open project...* propoe o ultimo projeto; so' arquivos de texto abrem pelo *Files...*.
+- **Achado**: o editor deixa uma copia de seguranca (`READ.{E`) ao lado do arquivo; entrava no projeto como "novo na pasta". `IsIgnored` agora a recusa (e o `Sync` tambem).
+- **Falha minha**: o primeiro build desta rodada saiu antes de subir a versao e sobrescreveu o `dist/fwMSX-1.43.0.zip` local (nao rastreado; o tag 1.43.0 no GitHub nao e' afetado).
+- **Nao feito**: lembrar o ultimo projeto entre sessoes (arquivo de configuracao do editor), arvore de arquivos na janela grafica, barra de status com o nome do projeto, Build/Dignified lendo do banco, `Obifile`.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.43.0 -- "Yie Ar Kung-Fu" (Konami) (2026-10-21)
 
 **Pedido do usuario**: o `.msxproject` como UM arquivo SQLite com todo o projeto + copias soltas na pasta, extraidas ao copiar para outro PC, com sugestao do lado mais novo; facil de copiar entre PCs e de mover para o GitHub.

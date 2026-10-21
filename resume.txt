@@ -26,7 +26,7 @@ linguagens. Veio do fMSX (Marat Fayzullin, com o aval dele). Meta de medio prazo
   sincronizadas por hash de base (.msxsync local); conflito = perguntar (o mais novo e' so' sugestao); GitHub = versionar a PASTA + manifesto msxproject.txt (project import recria o banco).
   Decisoes do usuario: hash de base + perguntar; pasta + manifesto no git; journal tradicional (sem WAL). ctest 32/32.
 - Proximas fatias: integracao com o editor (abrir/salvar pelo projeto via Project::Save, arvore, dialogo de conflito, aviso de "mais novo" ao abrir), Build/Dignified lendo do projeto,
-  Obifile, migracao PaleoBasic/msxIDE, remocoes entre PCs, revisions. Proximo jogo novo (Y): ver lista no CLAUDE.md (Yie Ar Kung-Fu ja' usado).
+  Obifile (SEM migracao PaleoBasic/msxIDE: o usuario dispensou, serao abandonados; renomear o fwMSX fica para depois), remocoes entre PCs, revisions. Proximo jogo novo (Y): ver lista no CLAUDE.md (Yie Ar Kung-Fu ja' usado).
 
 == Estado ao encerrar (2026-10-21, antes do projeto) ==
 - Ultima versao publicada: 1.42.2 "Road Fighter: Erros de execucao no fonte" (Konami), commit c006de23, tag 1.42.2, branch v1.42.2, pushed. ctest 31/31 em Windows e Linux/WSL.

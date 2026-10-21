@@ -1277,6 +1277,118 @@ void test_badig_build() {
     fs::remove_all(dir);
 }
 
+// O menu Project: o .msxproject aberto no editor. Salvar leva o arquivo para o banco; Sync compara; conflito pergunta.
+void test_project_editor() {
+    const fs::path dir = fs::temp_directory_path() / "fwedit_project";
+    fs::remove_all(dir);
+    fs::create_directories(dir / "src");
+    spit(dir / "src/a.bas", "10 PRINT 1\r\n");
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.SetStartDir((dir / "src").string());
+    std::string err;
+    check(a.Open((dir / "src/a.bas").string(), err), "abre o a.bas");
+
+    // sem projeto os itens que dependem dele ficam cinza
+    check(!a.HasProject(), "comeca sem projeto");
+    K(a, {"A-j", "f"});
+    check(!a.HasDialog() && a.Ed().Message().find("No project") == std::string::npos, "Files... sem projeto: item desabilitado, nada acontece");
+    K(a, {"Esc"});
+
+    // novo projeto numa pasta que ja' tem arquivos: a lista do Sync aparece sozinha, com a direcao sugerida
+    K(a, {"A-j", "n"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectNew && screen_has(a, "New project"), "Project > New project... abre o dialogo");
+    a.CurrentMutable()->Find(1)->text = (dir / "p.msxproject").string();
+    a.DialogEnter();
+    check(a.HasProject() && fs::exists(dir / "p.msxproject") && a.ProjectRoot() == dir.string(), "cria o projeto; a pasta padrao e' a do .msxproject");
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectSync && screen_has(a, "new in folder -> project") && screen_has(a, "src/a.bas"),
+          "a pasta tem arquivos: a lista do Sync mostra 'new in folder -> project'");
+    a.PressDialog(ed::kBtnOk);
+    check(!a.HasDialog() && a.ProjectRef().Has("src/a.bas") && a.Ed().Message().find("1 to project") != std::string::npos, "OK aplica: o arquivo entra no projeto");
+
+    // salvar o arquivo aberto leva a edicao para o banco
+    a.Ed().Type("X");
+    K(a, {"A-f", "s"});
+    std::vector<uint8_t> d;
+    check(a.ProjectRef().Get("src/a.bas", d) && std::string(d.begin(), d.end()).find("X10 PRINT 1") == 0, "Save grava na pasta E no .msxproject");
+
+    // arquivo novo salvo dentro da pasta entra no projeto sozinho; fora da pasta, nao; a copia de seguranca nunca
+    a.Ed().NewFile();
+    a.Ed().Type("org 0x4000");
+    K(a, {"A-f", "a"});
+    a.Text("novo.asm");
+    K(a, {"Enter"});
+    check(a.ProjectRef().Has("src/novo.asm"), "Save As dentro da pasta inclui o arquivo no projeto");
+    check(!a.ProjectRef().Has("src/a.bas") || !a.ProjectRef().Has("src/a.{as"), "a copia de seguranca do editor nao entra no projeto");
+    for (const prj::FileInfo &f : a.ProjectRef().List()) check(f.path.find(".{") == std::string::npos, "nenhum arquivo de backup no projeto: " + f.path);
+    const fs::path outside = fs::temp_directory_path() / "fwedit_project_fora.txt";
+    a.Ed().NewFile();
+    a.Ed().Type("fora");
+    K(a, {"A-f", "a"});
+    a.Text(outside.string());
+    K(a, {"Enter"});
+    check(!a.ProjectRef().Has("fwedit_project_fora.txt") && a.ProjectRef().List().size() == 2, "arquivo salvo fora da pasta nao entra");
+    fs::remove(outside);
+
+    // Project > Files...: lista os arquivos; Enter abre o escolhido
+    K(a, {"A-j", "f"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles && screen_has(a, "src/a.bas") && screen_has(a, "asm"), "Files... lista os arquivos com o tipo");
+    a.Current();
+    K(a, {"Enter"});
+    check(!a.HasDialog() && fs::path(a.Ed().Name()).filename() == "a.bas", "Enter abre o arquivo escolhido");
+
+    // alteracao so' na pasta (editor externo): o Sync sugere pasta -> projeto e aplica
+    spit(dir / "src/novo.asm", "org 0x8000\n");
+    K(a, {"A-j", "s"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectSync && screen_has(a, "folder changed -> project"), "Sync: a edicao externa aparece");
+    a.PressDialog(ed::kBtnOk);
+    check(a.ProjectRef().Get("src/novo.asm", d) && std::string(d.begin(), d.end()) == "org 0x8000\n", "e vai para o projeto");
+
+    // conflito: os dois lados mudaram -> pergunta, com o lado mais novo como botao padrao
+    spit(dir / "src/novo.asm", "org 0x9000\n");
+    check(a.ProjectRef().Put("src/novo.asm", std::vector<uint8_t>{'p', 'r', 'o', 'j', '\n'}, err, "", 4000000000LL), "o projeto muda (bem mais novo)");
+    K(a, {"A-j", "s"});
+    check(a.HasDialog() && screen_has(a, "CONFLICT (newer: project)"), "Sync lista o conflito");
+    a.PressDialog(ed::kBtnOk);
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectConflict && screen_has(a, "Changed in the project AND in the folder") &&
+              screen_has(a, "The newer copy is the project's"),
+          "o conflito pergunta e diz qual lado e' o mais novo");
+    check(slurp(dir / "src/novo.asm") == "org 0x9000\n", "nada foi mexido antes da resposta");
+    a.PressDialog(ed::kBtnFolder);
+    check(!a.HasDialog() && slurp(dir / "src/novo.asm") == "org 0x9000\n" && a.ProjectRef().Get("src/novo.asm", d) && std::string(d.begin(), d.end()) == "org 0x9000\n",
+          "Folder: fica a pasta e o projeto a recebe");
+
+    // sumiu da pasta: pergunta (Project = restaura)
+    fs::remove(dir / "src/novo.asm");
+    K(a, {"A-j", "s"});
+    check(a.HasDialog() && screen_has(a, "deleted in folder"), "arquivo apagado da pasta aparece na lista");
+    a.PressDialog(ed::kBtnOk);
+    check(a.HasDialog() && screen_has(a, "Deleted from the folder"), "pergunta o que fazer");
+    a.PressDialog(ed::kBtnProject);
+    check(fs::exists(dir / "src/novo.asm") && slurp(dir / "src/novo.asm") == "org 0x9000\n", "Project: restaura a copia solta");
+
+    // em sincronia: so' avisa
+    K(a, {"A-j", "s"});
+    check(!a.HasDialog() && a.Ed().Message().find("in sync") != std::string::npos, "tudo igual: so' uma mensagem");
+
+    // fechar; reabrir pelo menu
+    K(a, {"A-j", "c"});
+    check(!a.HasProject(), "Close project");
+    K(a, {"A-j", "o"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectOpen && a.Current()->Find(1)->text.find("p.msxproject") != std::string::npos,
+          "Open project... ja' propoe o .msxproject da pasta");
+    a.CurrentMutable()->Find(1)->text = (dir / "p.msxproject").string();
+    a.DialogEnter();
+    check(a.HasProject() && a.ProjectRef().List().size() == 2 && !a.HasDialog(), "reabre: 2 arquivos, tudo em sincronia");
+    K(a, {"A-j", "o"});
+    a.CurrentMutable()->Find(1)->text = (dir / "nao_existe.msxproject").string();
+    a.DialogEnter();
+    check(a.Ed().Message().find("Project:") == 0, "projeto inexistente: mensagem de erro");
+    a.ProjectClose();
+
+    fs::remove_all(dir);
+}
+
 int main() {
     test_key_names();
     test_menus();
@@ -1296,6 +1408,7 @@ int main() {
     test_complete_and_numbers();
     test_build();
     test_badig_build();
+    test_project_editor();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

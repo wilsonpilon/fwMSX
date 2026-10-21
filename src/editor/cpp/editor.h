@@ -107,6 +107,8 @@ enum class Cmd {
     Information, Outline, About, Language,
     // menu Build (fase E6): montar o fonte do buffer, executar no MSX, navegar pelas mensagens, ajuda da palavra
     Assemble, RunMsx, NextError, PrevError, ErrorList, HelpWord, BadigSetup, BasicLine,
+    // menu Project (E6 parte 2): o .msxproject aberto no editor
+    ProjectNew, ProjectOpen, ProjectClose, ProjectFiles, ProjectAdd, ProjectSync,
     // menu Options
     DisplaySetup, MouseSetup, EditorSetup, SaveConfig,
     // ajuda e menu
@@ -116,7 +118,8 @@ enum class Cmd {
 enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
     InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
-    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference, BadigSetup, BasicLine
+    About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference, BadigSetup, BasicLine,
+    ProjectNew, ProjectOpen, ProjectFiles, ProjectSync, ProjectConflict
 };
 
 struct CmdInfo {
@@ -266,6 +269,10 @@ public:
     // Largura da margem de numeros de linha na grade (TUI): 0 se desligada. A janela grafica desenha a dela e pede SetGridGutter(false).
     int Gutter() const;
     void SetGridGutter(bool v) { grid_gutter_ = v; }
+    // Contagem de gravacoes bem-sucedidas (Save/SaveAs/autosave): o projeto compara com a ultima que ele viu para levar o arquivo ao .msxproject.
+    int SaveCount() const { return save_count_; }
+    int ProjectSeen() const { return project_seen_; }
+    void SetProjectSeen(int v) { project_seen_ = v; }
     bool AutosavedOnce() const { return autosaved_; }
     void SetAutosavedOnce(bool v) { autosaved_ = v; }
     void SetName(const std::string &n) { name_ = n; }
@@ -399,6 +406,8 @@ private:
     mutable std::vector<HlState> hl_states_;  // estado do destaque no INICIO de cada linha (so' ate' onde ja' foi pedido)
     mutable uint64_t hl_rev_ = 0;
     std::string untitled_;   // noname01, noname02...: so' para mostrar (a interface grafica)
+    int save_count_ = 0;     // gravacoes bem-sucedidas deste buffer
+    int project_seen_ = 0;   // a ultima que o projeto (.msxproject) ja' levou para o banco
     bool autosaved_ = false; // o autosave ja' guardou a copia { do arquivo original
     std::string message_;
     std::string profile_ = "norton";

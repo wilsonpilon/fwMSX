@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.0 "Yie Ar Kung-Fu", Konami)
+## Estado atual (v1.43.1 "Yie Ar Kung-Fu: Projeto no editor", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.43.1 o editor ganhou o menu Project: salvar leva o arquivo ao .msxproject, Sync mostra as diferencas e conflito pergunta**
 **1.43.0 o projeto .msxproject: UM arquivo SQLite com tudo + copias soltas sincronizadas (comando `project`, GitHub pela pasta)**
 **1.42.2 erro de execucao do BASIC (Syntax error in 130) volta a' linha do .dmx: Montar > BASIC line...**
 **1.42.1 o Basic Dignified roda programas reais: biblioteca do NestorBASIC (include "nbasic.dmx") e arquivos de apoio no disco de execucao (##BB:disk_files=)**

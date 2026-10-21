@@ -17,6 +17,12 @@ namespace fs = std::filesystem;
 
 namespace {
 
+// Depois de cada tecla/clique/dialogo: o que foi salvo dentro da pasta do projeto vai para o .msxproject (so' custa algo quando houve um Save).
+struct ProjectFlushGuard {
+    EditorApp &app;
+    ~ProjectFlushGuard() { app.ProjectFlush(); }
+};
+
 Cmd LookupCmd(const std::string &canon) {
     static const std::unordered_map<std::string, Cmd> table = [] {
         std::unordered_map<std::string, Cmd> m;
@@ -33,6 +39,7 @@ bool IsAppCmd(Cmd c) {
     case Cmd::Window2: case Cmd::CloseWindow: case Cmd::DividerUp: case Cmd::DividerDown: case Cmd::WindowDiff:
     case Cmd::New: case Cmd::Exit: case Cmd::Outline: case Cmd::Print: case Cmd::PrintBlock: case Cmd::EjectPage:
     case Cmd::Assemble: case Cmd::RunMsx: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord: case Cmd::BadigSetup: case Cmd::BasicLine:
+    case Cmd::ProjectNew: case Cmd::ProjectOpen: case Cmd::ProjectClose: case Cmd::ProjectFiles: case Cmd::ProjectAdd: case Cmd::ProjectSync:
         return true;
     default:
         return false;
@@ -205,6 +212,7 @@ bool EditorApp::AutosaveNow() {
         }
     }
     if (!session_path_.empty() && SaveSession(session_path_)) any = true;
+    ProjectFlush();
     if (any) Msg("Auto-saved");
     return any;
 }
@@ -365,6 +373,7 @@ void EditorApp::RunMenu(int m, int i) {
 }
 
 void EditorApp::DialogEnter() {
+    const ProjectFlushGuard flush{*this};
     if (!HasDialog()) return;
     if (dlg_.kind == Dialog::Open || dlg_.kind == Dialog::SaveAs || dlg_.kind == Dialog::Merge || dlg_.kind == Dialog::Window2) {
         FileDialogEnter();
@@ -523,6 +532,40 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         badig_edit_ = badig::LoadDefaults();
         BuildBadigSetup(0);
         return true;
+    case Cmd::ProjectNew:
+        BuildSimpleInput(Dialog::ProjectNew, "New project", "File:", (fs::path(cwd_.empty() ? "." : cwd_) / "projeto.msxproject").string(), 44);
+        return true;
+    case Cmd::ProjectOpen: {
+        std::string def = last_project_.empty() ? (cwd_.empty() ? std::string(".") : cwd_) : last_project_; // o ultimo projeto, ou um .msxproject da pasta atual
+        std::error_code ec;
+        if (last_project_.empty()) {
+            for (const auto &de : fs::directory_iterator(def, ec)) {
+                if (de.path().extension() == ".msxproject") {
+                    def = de.path().string();
+                    break;
+                }
+            }
+        }
+        BuildSimpleInput(Dialog::ProjectOpen, "Open project", "File:", def, 44);
+        return true;
+    }
+    case Cmd::ProjectClose:
+        if (!project_.IsOpen()) {
+            Msg("No project open");
+            return false;
+        }
+        ProjectClose();
+        Msg("Project closed");
+        return true;
+    case Cmd::ProjectFiles:
+        ProjectFilesDialog();
+        return true;
+    case Cmd::ProjectAdd:
+        ProjectAddCurrent();
+        return true;
+    case Cmd::ProjectSync:
+        ProjectSyncStart();
+        return true;
     case Cmd::BasicLine:
         if (basic_map_.empty()) {
             Msg("BASIC line: convert a Basic Dignified source first (F9)");
@@ -551,12 +594,15 @@ bool EditorApp::Enabled(const MenuItem &it) const {
     if (it.cmd == Cmd::RunMsx) return static_cast<bool>(run_hook_);
     if (it.cmd == Cmd::HelpWord) return static_cast<bool>(help_hook_);
     if (it.cmd == Cmd::NextError || it.cmd == Cmd::PrevError) return !build_msgs_.empty();
+    if (it.cmd == Cmd::ProjectClose || it.cmd == Cmd::ProjectFiles || it.cmd == Cmd::ProjectAdd || it.cmd == Cmd::ProjectSync) return project_.IsOpen();
+    if (it.cmd == Cmd::ProjectNew || it.cmd == Cmd::ProjectOpen) return true;
     if (it.cmd == Cmd::New || it.cmd == Cmd::Exit) return !(Ed().ReadOnly() && it.cmd == Cmd::New);
     if (it.cmd == Cmd::Outline || it.cmd == Cmd::Print || it.cmd == Cmd::PrintBlock || it.cmd == Cmd::EjectPage) return false;
     return Ed().ItemEnabled(it);
 }
 
 bool EditorApp::Key(const std::string &canon) {
+    const ProjectFlushGuard flush{*this};
     if (canon.empty()) return false;
     Ed().ClearMessage();
     for (Editor &w : wins_) { // a lista de completar e' do editor que esta' recebendo as teclas
@@ -610,6 +656,7 @@ bool EditorApp::Key(const std::string &canon) {
 }
 
 bool EditorApp::Text(const std::string &bytes) {
+    const ProjectFlushGuard flush{*this};
     if (HasDialog()) {
         for (const char c : bytes) {
             const int b = dlg_.Key(std::string(1, c));
@@ -827,6 +874,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::MouseSetup: BuildMouse(); break;
     case Dialog::Language: BuildLanguage(); break;
     case Dialog::Errors: BuildMessagesDialog(); break;
+    case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: break; // montados por quem abre
     case Dialog::EditorSetup: BuildEditorSetup(); break;
     case Dialog::SaveConfig: BuildSaveConfig(); break;
     case Dialog::Help: BuildHelp(arg, 0); break;
@@ -920,6 +968,7 @@ void EditorApp::ReplacePrompt() {
 }
 
 void EditorApp::DialogDone(int button) {
+    const ProjectFlushGuard flush{*this};
     if (!HasDialog()) return;
     const Dialog kind = dlg_.kind;
     const bool is_file = kind == Dialog::Open || kind == Dialog::SaveAs || kind == Dialog::Merge || kind == Dialog::Window2;
@@ -1120,6 +1169,31 @@ void EditorApp::DialogDone(int button) {
         if (button == kBtnOk && l) BuildGoto(l->sel);
         break;
     }
+    case Dialog::ProjectNew:
+    case Dialog::ProjectOpen: {
+        std::string file = done.Text(1);
+        if (file.empty()) break;
+        if (fs::path(file).extension().empty()) file += ".msxproject";
+        if (fs::path(file).is_relative()) file = (fs::path(cwd_.empty() ? "." : cwd_) / file).string();
+        if (kind == Dialog::ProjectNew ? ProjectNew(file, err) : ProjectOpen(file, err)) {
+            Msg(std::string(kind == Dialog::ProjectNew ? "Project created: " : "Project opened: ") + project_.Name() + " (folder " + project_root_ + ")");
+            ProjectSyncStart(); // arquivos que ja' estao na pasta, ou diferencas entre as duas copias: a lista sugere o lado mais novo
+        } else {
+            Msg("Project: " + err);
+        }
+        break;
+    }
+    case Dialog::ProjectFiles: {
+        const Widget *l = done.Find(2);
+        if (button == kBtnOk && l && l->sel >= 0 && l->sel < static_cast<int>(project_list_.size())) ProjectOpenFile(project_list_[static_cast<size_t>(l->sel)].path);
+        break;
+    }
+    case Dialog::ProjectSync:
+        if (button == kBtnOk) ProjectSyncApply();
+        break;
+    case Dialog::ProjectConflict:
+        ProjectAnswer(button);
+        break;
     case Dialog::Reference:
         break;
     case Dialog::Language: {
@@ -1270,6 +1344,7 @@ void EditorApp::MouseDrag(int x, int y) {
 }
 
 void EditorApp::MouseUp(int, int) {
+    const ProjectFlushGuard flush{*this};
     dragging_ = false;
 }
 

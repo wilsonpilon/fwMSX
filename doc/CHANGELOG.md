@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.1] - 2026-10-21 - "Yie Ar Kung-Fu: Projeto no editor" (Konami)
+
+### Adicionado -- o `.msxproject` dentro do editor (E6 parte 2, fatia 2)
+- **Menu Project** (TUI e janela; `Alt-J`): *New project...*, *Open project...*, *Close project*, *Files...*, *Add current file*, *Sync...*.
+- **Salvar leva para o projeto**: com um projeto aberto, todo arquivo salvo DENTRO da pasta do projeto (Save, Save As, autosave, F5/F9) vai tambem para o `.msxproject`; arquivo novo salvo na pasta entra sozinho; fora da pasta, copia de seguranca (`.{`) e pastas com ponto (`.git`) nunca entram.
+- **Sync... mostra o que difere e a direcao sugerida** ("folder changed -> project", "project changed -> folder", "new in folder -> project", "CONFLICT (newer: project)"...); OK aplica o que e' seguro. **Conflito pergunta**: dialogo com *Project / Folder / Skip / Cancel*, o lado mais NOVO e' o botao padrao; arquivo apagado da pasta tambem pergunta (*Project* restaura, *Folder* tira do projeto). Abas abertas sem alteracoes sao recarregadas quando o Sync as muda; com alteracoes o editor avisa.
+- Ao criar/abrir um projeto a lista do Sync aparece sozinha se houver diferencas (o "apontar para o mais novo").
+- *Files...*: lista os arquivos do projeto (tipo e caminho); Enter abre (extrai antes, se so' existir no projeto). Binarios (disco, fita, PDF) avisam.
+- Os menus View/Options/Build subiram uma coluna para a esquerda para caber o Project antes do F1=Help (o NE 2 tinha View em 44 e Options em 50).
+- Testes: `editorui` (fluxo completo do menu), `edittest` (barra com Build e Project).
+
 ## [1.43.0] - 2026-10-21 - "Yie Ar Kung-Fu" (Konami)
 
 ### Adicionado -- o projeto `.msxproject` (fase E6 parte 2, fatia 1)

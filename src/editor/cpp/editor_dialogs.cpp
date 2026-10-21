@@ -632,12 +632,13 @@ void EditorApp::BuildConfirm(const std::vector<std::string> &lines, const std::v
     }
     int total = 0;
     for (const int b : buttons) {
-        total += (b == kBtnSave ? 4 : b == kBtnDontSave ? 10 : b == kBtnCancel ? 6 : b == kBtnYes ? 3 : b == kBtnNo ? 2 : b == kBtnAll ? 3 : b == kBtnSkip ? 4 : b == kBtnTop ? 3 : b == kBtnCursor ? 6 : 2) + 4 + 2;
+        total += (b == kBtnSave ? 4 : b == kBtnDontSave ? 10 : b == kBtnCancel ? 6 : b == kBtnYes ? 3 : b == kBtnNo ? 2 : b == kBtnAll ? 3 : b == kBtnSkip ? 4 : b == kBtnTop ? 3 : b == kBtnCursor ? 6 : b == kBtnProject ? 7 : b == kBtnFolder ? 6 : 2) + 4 + 2;
     }
     int x = std::max(1, (dlg_.w - 2 - total) / 2);
     for (const int b : buttons) {
         const char *label = b == kBtnSave ? "Save" : b == kBtnDontSave ? "Don't Save" : b == kBtnCancel ? "Cancel" : b == kBtnYes ? "Yes"
-                          : b == kBtnNo ? "No" : b == kBtnAll ? "All" : b == kBtnSkip ? "Skip" : b == kBtnTop ? "Top" : b == kBtnCursor ? "Cursor" : "OK";
+                          : b == kBtnNo ? "No" : b == kBtnAll ? "All" : b == kBtnSkip ? "Skip" : b == kBtnTop ? "Top" : b == kBtnCursor ? "Cursor"
+                          : b == kBtnProject ? "Project" : b == kBtnFolder ? "Folder" : "OK";
         dlg_.ws.push_back(ButtonW(b, x, 2 + static_cast<int>(lines.size()), label, b == default_button));
         x += static_cast<int>(std::string(label).size()) + 4 + 2;
     }
@@ -849,6 +850,22 @@ void EditorApp::BuildMessagesDialog() {
         list.items.push_back((m.warning ? "W " : "E ") + where + "  " + m.text);
     }
     list.sel = std::max(0, build_cur_);
+    list.top = std::max(0, list.sel - 5);
+    dlg_.ws.push_back(list);
+    OkCancel(dlg_, 14);
+    dlg_.BuildFields();
+}
+
+// Uma lista de escolha do menu Project (arquivos do projeto, diferencas da sincronizacao): Enter/OK devolve o item marcado.
+void EditorApp::BuildProjectList(Dialog kind, const std::string &title, const std::vector<std::string> &items, int sel) {
+    dlg_ = DialogBox();
+    dlg_.kind = kind;
+    dlg_.title = title;
+    dlg_.w = std::min(cols_ - 2, 76);
+    dlg_.h = 17;
+    Widget list = ListW(2, 2, 1, dlg_.w - 6, 12, "");
+    list.items = items;
+    list.sel = std::max(0, std::min(sel, static_cast<int>(items.size()) - 1));
     list.top = std::max(0, list.sel - 5);
     dlg_.ws.push_back(list);
     OkCancel(dlg_, 14);

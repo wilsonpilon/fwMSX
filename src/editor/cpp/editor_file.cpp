@@ -172,6 +172,7 @@ bool Editor::Save(std::string &err, bool make_backup) {
         return false;
     }
     modified_ = false;
+    ++save_count_;
     if (make_backup) autosaved_ = false; // um Save manual refaz a copia na proxima vez que o autosave gravar
     return true;
 }

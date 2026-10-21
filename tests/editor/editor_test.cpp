@@ -678,9 +678,11 @@ void test_render() {
     e.Render(g);
     check(g.cols == 80 && g.rows == 25, "Render: grade 80x25");
     const std::string top = row(g, 0);
+    // View e Options andaram uma coluna para a esquerda (o NE 2 tinha 44 e 50) para caber o menu Project antes do F1=Help
     check(top.substr(3, 4) == "File" && top.substr(9, 5) == "Block" && top.substr(16, 11) == "Text-layout" && top.substr(29, 6) == "Search" &&
-              top.substr(37, 5) == "Print" && top.substr(44, 4) == "View" && top.substr(50, 7) == "Options" && top.substr(70, 7) == "F1=Help",
-          "Render: barra de menu nas colunas do NE 2");
+              top.substr(37, 5) == "Print" && top.substr(43, 4) == "View" && top.substr(48, 7) == "Options" && top.substr(56, 5) == "Build" && top.substr(62, 7) == "Project" &&
+              top.substr(70, 7) == "F1=Help",
+          "Render: barra de menu nas colunas do NE 2 (View/Options uma coluna a esquerda) com Build e Project");
     const std::string st = row(g, 24);
     check(st.substr(4, 6) == "Line=1" && st.substr(15, 5) == "Col=1" && st.substr(36, 8) == "Untitled" && st.substr(58, 6) == "Insert" &&
               st.substr(66, 6) == "WW=Off",

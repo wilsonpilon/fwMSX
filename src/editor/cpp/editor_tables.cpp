@@ -123,6 +123,12 @@ const CmdInfo kInfos[] = {
     {Cmd::HelpWord, "help-word", false, D::None, true},
     {Cmd::BadigSetup, "badig-setup", false, D::None, true},
     {Cmd::BasicLine, "basic-line", false, D::None, true},
+    {Cmd::ProjectNew, "project-new", false, D::None, true},
+    {Cmd::ProjectOpen, "project-open", false, D::None, true},
+    {Cmd::ProjectClose, "project-close", false, D::None, true},
+    {Cmd::ProjectFiles, "project-files", false, D::None, true},
+    {Cmd::ProjectAdd, "project-add", false, D::None, true},
+    {Cmd::ProjectSync, "project-sync", false, D::None, true},
     {Cmd::DisplaySetup, "display-setup", false, D::DisplaySetup, true},
     {Cmd::MouseSetup, "mouse-setup", false, D::MouseSetup, true},
     {Cmd::EditorSetup, "editor-setup", false, D::EditorSetup, true},
@@ -206,14 +212,14 @@ const std::vector<Menu> &Menus() {
              {"Eject page", 'e', "", Cmd::EjectPage, 0, true, false},
              {"Setup...", 's', "", Cmd::PrintSetup, 0, false, false},
          }},
-        {"View", 'v', 44,
+        {"View", 'v', 43,
          {
              {"Information display", 'i', "", Cmd::Information, 0, false, false},
              {"Outline display", 'o', "", Cmd::Outline, 0, true, false},
              {"Language...", 'l', "", Cmd::Language, 0, false, false},
              {nullptr, 'a', "", Cmd::About, 0, false, true},
          }},
-        {"Options", 'o', 50,
+        {"Options", 'o', 48,
          {
              {"Display...", 'd', "", Cmd::DisplaySetup, 0, false, false},
              {"Mouse...", 'm', "", Cmd::MouseSetup, 0, false, false},
@@ -221,7 +227,7 @@ const std::vector<Menu> &Menus() {
              {"Save configuration...", 's', "", Cmd::SaveConfig, 0, false, false},
          }},
         // O menu Build (fase E6): nao existe no NE; fica entre Options e F1=Help
-        {"Build", 'u', 59,
+        {"Build", 'u', 56,
          {
              {"Assemble / Convert", 'a', "F9", Cmd::Assemble, 0, false, false},
              {"Run on MSX", 'r', "F5", Cmd::RunMsx, 0, true, false},
@@ -230,6 +236,16 @@ const std::vector<Menu> &Menus() {
              {"Messages...", 'm', "", Cmd::ErrorList, 0, true, false},
              {"BASIC line...", 'l', "", Cmd::BasicLine, 0, false, false},
              {"Dignified setup...", 'd', "", Cmd::BadigSetup, 0, false, false},
+         }},
+        // O menu Project (E6 parte 2): o .msxproject aberto no editor (doc/project-spec.md)
+        {"Project", 'j', 62,
+         {
+             {"New project...", 'n', "", Cmd::ProjectNew, 0, false, false},
+             {"Open project...", 'o', "", Cmd::ProjectOpen, 0, false, false},
+             {"Close project", 'c', "", Cmd::ProjectClose, 0, true, false},
+             {"Files...", 'f', "", Cmd::ProjectFiles, 0, false, false},
+             {"Add current file", 'a', "", Cmd::ProjectAdd, 0, false, false},
+             {"Sync...", 's', "", Cmd::ProjectSync, 0, false, false},
          }},
         // O menu "F1=Help" (so' abre por F1 ou pelo mouse; nao tem letra de Alt)
         {"F1=Help", 0, 70,

@@ -725,6 +725,8 @@ set(EDITOR_LIB_SOURCES
         src/editor/cpp/editor_syntax.cpp
         src/editor/cpp/editor_complete.cpp
         src/editor/cpp/editor_build.cpp # menu Build: monta o buffer pelo fwasm
+        src/editor/cpp/editor_project.cpp # menu Project: o .msxproject aberto no editor
+        ${PROJECT_LIB_SOURCES}
         src/editor/cpp/completion.cpp
         src/editor/c/ed_text.c
         src/editor/c/ed_syntax.c
@@ -785,8 +787,8 @@ if (MINGW)
 endif ()
 add_test(NAME project COMMAND projecttest)
 
-# o controle (comando `project`) carrega o projeto, que precisa do sqlite3
-foreach (t repltest controltest asme2etest mamutetest)
+# o controle (comando `project`) e o editor (menu Project) carregam o projeto, que precisa do sqlite3
+foreach (t repltest controltest asme2etest mamutetest edittest editorui syntaxtest)
     target_link_libraries(${t} PRIVATE sqlite3)
 endforeach ()
 

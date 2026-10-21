@@ -69,4 +69,14 @@ da pasta sem `.msxsync` (o "clone do GitHub"), caminho malicioso. `controltest`:
 - A configuracao do **manifesto so' vale no import**; o `sync` a regrava a partir do banco (config editada so' no manifesto, depois de um `git pull`, nao entra).
 - **Apagados no projeto**: apagar um arquivo do projeto em outro PC nao apaga a copia solta (so' volta como "so na pasta"); falta registro de remocoes.
 - Renomear e' apagar + criar. Nomes que so' diferem por maiuscula (Windows x Linux): falta aviso.
-- Receita de build (`Obifile`), `revisions`, migracao dos `.msxproject` do PaleoBasic e `.msxproj` do msxIDE, trava de dois processos no mesmo projeto.
+- Receita de build (`Obifile`), `revisions` (migracao dos projetos do PaleoBasic/msxIDE DISPENSADA pelo usuario: serao abandonados), trava de dois processos no mesmo projeto.
+
+## 8. O projeto no editor (1.43.1)
+
+- **Menu Project** (`Alt-J`): New project..., Open project..., Close project, Files..., Add current file, Sync.... Sem projeto aberto os quatro ultimos ficam cinza.
+- **Salvar**: o modelo do editor conta as gravacoes (`Editor::SaveCount`); `EditorApp::ProjectFlush` (depois de cada tecla, clique, dialogo e autosave) compara com `ProjectSeen` e faz `Project::Push` do arquivo salvo dentro da pasta. Fora da pasta, copia de seguranca (`.{`) e pasta com ponto: `prj::IsIgnored`.
+- **Sync...**: `Status` -> lista (so' as diferencas, em ingles como o resto do editor) -> OK = `Project::Sync` (o que e' seguro) -> uma pergunta por conflito/apagado (`Dialog::ProjectConflict`, botoes Project/Folder/Skip/Cancel, o lado mais novo marcado). Abas abertas e intactas sao recarregadas; abas com alteracoes avisam.
+- **Files...**: `Project::List` com tipo e caminho; Enter abre a copia solta (extraindo antes se so' existir no projeto); so' texto.
+- Ao criar ou abrir um projeto a lista do Sync aparece sozinha se houver diferencas.
+- Teste: `editorui` (`test_project_editor`, ~30 verificacoes: criar numa pasta com arquivos, salvar, Save As dentro/fora da pasta, backup, Files, edicao externa, conflito, apagado, reabrir).
+- Em aberto: lembrar o ultimo projeto entre sessoes, arvore de arquivos na janela grafica, nome do projeto na barra de status, Build/Dignified lendo do banco (hoje leem a pasta, que o Sync mantem igual).

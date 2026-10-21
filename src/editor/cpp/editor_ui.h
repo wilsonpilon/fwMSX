@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "../../badig/cpp/badig.h"
+#include "../../project/cpp/project.h"
 #include "editor.h"
 
 namespace ed {
@@ -62,7 +63,7 @@ struct Widget {
 };
 
 enum Btn { kBtnOk = 1, kBtnCancel, kBtnNext, kBtnPrev, kBtnYes, kBtnNo, kBtnAll, kBtnSave, kBtnDontSave, kBtnTop, kBtnCursor,
-           kBtnHelp, kBtnSkip };
+           kBtnHelp, kBtnSkip, kBtnProject, kBtnFolder };
 
 struct DialogBox {
     Dialog kind = Dialog::None;
@@ -115,6 +116,17 @@ public:
     void SetHelpHook(std::function<std::string(const std::string &)> f) { help_hook_ = std::move(f); }
     const std::vector<BuildMsg> &BuildMessages() const { return build_msgs_; }
     int BuildCurrent() const { return build_cur_; }
+
+    // --- projeto .msxproject (menu Project; editor_project.cpp; doc/project-spec.md) ---
+    // Com um projeto aberto, todo arquivo salvo dentro da pasta do projeto vai tambem para o banco (Save, Save As, autosave, F5/F9), e "Sync..." compara
+    // o projeto com a pasta (a copia mais nova e' a sugestao; conflito pergunta).
+    bool ProjectNew(const std::string &file, std::string &err);
+    bool ProjectOpen(const std::string &file, std::string &err);
+    void ProjectClose();
+    bool HasProject() const { return project_.IsOpen(); }
+    prj::Project &ProjectRef() { return project_; }
+    const std::string &ProjectRoot() const { return project_root_; }
+    void ProjectFlush();  // leva para o banco os arquivos salvos desde a ultima vez (chamado depois de cada tecla, clique e salvamento automatico)
 
     // --- abrir/estado ---
     bool Open(const std::string &path, std::string &err, bool view = false); // primeira janela (ou a ativa)
@@ -254,7 +266,26 @@ private:
     void BuildMessagesDialog();
     bool HelpOnWord();
     void BuildReference(const std::string &title, const std::string &text);
+    void BuildProjectList(Dialog kind, const std::string &title, const std::vector<std::string> &items, int sel); // editor_dialogs.cpp
+    // menu Project (editor_project.cpp)
+    std::string ProjectRel(const std::string &abs_path) const;  // o caminho dentro do projeto, ou "" se o arquivo esta' fora da pasta
+    void ProjectSyncStart();                                    // compara; se ha' diferencas mostra a lista (OK aplica o que e' seguro)
+    void ProjectSyncApply();
+    void ProjectAskNext();                                      // o proximo conflito / apagado da fila
+    void ProjectAnswer(int button);
+    void ProjectReloadBuffers(const std::vector<std::pair<std::string, long long>> &before);
+    std::vector<std::pair<std::string, long long>> ProjectStamps() const;
+    void ProjectFilesDialog();
+    void ProjectOpenFile(const std::string &path);
+    void ProjectAddCurrent();
 
+    prj::Project project_;
+    std::string project_root_;
+    std::string last_project_;                // o ultimo .msxproject aberto: Open project... o propoe de novo
+    std::vector<prj::SyncItem> sync_queue_;  // conflitos e apagados que esperam a resposta do usuario
+    size_t sync_pos_ = 0;
+    std::vector<prj::FileInfo> project_list_; // o que o dialogo Files... mostra (o indice da lista = o indice aqui)
+    std::vector<std::pair<std::string, long long>> sync_before_;
     std::vector<Editor> wins_;
     int active_ = 0;
     int divider_ = 10;

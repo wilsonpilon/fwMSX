@@ -19,6 +19,8 @@ namespace prj {
 bool PathOk(const std::string &path);
 // "\" -> "/" e tira o "./" do comeco. Nao valida (PathOk valida).
 std::string NormalizePath(const std::string &path);
+// Arquivo que nunca entra no projeto: o manifesto, o .msxsync, o proprio .msxproject, o que comeca com ponto (.git) e as copias de seguranca do editor.
+bool IsIgnored(const std::string &rel);
 // O tipo do arquivo pela extensao ("basic", "dignified", "asm", "disk", "tape", "screen"...; "file" se nao conhece). `text` = true para texto.
 std::string KindOf(const std::string &path, bool *text = nullptr);
 // SHA-1 do conteudo; em texto ignora os CR (LF e CRLF dao o mesmo hash).
