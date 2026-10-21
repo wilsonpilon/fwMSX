@@ -165,6 +165,8 @@ int main(int argc, char* argv[]) {
         mamute::SetConfigDir(std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path().string());
         // o badig.cfg (opcoes do Basic Dignified) tambem mora ao lado do executavel
         badig::SetConfigPath((std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path() / "badig.cfg").string());
+        // a biblioteca do Basic Dignified (nbasic.dmx, NBASIC.BIN) mora na pasta badig/ ao lado do executavel
+        badig::SetLibraryDir((std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path() / "badig").string());
     }
     // Sem argumento nenhum, com o core de emulacao (Z80+VDP+PSG+mapa de
     // memoria+maquina) ja existindo de verdade, abre a maquina completa em

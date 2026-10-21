@@ -885,8 +885,8 @@ void EditorApp::BuildBadigSetup(int page) {
     dlg_ = DialogBox();
     dlg_.kind = Dialog::BadigSetup;
     dlg_.title = page == 0 ? "Basic Dignified setup (1/2)" : "Basic Dignified setup (2/2)";
-    dlg_.w = 66;
-    dlg_.h = 19;
+    dlg_.w = 68;
+    dlg_.h = 20;
     if (page == 0) {
         dlg_.ws.push_back(Label(2, 1, "Line start:"));
         dlg_.ws.push_back(InputW(20, 14, 1, 6, std::to_string(o.line_start), true, true));
@@ -928,10 +928,13 @@ void EditorApp::BuildBadigSetup(int page) {
         dlg_.ws.push_back(InputW(36, 50, 10, 3, std::to_string(o.verbose), true, true));
         dlg_.ws.push_back(Label(2, 11, "Tokenizer messages level (0 .. 5):"));
         dlg_.ws.push_back(InputW(37, 50, 11, 3, std::to_string(o.tk_verbose), true, true));
-        dlg_.ws.push_back(Label(2, 13, "F5 (Run on MSX) builds a disk with the .bmx and an AUTOEXEC.BAS."));
-        dlg_.ws.push_back(ButtonW(kBtnPrev, 8, 16, "< Prev", false));
-        dlg_.ws.push_back(ButtonW(kBtnOk, 24, 16, "OK", true));
-        dlg_.ws.push_back(ButtonW(kBtnCancel, 34, 16, "Cancel", false));
+        dlg_.ws.push_back(Label(2, 13, "F5 (Run on MSX) builds a disk with the .bmx and an AUTOEXEC.BAS, plus:"));
+        dlg_.ws.push_back(Label(2, 14, "Files of the source folder (names or masks):"));
+        dlg_.ws.push_back(InputW(38, 46, 14, 18, o.disk_files, false, false));
+        dlg_.ws.push_back(CheckW(39, 2, 15, "NestorBASIC: put NBASIC.BIN on the disk (auto with nbasic.dmx)", o.nbasic));
+        dlg_.ws.push_back(ButtonW(kBtnPrev, 8, 17, "< Prev", false));
+        dlg_.ws.push_back(ButtonW(kBtnOk, 24, 17, "OK", true));
+        dlg_.ws.push_back(ButtonW(kBtnCancel, 34, 17, "Cancel", false));
         dlg_.BuildFields();
     }
 }
@@ -965,6 +968,8 @@ void EditorApp::ReadBadigPage(const DialogBox &d, int page) {
         o.print_report = d.Checked(35);
         o.verbose = num(36, o.verbose, 0, 5);
         o.tk_verbose = num(37, o.tk_verbose, 0, 5);
+        o.disk_files = d.Text(38);
+        o.nbasic = d.Checked(39);
     }
 }
 

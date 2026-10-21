@@ -7,6 +7,16 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.42.1] - 2026-10-20 - "Road Fighter: NestorBASIC e arquivos de apoio" (Konami)
+
+### Adicionado -- o Basic Dignified roda programas reais
+- **NestorBASIC**: a biblioteca `nbasic.dmx` (as rotinas do NestorBASIC como funcoes `.NB_*`, do msxIDE) e o `NBASIC.BIN` vao na pasta **`badig/`** ao lado do executavel (copiada para `dist/badig` e para os pacotes). `include "nbasic.dmx"` acha a biblioteca quando nao ha' um arquivo com esse nome na pasta do fonte; as funcoes e os defines da biblioteca entram no **mesmo espaco de nomes** do programa (um include de arquivo do usuario continua com namespace proprio, como no original), e da biblioteca so' ficam as **funcoes chamadas** (direta ou indiretamente), sem os comentarios: um programa que usa `.NB_ReadByte` ganha ~220 bytes, nao os 26 KB da biblioteca inteira.
+- **Arquivos de apoio no disco de execucao** (`badigrun`, F5): remtag `##BB:disk_files=dados.txt *.bin` (nomes ou mascaras da pasta do fonte), opcao `disk_files` do `badig.cfg` e `--disk_files`; os nomes viram 8.3 em maiusculas e o programa os le' em A: (testado: um programa BASIC le' um arquivo de apoio no emulador). Nome que nao e' 8.3, arquivo inexistente ou disco cheio = erro explicando.
+- **`NBASIC.BIN` no disco**: sozinho quando o fonte inclui o `nbasic.dmx`, ou com `##BB:nbasic=true` / `--nbasic` / a caixa *NestorBASIC* da configuracao.
+- **Snippet `nbload`** (Tab no editor): o carregador do NestorBASIC (`BLOAD "nbasic.bin",R` com os codigos de erro) e o `include "nbasic.dmx"` depois do `END`, porque as funcoes sao alvos de `GOSUB`.
+- Tela *Montar > Dignified setup...*, pagina 2: arquivos de apoio e NestorBASIC. `badig.cfg`: secao `[FWMSX]`.
+- Testes: `badigtest` 389; `editorui` 310; `controltest` com o programa que le' o arquivo de apoio.
+
 ## [1.42.0] - 2026-10-20 - "Road Fighter" (Konami)
 
 ### Adicionado -- o Basic Dignified Suite, clone nosso (`.dmx` -> `.amx` -> `.bmx` tokenizado)

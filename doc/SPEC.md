@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.42.0)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.42.1)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.42.0, publicada em `main`):**
+**Funcionando (v1.42.1, publicada em `main`):**
+- [x] **Basic Dignified: NestorBASIC e arquivos de apoio** (1.42.1): biblioteca `badig/nbasic.dmx` (funcoes `.NB_*` no mesmo namespace, so' as chamadas ficam), `NBASIC.BIN` e `disk_files` no disco do `badigrun`/F5, snippet `nbload`. Ver `doc/badig-spec.md`.
 - [x] **Basic Dignified Suite (clone nosso)** (1.42.0): `fwmsx --badig` / comando `badig` convertem `.dmx` em `.amx` e no BASIC tokenizado `.bmx` (+ `.lmx` e relatorios), IGUAL ao `badig.py` v2.2.1 byte a byte (golden tests); `badigrun` converte, monta um disco com `AUTOEXEC.BAS` e roda no DISK BASIC; no editor `F9`/`F5`/`F8` e a tela *Montar > Dignified setup...* (`badig.cfg`). Ver `doc/badig-spec.md`. Falta: Basic DignifieR, NBasic, arquivos de apoio no disco, erros de execucao -> linha do `.dmx`.
 - [x] **Menu Build no editor** (1.41.9, fase E6 parte 1): `F9` monta o buffer pelo fwasm, erros e avisos viram mensagens com arquivo:linha (`F8`/`Shift-F8`, lista em Messages...), `F5` executa no MSX pelo `asmrun`, `Ctrl-F1` abre a pagina do `man` da palavra sob o cursor. Falta: projeto `.msxproject`, menus Sprites/Telas/Som.
 - [x] **Completar e snippets no editor** (1.41.8, fase E5): `Alt-/` abre a lista (palavras da linguagem, BIOS, gatilhos de snippet, palavras do texto); `Tab` expande snippet com pontos de parada; `fwedit.snippets` do usuario; completar sozinho opcional. **Numeros de linha** na TUI e na janela (Opcoes > Tela > Line numbers).

@@ -45,6 +45,15 @@ const Builtin kBuiltins[] = {
     {"basic", "waitkey", "A$=INKEY$:IF A$=\"\" THEN $1$0"},
     {"basic", "vpoke", "VPOKE $1,$2$0"},
     {"kunbasic", "turbo", "_TURBO ON\n$0\n_TURBO OFF"},
+    // Basic Dignified: o programa que carrega o NestorBASIC (BLOAD "nbasic.bin",R mexe na pilha: carregador com GOTO, nunca func/ret)
+    {"dignified", "nbload",
+     "{inicio}\ndefint p\ndim p(15)\ndim f$(1)\n\ngoto {NBasicLoad}\n{VoltaNBasicLoad}\n$0\nend\n\n{NBasicLoad}\n"
+     "bload \"nbasic.bin\",r\nif p(0) >= 5 then goto {VoltaNBasicLoad}\nprint \"Error loading NestorBASIC: \";\n"
+     "if p(0) = 0 then print \"the computer has no mapped RAM (128K minimum).\"\n"
+     "if p(0) = 1 then print \"disk error reading nbasic.bin.\"\n"
+     "if p(0) = 2 then print \"no free segments in the primary mapper (DOS 2).\"\n"
+     "if p(0) = 3 then print \"NestorBASIC was already installed.\"\n"
+     "if p(0) = 4 then print \"undefined error in this version.\"\nend\n\n' the library goes after the END: its functions are GOSUB targets\ninclude \"nbasic.dmx\""},
     // Z80 (asMSX/fwasm)
     {"z80asm", "rom", ".BIOS\n.PAGE 1\n.ROM\n.START $1\n$1:\n  $0"},
     {"z80asm", "proc", "$1:\n  $0\n  ret"},

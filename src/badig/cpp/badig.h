@@ -49,6 +49,9 @@ struct Options {
     bool tk_del_ascii = false;       // --tk_del_ascii: apaga o .amx depois de tokenizar
     int tk_verbose = 3;              // --tk_verbose
     // arquivos
+    // disco de execucao (badigrun / F5)
+    std::string disk_files;          // arquivos de apoio da pasta do fonte que vao junto para o disco (nomes ou mascaras, separados por espaco)
+    bool nbasic = false;             // NestorBASIC: leva o NBASIC.BIN para o disco (ja' vai sozinho se o fonte inclui o nbasic.dmx)
     std::string source;              // o .dmx
     std::string dest;                // o .amx (vazio = o nome do fonte com a extensao .amx)
 };
@@ -63,6 +66,8 @@ struct Result {
     std::vector<std::string> log;               // o que o badig.py imprimiria (respeita `verbose`)
     std::vector<std::pair<std::string, std::string>> reports; // (caminho, conteudo) dos relatorios gravados
     int line_count = 0;                         // linhas do .amx
+    std::vector<std::string> includes;          // os arquivos incluidos (caminhos como o Badig os abriu)
+    Options options;                            // as opcoes que valeram (as da configuracao, da linha de comando e das remtags)
 };
 
 // Converte `opts.source`. `text` (se nao for nullptr) e' o conteudo do fonte (o buffer do editor): os .include continuam saindo do disco.
@@ -76,6 +81,17 @@ bool ApplyArgs(const std::vector<std::string> &args, Options &o, std::string &er
 // Configuracao em arquivo INI (badig.cfg): secoes [CONFIGS] (as chaves do badig.ini), [MSX] e [TOKENIZER].
 bool LoadConfig(const std::string &path, Options &o);
 bool SaveConfig(const std::string &path, const Options &o, std::string &err);
+
+// A pasta da biblioteca (ao lado do executavel, badig/): o nbasic.dmx que `include "nbasic.dmx"` acha quando nao ha' um na pasta do fonte, e o NBASIC.BIN.
+void SetLibraryDir(const std::string &dir);
+const std::string &LibraryDir();
+
+// Os arquivos que vao para o disquete de execucao alem do .bmx e do AUTOEXEC.BAS: os `disk_files` e, com NestorBASIC, o NBASIC.BIN. host = onde esta';
+// msx = o nome 8.3 em maiusculas no disco. false + `err` se um nome nao serve, um arquivo nao existe ou o NBASIC.BIN nao foi achado.
+struct DiskFile {
+    std::string host, msx;
+};
+bool CollectDiskFiles(const Result &r, std::vector<DiskFile> &out, std::string &err);
 
 // Onde fica o badig.cfg: quem hospeda o programa (a janela, o terminal, o editor) diz uma vez; vazio = sem arquivo (so' os padroes).
 void SetConfigPath(const std::string &path);

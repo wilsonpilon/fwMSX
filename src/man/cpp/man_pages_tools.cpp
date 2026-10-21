@@ -79,6 +79,10 @@ REMTAGS (no proprio fonte, valem sobre as opcoes)
   ##BB:arguments=-ss -ca     mais argumentos
   ##BB:export_file=nome      nome do .amx
   ##BB:tk_tokenize=false     ##BB:tk_list=16     ##BB:tk_del_ascii=true
+  ##BB:disk_files=dados.txt *.bin   arquivos de apoio no disco do badigrun
+  ##BB:nbasic=true                   leva o NBASIC.BIN ao disco (automatico
+                                     com include "nbasic.dmx", que fica na
+                                     pasta badig/ ao lado do executavel)
 
 CONFIGURACAO
   As opcoes ficam no badig.cfg (ao lado do executavel), com os nomes do

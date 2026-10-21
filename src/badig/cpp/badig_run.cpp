@@ -117,6 +117,77 @@ const char *kAmxExt = ".amx";
 const char *kBmxExt = ".bmx";
 const char *kLmxExt = ".lmx";
 
+
+// A biblioteca e' grande (o nbasic.dmx tem ~90 funcoes e centenas de linhas de comentario) e a memoria do BASIC e' pequena: os comentarios da biblioteca
+// saem e so' ficam as funcoes que o programa chama (direta ou indiretamente).
+void PruneLibrary(std::vector<TokPtr> &toks, const std::set<const Token *> &lib) {
+    if (lib.empty()) return;
+    auto in_lib = [&](const TokPtr &t) { return lib.count(t.get()) != 0; };
+
+    std::vector<TokPtr> t;
+    for (size_t i = 0; i < toks.size(); ++i) {
+        if (in_lib(toks[i]) && toks[i]->tok == "C_LINREM") { // ' ou REM da biblioteca, com o texto
+            if (i + 1 < toks.size() && toks[i + 1]->tok == "C_LITREM" && in_lib(toks[i + 1])) ++i;
+            continue;
+        }
+        t.push_back(toks[i]);
+    }
+
+    struct Block {
+        size_t a, b; // [a, b] inclusive, ate' o NEWLINE do ret
+        std::string name;
+    };
+    std::vector<Block> blocks;
+    for (size_t i = 0; i + 1 < t.size(); ++i) {
+        if (!(in_lib(t[i]) && t[i]->tok == "D_INSTRC" && t[i]->UVal() == "FUNC" && t[i + 1]->tok == "D_FUNCNM")) continue;
+        size_t j = i + 2;
+        while (j < t.size() && !(t[j]->tok == "D_INSTRC" && t[j]->UVal() == "RET")) ++j;
+        while (j < t.size() && t[j]->tok != "NEWLINE") ++j;
+        if (j >= t.size()) break;
+        blocks.push_back({i, j, t[i + 1]->LVal()});
+        i = j;
+    }
+    if (blocks.empty()) {
+        toks = t;
+        return;
+    }
+    std::set<std::string> used;
+    auto scan = [&](size_t from, size_t to) { // chamadas em t[from, to)
+        for (size_t i = from; i < to; ++i) {
+            if (t[i]->tok == "D_FUNCNM") used.insert(t[i]->LVal());
+        }
+    };
+    size_t pos = 0;
+    for (const Block &b : blocks) { // o que esta' fora das funcoes da biblioteca
+        scan(pos, b.a);
+        pos = b.b + 1;
+    }
+    scan(pos, t.size());
+    for (bool grew = true; grew;) {
+        grew = false;
+        for (const Block &b : blocks) {
+            if (!used.count(b.name)) continue;
+            const size_t before = used.size();
+            scan(b.a + 2, b.b + 1); // o nome da propria funcao (a + 1) nao conta
+            grew = grew || used.size() != before;
+        }
+    }
+    std::vector<TokPtr> out;
+    size_t bi = 0;
+    for (size_t i = 0; i < t.size(); ++i) {
+        if (bi < blocks.size() && i == blocks[bi].a) {
+            const Block &b = blocks[bi++];
+            if (used.count(b.name)) {
+                out.insert(out.end(), t.begin() + static_cast<long>(b.a), t.begin() + static_cast<long>(b.b) + 1);
+            }
+            i = b.b;
+            continue;
+        }
+        out.push_back(t[i]);
+    }
+    toks = out;
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -207,6 +278,11 @@ bool ApplyArgs(const std::vector<std::string> &a, Options &o, std::string &err) 
         } else if (t == "--tk_verbose") {
             if (!number(n)) return false;
             o.tk_verbose = n;
+        } else if (t == "--nbasic") {
+            o.nbasic = true;
+        } else if (t == "--disk_files") {
+            if (!value(s)) return false;
+            o.disk_files = s;
         } else if (t == "--em_run" || t == "--em_nothrottle" || t == "--em_monitor") { /* opcoes do openMSX: nao se aplicam */ }
         else if (t == "--em_setting" || t == "--em_machine" || t == "--em_extension" || t == "--em_verbose") {
             if (!value(s)) return false;
@@ -280,6 +356,9 @@ bool LoadConfig(const std::string &path, Options &o) {
             else if (key == "list") n(val, o.tk_list);
             else if (key == "del_ascii") b(val, o.tk_del_ascii);
             else if (key == "verbose") n(val, o.tk_verbose);
+        } else if (section == "FWMSX") {
+            if (key == "disk_files") o.disk_files = val;
+            else if (key == "nbasic") b(val, o.nbasic);
         }
     }
     return true;
@@ -311,7 +390,10 @@ bool SaveConfig(const std::string &path, const Options &o, std::string &err) {
       << "tokenize = " << B(o.tokenize) << "\n"
       << "list = " << o.tk_list << "\n"
       << "del_ascii = " << B(o.tk_del_ascii) << "\n"
-      << "verbose = " << o.tk_verbose << "\n";
+      << "verbose = " << o.tk_verbose << "\n\n"
+      << "[FWMSX]\n"
+      << "disk_files = " << o.disk_files << "\n"
+      << "nbasic = " << B(o.nbasic) << "\n";
     return WriteFile(path, s.str(), err);
 }
 
@@ -324,7 +406,7 @@ namespace {
 // ##BB:nome=valor
 std::map<std::string, std::string> ReadRemtags(const std::string &text, std::vector<std::string> &unknown) {
     static const std::set<std::string> known = {"EXPORT_FILE", "ARGUMENTS", "HELP", "TK_TOKENIZE", "TK_LIST", "TK_DEL_ASCII", "TK_VERBOSE",
-                                                "EM_RUN", "EM_SETTING", "EM_MACHINE", "EM_EXTENSION", "EM_NOTHROTTLE", "EM_MONITOR", "EM_VERBOSE"};
+                                                "EM_RUN", "EM_SETTING", "EM_MACHINE", "EM_EXTENSION", "EM_NOTHROTTLE", "EM_MONITOR", "EM_VERBOSE", "DISK_FILES", "NBASIC"};
     std::map<std::string, std::string> r;
     size_t pos = 0;
     while (pos <= text.size()) {
@@ -349,6 +431,38 @@ std::map<std::string, std::string> ReadRemtags(const std::string &text, std::vec
 }
 
 void AddLog(Result &r, const std::vector<std::string> &lines) { r.log.insert(r.log.end(), lines.begin(), lines.end()); }
+
+// Um `include` de um arquivo da BIBLIOTECA do fwMSX (nbasic.dmx: nao existe na pasta do fonte, esta' em badig/ ao lado do executavel) entra no mesmo
+// espaco de nomes do programa: as funcoes e os defines da biblioteca valem no fonte principal (como no msxIDE). Os includes do usuario continuam
+// com namespaces separados, como no original. Os tokens da biblioteca entram no lugar do `include "..."` ANTES do parser; as posicoes dizem que
+// pertencem ao arquivo principal (a chave dos labels/funcoes e' nome+arquivo) mas a linha e' a da biblioteca.
+void SpliceLibraryIncludes(std::vector<TokPtr> &toks, const Cfg &cfg, Logger &log, std::vector<std::string> &includes, std::set<const Token *> &lib_toks, int depth = 0) {
+    if (LibraryDir().empty() || depth > 8) return;
+    for (size_t i = 0; i + 1 < toks.size(); ++i) {
+        const Token &a = *toks[i];
+        const Token &b = *toks[i + 1];
+        if (a.tok != "D_INSTRC" || a.UVal() != "INCLUDE" || b.tok != "C_LITQUO") continue;
+        const std::string name = PyStripWs(PyStrip(b.val, "\""));
+        if (name.empty() || IsAbsPath(name)) continue;
+        if (std::ifstream(JoinPath(cfg.file_path, name))) continue; // um arquivo do usuario: namespace proprio
+        const std::string lib = JoinPath(LibraryDir(), name);
+        if (!std::ifstream(lib)) continue;
+
+        CodePtr code = LoadFile(lib, nullptr, cfg.o.tab_length, log, &b);
+        for (Line &l : *code) l.file = cfg.file_load;
+        Lexer lex(cfg, code, log);
+        std::vector<TokPtr> lexed = lex.Lex();
+        std::vector<TokPtr> content;
+        if (lexed.size() > 4) content.assign(lexed.begin() + 2, lexed.end() - 2); // sem PROGRAM/NEWLINE e sem o PROGRAM/EOF do fim
+        SpliceLibraryIncludes(content, cfg, log, includes, lib_toks, depth + 1);
+        for (const TokPtr &c : content) lib_toks.insert(c.get());
+        includes.push_back(lib);
+        toks.erase(toks.begin() + static_cast<long>(i), toks.begin() + static_cast<long>(i) + 2);
+        toks.insert(toks.begin() + static_cast<long>(i), content.begin(), content.end());
+        i += content.size();
+        if (i > 0) --i;
+    }
+}
 
 } // namespace
 
@@ -405,7 +519,11 @@ Result Convert(const Options &base, const std::vector<std::string> &cli_args, co
         dst = x;
         return true;
     };
-    if (!rbool("TK_TOKENIZE", o.tokenize) || !rbool("TK_DEL_ASCII", o.tk_del_ascii)) return fail(err);
+    if (!rbool("TK_TOKENIZE", o.tokenize) || !rbool("TK_DEL_ASCII", o.tk_del_ascii) || !rbool("NBASIC", o.nbasic)) return fail(err);
+    {
+        const auto df = remtags.find("DISK_FILES");
+        if (df != remtags.end()) o.disk_files = df->second;
+    }
     for (const char *name : {"TK_LIST", "TK_VERBOSE"}) {
         const auto it = remtags.find(name);
         if (it == remtags.end() || it->second.empty()) continue;
@@ -415,6 +533,8 @@ Result Convert(const Options &base, const std::vector<std::string> &cli_args, co
     }
 
     cfg.o = o;
+    res.options = o;
+    cfg.includes = &res.includes;
     cfg.file_load = o.source;
     cfg.file_path = DirName(o.source);
     cfg.general_spaces = o.strip_spaces ? "" : " ";
@@ -477,6 +597,9 @@ Result Convert(const Options &base, const std::vector<std::string> &cli_args, co
             log.Log(5, "Lexing.");
             Lexer lex(cfg, d_code, log);
             std::vector<TokPtr> lexed = lex.Lex();
+            std::set<const Token *> lib_toks;
+            SpliceLibraryIncludes(lexed, cfg, log, res.includes, lib_toks);
+            PruneLibrary(lexed, lib_toks);
             log.Log(5, std::to_string(lexed.size()) + " tokens created.");
 
             if (o.lexer_report) {
@@ -605,6 +728,117 @@ Result Convert(const Options &base, const std::vector<std::string> &cli_args, co
     res.diags.insert(res.diags.begin(), diags.begin(), diags.end());
     AddLog(res, log.lines);
     return res;
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// o disco de execucao
+// ---------------------------------------------------------------------------------------------------------------
+
+namespace {
+std::string g_library_dir;
+
+bool GlobMatchCi(const std::string &pat, const std::string &name, size_t p = 0, size_t n = 0) {
+    for (; p < pat.size(); ++p) {
+        if (pat[p] == '*') {
+            for (size_t k = n; k <= name.size(); ++k) {
+                if (GlobMatchCi(pat, name, p + 1, k)) return true;
+            }
+            return false;
+        }
+        if (n >= name.size()) return false;
+        if (pat[p] != '?' && std::tolower(static_cast<unsigned char>(pat[p])) != std::tolower(static_cast<unsigned char>(name[n]))) return false;
+        ++n;
+    }
+    return n == name.size();
+}
+
+// um nome 8.3 do MSX-DOS: 1 a 8 caracteres, ponto, ate' 3; sem espaco nem os caracteres proibidos
+bool ToMsxName(const std::string &file, std::string &msx) {
+    std::string u = PyUpper(file);
+    const size_t dot = u.rfind('.');
+    const std::string stem = dot == std::string::npos ? u : u.substr(0, dot);
+    const std::string ext = dot == std::string::npos ? std::string() : u.substr(dot + 1);
+    if (stem.empty() || stem.size() > 8 || ext.size() > 3) return false;
+    for (const std::string *part : {&stem, &ext}) {
+        for (const char c : *part) {
+            if (c <= ' ' || c >= 0x7F || std::string("\"*+,./:;<=>?[\\]|").find(c) != std::string::npos) return false;
+        }
+    }
+    msx = ext.empty() ? stem : stem + "." + ext;
+    return true;
+}
+} // namespace
+
+void SetLibraryDir(const std::string &dir) { g_library_dir = dir; }
+const std::string &LibraryDir() { return g_library_dir; }
+
+bool CollectDiskFiles(const Result &r, std::vector<DiskFile> &out, std::string &err) {
+    const Options &o = r.options;
+    const std::string dir = DirName(o.source);
+    std::set<std::string> have = {"AUTOEXEC.BAS"};
+    {
+        std::string bmx;
+        if (!r.bmx_path.empty() && ToMsxName(BaseName(r.bmx_path), bmx)) have.insert(bmx);
+    }
+    auto add = [&](const std::string &host) {
+        std::string msx;
+        const std::string file = BaseName(host);
+        if (!ToMsxName(file, msx)) {
+            err = "'" + file + "' is not a valid MSX file name (8.3, no spaces)";
+            return false;
+        }
+        if (have.insert(msx).second) out.push_back({host, msx});
+        return true;
+    };
+
+    for (const std::string &pat : SplitWs(o.disk_files)) {
+        if (pat.find_first_of("*?") != std::string::npos) {
+            const std::string pdir = DirName(pat);
+            const std::string base = BaseName(pat);
+            std::error_code ec;
+            const fs::path where = IsAbsPath(pat) ? fs::path(pdir) : fs::path(dir.empty() ? "." : dir) / pdir;
+            std::vector<std::string> found;
+            for (const auto &e : fs::directory_iterator(where, ec)) {
+                if (e.is_regular_file(ec) && GlobMatchCi(base, e.path().filename().string())) found.push_back(e.path().string());
+            }
+            std::sort(found.begin(), found.end());
+            for (const std::string &f : found) {
+                if (!add(f)) return false;
+            }
+        } else {
+            const std::string host = IsAbsPath(pat) ? pat : JoinPath(dir, pat);
+            std::error_code ec;
+            if (!fs::is_regular_file(host, ec)) {
+                err = "disk file not found: " + host;
+                return false;
+            }
+            if (!add(host)) return false;
+        }
+    }
+
+    bool nb = o.nbasic;
+    for (const std::string &inc : r.includes) nb = nb || PyLower(BaseName(inc)) == "nbasic.dmx";
+    if (nb) {
+        std::string found;
+        for (const std::string &d : {dir, g_library_dir}) {
+            if (d.empty() && !dir.empty()) continue;
+            for (const char *n : {"NBASIC.BIN", "nbasic.bin"}) {
+                std::error_code ec;
+                const std::string p = JoinPath(d, n);
+                if (fs::is_regular_file(p, ec)) {
+                    found = p;
+                    break;
+                }
+            }
+            if (!found.empty()) break;
+        }
+        if (found.empty()) {
+            err = "NBASIC.BIN not found (next to the source or in the badig/ folder beside the executable)";
+            return false;
+        }
+        if (have.insert("NBASIC.BIN").second) out.push_back({found, "NBASIC.BIN"});
+    }
+    return true;
 }
 
 // ---------------------------------------------------------------------------------------------------------------

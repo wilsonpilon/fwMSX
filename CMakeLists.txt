@@ -1021,3 +1021,7 @@ if (WIN32)
     target_link_options(fwMSX PRIVATE -mwindows)
 endif ()
 set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/fwMSX)
+# A biblioteca do Basic Dignified (nbasic.dmx e NBASIC.BIN do NestorBASIC) vai para dist/badig, ao lado do executavel.
+add_custom_command(TARGET fwMSX POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/badig/lib $<TARGET_FILE_DIR:fwMSX>/badig
+        COMMENT "Copiando a biblioteca do Basic Dignified (badig/)")

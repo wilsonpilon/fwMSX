@@ -1200,6 +1200,16 @@ void test_badig_build() {
     K(c, {"F5"});
     check(got == c.Ed().Name() && c.TakeHideRequest(), "F5 num .dmx converte e chama o gancho com o caminho do .dmx");
 
+    // o snippet do carregador do NestorBASIC
+    EditorApp n;
+    n.SetSize(80, 25);
+    n.Ed().SetLanguage(ed::LangById("dignified"), true);
+    n.Ed().SetText("nbload");
+    n.Ed().SetCursor({0, 6});
+    K(n, {"Tab"});
+    check(n.Ed().Text().find("bload \"nbasic.bin\",r") != std::string::npos && n.Ed().Text().rfind("include \"nbasic.dmx\"") > n.Ed().Text().find("end"),
+          "snippet nbload: o carregador do NestorBASIC com a biblioteca depois do END");
+
     // um .include com erro abre a aba do arquivo (janela grafica)
     spit(dir / "inc.dmx", "print 1\ngoto {nope}\n");
     EditorApp g;
@@ -1222,6 +1232,9 @@ void test_badig_build() {
     s.PressDialog(ed::kBtnNext);
     check(s.HasDialog() && screen_has(s, "(2/2)") && screen_has(s, "Lexer tokens"), "Next abre a pagina 2");
     s.CurrentMutable()->Find(30)->checked = true;        // label report
+    check(screen_has(s, "NestorBASIC") && screen_has(s, "Files of the source folder"), "a pagina 2 tem os arquivos de apoio e o NestorBASIC");
+    s.CurrentMutable()->Find(38)->text = "*.bin dados.dat";
+    s.CurrentMutable()->Find(39)->checked = true;
     s.PressDialog(ed::kBtnPrev);
     check(s.CurrentMutable()->Find(24)->checked && s.CurrentMutable()->Find(20)->text == "100", "Prev volta com os valores da pagina 1");
     s.PressDialog(ed::kBtnNext);
@@ -1229,6 +1242,7 @@ void test_badig_build() {
     check(!s.HasDialog() && s.Ed().Message().find("saved") != std::string::npos, "OK grava");
     const badig::Options l = badig::LoadDefaults();
     check(l.strip_spaces && l.line_start == 100 && l.tk_list == 16 && l.label_report && !l.lexer_report, "o badig.cfg tem o que a tela mostrou");
+    check(l.disk_files == "*.bin dados.dat" && l.nbasic, "e os arquivos de apoio / NestorBASIC");
     K(s, {"A-u", "d"});
     check(s.CurrentMutable()->Find(24)->checked, "a tela reabre com o que foi gravado");
     s.PressDialog(ed::kBtnCancel);

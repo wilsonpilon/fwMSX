@@ -34,6 +34,11 @@ std::string slurp(const fs::path &p) {
     return std::string((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
 }
 
+void spit(const fs::path &p, const std::string &d) {
+    std::ofstream f(p, std::ios::binary | std::ios::trunc);
+    f.write(d.data(), static_cast<std::streamsize>(d.size()));
+}
+
 std::string NormLmx(std::string s) {
     const size_t a = s.find("' Date: ");
     if (a != std::string::npos) {
@@ -238,6 +243,60 @@ void test_units() {
     const std::string t2 = "x = true\ny = x + 1\nx++\nprint x\n";
     r = badig::Convert(so, {"-rh", "-ls", "1", "-lp", "1"}, &t2, false);
     check(r.ok && r.amx.rfind("1 ", 0) == 0 && r.amx.find("-1") != std::string::npos, "-rh tira o cabecalho, -ls/-lp");
+
+    // NestorBASIC: o include "nbasic.dmx" sai da biblioteca (nao ha' um na pasta do fonte) e o NBASIC.BIN vai para o disco
+    const fs::path lib = fs::path(BADIG_TEST_DIR).parent_path().parent_path() / "src" / "badig" / "lib";
+    badig::SetLibraryDir(lib.string());
+    badig::Options nb;
+    nb.source = (dir / "nb.dmx").string();
+    const std::string nbt = "include \"nbasic.dmx\"\nx = .NB_ReadByte(1, 100)\n";
+    r = badig::Convert(nb, {}, &nbt, false);
+    check(r.ok && r.amx.find("USR(2)") != std::string::npos || r.amx.find("usr(2)") != std::string::npos, "include \"nbasic.dmx\" resolve na biblioteca: .NB_ReadByte -> usr(2)");
+    check(r.includes.size() == 1 && fs::path(r.includes[0]).filename() == "nbasic.dmx", "Result::includes lista o que foi incluido");
+    check(r.amx.find("usr(1)") == std::string::npos && r.amx.find("'---") == std::string::npos && r.amx.size() < 600,
+          "da biblioteca so' ficam as funcoes chamadas, sem os comentarios (" + std::to_string(r.amx.size()) + " bytes)");
+    std::vector<badig::DiskFile> files;
+    check(badig::CollectDiskFiles(r, files, err) && files.size() == 1 && files[0].msx == "NBASIC.BIN", "incluir o nbasic.dmx leva o NBASIC.BIN ao disco");
+
+    // arquivos de apoio: nomes e mascaras da pasta do fonte
+    spit(dir / "dados.bin", "x");
+    spit(dir / "mapa.dat", "y");
+    spit(dir / "Logo.BIN", "z");
+    spit(dir / "nome muito longo.txt", "w");
+    badig::Options df;
+    df.source = (dir / "df.dmx").string();
+    df.disk_files = "*.bin mapa.dat";
+    const std::string dft = "print 1\n";
+    r = badig::Convert(df, {}, &dft, true);
+    files.clear();
+    check(r.ok && badig::CollectDiskFiles(r, files, err) && files.size() == 3, "disk_files: duas mascaras e um nome");
+    bool has_logo = false, has_map = false;
+    for (const auto &f : files) {
+        has_logo = has_logo || f.msx == "LOGO.BIN";
+        has_map = has_map || f.msx == "MAPA.DAT";
+    }
+    check(has_logo && has_map, "nomes em maiusculas no disco (8.3)");
+    df.disk_files = "nome muito longo.txt";
+    r.options = df;
+    files.clear();
+    check(!badig::CollectDiskFiles(r, files, err), "nome que nao e' 8.3 e' recusado");
+    df.disk_files = "nao_existe.bin";
+    r.options = df;
+    check(!badig::CollectDiskFiles(r, files, err) && err.find("not found") != std::string::npos, "arquivo que nao existe e' recusado");
+    const std::string rtx = "##BB:disk_files=mapa.dat\n##BB:nbasic=true\nprint 1\n";
+    badig::Options plain;
+    plain.source = (dir / "rt.dmx").string();
+    r = badig::Convert(plain, {}, &rtx, false);
+    files.clear();
+    check(r.ok && badig::CollectDiskFiles(r, files, err) && files.size() == 2, "remtags DISK_FILES e NBASIC");
+    badig::SetLibraryDir("");
+    r = badig::Convert(plain, {}, &rtx, false);
+    check(!badig::CollectDiskFiles(r, files, err) && err.find("NBASIC.BIN not found") == 0, "sem o NBASIC.BIN avisa");
+    check(badig::ApplyArgs({"--disk_files", "a.bin b.bin", "--nbasic"}, plain, err) && plain.disk_files == "a.bin b.bin" && plain.nbasic, "argumentos --disk_files e --nbasic");
+    badig::Options sv = plain;
+    check(badig::SaveConfig((dir / "n.cfg").string(), sv, err), "grava");
+    badig::Options ld;
+    check(badig::LoadConfig((dir / "n.cfg").string(), ld) && ld.disk_files == "a.bin b.bin" && ld.nbasic, "o badig.cfg guarda os arquivos de apoio e o NestorBASIC");
 
     fs::remove_all(dir);
 }

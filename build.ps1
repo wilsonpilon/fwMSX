@@ -84,6 +84,8 @@ if (Test-Path $splashPng) { Copy-Item $splashPng $stageDir }
 # Notas do SUPER-X (monitor Mamute: XIL sem argumento le este arquivo; doc\mamute-spec.md).
 $notasFile = Join-Path $distDir "SUPER-X-PT.notas"
 if (Test-Path $notasFile) { Copy-Item $notasFile $stageDir }
+# Biblioteca do Basic Dignified (nbasic.dmx, NBASIC.BIN): badig\ ao lado do executavel
+Copy-Item (Join-Path $distDir "badig") $stageDir -Recurse
 Copy-Item (Join-Path $root "README.md") $stageDir
 Copy-Item (Join-Path $root "LICENSE") $stageDir
 Copy-Item (Join-Path $root "LICENSE-THIRD-PARTY.md") $stageDir

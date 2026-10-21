@@ -17,6 +17,18 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.42.1 -- "Road Fighter: NestorBASIC e arquivos de apoio" (Konami) (2026-10-20)
+
+**Pedido do usuario**: "refinar o Dignified (NBasic e arquivos de apoio sao os mais uteis para rodar programas reais)".
+- **Achado que mudou o desenho** (pesquisa antes de codar): no `badig.py` original as funcoes de um `include` NAO valem no arquivo principal (namespaces separados: o mesmo erro `Function not defined` sai do original e do clone). O `nbasic.dmx` do msxIDE depende de o include ser TEXTUAL (o compilador do msxIDE e' outro). Solucao: um include que resolve na **biblioteca do fwMSX** (`badig/`) e' emendado como tokens, antes do parser, no namespace do programa; includes do usuario ficam como o original. O desvio fica restrito a' biblioteca.
+- **Poda**: o `nbasic.dmx` tem ~90 funcoes; so' as chamadas ficam (fecho transitivo) e os comentarios da biblioteca saem, senao o programa estoura a memoria do BASIC.
+- **Atencao ao fluxo**: as funcoes viram `GOSUB` e o codigo cai onde o `include` esta': o include tem que ficar depois do `END` (o snippet `nbload` ja' faz assim).
+- **Escolhas minhas** (a rever): os nomes dos arquivos de apoio sao os da pasta do fonte, em maiusculas, 8.3 estrito (sem truncar); com NBASIC.BIN procura na pasta do fonte e depois em `badig/`; o `NBASIC.BIN` (58 KB, do pacote do Nestor ja' presente em `resource/paleobasic`) vai versionado em `src/badig/lib`.
+- **Nao feito**: NestorBASIC rodando de verdade no emulador (precisa de MSX2 com mapper de RAM e DOS; so' o disco e a conversao sao testados); erros de execucao do BASIC -> linha do `.dmx`; Basic DignifieR; projeto `.msxproject`.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100%.
+
+---
+
 ## v1.42.0 -- "Road Fighter" (Konami) (2026-10-20)
 
 **Pedido do usuario**: colocou o Basic Dignified Suite em `resource/basic-dignified` e o msxIDE em `resource/msxide`: "nao vamos usar o badig em python, vamos fazer um clone nosso nas nossas linguagens do projeto. Quero o programa processando o arquivo DMX e gerando o BMX tokenizado e processado [...] procure recriar a tela de configuracao [...] Importante e tokenizar o arquivo ASCII no final".

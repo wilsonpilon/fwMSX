@@ -501,6 +501,17 @@ void TestBadigRun(const std::string &bios) {
     Frames(host, cmd, 2500);
     check(VramHas(host.machine(), "badig run ok"), "badigrun: o .bmx tokenizado pelo clone RODOU no BASIC (texto na tela)");
     check(VramHas(host.machine(), " 6"), "badigrun: o laco FOR/NEXT calculou 1+2+3 = 6");
+
+    // arquivos de apoio: o programa le' o DADOS.TXT do disco de execucao (remtag disk_files)
+    WriteText(dir + "/dados.txt", "apoio no disco\r\n");
+    WriteText(dir + "/lido.dmx", "##BB:disk_files=dados.txt\nopen \"dados.txt\" for input as #1\nline input #1, a$\nclose #1\n[?](3,3) a$\n{fim}\ngoto {fim}\n");
+    const control::Result r2 = cmd.Execute("badigrun \"" + dir + "/lido.dmx\"");
+    check(r2.ok && Contains(r2.text, "DADOS.TXT"), "badigrun: o arquivo de apoio entrou no disco (DADOS.TXT)");
+    if (!r2.ok) std::printf("    %s\n", r2.text.c_str());
+    Frames(host, cmd, 2500);
+    check(VramHas(host.machine(), "apoio no disco"), "badigrun: o programa LEU o arquivo de apoio do disco de execucao");
+    WriteText(dir + "/ruim.dmx", "##BB:disk_files=nao_existe.bin\nprint 1\n");
+    check(!cmd.Execute("badigrun \"" + dir + "/ruim.dmx\"").ok, "badigrun: arquivo de apoio inexistente = err");
     std::filesystem::remove_all(dir);
 }
 

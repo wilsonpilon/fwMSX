@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <fstream>
 
 #include "badig_trans.inc"
 
@@ -679,7 +680,16 @@ void Parser::IncludeFile() {
     std::string include_file = PyStripWs(PyStrip(include->val, "\""));
 
     if (include->tok != "C_LITQUO" || include_file.empty()) log_.Fatal("Include error: " + include->val, tk_);
-    if (!IsAbsPath(include_file)) include_file = JoinPath(cfg_.file_path, include_file);
+    const std::string as_written = include_file;
+    if (!IsAbsPath(include_file)) {
+        include_file = JoinPath(cfg_.file_path, include_file);
+        // nao ha' um na pasta do fonte: a biblioteca do fwMSX (o nbasic.dmx)
+        if (!std::ifstream(include_file) && !LibraryDir().empty()) {
+            const std::string lib = JoinPath(LibraryDir(), as_written);
+            if (std::ifstream(lib)) include_file = lib;
+        }
+    }
+    if (cfg_.includes) cfg_.includes->push_back(include_file);
 
     CodePtr code = LoadFile(include_file, nullptr, cfg_.o.tab_length, log_, include.get());
 

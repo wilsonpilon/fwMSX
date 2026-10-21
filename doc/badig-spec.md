@@ -74,3 +74,11 @@ erro** (mensagens identicas as do original). 376 verificacoes em `badigtest`.
   copia de **arquivos de apoio** (`.bin`, dados) da pasta do fonte para o disco de execucao.
 - Erros de execucao do BASIC (`Syntax error in 130`) levados de volta a' linha do `.dmx` pela tabela `-lnr` (o original faz isso no openMSX).
 - Integracao com o projeto `.msxproject` (E6, parte 2): fontes, configuracao e saidas dentro do projeto.
+
+## 7. NestorBASIC e arquivos de apoio (1.42.1)
+
+- **Biblioteca** (`src/badig/lib/`, copiada para `badig/` ao lado do executavel; `badig::SetLibraryDir`): `nbasic.dmx` (as rotinas do NestorBASIC como `func .NB_*`, do msxIDE) e `NBASIC.BIN`.
+- **Include da biblioteca**: no original as funcoes de um `include` nao valem no principal (namespaces separados). Um `include "x"` que NAO existe na pasta do fonte mas existe na biblioteca e' emendado como TOKENS antes do parser, no namespace do programa (`SpliceLibraryIncludes`); depois a **poda** (`PruneLibrary`) tira os comentarios da biblioteca e as funcoes nao chamadas (fecho transitivo). Includes de arquivos do usuario ficam como o original.
+- **Fluxo**: as funcoes sao alvos de `GOSUB` e o codigo cai onde o include esta': ele vai depois do `END` (o snippet `nbload` do editor faz assim).
+- **Disco de execucao**: `badig::CollectDiskFiles` junta os `disk_files` (nomes/mascaras da pasta do fonte, 8.3 estrito, em maiusculas) e o `NBASIC.BIN` (com `nbasic`, ou se o fonte inclui `nbasic.dmx`; procura na pasta do fonte e em `badig/`). Opcoes: `##BB:disk_files=`, `##BB:nbasic=true`, `--disk_files`, `--nbasic`, `badig.cfg` secao `[FWMSX]`, dialogo pagina 2.
+- Testes: `badigtest` (biblioteca, poda, mascaras, nome invalido, arquivo inexistente), `controltest` (um programa BASIC le o arquivo de apoio no disco de execucao, no emulador).

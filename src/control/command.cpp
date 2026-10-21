@@ -1142,12 +1142,23 @@ Result Commander::BadigCmd(const std::vector<std::string> &t, bool run) {
     msxdisk::DiskImage img = msxdisk::DiskImage::CreateBlank();
     if (!img.AddFile(r.bmx_path, msx + ".BMX", 0x20, &derr)) return Err(name + ": nao foi possivel copiar o .bmx para o disco");
     if (!img.AddFile(autoexec, "AUTOEXEC.BAS", 0x20, &derr)) return Err(name + ": nao foi possivel copiar o AUTOEXEC.BAS para o disco");
+    // arquivos de apoio (disk_files, NBASIC.BIN): o programa os acha em A: como na maquina de verdade
+    std::vector<badig::DiskFile> extra;
+    std::string cerr;
+    if (!badig::CollectDiskFiles(r, extra, cerr)) return Err(name + ": " + cerr);
+    std::string names;
+    for (const badig::DiskFile &f : extra) {
+        if (!img.AddFile(f.host, f.msx, 0x20, &derr)) {
+            return Err(name + ": nao foi possivel copiar " + f.msx + " para o disco" + (derr == msxdisk::DiskError::DiskFull ? " (disco cheio)" : derr == msxdisk::DiskError::DirectoryFull ? " (diretorio cheio)" : ""));
+        }
+        names += " + " + f.msx;
+    }
     const std::string dsk = (tmp / (stem + "_badig.dsk")).string();
     if (!img.Save(dsk, &derr)) return Err(name + ": nao foi possivel gravar o disco temporario '" + dsk + "'");
     std::string error;
     if (!mm.InsertDisk(0, dsk, error)) return Err(name + ": " + error);
     mm.Reset();
-    out += (out.empty() ? "" : "\n") + std::string("disco ") + dsk + " (" + msx + ".BMX + AUTOEXEC.BAS) em A:; maquina reiniciada: o DISK BASIC roda o programa sozinho";
+    out += (out.empty() ? "" : "\n") + std::string("disco ") + dsk + " (" + msx + ".BMX + AUTOEXEC.BAS" + names + ") em A:; maquina reiniciada: o DISK BASIC roda o programa sozinho";
     return Ok(out);
 }
 

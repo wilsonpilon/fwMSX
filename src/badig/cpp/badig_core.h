@@ -121,6 +121,7 @@ struct Cfg {
     std::string header2 = "https://github.com/farique1/basic-dignified";
     bool load_utf8 = false;    // -tr: o fonte e' UTF-8; senao latin1 (um byte = um caractere)
     std::map<std::string, std::string> remtags; // ##BB:nome=valor (nome em maiusculas)
+    std::vector<std::string> *includes = nullptr; // recebe os arquivos incluidos
 };
 
 // Carrega um arquivo como o IO.load_file: a linha 0 e' "PROGRAM"; as outras trazem o texto com os TABs expandidos e a quebra '\n'.
