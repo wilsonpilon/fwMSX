@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.4 -- "Yie Ar Kung-Fu: Menu de contexto" (Konami) (2026-10-21)
+
+**Pedido do usuario**: "Menu de contexto na arvore, vamos esgotar a parte de projetos antes de irmos para os outros itens".
+- **Desenho**: uma so' implementacao (`EditorApp::ProjectDo`) para as duas interfaces: o popup do ImGui chama `ProjectAct`, o botao Actions... do TUI abre a lista e chama o mesmo `ProjectDo`. Renomear = mover a copia solta + `Drop` do nome antigo + `Push` do novo (a base do `.msxsync` acompanha).
+- **Decisao minha** (a rever): *Restaurar a copia da pasta* sobrescreve sem confirmar (e' o que o nome diz; abas abertas sem alteracoes recarregam, com alteracoes avisam); renomear pasta nao existe.
+- **Falha minha (de novo)**: um build de teste saiu com a versao ainda em 1.43.3 e sobrescreveu o `dist/fwMSX-1.43.3.zip` local (nao rastreado; o tag 1.43.3 no GitHub nao e' afetado).
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.43.3 -- "Yie Ar Kung-Fu: Arvore no TUI" (Konami) (2026-10-21)
 
 **Pedido do usuario**: "Arvore na TUI por hora".

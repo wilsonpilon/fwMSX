@@ -64,7 +64,10 @@ struct Widget {
 };
 
 enum Btn { kBtnOk = 1, kBtnCancel, kBtnNext, kBtnPrev, kBtnYes, kBtnNo, kBtnAll, kBtnSave, kBtnDontSave, kBtnTop, kBtnCursor,
-           kBtnHelp, kBtnSkip, kBtnProject, kBtnFolder };
+           kBtnHelp, kBtnSkip, kBtnProject, kBtnFolder, kBtnActions };
+
+// O que o menu de contexto de um arquivo/pasta do projeto faz (a arvore do TUI e da janela grafica).
+enum class ProjAct { Open, Push, Pull, Rename, Add, Remove };
 
 struct DialogBox {
     Dialog kind = Dialog::None;
@@ -128,6 +131,8 @@ public:
     std::string ProjectName() const { return project_.IsOpen() ? project_.Name() : std::string(); }
     bool HasProject() const { return project_.IsOpen(); }
     void OpenProjectFile(const std::string &path) { ProjectOpenFile(path); } // a arvore da janela grafica: abre (extraindo antes, se so' existir no projeto)
+    // Menu de contexto da arvore (clique direito na janela, "Actions..." no TUI). `path` termina em '/' quando e' uma pasta.
+    void ProjectAct(ProjAct a, const std::string &path) { ProjectDo(a, path, false); }
     prj::Project &ProjectRef() { return project_; }
     const std::string &ProjectRoot() const { return project_root_; }
     void ProjectFlush();  // leva para o banco os arquivos salvos desde a ultima vez (chamado depois de cada tecla, clique e salvamento automatico)
@@ -283,6 +288,11 @@ private:
     std::vector<std::pair<std::string, long long>> ProjectStamps() const;
     void ProjectFilesDialog(int sel = 0);
     void ProjectTreeEnter(int row);
+    void ProjectActionsDialog(int row);                            // o menu de contexto da linha `row` da arvore do Files...
+    void ProjectDo(ProjAct a, const std::string &path, bool from_files);
+    void ProjectRenameDo(const std::string &from, const std::string &to);
+    void ProjectAddDo(const std::string &rel);
+    void ProjectBackToFiles() { if (act_from_files_) ProjectFilesDialog(act_row_); } // depois de uma acao, a arvore volta no mesmo item
     void ProjectOpenFile(const std::string &path);
     void ProjectAddCurrent();
 
@@ -292,7 +302,11 @@ private:
     std::vector<prj::SyncItem> sync_queue_;  // conflitos e apagados que esperam a resposta do usuario
     size_t sync_pos_ = 0;
     std::vector<std::pair<std::string, bool>> tree_rows_; // as linhas da arvore do Files...: (caminho, e' pasta)
-    std::set<std::string> tree_folded_;                   // as pastas recolhidas ("src/"), lembradas entre aberturas do dialogo
+    std::string act_path_;                                // o alvo do menu de contexto aberto (pasta termina em '/')
+    std::vector<ProjAct> act_list_;                       // as linhas do dialogo Actions
+    int act_row_ = 0;
+    bool act_from_files_ = false;                         // veio do Files...: depois da acao a arvore reabre
+    std::set<std::string> tree_folded_;                  // as pastas recolhidas ("src/"), lembradas entre aberturas do dialogo
     std::vector<prj::FileInfo> project_list_; // o que o dialogo Files... mostra (o indice da lista = o indice aqui)
     std::vector<std::pair<std::string, long long>> sync_before_;
     std::vector<Editor> wins_;

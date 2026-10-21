@@ -1341,6 +1341,37 @@ void test_project_editor() {
     K(a, {"Down", "Enter"});
     check(!a.HasDialog() && fs::path(a.Ed().Name()).filename() == "a.bas", "Enter no arquivo abre");
 
+    // menu de contexto da arvore (TUI: botao Actions...): renomear, tirar do projeto, adicionar da pasta
+    K(a, {"A-j", "f", "Down", "Down"}); // [src/] a.bas novo.asm
+    a.PressDialog(ed::kBtnActions);
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectActions && screen_has(a, "Rename...") && screen_has(a, "Remove from the project"), "Actions... abre o menu de contexto do arquivo");
+    K(a, {"Down", "Down", "Down", "Enter"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectRename, "Rename... pede o novo nome");
+    if (a.HasDialog() && a.CurrentMutable()->Find(1)) a.CurrentMutable()->Find(1)->text = "src/neu.asm";
+    a.DialogEnter();
+    check(a.ProjectRef().Has("src/neu.asm") && !a.ProjectRef().Has("src/novo.asm") && fs::exists(dir / "src/neu.asm") && !fs::exists(dir / "src/novo.asm"),
+          "renomeia no projeto E a copia solta");
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles && screen_has(a, "neu.asm"), "a arvore volta no mesmo item");
+    a.PressDialog(ed::kBtnActions);
+    K(a, {"Down", "Down", "Down", "Down", "Down", "Enter"}); // Remove from the project
+    check(!a.ProjectRef().Has("src/neu.asm") && fs::exists(dir / "src/neu.asm"), "tirar do projeto mantem a copia da pasta");
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectFiles, "e a arvore volta");
+    a.PressDialog(ed::kBtnActions); // a lista encolheu: o item marcado e' o a.bas
+    K(a, {"Down", "Down", "Down", "Down", "Enter"}); // Add a file from the folder...
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::ProjectAddFile && a.Current()->Find(1)->text == "src/", "Add: propoe a pasta do item");
+    if (a.HasDialog() && a.CurrentMutable()->Find(1)) a.CurrentMutable()->Find(1)->text = "src/neu.asm";
+    a.DialogEnter();
+    check(a.ProjectRef().Has("src/neu.asm"), "Add inclui o arquivo da pasta");
+    // de volta ao nome antigo (os testes seguintes usam novo.asm)
+    K(a, {"Down"});
+    a.PressDialog(ed::kBtnActions);
+    K(a, {"Down", "Down", "Down", "Enter"});
+    if (a.HasDialog() && a.CurrentMutable()->Find(1)) a.CurrentMutable()->Find(1)->text = "src/novo.asm";
+    a.DialogEnter();
+    check(a.ProjectRef().Has("src/novo.asm") && !a.ProjectRef().Has("src/neu.asm"), "renomeia de volta");
+    K(a, {"Esc"});
+    check(!a.HasDialog(), "Esc fecha a arvore");
+
     // alteracao so' na pasta (editor externo): o Sync sugere pasta -> projeto e aplica
     spit(dir / "src/novo.asm", "org 0x8000\n");
     K(a, {"A-j", "s"});

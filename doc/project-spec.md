@@ -87,4 +87,5 @@ da pasta sem `.msxsync` (o "clone do GitHub"), caminho malicioso. `controltest`:
 - **Barra de status**: `Editor::RenderStatus(grid, y, project)`; no TUI `[nome]` na coluna 22 (9 letras); na janela `Projeto: nome`.
 - **Arvore** (so' na janela grafica): `EditorPanel::DrawProjectTree`, pastas = nos, arquivos = folhas, clique = `EditorApp::OpenProjectFile`. Ordem com `/` antes dos demais caracteres para agrupar as pastas.
 - **Arvore no TUI (1.43.3)**: o dialogo *Files...* e' a arvore (`ProjectFilesDialog`/`ProjectTreeEnter`): `[-] pasta/` + arquivos recuados; Enter recolhe/expande (reconstroi o dialogo no mesmo item) ou abre.
-- Em aberto: Build/Dignified lendo do banco, `Obifile`, arvore com menu de contexto (adicionar/remover).
+- **Menu de contexto (1.43.4)**: `ProjAct` {Open, Push, Pull, Rename, Add, Remove}; `EditorApp::ProjectDo` e' o unico caminho (popup do ImGui via `ProjectAct`; no TUI o botao Actions... do Files... abre `Dialog::ProjectActions`, e Rename/Add pedem o texto em `ProjectRename`/`ProjectAddFile`). Renomear: mover a copia solta + `Drop` + `Push`; tirar do projeto nunca apaga a copia da pasta.
+- Em aberto: Build/Dignified lendo do banco, `Obifile`, revisions, remocoes propagando, nomes que so' diferem em maiusculas.

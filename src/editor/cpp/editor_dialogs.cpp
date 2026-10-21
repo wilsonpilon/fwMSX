@@ -869,6 +869,7 @@ void EditorApp::BuildProjectList(Dialog kind, const std::string &title, const st
     list.top = std::max(0, list.sel - 5);
     dlg_.ws.push_back(list);
     OkCancel(dlg_, 14);
+    if (kind == Dialog::ProjectFiles) dlg_.ws.push_back(ButtonW(kBtnActions, (dlg_.w - 2 - 16) / 2 + 20, 14, "Actions...", false)); // o "clique direito" do TUI
     dlg_.BuildFields();
 }
 

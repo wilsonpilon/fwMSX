@@ -875,7 +875,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::MouseSetup: BuildMouse(); break;
     case Dialog::Language: BuildLanguage(); break;
     case Dialog::Errors: BuildMessagesDialog(); break;
-    case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: break; // montados por quem abre
+    case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: case Dialog::ProjectActions: case Dialog::ProjectRename: case Dialog::ProjectAddFile: break; // montados por quem abre
     case Dialog::EditorSetup: BuildEditorSetup(); break;
     case Dialog::SaveConfig: BuildSaveConfig(); break;
     case Dialog::Help: BuildHelp(arg, 0); break;
@@ -1187,8 +1187,23 @@ void EditorApp::DialogDone(int button) {
     case Dialog::ProjectFiles: {
         const Widget *l = done.Find(2);
         if (button == kBtnOk && l) ProjectTreeEnter(l->sel);
+        else if (button == kBtnActions && l) ProjectActionsDialog(l->sel);
         break;
     }
+    case Dialog::ProjectActions: {
+        const Widget *l = done.Find(2);
+        if (button == kBtnOk && l && l->sel >= 0 && l->sel < static_cast<int>(act_list_.size())) ProjectDo(act_list_[static_cast<size_t>(l->sel)], act_path_, true);
+        else ProjectBackToFiles();
+        break;
+    }
+    case Dialog::ProjectRename:
+        if (button == kBtnOk) ProjectRenameDo(act_path_, done.Text(1));
+        ProjectBackToFiles();
+        break;
+    case Dialog::ProjectAddFile:
+        if (button == kBtnOk) ProjectAddDo(done.Text(1));
+        ProjectBackToFiles();
+        break;
     case Dialog::ProjectSync:
         if (button == kBtnOk) ProjectSyncApply();
         break;

@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.4] - 2026-10-21 - "Yie Ar Kung-Fu: Menu de contexto" (Konami)
+
+### Adicionado -- menu de contexto da arvore do projeto (E6 parte 2, fatia 5)
+- **Janela grafica**: clique direito num arquivo ou pasta da arvore: *Abrir*, *Atualizar o projeto com a copia da pasta*, *Restaurar a copia da pasta a partir do projeto*, *Renomear...*, *Adicionar arquivo da pasta...*, *Tirar do projeto*.
+- **TUI**: o *Files...* ganhou o botao **Actions...** com as mesmas acoes numa lista (a pasta so' oferece *Adicionar* e *Tirar a pasta do projeto*); depois da acao a arvore volta no mesmo item.
+- *Renomear* leva junto a copia solta (se existir) e as abas abertas; o projeto fica ja' em sincronia com o nome novo. *Tirar do projeto* nunca apaga a copia da pasta. *Adicionar* aceita qualquer arquivo da pasta do projeto, nao so' os que o editor salvou.
+- Teste `editorui`: Actions..., renomear (projeto + pasta), tirar, adicionar, renomear de volta.
+
 ## [1.43.3] - 2026-10-21 - "Yie Ar Kung-Fu: Arvore no TUI" (Konami)
 
 ### Alterado -- Project > Files... virou arvore (E6 parte 2, fatia 4)

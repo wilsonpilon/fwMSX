@@ -300,6 +300,127 @@ void EditorApp::ProjectTreeEnter(int row) {
     ProjectFilesDialog(row);
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// menu de contexto da arvore
+// ---------------------------------------------------------------------------------------------------------------
+
+// No TUI o "clique direito" e' o botao Actions... do Files...: uma lista com o que se pode fazer com a linha marcada.
+void EditorApp::ProjectActionsDialog(int row) {
+    if (row < 0 || row >= static_cast<int>(tree_rows_.size())) return;
+    act_row_ = row;
+    act_path_ = tree_rows_[static_cast<size_t>(row)].first;
+    act_from_files_ = true;
+    const bool dir = tree_rows_[static_cast<size_t>(row)].second;
+    act_list_.clear();
+    std::vector<std::string> items;
+    auto add = [&](ProjAct a, const char *text) {
+        act_list_.push_back(a);
+        items.push_back(text);
+    };
+    if (!dir) {
+        add(ProjAct::Open, "Open");
+        add(ProjAct::Push, "Update the project from the folder copy");
+        add(ProjAct::Pull, "Restore the folder copy from the project");
+        add(ProjAct::Rename, "Rename...");
+    }
+    add(ProjAct::Add, "Add a file from the folder...");
+    add(ProjAct::Remove, dir ? "Remove the folder from the project (the folder copies stay)" : "Remove from the project (the folder copy stays)");
+    BuildProjectList(Dialog::ProjectActions, "Actions: " + act_path_, items, 0);
+}
+
+void EditorApp::ProjectDo(ProjAct a, const std::string &path, bool from_files) {
+    if (!project_.IsOpen()) return;
+    act_path_ = path;
+    act_from_files_ = from_files;
+    const bool dir = !path.empty() && path.back() == '/';
+    std::string err;
+    switch (a) {
+    case ProjAct::Open:
+        if (!dir) ProjectOpenFile(path);
+        return; // abrir sai da arvore
+    case ProjAct::Push: {
+        if (dir) break;
+        if (!project_.Push(path, project_root_, err)) Msg("Project: " + err);
+        else Msg("Project updated from the folder: " + path);
+        break;
+    }
+    case ProjAct::Pull: {
+        if (dir) break;
+        const auto before = ProjectStamps();
+        if (!project_.Pull(path, project_root_, err)) Msg("Project: " + err);
+        else Msg("Folder copy restored from the project: " + path);
+        ProjectReloadBuffers(before);
+        break;
+    }
+    case ProjAct::Rename:
+        if (!dir) {
+            BuildSimpleInput(Dialog::ProjectRename, "Rename", "New path:", path, 44);
+            return;
+        }
+        break;
+    case ProjAct::Add: {
+        const size_t slash = path.rfind('/'); // a pasta do alvo: o arquivo novo costuma morar ao lado
+        BuildSimpleInput(Dialog::ProjectAddFile, "Add file", "File (in the project folder):", slash == std::string::npos ? std::string() : path.substr(0, slash + 1), 44);
+        return;
+    }
+    case ProjAct::Remove: {
+        int n = 0;
+        for (const prj::FileInfo &f : project_.List()) {
+            if (f.path == path || (dir && f.path.compare(0, path.size(), path) == 0)) n += project_.Drop(f.path, project_root_, err) ? 1 : 0;
+        }
+        Msg("Removed from the project: " + std::to_string(n) + (n == 1 ? " file" : " files"));
+        break;
+    }
+    }
+    ProjectBackToFiles();
+}
+
+// Renomear leva a copia solta junto (se existir) e as abas abertas; o projeto tira o nome antigo e recebe o novo, ja' em sincronia.
+void EditorApp::ProjectRenameDo(const std::string &from, const std::string &to) {
+    std::string err;
+    if (to.empty() || to == from) return;
+    if (!prj::PathOk(to) || prj::IsIgnored(to)) {
+        Msg("Project: invalid name " + to);
+        return;
+    }
+    if (project_.Has(to)) {
+        Msg("Project: " + to + " already exists");
+        return;
+    }
+    std::error_code ec;
+    const fs::path a = fs::path(project_root_) / from, b = fs::path(project_root_) / to;
+    if (fs::exists(a, ec)) {
+        fs::create_directories(b.parent_path(), ec);
+        fs::rename(a, b, ec);
+        if (ec) {
+            Msg("Project: cannot rename the folder copy (" + ec.message() + ")");
+            return;
+        }
+    }
+    for (Editor &w : wins_) {
+        if (!w.Name().empty() && ProjectRel(w.Name()) == from) w.SetName(b.string());
+    }
+    if (!project_.Drop(from, project_root_, err) || (fs::exists(b, ec) && !project_.Push(to, project_root_, err))) {
+        Msg("Project: " + err);
+        return;
+    }
+    Msg("Renamed: " + from + " -> " + to);
+}
+
+void EditorApp::ProjectAddDo(const std::string &rel_in) {
+    std::string rel = rel_in;
+    std::replace(rel.begin(), rel.end(), '\\', '/');
+    if (rel.empty()) return;
+    std::error_code ec;
+    if (!prj::PathOk(rel) || prj::IsIgnored(rel) || !fs::is_regular_file(fs::path(project_root_) / rel, ec)) {
+        Msg("Project: " + rel + " is not a file of the project folder");
+        return;
+    }
+    std::string err;
+    if (!project_.Push(rel, project_root_, err)) Msg("Project: " + err);
+    else Msg("Added to the project: " + rel);
+}
+
 void EditorApp::ProjectOpenFile(const std::string &path) {
     bool text = false;
     const std::string kind = prj::KindOf(path, &text);

@@ -402,6 +402,27 @@ void EditorPanel::DrawProjectTree(float height) {
     };
     std::vector<Level> stack;
     auto all_open = [&] { return stack.empty() || stack.back().open; };
+    // O menu de contexto (clique direito) do ultimo item desenhado: as mesmas acoes do "Actions..." do TUI.
+    auto ctx = [&](const std::string &p, bool dir) {
+        if (!ImGui::BeginPopupContextItem()) return;
+        bool acted = false;
+        auto item = [&](const char *label, ProjAct a) {
+            if (ImGui::MenuItem(label)) {
+                app_.ProjectAct(a, p);
+                acted = true;
+            }
+        };
+        if (!dir) {
+            item("Abrir", ProjAct::Open);
+            item("Atualizar o projeto com a copia da pasta", ProjAct::Push);
+            item("Restaurar a copia da pasta a partir do projeto", ProjAct::Pull);
+            item("Renomear...", ProjAct::Rename);
+        }
+        item("Adicionar arquivo da pasta...", ProjAct::Add);
+        item(dir ? "Tirar a pasta do projeto (as copias ficam)" : "Tirar do projeto (a copia fica)", ProjAct::Remove);
+        ImGui::EndPopup();
+        if (acted) tree_age_ = 1 << 30; // a lista muda: reler ja' no proximo quadro
+    };
     auto pop_to = [&](size_t n) {
         while (stack.size() > n) {
             if (stack.back().open) ImGui::TreePop();
@@ -424,12 +445,14 @@ void EditorPanel::DrawProjectTree(float height) {
         for (size_t d = common; d < ndirs; ++d) {
             prefix += parts[d] + "/";
             const bool o = all_open() && ImGui::TreeNodeEx((parts[d] + "###" + prefix).c_str(), ImGuiTreeNodeFlags_DefaultOpen);
+            if (all_open()) ctx(prefix, true);
             stack.push_back({parts[d], o});
         }
         if (!all_open()) continue;
         ImGui::TreeNodeEx(path.c_str(), ImGuiTreeNodeFlags_Leaf | ImGuiTreeNodeFlags_NoTreePushOnOpen | ImGuiTreeNodeFlags_SpanAvailWidth, "%s",
                           parts.back().c_str());
         if (ImGui::IsItemClicked(0)) app_.OpenProjectFile(path);
+        ctx(path, false);
     }
     pop_to(0);
     ImGui::EndChild();
