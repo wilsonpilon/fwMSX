@@ -250,6 +250,34 @@ ARQUIVOS
 VER TAMBEM
   project, badig, asm, asmrun)MAN");
 
+    add("download", "download <catalog|get|index|ls|search|fetch>", "baixa arquivos do File Hunter e utilitarios, item por item (fwmsx --download)",
+        R"MAN(DESCRICAO
+  Baixa arquivos para a pasta downloads/ ao lado do executavel, um de cada vez.
+  Na janela do emulador: menu ROMs > Downloads (File Hunter e utilitarios).
+
+COMANDOS (fwmsx --download ...)
+  catalog               lista os utilitarios: nbasic, see, nplayer (Konamiman)
+  get <id>              baixa os arquivos de um utilitario
+                        (get nbasic tambem copia o NBASIC.BIN para badig/)
+  index [--force]       baixa o indice do File Hunter (allfiles.txt, ~3,5 MB)
+  ls [pasta]            lista uma pasta do File Hunter pelo indice
+  search <palavras>     procura no indice (todas as palavras, sem caixa)
+  fetch <caminho>       baixa UM arquivo do File Hunter
+
+FILE HUNTER
+  O site inteiro e' navegado e pesquisado pelo indice, sem acessar o servidor.
+  So' o arquivo escolhido e' baixado, com um intervalo entre dois downloads: o
+  File Hunter bane quem baixa em massa. Os arquivos ficam em
+  downloads/filehunter/<mesmo caminho>; para poe-los no banco de ROMs use
+  ROMs > Escanear pasta.
+
+NESTORBASIC
+  O NBASIC.BIN nao vem no pacote (o repositorio do autor nao declara licenca):
+  baixe com  fwmsx --download get nbasic  ou pela janela (aba Utilitarios).
+
+VER TAMBEM
+  romdb, badig, obi)MAN");
+
     add("lua", "lua <codigo|arquivo.lua|stop|status>", "scripts em Lua no console do emulador (e o comando source)",
         R"MAN(DESCRICAO
   O console (TUI, janela, servidor TCP) roda scripts em Lua 5.4. Um script fala

@@ -86,6 +86,8 @@ $notasFile = Join-Path $distDir "SUPER-X-PT.notas"
 if (Test-Path $notasFile) { Copy-Item $notasFile $stageDir }
 # Biblioteca do Basic Dignified (nbasic.dmx, NBASIC.BIN): badig\ ao lado do executavel
 Copy-Item (Join-Path $distDir "badig") $stageDir -Recurse
+# O NBASIC.BIN (Konamiman, sem licenca declarada) NAO vai no pacote: baixa-se pela janela Downloads (doc\download-spec.md)
+Remove-Item (Join-Path $stageDir "badig\NBASIC.BIN") -ErrorAction SilentlyContinue
 # Pasta emulator\ (arquivos do MSX-DOS 1 e 2 e os discos de sistema msxdos1.dsk/msxdos2.dsk gerados pelo obi): decisao do usuario em 2026-10-22, entra no pacote
 Copy-Item (Join-Path $distDir "emulator") $stageDir -Recurse
 Copy-Item (Join-Path $root "README.md") $stageDir

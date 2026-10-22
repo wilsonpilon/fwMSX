@@ -91,7 +91,8 @@ void RomManager::DrawMenu(GLFWwindow *window) {
             return romdb::DownloadFileHunterFullSet(p, d, "", l, added, e);
         });
     }
-    if (ImGui::MenuItem("Navegar file-hunter...")) {
+    if (ImGui::MenuItem("Downloads (File Hunter e utilitarios)...")) downloads_.Open();
+    if (ImGui::MenuItem("Navegar System ROMs (entram no banco)...")) {
         show_browser_ = true;
         if (!browser_loaded_) {
             browser_url_ = romdb::kFileHunterSystemRoms;
@@ -409,6 +410,7 @@ void RomManager::DrawWindows(GLFWwindow *window) {
     DrawStatus();
     DrawDatabase(window);
     DrawBrowser();
+    downloads_.Draw();
     if (!running_ && worker_.joinable()) FinishTask();
 }
 

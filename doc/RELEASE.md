@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.17 -- "Yie Ar Kung-Fu: Downloads" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "fwMSX-splash.png e arte nossa, NBASIC.BIN e importante, mas pode ser baixado de github.com/Konamiman/MSX/tree/master/SRC/NBASIC [...] que tal criar uma opcao no menu que baixa ROMs do File Hunter, DSK, PDF... tudo no file hunter, e os utilitarios dos sites especificos, fazemos uma opcao que abre uma janela onde o usuario vai poder baixar item por item". Decisoes (AskUserQuestion): janela unica com fontes; busca pelo `allfiles.txt`; NBASIC.BIN baixado sob demanda.
+- **Achados na pesquisa**: (1) o File Hunter pede, no `Read Me & Welcome.txt`, que nao se baixe em massa (ban de IP): por isso o desenho todo gira em torno de UM indice e downloads manuais com intervalo; (2) a raiz do site so' responde com User-Agent de navegador (405 com o do curl; o `romdb/net/web.cpp` ja' tratava); (3) o `allfiles.txt` traz 59.237 caminhos, sem tamanho nem data; (4) a API do GitHub devolve licenca `NOASSERTION` para o repositorio do Konamiman: nao ha' base para redistribuir o `NBASIC.BIN`.
+- **Desenho**: `dl::Index` (BOM/CRLF/`\`), `dl::Fetch` (temporario, intervalo, `install`), catalogo compilado; a janela e' uma thread de trabalho por vez. O `curl` continua sendo o transporte (`romdb::HttpDownload`). `SafeRelative`/`LocalComponent`/temporario `.part` evitam que um nome do servidor chegue a um comando de shell ou saia da pasta de downloads.
+- **Nao verificado**: a janela ImGui compilou mas nao foi aberta numa sessao grafica real; o download real do File Hunter e do GitHub nao esta' no `ctest` (sem rede nos testes): so' o `Fetch` por `file://`.
+- Validado: Windows e Linux, `ctest` 100% (34).
+
+---
+
 ## v1.43.16 -- "Yie Ar Kung-Fu: Scripts em Lua" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "2" (o spike do Lua, item 2 da lista de pendencias). Decisoes (AskUserQuestion): o Lua vem por FetchContent; o primeiro passo entrega os degraus 1 e 2 enxutos (`source` e a API `msx` com ganchos), nao o editor.

@@ -174,7 +174,7 @@ if (FWMSX_MSXDISK_GUI)
 
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app.cpp src/msxdisk/gui/style.cpp src/msxdisk/gui/file_dialog.cpp)
     set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window.cpp src/machine/gui/video_filters.cpp
-            src/machine/gui/rom_manager.cpp src/editor/gui/editor_window.cpp src/editor/gui/editor_panel.cpp)
+            src/machine/gui/rom_manager.cpp src/machine/gui/download_window.cpp src/editor/gui/editor_window.cpp src/editor/gui/editor_panel.cpp)
 else ()
     list(APPEND MSXDISK_LIB_SOURCES src/msxdisk/gui/app_stub.cpp)
     set(MACHINE_WINDOW_SOURCES src/machine/gui/emu_window_stub.cpp src/editor/gui/editor_window_stub.cpp)
@@ -492,6 +492,15 @@ set(OBI_LIB_SOURCES
         src/obi/asm/obi_crc.asm
 )
 
+# downloads: o File Hunter (indice + item por item) e os utilitarios de sites especificos. C++ (indice, catalogo, rede) e C (busca sem diferenciar caixa).
+# doc/download-spec.md. A rede e' o curl, via src/romdb/net/web.cpp.
+set(DOWNLOAD_LIB_SOURCES
+        src/download/cpp/download.cpp
+        src/download/cpp/download_cli.cpp
+        src/download/c/dl_match.c
+        src/romdb/net/web.cpp
+)
+
 # O projeto .msxproject (SQLite + copias soltas): C++ (banco e sincronizacao), C (tipo pela extensao), Fortran (caminho seguro), NASM (hash sem CR).
 # doc/project-spec.md. Usa o SHA-1 do romdb e o sqlite3.
 set(PROJECT_LIB_SOURCES
@@ -503,7 +512,7 @@ set(PROJECT_LIB_SOURCES
 )
 
 # O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto. O comando `project` do console usa o projeto.
-list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${PROJECT_LIB_SOURCES} ${OBI_LIB_SOURCES} src/script/script_engine.cpp)
+list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${PROJECT_LIB_SOURCES} ${OBI_LIB_SOURCES} src/script/script_engine.cpp ${DOWNLOAD_LIB_SOURCES})
 
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
@@ -813,6 +822,13 @@ if (MINGW)
     target_link_options(badigtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME badig COMMAND badigtest)
+
+# downloadtest: o indice do File Hunter, o catalogo, os caminhos seguros e o Fetch (com um arquivo local no lugar da rede).
+add_executable(downloadtest tests/download/download_test.cpp ${DOWNLOAD_LIB_SOURCES})
+if (MINGW)
+    target_link_options(downloadtest PRIVATE -static -static-libgcc -static-libstdc++)
+endif ()
+add_test(NAME download COMMAND downloadtest)
 
 # obitest: a receita Obifile -> .dsk (nomes 8.3, CRC-32, clusters, parser, build, erros, leitor do projeto).
 add_executable(obitest tests/obi/obi_test.cpp ${OBI_LIB_SOURCES} ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${MSXDISK_CORE_SOURCES})

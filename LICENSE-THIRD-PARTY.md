@@ -211,6 +211,17 @@ Nenhuma e' copiada para este repositorio; o CMake baixa e compila (todas permiss
 **FTXUI** (MIT; a TUI), **Dear ImGui** (MIT) e **GLFW** (zlib; a janela grafica), **miniaudio** (dominio publico / MIT-0; ver abaixo), **miniz** (MIT; ver abaixo)
 e **Lua** (MIT; abaixo).
 
+## Downloads (janela Downloads e `fwmsx --download`, 1.43.17)
+
+O fwMSX **nao distribui** o que baixa por essa janela; o usuario baixa dos sites dos autores, um arquivo por vez (doc/download-spec.md):
+
+- **File Hunter** (`download.file-hunter.com`, Arnaud de Klerk): arquivo de MSX de acesso livre. O proprio site pede que nao se baixe em massa
+  (ban de IP) e diz ter feito o possivel para nao incluir titulos comerciais disponiveis; a janela baixa so' o arquivo clicado, com intervalo
+  minimo, e usa o `allfiles.txt` do site como indice.
+- **Konamiman** (`github.com/Konamiman/MSX`, `SRC/NBASIC`): NestorBASIC (`NBASIC.BIN`, `NBASIC.DAT`...), SEE e NPLAYER. O repositorio **nao declara
+  licenca**; por isso o `NBASIC.BIN` deixou de ir no repositorio e nos pacotes e passou a ser baixado. O `nbasic.dmx` (as rotinas `.NB_*` do Basic
+  Dignified, vindas do msxIDE) continua nos pacotes.
+
 ## Lua (`lua-5.4.7`, baixado na configuracao do build)
 
 O comando `lua` do console (doc/script-spec.md) usa o interpretador Lua
@@ -265,6 +276,11 @@ O repositorio `github.com/wilsonpilon/fwMSX` e' **publico**, e o que o git rastr
 os pacotes de release nao levam. A frase acima ("nada disso e' distribuido como parte do binario") vale para os **pacotes**; o levantamento do que
 o **repositorio** publica (ROMs de jogos em `tests/media/`, o banco `dist/roms/`, discos e ROMs dentro de `resource/`, pacotes antigos em `dist/`...)
 e as opcoes de tratamento estao em [doc/media-review.md](doc/media-review.md). **Aplicado em 2026-10-22**: `tests/media/`, `dist/roms/`, os pacotes antigos de `dist/`, `*.sst` e as capturas soltas deixaram de ser rastreados e estao no `.gitignore` (continuam no disco do autor); o historico nao foi reescrito, e `resource/` segue como estava, a decidir.
+
+## Arte propria
+
+`fwMSX-splash.png` (a imagem de abertura) e o icone do programa sao **arte do proprio projeto** (informacao do autor, 2026-10-22), sob o BSD-3-Clause
+do fwMSX.
 
 ## Politica de distribuicao de midias de terceiros (2026-10-06)
 

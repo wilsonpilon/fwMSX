@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.17] - 2026-10-22 - "Yie Ar Kung-Fu: Downloads" (Konami)
+
+### Adicionado -- janela de downloads item por item (pendencia "downloader de ROMs/discos")
+- **ROMs > Downloads (File Hunter e utilitarios)...**: janela com duas abas. **File Hunter**: o site inteiro (Games, Manuals, Books, Programs, Source Codes... ~59 mil arquivos) navegado e pesquisado pelo `allfiles.txt` do proprio site, baixado uma vez (~3,5 MB); navegar e procurar nao acessam o servidor, e cada arquivo so' e' baixado quando voce clica, um por vez, com 1,2 s de intervalo minimo (o site bane quem baixa em massa). **Utilitarios**: lista curada, hoje do Konamiman (`nbasic`, `see`, `nplayer`) direto do GitHub dele.
+- `fwmsx --download catalog | get <id> | index | ls | search | fetch` (e `man download`): o mesmo sem janela.
+- O item antigo virou **Navegar System ROMs (entram no banco)**: continua porque extrai e cadastra as ROMs de sistema no banco.
+- **`NBASIC.BIN` saiu do repositorio e dos pacotes** (o repositorio do Konamiman nao declara licenca); baixa-se por `get nbasic`, que o copia tambem para `badig/`. O Basic Dignified, sem ele, diz onde baixar.
+- Seguranca: nenhum nome vindo do servidor chega a um comando de shell (URL codificada, temporario nosso), destino so' relativo e sem `..`, download interrompido nao deixa meio arquivo.
+- `fwMSX-splash.png` e' arte propria (registrado no `LICENSE-THIRD-PARTY.md`).
+- Teste: `downloadtest` (indice, busca, pastas, caminhos seguros, catalogo, `Fetch` com `file://`); o teste do Badig passou a usar um `NBASIC.BIN` de mentira numa biblioteca temporaria.
+
 ## [Sem versao] - 2026-10-22 - revisao das licencas de midia (so' documentacao)
 - `doc/media-review.md`: o levantamento do que o repositorio PUBLICO rastreia de terceiros (1221 `.rom`, 266 `.dsk`, 136 `.pdf`, 105 `.zip`; 19 ROMs de jogos comerciais em `tests/media/`; 637 ROMs de sistema em `dist/roms/`; pacotes antigos em `dist/`), o risco por grupo e uma recomendacao em ordem de custo. Nada removido.
 - **Aplicado o passo 1 da recomendacao**: 818 arquivos de midia de terceiros (`tests/media/`, `dist/roms/`, `dist/*.zip|gz`, `*.sst`, capturas soltas) deixam de ser rastreados e vao para o `.gitignore`; continuam no disco; o historico nao foi alterado.

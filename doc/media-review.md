@@ -54,6 +54,12 @@ Passo 1 da recomendacao: `git rm --cached` (os arquivos **continuam no disco**) 
 
 Consequencia para quem clonar o repositorio: os testes que precisam de uma BIOS (`controltest` com `dist/roms/bios/MSX2P.ROM`, `asme2etest` e `audiotest` com `resource/fMSX/ROMs/MSX.ROM`) so' rodam onde a BIOS existir; a do autor continua em `dist/roms/` no disco dele.
 
+## 4c. Respostas do autor (2026-10-22) e o que mudou
+
+- **`fwMSX-splash.png`**: arte do proprio projeto. Registrado no `LICENSE-THIRD-PARTY.md` ("Arte propria").
+- **`NBASIC.BIN`** (Konamiman; o repositorio dele **nao declara licenca**): o autor indicou `github.com/Konamiman/MSX/tree/master/SRC/NBASIC` como origem. Em vez de redistribui-lo, ele **saiu** do repositorio (`git rm --cached` + `.gitignore`) e dos pacotes (`build.ps1`/`build.sh` o removem do que sobrar em `dist/badig/`) e passou a ser **baixado sob demanda** pela janela Downloads (1.43.17, `doc/download-spec.md`). O `nbasic.dmx` (rotinas `.NB_*`, do msxIDE do proprio autor) continua nos pacotes.
+- **`SUPER-X-PT.notas`** e **`resource/`**: seguem pendentes (origem do arquivo; decisao pasta por pasta).
+
 ## 5. O que este documento nao resolve
 
 - Nao e' parecer juridico. A tabela diz o que esta' publicado e de quem parece ser; a decisao de risco e' do autor.

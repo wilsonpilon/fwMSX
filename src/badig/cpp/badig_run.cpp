@@ -875,7 +875,7 @@ bool CollectDiskFiles(const Result &r, std::vector<DiskFile> &out, std::string &
             if (!found.empty()) break;
         }
         if (found.empty()) {
-            err = "NBASIC.BIN not found (next to the source or in the badig/ folder beside the executable)";
+            err = "NBASIC.BIN not found (next to the source or in the badig/ folder beside the executable). It is not shipped: download it from the Downloads window (ROMs menu > Utilitarios > NestorBASIC) or run: fwmsx --download get nbasic";
             return false;
         }
         if (have.insert("NBASIC.BIN").second) out.push_back({found, "NBASIC.BIN"});

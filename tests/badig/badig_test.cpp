@@ -257,7 +257,12 @@ void test_units() {
     check(r.ok && r.amx.rfind("1 ", 0) == 0 && r.amx.find("-1") != std::string::npos, "-rh tira o cabecalho, -ls/-lp");
 
     // NestorBASIC: o include "nbasic.dmx" sai da biblioteca (nao ha' um na pasta do fonte) e o NBASIC.BIN vai para o disco
-    const fs::path lib = fs::path(BADIG_TEST_DIR).parent_path().parent_path() / "src" / "badig" / "lib";
+    // (o NBASIC.BIN de verdade nao vem no repositorio nem no pacote: baixa-se pela janela Downloads; aqui vale um arquivo de mentira ao lado do nbasic.dmx)
+    const fs::path src_lib = fs::path(BADIG_TEST_DIR).parent_path().parent_path() / "src" / "badig" / "lib";
+    const fs::path lib = dir / "lib";
+    fs::create_directories(lib);
+    fs::copy_file(src_lib / "nbasic.dmx", lib / "nbasic.dmx", fs::copy_options::overwrite_existing);
+    spit(lib / "NBASIC.BIN", "NBASIC-DE-MENTIRA");
     badig::SetLibraryDir(lib.string());
     badig::Options nb;
     nb.source = (dir / "nb.dmx").string();

@@ -16,6 +16,8 @@
 
 struct GLFWwindow;
 
+#include "download_window.h"
+
 namespace machine::gui {
 
 class RomManager {
@@ -70,6 +72,8 @@ private:
     char vsearch_[256] = {};
     std::vector<romdb::VampierHit> vhits_;
     std::string db_message_;  // ultimo resultado da janela (salvar, excluir, adicionar)
+
+    DownloadWindow downloads_;  // a janela Downloads (File Hunter e utilitarios, item por item)
 
     std::string browser_url_;  // pasta atual do file-hunter
     std::vector<romdb::ListingEntry> browser_entries_;
