@@ -1,7 +1,60 @@
-fwMSX -- como retomar (atualizado em 2026-10-21, ao encerrar o dia: ultima release 1.42.2 "Road Fighter: Erros de execucao no fonte")
+Resume this session with:
+claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61
+fwMSX -- como retomar (atualizado em 2026-10-22, ao encerrar o dia: ultima release 1.43.17 "Yie Ar Kung-Fu: Downloads")
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
+
+== ONDE PARAMOS (2026-10-22, fim do dia) -- LEIA ESTA SECAO PRIMEIRO ==
+Comando para continuar amanha, na mesma maquina:   claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61
+Primeira mensagem sugerida: "voltei, as pastas estao limpas; releia resource/ e me diga o que ainda precisa de tratamento".
+
+1) A PAUSA ATUAL: LIMPEZA MANUAL DE resource/ PELO USUARIO
+   - O usuario MOVEU para fora do repositorio fmsxgo, paleobasic, msxide, kizuna e msxDiskUtil (continuam em E:\fmsxgo, E:\paleobasic, E:\msxide, E:\kizuna) para limpar
+     a mao o material de TERCEIROS que ha' dentro delas (discos/ROMs de jogos, BIOS, copias de outros projetos, SDKs MSXgl/Fusion-C), e vai DEVOLVE-LAS LIMPAS.
+   - ENQUANTO ISSO o working tree mostra ~43 mil arquivos "D" (apagados) em resource/. NAO fazer `git add -A`, NAO commitar essas remocoes antes de ver as pastas de volta
+     (regra do CLAUDE.md: git add so' com caminhos explicitos). Tudo e' recuperavel do git (nada foi commitado).
+   - Quando o usuario avisar: (a) reler resource/{fmsxgo,paleobasic,msxide,kizuna} e listar o que ainda e' de terceiros (extensoes de midia, pastas third-party/, SDKs);
+     (b) commitar a mudanca de resource/ SO' depois do aval dele (e' a remocao de material do repositorio PUBLICO); (c) atualizar doc/media-review.md (secao 4d) e LICENSE-THIRD-PARTY.md.
+   - Decisao do usuario (2026-10-22): esses 4 sao projetos PROPRIOS dele, ficam por enquanto so' como referencia dos editores (tela, sprite, som, draw) para reescrever em
+     C/C++/ASM/Fortran, e serao ELIMINADOS no fim, ficando uma unica licenca (BSD-3-Clause). O que carregam de terceiros nao entra nessa licenca.
+   - Paleobasic/msxide: a ajuda (man/help) JA' foi importada e esta versionada em src/man/cpp/man_pages_*.cpp (4,3 MB; mantest passa SEM as pastas). Os PDFs/TXTs deles nao
+     precisam ficar. Unico buraco: manuais do N80/LK80/LIBSTOR (nao importados). Os importadores tools/paleobasic/import_*.py leem resource/paleobasic/src/editor/help/*.pbi:
+     sem a pasta eles nao rodam -> ajustar para ler de uma variavel de ambiente/argumento (ex.: E:\paleobasic) ou assumir que man_pages_*.cpp sao a fonte (editar a mao).
+   - IDEIA APROVADA (fazer depois): 3a aba "Documentacao" na janela Downloads (lista curada de URLs que o usuario passara: Red Book em Markdown, MSX2 Technical Handbook em
+     Markdown do Konamiman etc.), baixando ARQUIVOS (nao reimportar para o man); .md abre no editor com o preview F7. Esperar as URLs do usuario.
+   - PROXIMA PASTA a analisar de resource/: openMSX e openMSX_TSXadv (GPL v2+, so' estudo, promessa de retirar no fim); depois CLK, asMSX, fMSX, makeTSX, DiskUtilities,
+     basic-dignified, msxdos1/2, MSXDOS23.DSK e os soltos. resource/Amazonia64kV5 JA' foi EXCLUIDA (nao rastreada; testes usam tests/asm/real).
+
+2) O QUE FOI FEITO HOJE (todas publicadas no GitHub com release; ctest Windows+Linux 100%)
+   1.43.6 limite do historico do .msxproject 8 MiB | 1.43.7 Build (asm e Dignified) le include/incbin do banco do projeto | 1.43.8 menus do editor reorganizados em 8
+   (File Edit Search View Project Run Tools + Help) | 1.43.9 completar com simbolos do projeto + man editor (E6 fechada) | 1.43.10 Print/Print Block gravam PDF (E7.1)
+   1.43.11 `obi` (Obifile -> .dsk pronto: .dmx, .asm, dados; comandos obi/obirun/--obi; Run > Build disk F6) | 1.43.12 pasta emulator/ com MSX-DOS 1 e 2 (dos: 1|2 no Obifile)
+   1.43.13 Paragraph/Document format; o pacote leva emulator/ | 1.43.14 Outline + preview de Markdown | 1.43.15 preview do Markdown COLORIDO como modo da janela (F7) e
+   arquivos maiores que a memoria (Load more/Write to cursor/Top of file) -> E7 FECHADA | 1.43.16 scripts em Lua (lua, source, tabela msx, msx.wait, on_frame/on_change/on_stop)
+   1.43.17 janela ROMs > Downloads (File Hunter pelo allfiles.txt + utilitarios do Konamiman) e fwmsx --download; NBASIC.BIN saiu do repo e dos pacotes.
+   Sem versao (so' docs/limpeza): revisao de licencas (doc/media-review.md); 818 arquivos de midia (tests/media, dist/roms, dist/*.zip|gz, *.sst) deixaram de ser
+   rastreados (.gitignore) -- historico NAO reescrito; resource/Amazonia64kV5 excluida.
+
+3) AINDA NAO VERIFICADO (nao deixar passar)
+   - As janelas ImGui novas (Downloads, preview colorido do Markdown na GUI) COMPILARAM mas ninguem as abriu numa sessao grafica real. Pedir ao usuario para olhar.
+   - MSX-DOS 2 nao foi iniciado no emulador (precisa da ROM do kernel DOS2); o DOS 1 inicia e roda .COM (controltest). `dos: 1|2` + BASIC no AUTOEXEC.BAT nao testado.
+   - O download real (File Hunter/GitHub) nao esta' no ctest (sem rede); so' o Fetch por file://.
+
+4) PENDENCIAS (a escolha e' do usuario)
+   a) MSX-DOS 2 no emulador. b) Dignified: F5 automatico depois do Run, NestorBASIC de verdade, "Basic DignifieR". c) saida .MOB do fwasm. d) fidelidade do emulador/Mamute.
+   e) Downloads: tamanho/data na lista, barra de progresso, cadastrar no banco o que vier de fora de System ROMs, mais fontes no catalogo. f) Lua: .lua como tipo do projeto,
+   Run > Run script no editor, on_write com custo, VRAM/VDP/PSG/msx.type. g) licencas: origem do SUPER-X-PT.notas, resto de resource/, aviso no README publico (modelo: LICENSE-THIRD-PARTY).
+   h) decisao do NOME (renomear o fwMSX) -- o usuario deixou para depois.
+   i) Menus Sprites/Telas/Som do editor: ficam para quando os editores graficos existirem (SPEC 5.4) -- provavelmente guiados pelos editores dos 4 projetos acima.
+
+5) ARMADILHAS DESTA SESSAO (economizam tempo)
+   - O shell do Claude Code COLAPSA barras invertidas em heredocs/python -c: \\n vira \n, \\f vira FF real. Para texto com \n/\t/\f em C++: use a ferramenta Write/Edit ou um script
+     Python salvo com Write e placeholders (@N@ -> chr(92)+"n"). Apostrofo dentro de heredoc tambem quebra ("unexpected EOF").
+   - Build completo Windows ~5-10 min (ctest ~5 min): rodar em background; o Linux (WSL ./build.sh) so' DEPOIS que o Windows terminar (memoria baixa derrubou esperas em segundo plano).
+   - Versao: subir src/common/version.h ANTES de qualquer build de pacote (feito em todas as rodadas). Proxima: 1.43.18 (Y=43 "Yie Ar Kung-Fu"; ver CLAUDE.md para a ordem dos jogos).
+   - Commits: `git add` com caminhos explicitos; termina com "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"; tag X.Y.Z + branch vX.Y.Z; gh release create com os 2 pacotes.
+   - Docs vivos a atualizar em toda release: CHANGELOG, RELEASE, SPEC (5.0), README, MANUAL, OUTLINE, o *-spec.md da area, man quando houver comando novo.
 
 == Em OUTRO computador / outra IA (o caminho que importa) ==
 1. git clone / git pull de origin main (traz codigo, docs, dist/ rastreado e ROMs de teste).
@@ -14,7 +67,7 @@ as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.
    explicam o PORQUE.
 
 == Na MESMA maquina ==
-claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao do editor E5/E6 e do Basic Dignified, 2026-10-20/21)
+claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao de 2026-10-20 a 22: editor E5-E7, Basic Dignified, projeto .msxproject, obi, Lua, Downloads, revisao de licencas)
 (sessoes anteriores: 5fb1dd20-66b4-4cec-af35-733733127add = Mamute e fita; 01cab35e-2c27-4a73-925c-1b6cabeafdda)
 
 == O projeto em duas linhas ==
