@@ -39,7 +39,7 @@ Cmd LookupCmd(const std::string &canon) {
 bool IsAppCmd(Cmd c) {
     switch (c) {
     case Cmd::Window2: case Cmd::CloseWindow: case Cmd::DividerUp: case Cmd::DividerDown: case Cmd::WindowDiff:
-    case Cmd::New: case Cmd::Exit: case Cmd::Outline: case Cmd::Print: case Cmd::PrintBlock: case Cmd::EjectPage:
+    case Cmd::New: case Cmd::Exit: case Cmd::Outline: case Cmd::Preview: case Cmd::Print: case Cmd::PrintBlock: case Cmd::EjectPage:
     case Cmd::Assemble: case Cmd::RunMsx: case Cmd::BuildDisk: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord: case Cmd::BadigSetup: case Cmd::BasicLine:
     case Cmd::ProjectNew: case Cmd::ProjectOpen: case Cmd::ProjectClose: case Cmd::ProjectFiles: case Cmd::ProjectAdd: case Cmd::ProjectSync:
         return true;
@@ -584,6 +584,11 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         PrintStart(cmd == Cmd::PrintBlock);
         return true;
     case Cmd::Outline:
+        OutlineStart();
+        return true;
+    case Cmd::Preview:
+        PreviewStart();
+        return true;
     case Cmd::EjectPage:
         Msg(std::string(Info(cmd).name) + ": not available yet");
         return false;
@@ -593,6 +598,23 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         return r;
     }
     }
+}
+
+void EditorApp::OutlineStart() {
+    const std::vector<OutlineEntry> entries = Ed().Outline();
+    if (entries.empty()) {
+        Msg("Outline: no lines to show in this file");
+        return;
+    }
+    std::vector<std::string> items;
+    outline_lines_.clear();
+    int sel = 0;
+    for (size_t i = 0; i < entries.size(); ++i) {
+        outline_lines_.push_back(entries[i].line);
+        if (entries[i].line <= Ed().Cursor().line) sel = static_cast<int>(i); // a ultima entrada que ja' comecou: onde o cursor esta'
+        items.push_back(std::to_string(entries[i].line + 1) + ": " + entries[i].text);
+    }
+    BuildProjectList(Dialog::Outline, "Outline", items, sel);
 }
 
 void EditorApp::PrintStart(bool block) {
@@ -618,7 +640,7 @@ bool EditorApp::Enabled(const MenuItem &it) const {
     if (it.cmd == Cmd::New || it.cmd == Cmd::Exit) return !(Ed().ReadOnly() && it.cmd == Cmd::New);
     if (it.cmd == Cmd::PrintBlock) return Ed().HasBlock();
     if (it.cmd == Cmd::Print) return true;
-    if (it.cmd == Cmd::Outline || it.cmd == Cmd::EjectPage) return false; // a folha do PDF nao tem 'ejetar'
+    if (it.cmd == Cmd::EjectPage) return false; // a folha do PDF nao tem 'ejetar'
     return Ed().ItemEnabled(it);
 }
 
@@ -896,7 +918,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::MouseSetup: BuildMouse(); break;
     case Dialog::Language: BuildLanguage(); break;
     case Dialog::Errors: BuildMessagesDialog(); break;
-    case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: case Dialog::ProjectActions: case Dialog::ProjectRename: case Dialog::ProjectAddFile: case Dialog::ProjectHistory: case Dialog::ProjectRemoved: break; // montados por quem abre
+    case Dialog::Outline: case Dialog::Preview: case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: case Dialog::ProjectActions: case Dialog::ProjectRename: case Dialog::ProjectAddFile: case Dialog::ProjectHistory: case Dialog::ProjectRemoved: break; // montados por quem abre
     case Dialog::EditorSetup: BuildEditorSetup(); break;
     case Dialog::SaveConfig: BuildSaveConfig(); break;
     case Dialog::Help: BuildHelp(arg, 0); break;
@@ -905,7 +927,6 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::ExpandTabs: BuildPageBreakPrompt(d, "Expand tabs to spaces starting at..."); break;
     case Dialog::PutInTabs: BuildPageBreakPrompt(d, "Replace left-hand spaces with tabs starting at..."); break;
     case Dialog::FormatDocument: BuildPageBreakPrompt(d, "Format all paragraphs starting at..."); break;
-    case Dialog::Outline: Msg("Outline display: not available yet"); break;
     default: break;
     }
 }
@@ -1206,6 +1227,11 @@ void EditorApp::DialogDone(int button) {
     case Dialog::Errors: {
         const Widget *l = done.Find(2);
         if (button == kBtnOk && l) BuildGoto(l->sel);
+        break;
+    }
+    case Dialog::Outline: {
+        const Widget *l = done.Find(2);
+        if (button == kBtnOk && l && l->sel >= 0 && l->sel < static_cast<int>(outline_lines_.size())) e.SetCursor({outline_lines_[static_cast<size_t>(l->sel)], 0});
         break;
     }
     case Dialog::ProjectNew:

@@ -428,4 +428,42 @@ void Editor::ApplyFormatDocument(bool from_top) {
     MoveTo(cur_);
 }
 
+// O Outline do NE mostrava so' as linhas que comecam na coluna 1. Hoje depende da linguagem: Markdown = os titulos (#), recuados pelo nivel;
+// MSX-BASIC (todas as linhas tem numero) = os comentarios REM, que fazem o papel de titulo; Assembly = rotulos, constantes e diretivas
+// (as linhas na coluna 1 que nao sao comentario); o resto = qualquer linha que comeca na coluna 1.
+std::vector<OutlineEntry> Editor::Outline() const {
+    std::vector<OutlineEntry> out;
+    const std::string id = Language() ? Language()->Id() : std::string();
+    const bool markdown = id == "markdown";
+    const bool numbered = id.find("bas") != std::string::npos && id != "dignified";
+    bool fence = false; // dentro de um bloco de codigo ``` do Markdown um # nao e' titulo
+    for (int l = 0; l < LineCount(); ++l) {
+        const std::string &s = lines_[static_cast<size_t>(l)];
+        if (s.empty()) continue;
+        if (markdown) {
+            if (s.rfind("```", 0) == 0) fence = !fence;
+            if (fence || s[0] != '#') continue;
+            size_t lv = 0;
+            while (lv < s.size() && s[lv] == '#') ++lv;
+            size_t b = lv;
+            while (b < s.size() && s[b] == ' ') ++b;
+            if (lv > 6 || b == s.size()) continue;
+            out.push_back({l, std::string((lv - 1) * 2, ' ') + s.substr(b)});
+        } else if (numbered) {
+            size_t i = 0;
+            while (i < s.size() && std::isdigit(static_cast<unsigned char>(s[i]))) ++i;
+            if (i == 0) continue;
+            size_t b = i;
+            while (b < s.size() && s[b] == ' ') ++b;
+            const bool rem = s.compare(b, 3, "REM") == 0 || s.compare(b, 3, "rem") == 0 || (b < s.size() && s[b] == '\'');
+            if (rem) out.push_back({l, s});
+        } else {
+            if (s[0] == ' ' || s[0] == '\t') continue;
+            if (id == "z80asm" && s[0] == ';') continue;
+            out.push_back({l, s});
+        }
+    }
+    return out;
+}
+
 } // namespace ed

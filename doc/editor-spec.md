@@ -186,6 +186,8 @@ Em aberto: (3) como a barra de menus comporta os novos menus (80 colunas); (10) 
 
 ## 7. Estado (atualizado em 2026-10-22)
 
+**1.43.14: E7 parte 3.** `Editor::Outline()` (por linguagem) e o preview de Markdown (`markdown.h/.cpp`, F7): texto simples numa lista de rolagem; sem tela dividida ao vivo nem cores.
+
 **1.43.13: E7 parte 2.** `Paragraph format`/`Document format` (`Editor::FormatRange`): a largura do campo comeca na margem esquerda, o recuo da 1a linha conta dentro dela, linhas em branco e `\f` separam paragrafos.
 
 **1.43.11: Run > Build disk (F6).** `EditorApp::BuildDisk` roda o `obi` (`doc/obi-spec.md`) com os buffers abertos e o banco do projeto como fontes; as mensagens com arquivo e linha entram na lista do F8.

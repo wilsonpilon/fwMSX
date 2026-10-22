@@ -184,7 +184,8 @@ MENUS (Alt+letra, ou F10; setas, Enter, a letra do item, Esc)
                Center line
   Search (S)   Find, Find and Replace, Continue, Line number, Matching bracket,
                Window Differences, Text in Block, Complete word
-  View (V)     Information, Outline, Language, 2nd window (F2)
+  View (V)     Information, Outline, Markdown preview (F7), Language, 2nd window
+               (F2)
   Project (J)  New/Open/Close project, Files, Add current file, Sync
   Run (R)      Assemble/Convert (F9), Run on MSX (F5), Build disk (F6), Next/Previous
                message
@@ -201,6 +202,11 @@ TECLAS DO NORTON (continuam as mesmas)
   parentese, Ctrl-W / Alt-W apagam palavra, Alt-K apaga a linha, Ctrl-U restaura
   o apagado, Alt-E S (era Alt-B S) marca o bloco. Modernas: Alt-Backspace
   desfaz, Ctrl-Ins / Shift-Ins / Shift-Del copiam, colam e recortam.
+
+INDICE E PREVIEW
+  View > Outline display lista os titulos (Markdown), as linhas REM (MSX-BASIC),
+  os rotulos (Assembly) ou as linhas da coluna 1, e Enter salta para a escolhida.
+  View > Markdown preview (F7) mostra o .md renderizado; Esc fecha.
 
 FORMATAR
   Edit > Paragraph format (Alt-E P) refaz as quebras de linha do paragrafo do

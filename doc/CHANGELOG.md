@@ -7,6 +7,13 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.14] - 2026-10-22 - "Yie Ar Kung-Fu: Outline e preview" (Konami)
+
+### Adicionado -- fase E7 do editor, parte 3
+- **View > Outline display** (antes desabilitado): lista as linhas que importam, com o numero, e `Enter` leva o cursor a' escolhida. Depende da linguagem: Markdown = os titulos (`#`), recuados pelo nivel e sem contar os `#` dentro de blocos de codigo; MSX-BASIC = as linhas de comentario (`REM` e `'`), que fazem papel de titulo; Assembly = rotulos, constantes e diretivas na coluna 1 (sem os comentarios); texto e demais = as linhas que comecam na coluna 1 (a regra do Norton Editor). A lista abre no item onde o cursor esta'.
+- **View > Markdown preview (`F7`)**: o texto Markdown renderizado numa janela de rolagem que ocupa a tela toda (igual na TUI e na janela grafica; `Esc` fecha). Titulos 1 e 2 com sublinhado, listas com recuo pendurado e aninhadas, citacoes, blocos de codigo, tabelas, linha horizontal, negrito/italico/codigo sem as marcas, `[texto](url)` como `texto (url)` e imagens como `[imagem: alt]`. `markdown.h/.cpp` (`RenderMarkdown`, `MarkdownInline`). Preview ao vivo dividindo a tela e cores ficam para depois.
+- Testes: `edittest` (Outline por linguagem e o renderizador) e `editorui` (os dois dialogos).
+
 ## [1.43.13] - 2026-10-22 - "Yie Ar Kung-Fu: Formatar texto" (Konami)
 
 ### Adicionado -- fase E7 do editor, parte 2

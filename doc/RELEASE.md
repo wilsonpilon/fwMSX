@@ -17,6 +17,15 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.14 -- "Yie Ar Kung-Fu: Outline e preview" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "pode seguir neste caminho" (Outline e preview de Markdown depois do Document format).
+- **Decisao minha (a rever)**: o preview e' texto simples numa lista de rolagem, sem cores nem a tela dividida com atualizacao ao vivo que o SPEC 5.3.6 descreve (F7 alternando edicao / dividido / leitura): assim a TUI e a janela grafica mostram exatamente o mesmo, sem novo widget. O Outline do NE (so' coluna 1) ficou como regra geral e ganhou regras por linguagem.
+- **Falta da E7**: Load more / Write to cursor / Top of file (arquivos maiores que a memoria; prioridade baixa do usuario). Design a decidir antes de codar: carregar so' parte do arquivo mexe no Save.
+- Validado: Windows e Linux, `ctest` 100%.
+
+---
+
 ## v1.43.13 -- "Yie Ar Kung-Fu: Formatar texto" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "Pode incluir o msxdos1 e o msxdos2 eles estao amplamente disponiveis na internet, caso alguem reclame os direitos eu tiro, e coloque no manual que precisa colocar os arquivos na pasta emulator. Dito isso, pode seguir com o E7" (escopo: Document format, Outline, Load more / Write to cursor / Top of file, preview de Markdown).

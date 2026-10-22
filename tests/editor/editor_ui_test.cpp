@@ -1331,6 +1331,40 @@ void test_format() {
     check(a.Ed().Cursor().line >= 0, "Edit > Paragraph format roda pelo menu");
 }
 
+void test_outline() {
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.Ed().SetLanguage(ed::LangById("markdown"), true);
+    a.Ed().SetText("# Um\ntexto\n## Dois\nmais\n## Tres\nfim\n");
+    K(a, {"A-v", "o"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Outline && screen_has(a, "1: Um") && screen_has(a, "3:   Dois") && screen_has(a, "5:   Tres"), "View > Outline abre a lista dos titulos com o numero da linha");
+    K(a, {"Down", "Down", "Enter"});
+    check(!a.HasDialog() && a.Ed().Cursor().line == 4, "Enter leva o cursor ao titulo escolhido");
+    a.Ed().SetLanguage(ed::LangById("plain"), true);
+    a.Ed().SetText("  so recuado\n");
+    K(a, {"A-v", "o"});
+    check(!a.HasDialog() && a.Ed().Message().find("Outline") != std::string::npos, "sem o que mostrar: so' avisa");
+}
+
+void test_preview() {
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.Ed().SetLanguage(ed::LangById("plain"), true);
+    a.Ed().SetText("# Oi\n");
+    K(a, {"F7"});
+    check(!a.HasDialog() && a.Ed().Message().find("not a Markdown") != std::string::npos, "F7 fora de um .md so' avisa");
+    a.Ed().SetLanguage(ed::LangById("markdown"), true);
+    a.Ed().SetText("# Titulo Grande\n\nUm paragrafo com **negrito**.\n\n- item A\n- item B\n");
+    K(a, {"F7"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Preview && screen_has(a, "TITULO GRANDE") && screen_has(a, "Um paragrafo com negrito.") && screen_has(a, "* item B"),
+          "View > Markdown preview (F7) mostra o texto renderizado");
+    K(a, {"Esc"});
+    check(!a.HasDialog() && a.Ed().Text().find("**negrito**") != std::string::npos, "Esc fecha e o texto continua o mesmo");
+    K(a, {"A-v", "p"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Preview, "pelo menu tambem");
+    K(a, {"Esc"});
+}
+
 void test_print() {
     const fs::path dir = fs::temp_directory_path() / "fwedit_print";
     fs::remove_all(dir);
@@ -1627,6 +1661,8 @@ int main() {
     test_badig_build();
     test_project_editor();
     test_print();
+    test_preview();
+    test_outline();
     test_format();
     test_build_disk();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");

@@ -12,7 +12,7 @@ std::string Tr(const std::string &en) {
         {"Print setup...", "Configurar impressao..."}, {"Text layout setup...", "Configurar o texto..."},
         {"File", "Arquivo"}, {"Block", "Bloco"}, {"Text-layout", "Texto"}, {"Search", "Busca"}, {"Print", "Imprimir"},
         {"View", "Exibir"}, {"Options", "Opcoes"}, {"F1=Help", "Ajuda"}, {"Build", "Montar"},
-        {"Assemble / Convert", "Montar / Converter"}, {"BASIC line...", "Linha do BASIC..."}, {"Dignified setup...", "Config. Basic Dignified..."}, {"Run on MSX", "Executar no MSX"}, {"Build disk", "Montar disco"}, {"Next message", "Proxima mensagem"},
+        {"Assemble / Convert", "Montar / Converter"}, {"BASIC line...", "Linha do BASIC..."}, {"Dignified setup...", "Config. Basic Dignified..."}, {"Run on MSX", "Executar no MSX"}, {"Build disk", "Montar disco"}, {"Markdown preview", "Visualizar Markdown"}, {"Next message", "Proxima mensagem"},
         {"Project", "Projeto"}, {"New project...", "Novo projeto..."}, {"Open project...", "Abrir projeto..."}, {"Close project", "Fechar projeto"},
         {"Files...", "Arquivos..."}, {"Add current file", "Incluir o arquivo atual"}, {"Sync...", "Sincronizar..."},
         {"New project", "Novo projeto"}, {"Open project", "Abrir projeto"},

@@ -112,7 +112,8 @@ const CmdInfo kInfos[] = {
     {Cmd::EjectPage, "eject-page", false, D::None, false},
     {Cmd::PrintSetup, "print-setup", false, D::PrintSetup, true},
     {Cmd::Information, "information", false, D::Information, true},
-    {Cmd::Outline, "outline", false, D::Outline, false},
+    {Cmd::Outline, "outline", false, D::Outline, true},
+    {Cmd::Preview, "preview", false, D::Preview, true},
     {Cmd::About, "about", false, D::About, true},
     {Cmd::Language, "language", false, D::Language, true},
     {Cmd::Assemble, "assemble", false, D::None, true},
@@ -206,7 +207,8 @@ const std::vector<Menu> &Menus() {
         {"View", 'v', 23,
          {
              {"Information display", 'i', "", Cmd::Information, 0, false, false},
-             {"Outline display", 'o', "", Cmd::Outline, 0, true, false},
+             {"Outline display", 'o', "", Cmd::Outline, 0, false, false},
+             {"Markdown preview", 'p', "F7", Cmd::Preview, 0, true, false},
              {"Language...", 'l', "", Cmd::Language, 0, false, false},
              {"2nd window...", '2', "F2", Cmd::Window2, 0, false, false},
              {nullptr, 'a', "", Cmd::About, 0, false, true},
@@ -301,7 +303,7 @@ const std::vector<KeyBinding> &Bindings() {
         {"F10", Cmd::MenuOpen, true},
         {"A-/", Cmd::Complete, true}, {"C-Space", Cmd::Complete, true},
         // menu Build (fase E6)
-        {"F9", Cmd::Assemble, true}, {"F5", Cmd::RunMsx, true}, {"F6", Cmd::BuildDisk, true}, {"F8", Cmd::NextError, true}, {"S-F8", Cmd::PrevError, true},
+        {"F9", Cmd::Assemble, true}, {"F5", Cmd::RunMsx, true}, {"F7", Cmd::Preview, true}, {"F6", Cmd::BuildDisk, true}, {"F8", Cmd::NextError, true}, {"S-F8", Cmd::PrevError, true},
         {"C-F1", Cmd::HelpWord, true},
         // --- alternativas modernas (o Norton Editor nao tem) ---
         {"A-BS", Cmd::Undo, true}, {"A-S-BS", Cmd::Redo, true},

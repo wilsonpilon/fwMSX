@@ -740,6 +740,7 @@ set(EDITOR_LIB_SOURCES
         src/editor/cpp/editor_project.cpp # menu Project: o .msxproject aberto no editor
         ${PROJECT_LIB_SOURCES}
         src/editor/cpp/completion.cpp
+        src/editor/cpp/markdown.cpp # View > Markdown preview
         src/mamute/cpp/mamute_pdf.cpp # Print grava o PDF
         src/editor/c/ed_text.c
         src/editor/c/ed_syntax.c

@@ -104,7 +104,7 @@ enum class Cmd {
     // menu Print
     Print, PrintBlock, EjectPage, PrintSetup,
     // menu View
-    Information, Outline, About, Language,
+    Information, Outline, Preview, About, Language,
     // menu Build (fase E6): montar o fonte do buffer, executar no MSX, navegar pelas mensagens, ajuda da palavra
     Assemble, RunMsx, BuildDisk, NextError, PrevError, ErrorList, HelpWord, BadigSetup, BasicLine,
     // menu Project (E6 parte 2): o .msxproject aberto no editor
@@ -117,7 +117,7 @@ enum class Cmd {
 
 enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
-    InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
+    InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline, Preview,
     About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference, BadigSetup, BasicLine,
     ProjectNew, ProjectOpen, ProjectFiles, ProjectSync, ProjectConflict, ProjectActions, ProjectRename, ProjectAddFile, ProjectHistory, ProjectRemoved,
     PrintTo
@@ -186,6 +186,12 @@ struct Settings {
     bool auto_complete = false;   // abre a lista de completar sozinha ao digitar (Editor setup: Auto completion); Alt-/ abre sempre
 };
 
+// Uma linha do Outline: o numero (base 0) e o texto a mostrar.
+struct OutlineEntry {
+    int line = 0;
+    std::string text;
+};
+
 struct DocInfo {
     std::string file;
     long chars = 0;
@@ -236,6 +242,7 @@ public:
     void ApplyPutInTabs(bool from_top);
     void ApplyInsertPageBreaks(bool from_top);
     void ApplyFormatDocument(bool from_top);   // Edit > Document format: reflui todos os paragrafos (do topo ou do paragrafo do cursor)
+    std::vector<OutlineEntry> Outline() const; // View > Outline: so' as linhas que importam (veja editor_file.cpp)
     void ApplyRemovePageBreaks(bool from_top);
     DocInfo Information() const;
 

@@ -9,9 +9,11 @@
 #include <vector>
 
 #include "../../src/editor/asm/ed_indent.h"
+#include "../../src/editor/asm/ed_indent.h"
 #include "../../src/editor/c/ed_syntax.h"
 #include "../../src/editor/c/ed_text.h"
 #include "../../src/editor/cpp/editor.h"
+#include "../../src/editor/cpp/markdown.h"
 
 namespace {
 
@@ -907,6 +909,45 @@ void test_completion() {
         f.SetCursor({0, 0});
         f.Execute(Cmd::ParagraphFormat);
         check(f.Text() == "      x y z\n", "somente leitura: Paragraph format desabilitado");
+    }
+    // Outline (E7): o que cada linguagem considera "titulo"
+    {
+        Editor o;
+        o.SetLanguage(ed::LangById("markdown"), true);
+        o.SetText("# Titulo\ntexto\n```\n# nao e titulo\n```\n## Secao A\n### Sub\n#sem espaco? \n");
+        const std::vector<ed::OutlineEntry> m = o.Outline();
+        check(m.size() == 4 && m[0].line == 0 && m[0].text == "Titulo" && m[1].line == 5 && m[1].text == "  Secao A" && m[2].text == "    Sub" && m[3].line == 7,
+              "Outline (Markdown): titulos recuados pelo nivel, sem os # dentro de blocos de codigo");
+        o.SetLanguage(ed::LangById("z80asm"), true);
+        o.SetText("; comentario\ninicio:\n    ld a,1\nVDP = 0x98\nfim: ret\n");
+        const std::vector<ed::OutlineEntry> a = o.Outline();
+        check(a.size() == 3 && a[0].text == "inicio:" && a[1].text == "VDP = 0x98" && a[2].line == 4, "Outline (Assembly): rotulos e constantes na coluna 1, sem comentarios");
+        o.SetLanguage(ed::LangById("msxbasic"), true);
+        o.SetText("10 REM *** INICIO\n20 PRINT 1\n30 'sub\n40 GOTO 20\n");
+        const std::vector<ed::OutlineEntry> b = o.Outline();
+        check(b.size() == 2 && b[0].line == 0 && b[1].line == 2, "Outline (MSX-BASIC): as linhas de comentario");
+        o.SetLanguage(ed::LangById("plain"), true);
+        o.SetText("Titulo\n  recuado\n\nOutro\n");
+        check(o.Outline().size() == 2, "Outline (texto): as linhas na coluna 1");
+    }
+
+
+    // Preview do Markdown (E7)
+    {
+        auto has = [](const std::vector<std::string> &v, const std::string &x) { return std::find(v.begin(), v.end(), x) != v.end(); };
+        const std::vector<std::string> r = ed::RenderMarkdown({"# Meu Titulo", "", "Texto com **negrito**, *italico*, `codigo` e um [link](http://x.y).", "",
+                                                                "## Lista", "- um", "- dois que e longo e precisa quebrar na largura escolhida", "  1. aninhado", "",
+                                                                "> citacao", "> continua", "", "```", "ld a,1", "```", "---", "snake_case fica"}, 30);
+        check(has(r, "MEU TITULO") && has(r, "=========="), "Markdown: titulo 1 em maiusculas com sublinhado");
+        check(has(r, "Lista") && has(r, "-----"), "Markdown: titulo 2 com sublinhado");
+        check(has(r, "Texto com negrito, italico,") && has(r, "codigo e um link (http://x.y)."), "Markdown: negrito/italico/codigo sem marcas, link com a url, quebra na largura");
+        check(has(r, "* um") && has(r, "* dois que e longo e precisa") && has(r, "  quebrar na largura escolhida"), "Markdown: lista com recuo pendurado");
+        check(has(r, "  1. aninhado"), "Markdown: item numerado aninhado");
+        check(has(r, "| citacao continua"), "Markdown: citacao junta as linhas");
+        check(has(r, "    ld a,1") && !has(r, "```"), "Markdown: bloco de codigo recuado, sem as cercas");
+        check(has(r, std::string(30, '-')) && has(r, "snake_case fica"), "Markdown: linha horizontal e snake_case preservado");
+        check(ed::MarkdownInline("![logo](a.png) e \\*lit\\*") == "[imagem: logo] e *lit*", "Markdown: imagem e escapes");
+        check(ed::RenderMarkdown({}, 30).empty(), "Markdown: texto vazio = nada");
     }
     // simbolos do PROJETO (1.43.9): o extrator por tipo de arquivo e os candidatos vindos dos outros arquivos
     std::vector<std::string> sym;
