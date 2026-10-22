@@ -7,6 +7,15 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.8] - 2026-10-22 - "Yie Ar Kung-Fu: Menus reorganizados" (Konami)
+
+### Alterado -- menus do editor mais concentrados (E6 parte 3)
+- Dez menus do Norton Editor viraram **oito**, como nas IDEs e emuladores atuais: `File Edit Search View Project Run Tools` + `F1=Help`. Block e Text-layout -> Edit/Tools, Print -> File, Options -> Tools, Build -> **Run**; 2nd window -> View; DOS shell -> Tools.
+- **Undo e Redo** passaram a aparecer no menu Edit.
+- As teclas diretas do NE (Alt-K, Ctrl-F, Alt-C...) nao mudaram; a letra de cada item e' a mesma no menu novo (`Alt-E S` = marcar bloco, era `Alt-B S`). De-para em `doc/editor-spec.md` 1b.1b.
+- A ajuda F1 tem um topico por menu; menus e titulos de ajuda traduzidos (Editar, Executar, Ferramentas).
+- Testes `edittest` e `editorui` atualizados ao novo mapa (inclui a conferencia de que todo mnemonico do NE ainda existe).
+
 ## [1.43.7] - 2026-10-21 - "Yie Ar Kung-Fu: Build lendo do projeto" (Konami)
 
 ### Alterado -- Build e Basic Dignified leem o banco do projeto (E6 parte 2, fatia 7)

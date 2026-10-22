@@ -109,13 +109,13 @@ void test_menus() {
     a.SetSize(80, 25);
     a.Key("A-f");
     check(a.MenuIndex() == 0 && a.BarActive(), "Alt-F abre o menu File");
-    check(screen_has(a, "New") && screen_has(a, "Save As...") && screen_has(a, "2nd window...") && screen_has(a, "F2") && screen_has(a, "eXit"),
-          "o menu File desenha os itens e o atalho F2");
+    check(screen_has(a, "New") && screen_has(a, "Save As...") && screen_has(a, "Print setup...") && screen_has(a, "eXit"),
+          "o menu File desenha os itens (inclui Print)");
     ed::Grid g;
     a.Render(g);
     check(g.at(3, 0).style == ed::kBarSel, "o titulo do menu aberto fica em destaque");
     a.Key("Right");
-    check(a.MenuIndex() == 1, "Seta direita troca para o menu Block");
+    check(a.MenuIndex() == 1, "Seta direita troca para o menu Edit");
     a.Key("Left");
     a.Key("Down");
     a.Key("Down");
@@ -138,8 +138,8 @@ void test_menus() {
     v.SetSize(80, 25);
     v.Ed().SetText("abc");
     v.Ed().SetReadOnly(true);
-    v.Key("A-b");
-    check(v.MenuItemIndex() == 3, "view: o menu Block abre no 1o item habilitado (Set marker)");
+    v.Key("A-e");
+    check(v.MenuItemIndex() == 5, "view: o menu Edit abre no 1o item habilitado (Set marker; Undo/Redo/Copy/Move/Delete mudam o texto)");
     v.Render(g);
     bool off = false;
     for (int y = 2; y < 8; ++y) {
@@ -148,7 +148,7 @@ void test_menus() {
     check(off, "view: Copy aparece como desabilitado");
     v.Key("Down");
     v.Key("Down");
-    check(v.MenuItemIndex() >= 3, "view: as setas nao param em item desabilitado");
+    check(v.MenuItemIndex() >= 5, "view: as setas nao param em item desabilitado");
     v.Key("Esc");
     v.Key("A-t");
     v.Key("w");
@@ -291,7 +291,7 @@ void test_setup_and_config() {
     a.SetConfigPaths((dir / "main.cfg").string(), (dir / "local.cfg").string());
 
     // Display: cor 2 e 33/35 linhas; tab 4
-    K(a, {"A-o", "d"});
+    K(a, {"A-t", "d"});
     check(a.HasDialog() && screen_has(a, "Display setup") && screen_has(a, "VGA Monochrome") && screen_has(a, "Blinking bracket"), "Options > Display");
     K(a, {"Down", "Down"}); // LCD -> Color 1 -> Color 2
     K(a, {"Tab", "Up", "Up", "Enter"});  // linhas: Don't change -> 50 -> 40/43
@@ -299,17 +299,17 @@ void test_setup_and_config() {
     check(a.ui().lines == 35 || a.ui().lines == 43 || a.ui().lines == 0 || a.ui().lines == 50 || a.ui().lines == 25, "Display: linhas validas");
 
     // Editor setup: Tab key = inserts spaces
-    K(a, {"A-o", "e", "Tab", "Down", "Enter"});
+    K(a, {"A-t", "e", "Tab", "Down", "Enter"});
     check(a.Ed().settings().tab_key == ed::TabKey::InsertSpaces, "Editor setup: Tab key inserts spaces");
     // Text-layout setup
-    K(a, {"A-t", "s"});
+    K(a, {"A-t", "t"});
     a.Text("40");
     K(a, {"Enter"});
     check(a.Ed().settings().line_length == 40, "Text-layout setup: Line Length");
     // salvar e recarregar
-    K(a, {"A-o", "s", "Enter"});
+    K(a, {"A-t", "s", "Enter"});
     check(fs::exists(dir / "main.cfg") && slurp(dir / "main.cfg").find("scheme=2") != std::string::npos, "Save configuration grava o arquivo");
-    K(a, {"A-o", "s", "Down", "Enter"});
+    K(a, {"A-t", "s", "Down", "Enter"});
     check(fs::exists(dir / "local.cfg"), "Save configuration para o diretorio");
     EditorApp b;
     b.SetConfigPaths((dir / "main.cfg").string(), "");
@@ -320,7 +320,7 @@ void test_setup_and_config() {
     EditorApp c;
     c.SetSize(80, 25);
     c.SetConfigPaths((dir / "c.cfg").string(), "");
-    K(c, {"A-o", "m", "Down", "Enter"});
+    K(c, {"A-t", "m", "Down", "Enter"});
     check(c.ui().mouse_button == 1, "Mouse setup: botao direito");
     K(c, {"A-f", "x"});
     check(c.HasDialog() && screen_has(c, "Save this configuration?"), "sair com a configuracao alterada pergunta");
@@ -339,15 +339,15 @@ void test_setup_and_config() {
     K(p, {"A-t", "b", "t"});
     check(p.Ed().Text() == "1\n2\n3\n4\n5", "Remove page breaks");
     p.Ed().SetText("\tx");
-    K(p, {"A-t", "e", "t"});
+    K(p, {"A-t", "x", "t"});
     check(p.Ed().Text() == std::string(8, ' ') + "x", "Expand tabs");
 
     // bloco: Indent pede a quantidade
     p.Ed().SetText("a\nb");
     p.Ed().SetCursor({0, 0});
-    K(p, {"A-b", "s"});
+    K(p, {"A-e", "s"});
     p.Ed().SetCursor({1, 1});
-    K(p, {"A-b", "s", "A-b", "i"});
+    K(p, {"A-e", "s", "A-e", "i"});
     check(p.HasDialog() && screen_has(p, "Amount:"), "Block > Indent pergunta a quantidade");
     a.Text("");
     p.Text("2");
@@ -398,7 +398,7 @@ void test_windows() {
     check(a.WindowCount() == 1 && a.Active() == 0, "Close window fecha a segunda");
     K(a, {"A-f", "c"});
     check(a.WindowCount() == 1, "Close window com uma so' nao faz nada");
-    K(a, {"A-f", "2"});
+    K(a, {"A-v", "2"});
     check(a.HasDialog() && a.Current()->kind == ed::Dialog::Window2, "2nd window... abre o dialogo de arquivo");
     K(a, {"Esc"});
 
@@ -558,7 +558,7 @@ void test_gui_mode() {
     a.Text((dir / "three.txt").string());
     K(a, {"Enter"});
     check(!a.HasDialog() && fs::path(a.Ed().Name()).filename() == "three.txt" && a.Ed().Text() == "third", "o dialogo Abrir carrega o arquivo");
-    K(a, {"A-f", "2"});
+    K(a, {"A-v", "2"});
     check(a.HasDialog() && a.Current()->kind == ed::Dialog::Window2, "2nd window sem outra aba pede um arquivo");
     a.Text((dir / "one.txt").string());
     K(a, {"Enter"});
@@ -577,7 +577,7 @@ void test_gui_mode() {
     d->ws[0].text.clear();
     m.PressDialog(ed::kBtnCancel);
     check(!m.HasDialog(), "PressDialog(Cancel) fecha o dialogo");
-    m.RunMenu(3, 0); // Busca > Find
+    m.RunMenu(2, 0); // Busca > Find
     d = m.CurrentMutable();
     check(d && d->kind == ed::Dialog::Find, "Busca > Localizar abre o dialogo");
     d->Find(1)->text = "x";
@@ -709,7 +709,7 @@ void test_autosave() {
     a.SetSize(80, 25);
     a.SetSessionPath(sess);
     check(!a.AutosaveTick(0) && !a.AutosaveTick(100000), "autosave desligado por padrao (0 minutos)");
-    K(a, {"A-o", "e"});
+    K(a, {"A-t", "e"});
     check(a.HasDialog() && screen_has(a, "Auto-save every (minutes, 0 = off):") && screen_has(a, "Also overwrite files that have a name"), "Editor setup tem as opcoes de autosave");
     ed::DialogBox *d = a.CurrentMutable();
     d->Find(12)->text = "2";
@@ -828,9 +828,9 @@ void test_syntax_in_editor() {
     a.Render(g);
     check(g.at(3, 1).style == ed::kText, "TUI: com o destaque desligado volta tudo a texto");
     a.Ed().settings().syntax = true;
-    K(a, {"A-b", "s"});
+    K(a, {"A-e", "s"});
     a.Ed().SetCursor({0, 5});
-    K(a, {"A-b", "s"});
+    K(a, {"A-e", "s"});
     a.Render(g);
     check(g.at(3, 1).style == ed::kBlockSel, "TUI: o bloco marcado vence a cor do destaque");
 
@@ -849,7 +849,7 @@ void test_syntax_in_editor() {
     check(!a.Ed().LanguageManual() && a.Ed().Language()->Id() == "plain", "(auto) volta a detectar (arquivo sem nome = texto puro)");
 
     // Display setup: a caixa Syntax highlighting
-    K(a, {"A-o", "d"});
+    K(a, {"A-t", "d"});
     check(a.HasDialog() && screen_has(a, "Syntax highlighting"), "Display setup tem 'Syntax highlighting'");
     a.CurrentMutable()->Find(15)->checked = false;
     a.DialogEnter();
@@ -987,7 +987,7 @@ void test_complete_and_numbers() {
     ed::Grid g;
     a.Render(g);
     check(g.at(4, 1).ch == 'h' && g.at(2, 1).ch == '1', "TUI: a grade mostra os numeros de linha por padrao");
-    K(a, {"A-o", "d"});
+    K(a, {"A-t", "d"});
     check(a.HasDialog() && screen_has(a, "Line numbers"), "Display setup tem 'Line numbers'");
     check(a.Current()->Find(16)->checked, "a caixa abre marcada");
     a.CurrentMutable()->Find(16)->checked = false;
@@ -1028,7 +1028,7 @@ void test_complete_and_numbers() {
     check(!b.Ed().CompletionOpen(), "o menu Search > Complete word abre a lista (ou completa direto)");
 
     // Editor setup: Completar sozinho
-    K(b, {"A-o", "e"});
+    K(b, {"A-t", "e"});
     check(b.HasDialog() && screen_has(b, "Auto completion"), "Editor setup tem 'Auto completion'");
     b.CurrentMutable()->Find(15)->checked = true;
     b.DialogEnter();
@@ -1088,10 +1088,10 @@ void test_build() {
     check(a.BuildCurrent() == 0 && a.Ed().Cursor().line == 1, "F8: proxima mensagem (volta ao comeco da lista)");
     K(a, {"S-F8"});
     check(a.BuildCurrent() == 2 && a.Ed().Cursor().line == 3, "Shift-F8: mensagem anterior (circular)");
-    K(a, {"A-u"});
+    K(a, {"A-r"});
     check(a.BarActive() && screen_has(a, "Run on MSX") && screen_has(a, "Messages..."), "Alt-U abre o menu Build");
     K(a, {"Esc"});
-    K(a, {"A-u", "m"});
+    K(a, {"A-r", "m"});
     check(a.HasDialog() && screen_has(a, "Build messages") && screen_has(a, "undefined identifier"), "Build > Messages... lista as mensagens");
     K(a, {"Up", "Enter"});
     check(!a.HasDialog() && a.BuildCurrent() == 1 && a.Ed().Cursor().line == 2, "Enter na lista vai para a linha escolhida");
@@ -1190,13 +1190,13 @@ void test_badig_build() {
         const int basic = std::atoi(amx.c_str() + bol);
         check(g != std::string::npos && basic > 0, "acha a linha BASIC do goto no .amx");
         a.Ed().SetCursor({0, 0});
-        K(a, {"A-u", "l"});
+        K(a, {"A-r", "l"});
         check(a.HasDialog(), "Build > BASIC line... abre o dialogo");
         a.CurrentMutable()->Find(1)->text = "Syntax error in " + std::to_string(basic);
         a.DialogEnter();
         check(!a.HasDialog() && a.Ed().Cursor().line == 3, "a linha BASIC do erro leva a' 4a linha do .dmx");
         check(a.Ed().Message().find("source line 4") != std::string::npos, "a mensagem diz a linha do fonte");
-        K(a, {"A-u", "l"});
+        K(a, {"A-r", "l"});
         a.CurrentMutable()->Find(1)->text = "Syntax error in 99999";
         a.DialogEnter();
         check(a.Ed().Message().find("no line number") != std::string::npos || a.Ed().Message().find("no such line") != std::string::npos,
@@ -1245,7 +1245,7 @@ void test_badig_build() {
     // a tela de configuracao: duas paginas, OK grava o badig.cfg
     EditorApp s;
     s.SetSize(80, 25);
-    K(s, {"A-u", "d"});
+    K(s, {"A-r", "d"});
     check(s.HasDialog() && screen_has(s, "Basic Dignified setup (1/2)") && screen_has(s, "Strip all spaces"), "Build > Dignified setup... abre a pagina 1");
     s.CurrentMutable()->Find(24)->checked = true;       // strip spaces
     s.CurrentMutable()->Find(20)->text = "100";          // line start
@@ -1264,7 +1264,7 @@ void test_badig_build() {
     const badig::Options l = badig::LoadDefaults();
     check(l.strip_spaces && l.line_start == 100 && l.tk_list == 16 && l.label_report && !l.lexer_report, "o badig.cfg tem o que a tela mostrou");
     check(l.disk_files == "*.bin dados.dat" && l.nbasic, "e os arquivos de apoio / NestorBASIC");
-    K(s, {"A-u", "d"});
+    K(s, {"A-r", "d"});
     check(s.CurrentMutable()->Find(24)->checked, "a tela reabre com o que foi gravado");
     s.PressDialog(ed::kBtnCancel);
 

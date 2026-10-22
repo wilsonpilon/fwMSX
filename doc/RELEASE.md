@@ -17,6 +17,17 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.8 -- "Yie Ar Kung-Fu: Menus reorganizados" (Konami) (2026-10-22)
+
+**Pedido do usuario**: comecar pelo E6 do editor/IDE e reorganizar os menus, concentrando as opcoes como as IDEs e emuladores modernos. Perguntei (opcoes: 8, 7 ou 6 menus; teclas) e ele escolheu **8 menus modernos** com os atalhos diretos do NE mantidos.
+- **Desenho**: so' a tabela `Menus()` mudou (mais traducoes e titulos da ajuda); nenhum comando mudou. A tela tem 25 linhas, e os menus nao tem submenus, entao Edit (15 linhas) e Tools (14) foram montados para caber; por isso as quebras de pagina e as tabulacoes foram para Tools e o Print para File.
+- **Letras**: cada item manteve a letra que tinha, para o de-para ser so' trocar o prefixo (B->E, U->R, O->T, P->F); as colisoes em Tools e Edit foram resolvidas com letras novas (Setup T, Expand tabs X, Put in Tabs P, Document format G, DOS shell H, Undo Z, Redo Y).
+- **Achado nos testes**: o teste de leitura esperava o 1o item habilitado na posicao 3 (agora 5, Undo/Redo/Copy/Move/Delete sao desabilitados); `RunMenu(3,0)` do teste do painel grafico agora e' `RunMenu(2,0)`.
+- **Fica para depois (E6)**: menus Sprites/Telas/Som (os editores ainda nao existem), simbolos do projeto na completacao, `man editor`.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.43.7 -- "Yie Ar Kung-Fu: Build lendo do projeto" (Konami) (2026-10-21)
 
 **Pedido do usuario**: fazer o Build e o Dignified lerem do projeto e encerrar a parte de projetos do dia.

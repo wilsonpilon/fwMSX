@@ -105,13 +105,13 @@ void test_bindings() {
         }
     }
     check(norton_ok, "Bindings: as 40 teclas do Norton Editor 2 existem (alt = false)");
-    // todo mnemonico documentado do NE (Alt-F N...) existe
+    // todo mnemonico do NE ainda existe, agora no menu que recebeu o item (1.43.8: Block/Text-layout -> Edit/Tools, Print -> File, Options -> Tools)
     const struct { char menu; char letter; } mn[] = {
-        {'f', 'n'}, {'f', 'o'}, {'f', 's'}, {'f', 'a'}, {'f', 'm'}, {'f', '2'}, {'f', 'c'}, {'f', 'l'}, {'f', 'w'}, {'f', 't'}, {'f', 'd'}, {'f', 'x'},
-        {'b', 'c'}, {'b', 'm'}, {'b', 'd'}, {'b', 's'}, {'b', 'r'}, {'b', 'f'}, {'b', 'i'}, {'b', 'u'}, {'b', 'o'}, {'b', 0x7F}, {'b', 'l'}, {'b', 'e'},
-        {'t', 'p'}, {'t', 'd'}, {'t', 'c'}, {'t', 's'}, {'t', 'w'}, {'t', 'i'}, {'t', 'b'}, {'t', 'e'}, {'t', 't'}, {'t', 'a'},
-        {'s', 'l'}, {'s', 'd'}, {'s', 'b'}, {'s', 'm'}, {'p', 'p'}, {'p', 'b'}, {'p', 'e'}, {'p', 's'},
-        {'v', 'i'}, {'v', 'o'}, {'v', 'a'}, {'o', 'd'}, {'o', 'm'}, {'o', 'e'}, {'o', 's'}};
+        {'f', 'n'}, {'f', 'o'}, {'f', 's'}, {'f', 'a'}, {'f', 'm'}, {'v', '2'}, {'f', 'c'}, {'f', 'l'}, {'f', 'w'}, {'f', 't'}, {'t', 'h'}, {'f', 'x'},
+        {'e', 'c'}, {'e', 'm'}, {'e', 'd'}, {'e', 's'}, {'e', 'r'}, {'e', 'f'}, {'e', 'i'}, {'e', 'u'}, {'e', 'o'}, {'e', 0x7F}, {'e', 'l'}, {'e', 'e'},
+        {'e', 'p'}, {'e', 'g'}, {'e', 't'}, {'t', 't'}, {'t', 'w'}, {'t', 'i'}, {'t', 'b'}, {'t', 'x'}, {'t', 'p'}, {'t', 'a'},
+        {'s', 'l'}, {'s', 'd'}, {'s', 'b'}, {'s', 'm'}, {'f', 'p'}, {'f', 'b'}, {'f', 'e'}, {'f', 'u'},
+        {'v', 'i'}, {'v', 'o'}, {'v', 'a'}, {'t', 'd'}, {'t', 'm'}, {'t', 'e'}, {'t', 's'}, {'e', 'z'}, {'e', 'y'}};
     bool mn_ok = true;
     for (const auto &m : mn) {
         bool found = false;
@@ -126,7 +126,7 @@ void test_bindings() {
             std::printf("    falta o mnemonico Alt-%c %c\n", m.menu, m.letter);
         }
     }
-    check(mn_ok, "Menus: os 49 mnemonicos documentados do NE 2 existem");
+    check(mn_ok, "Menus: os mnemonicos do NE 2 existem no menu que recebeu o item");
 }
 
 void test_typing_and_movement() {
@@ -316,85 +316,85 @@ void test_blocks() {
     Editor e;
     e.SetText("one\ntwo\nthree");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({1, 3});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     check(e.HasBlock() && e.BlockText() == "one\ntwo", "Alt-B S duas vezes marca o bloco");
-    keys(e, {"A-b", "r"});
+    keys(e, {"A-e", "r"});
     check(!e.HasBlock(), "Alt-B R remove os marcadores");
     e.SetCursor({1, 0});
-    keys(e, {"A-b", "l"});
+    keys(e, {"A-e", "l"});
     check(e.BlockText() == "two\n", "Alt-B L marca a linha");
     e.SetCursor({1, 1});
-    keys(e, {"A-b", "e"});
+    keys(e, {"A-e", "e"});
     check(e.BlockText() == "wo", "Alt-B E marca ate' o fim da linha");
 
     // copiar
     e.SetText("abc def");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 3});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 7});
-    keys(e, {"A-b", "c"});
+    keys(e, {"A-e", "c"});
     check(e.Text() == "abc defabc" && e.Cursor() == Pos{0, 10} && e.BlockText() == "abc", "Alt-B C copia o bloco para o cursor");
     // mover
     e.SetText("abc def");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 3});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 7});
-    keys(e, {"A-b", "m"});
+    keys(e, {"A-e", "m"});
     check(e.Text() == " defabc", "Alt-B M move o bloco");
     // apagar
     e.SetText("abc def");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 3});
-    keys(e, {"A-b", "s"});
-    keys(e, {"A-b", "d"});
+    keys(e, {"A-e", "s"});
+    keys(e, {"A-e", "d"});
     check(e.Text() == " def" && !e.HasBlock(), "Alt-B D apaga o bloco");
     e.SetText("abc def");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 4});
-    keys(e, {"A-b", "s"});
-    keys(e, {"A-b", "Del"});
+    keys(e, {"A-e", "s"});
+    keys(e, {"A-e", "Del"});
     check(e.Text() == "def", "Alt-B Del apaga sem confirmar");
     // o cursor dentro do bloco nao copia
     e.SetText("abcdef");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 6});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 3});
-    keys(e, {"A-b", "c"});
+    keys(e, {"A-e", "c"});
     check(e.Text() == "abcdef", "copiar com o cursor dentro do bloco nao faz nada");
     // os marcadores acompanham as edicoes
     e.SetText("abcdef");
     e.SetCursor({0, 2});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 4});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 0});
     e.Type("XX");
     check(e.BlockText() == "cd", "os marcadores acompanham o texto inserido antes deles");
     // achar marcador
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "f"});
+    keys(e, {"A-e", "f"});
     check(e.Cursor() == Pos{0, 4}, "Alt-B F vai ao proximo marcador");
     // indent / unindent
     e.SetText("a\nb\nc");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({1, 1});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.Indent(2);
     check(e.Text() == "  a\n  b\nc", "Block > Indent");
     e.Unindent(1);
     check(e.Text() == " a\n b\nc", "Block > Unindent");
-    keys(e, {"A-b", "i"});
+    keys(e, {"A-e", "i"});
     check(e.TakeDialog() == Dialog::BlockIndent, "Alt-B I pede o dialogo");
 }
 
@@ -451,9 +451,9 @@ void test_search() {
 
     e.SetText("ab foo cd foo");
     e.SetCursor({0, 3});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 6});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 6});
     keys(e, {"A-s", "b"});
     check(e.Cursor() == Pos{0, 10}, "Alt-S B acha outra copia do texto do bloco");
@@ -514,7 +514,7 @@ void test_menus_and_dialogs() {
     check(m.TakeDialog() == Dialog::SaveAs, "Alt-F A pede Save As");
     keys(m, {"A-f", "s"});
     check(m.TakeDialog() == Dialog::SaveAs, "Alt-F S sem nome pede Save As");
-    keys(m, {"A-o", "e"});
+    keys(m, {"A-t", "e"});
     check(m.TakeDialog() == Dialog::EditorSetup, "Alt-O E");
     keys(m, {"A-v", "i"});
     check(m.TakeDialog() == Dialog::Information, "Alt-V I");
@@ -528,9 +528,9 @@ void test_menus_and_dialogs() {
     check(m.TakeDialog() == Dialog::Help && m.HelpTopic() == 0, "F1 abre a ajuda");
     m.Key("F10");
     check(m.TakeMenuRequest() && !m.TakeMenuRequest(), "F10 pede a barra de menus");
-    m.Key("A-p");
-    check(m.MenuPrefix() == 'p', "Alt-P abre Print");
-    check(!m.Key("p") && m.MenuPrefix() == 0, "Print ainda nao existe: o comando recusa");
+    m.Key("A-f");
+    check(m.MenuPrefix() == 'f', "Alt-F abre File");
+    check(!m.Key("p") && m.MenuPrefix() == 0, "Alt-F P (Print) ainda nao existe: o comando recusa");
     check(!ed::Info(Cmd::Print).implemented && ed::Info(Cmd::Find).implemented, "Info: o que ja' existe");
 }
 
@@ -552,12 +552,12 @@ void test_read_only() {
     check(e.Cursor().col == 7, "somente leitura: a navegacao funciona");
     e.SetCursor({0, 0});
     check(e.Find("def", false, false) && e.Cursor().col == 4, "somente leitura: a busca funciona");
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 7});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.Key("C-Ins");
     check(e.Clipboard() == "def", "somente leitura: copiar para a area de transferencia");
-    keys(e, {"A-b", "d"});
+    keys(e, {"A-e", "d"});
     check(e.Text() == "abc def", "somente leitura: Block Delete nao faz nada");
     std::string merge_err;
     check(e.ReplaceAll("a", "b", true) == 0 && !e.Merge("x", merge_err), "somente leitura: Replace e Merge recusam");
@@ -625,9 +625,9 @@ void test_files() {
 
     e.SetText("um\ndois\ntres");
     e.SetCursor({0, 0});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({1, 4});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     check(e.WriteBlock((dir / "blk.txt").string(), err) && slurp(dir / "blk.txt") == "um\r\ndois", "Output to file grava o bloco");
 
     Editor n;
@@ -678,11 +678,10 @@ void test_render() {
     e.Render(g);
     check(g.cols == 80 && g.rows == 25, "Render: grade 80x25");
     const std::string top = row(g, 0);
-    // View e Options andaram uma coluna para a esquerda (o NE 2 tinha 44 e 50) para caber o menu Project antes do F1=Help
-    check(top.substr(3, 4) == "File" && top.substr(9, 5) == "Block" && top.substr(16, 11) == "Text-layout" && top.substr(29, 6) == "Search" &&
-              top.substr(37, 5) == "Print" && top.substr(43, 4) == "View" && top.substr(48, 7) == "Options" && top.substr(56, 5) == "Build" && top.substr(62, 7) == "Project" &&
-              top.substr(70, 7) == "F1=Help",
-          "Render: barra de menu nas colunas do NE 2 (View/Options uma coluna a esquerda) com Build e Project");
+    // 1.43.8: oito menus (File Edit Search View Project Run Tools F1=Help); as colunas do F1=Help e da barra de estado seguem as do NE 2
+    check(top.substr(3, 4) == "File" && top.substr(9, 4) == "Edit" && top.substr(15, 6) == "Search" && top.substr(23, 4) == "View" && top.substr(29, 7) == "Project" &&
+              top.substr(38, 3) == "Run" && top.substr(43, 5) == "Tools" && top.substr(70, 7) == "F1=Help",
+          "Render: barra de menu com os oito menus (File Edit Search View Project Run Tools F1=Help)");
     const std::string st = row(g, 24);
     check(st.substr(4, 6) == "Line=1" && st.substr(15, 5) == "Col=1" && st.substr(36, 8) == "Untitled" && st.substr(58, 6) == "Insert" &&
               st.substr(66, 6) == "WW=Off",
@@ -698,9 +697,9 @@ void test_render() {
     e.SetCursor({0, 0});
     e.Render(g);
     check(g.at(0, 1).ch == 'h' && g.at(1, 1).ch == 'i' && g.at(2, 1).ch == ' ' && g.at(8, 1).ch == 'h', "Render: tabulacao expandida");
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.SetCursor({0, 2});
-    keys(e, {"A-b", "s"});
+    keys(e, {"A-e", "s"});
     e.Render(g);
     check(g.at(0, 1).style == ed::kBlockMark && g.at(1, 1).style == ed::kBlockSel && g.at(8, 1).style == ed::kText,
           "Render: bloco e marcador");

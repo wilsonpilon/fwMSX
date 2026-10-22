@@ -6,7 +6,7 @@
 
 ## 1. O que as 13 imagens do NE 2 mostram (levantamento)
 
-**Tela**: 25 linhas; barra de menu no topo (`File Block Text-layout Search Print View Options` e, a direita, `F1=Help`); area de texto; barra de rolagem a direita (setas e trilho pontilhado); barra de estado embaixo:
+**Tela**: 25 linhas; barra de menu no topo (desde a 1.43.8: `File Edit Search View Project Run Tools` e, a direita, `F1=Help`; antes eram os dez menus do NE 2 -- ver a secao 1b.1b); area de texto; barra de rolagem a direita (setas e trilho pontilhado); barra de estado embaixo:
 `<- Line=1 Col=1 <nome do arquivo ou Untitled> Insert|Over WW=Off|On ->`; um `*` na barra de estado aparece depois de editar (modificado). Menus em caixa cinza com sombra pontilhada, letra de atalho em video invertido, item atual em preto. Caixas de dialogo com borda dupla e titulo (`Display setup`, `Editor setup`), botoes `[ OK ]` e `Cancel`, radio `( )` e caixas `[x]`.
 
 **Menus e itens** (o que o NE 2 tem; todos viram requisito):
@@ -59,7 +59,26 @@ Atalhos visiveis nas telas: **Ctrl-F** achar, **Ctrl-R** trocar, **Alt-C** conti
 | | F1 / F2 | ajuda / 2a janela |
 Regra do NE: "muitos comandos a esquerda do cursor usam Alt; muitos a direita usam Ctrl" (Ctrl-W x Alt-W, Ctrl-L x Alt-L, Ctrl-A x Alt-A).
 
-### 1b.2 Mnemonicos de menu (Alt+letra do menu, depois a letra do item) -- como o NE os documenta
+### 1b.1b Menus do fwMSX desde a 1.43.8 (organizacao "moderna", pedido do usuario)
+
+O usuario pediu menus mais concentrados, como nas IDEs e emuladores atuais. Os dez menus do NE viraram sete mais a ajuda; as TECLAS DIRETAS do NE (Alt-K, Alt-W, Ctrl-F, Alt-C...) nao mudaram, e a letra de cada item continua a mesma dentro do menu que o recebeu.
+
+| Menu (Alt+) | Itens |
+|---|---|
+| **File** (F) | New, Open..., Save, Save As..., Merge...; Close window; Load more, Write to cursor, Top of file; Print, Print Block, Eject page, Print setup...; eXit |
+| **Edit** (E) | Undo, Redo; Copy, Move, Delete; Set marker, Remove markers, Find marker; Indent..., Unindent...; Output to file...; Paragraph format, Document format..., Center line (escondidos: Del, L, E = apagar sem perguntar, marcar a linha, marcar ate' o fim da linha) |
+| **Search** (S) | como no NE |
+| **View** (V) | Information display, Outline display; Language...; 2nd window... (F2) (escondido: A = About) |
+| **Project** (J) | New/Open/Close project, Files..., Add current file, Sync... |
+| **Run** (R) | (era Build) Assemble / Convert F9, Run on MSX F5; Next/Previous message, Messages...; BASIC line..., Dignified setup... |
+| **Tools** (T) | Display..., Mouse..., Editor..., Save configuration...; Text layout setup..., Word wrap, Auto indent; Expand tabs..., Put in Tabs...; Insert/Remove page breaks...; DOS shell |
+| **F1=Help** | General, Keys, File, Edit, Search, View, Project, Run, Tools; On word, About |
+
+De-para dos mnemonicos antigos: `Alt-B x` -> `Alt-E x`; `Alt-T` (Text-layout) -> `Alt-E` (P, D, C) e `Alt-T` (S vira T, E vira X, T vira P; W, I, B, A iguais); `Alt-P x` -> `Alt-F x` (P, B, E; Setup vira U); `Alt-O x` -> `Alt-T x`; `Alt-U x` -> `Alt-R x`; `Alt-F 2` -> `Alt-V 2`; `Alt-F D` (DOS shell) -> `Alt-T H`. Undo/Redo aparecem no menu Edit (antes so' por Alt-Backspace). O menu de ajuda tem um topico por menu (os topicos 2 a 8 da ajuda sao os sete menus, na ordem).
+
+Nao entrou ainda: Sprites/Telas/Som (menus dos editores graficos do E6, que ainda nao existem) e os submenus (a tabela de menus e' plana; a lista de Edit e Tools tem 15 e 14 linhas para caber na tela de 25).
+
+### 1b.2 Mnemonicos de menu NO NE 2 ORIGINAL (Alt+letra do menu, depois a letra do item) -- como o NE os documenta (para os atuais ver a 1b.1b)
 
 - **File** `Alt-F`: N New, O Open, S Save, A Save As, M Merge, 2 2nd window (F2), C Close window, L Load more, W Write to cursor, T Top of file, D DOS shell, X eXit.
 - **Block** `Alt-B`: C Copy, M Move, D Delete, S Set marker, R Remove markers, F Find marker, I Indent, U Unindent, O Output to file, **Del** apaga bloco SEM confirmar, **L** marca a linha (marcadores em volta), **E** marca do cursor ate' o fim da linha.

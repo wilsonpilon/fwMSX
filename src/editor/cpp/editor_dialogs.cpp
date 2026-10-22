@@ -1056,8 +1056,8 @@ void EditorApp::BuildSaveConfig() {
 }
 
 void EditorApp::BuildHelp(int topic, int page) {
-    static const char *titles[] = {"General help", "Help on keys", "File menu help", "Block menu help", "Text-layout menu help",
-                                   "Search menu help", "Print menu help", "View menu help", "Option menu help"};
+    static const char *titles[] = {"General help", "Help on keys", "File menu help", "Edit menu help", "Search menu help",
+                                   "View menu help", "Project menu help", "Run menu help", "Tools menu help"};
     topic = std::max(0, std::min(topic, 8));
     const std::vector<std::string> lines = HelpLines(topic);
     const int per_page = 17;

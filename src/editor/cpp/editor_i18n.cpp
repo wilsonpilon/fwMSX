@@ -8,6 +8,8 @@ namespace ed {
 std::string Tr(const std::string &en) {
     static const std::unordered_map<std::string, std::string> kPt = {
         // --- menus ---
+        {"Edit", "Editar"}, {"Run", "Executar"}, {"Tools", "Ferramentas"}, {"Undo", "Desfazer"}, {"Redo", "Refazer"},
+        {"Print setup...", "Configurar impressao..."}, {"Text layout setup...", "Configurar o texto..."},
         {"File", "Arquivo"}, {"Block", "Bloco"}, {"Text-layout", "Texto"}, {"Search", "Busca"}, {"Print", "Imprimir"},
         {"View", "Exibir"}, {"Options", "Opcoes"}, {"F1=Help", "Ajuda"}, {"Build", "Montar"},
         {"Assemble / Convert", "Montar / Converter"}, {"BASIC line...", "Linha do BASIC..."}, {"Dignified setup...", "Config. Basic Dignified..."}, {"Run on MSX", "Executar no MSX"}, {"Next message", "Proxima mensagem"},
@@ -82,7 +84,8 @@ std::string Tr(const std::string &en) {
         {"Expand tabs to spaces starting at...", "Expandir tabulacoes em espacos a partir de..."},
         {"Replace left-hand spaces with tabs starting at...", "Trocar espacos iniciais por tabulacoes a partir de..."},
         {"General help", "Ajuda geral"}, {"Help on keys", "Ajuda das teclas"}, {"File menu help", "Ajuda do menu Arquivo"}, {"Block menu help", "Ajuda do menu Bloco"},
-        {"Text-layout menu help", "Ajuda do menu Texto"}, {"Search menu help", "Ajuda do menu Busca"}, {"Print menu help", "Ajuda do menu Imprimir"},
+        {"Edit menu help", "Ajuda do menu Editar"}, {"Project menu help", "Ajuda do menu Projeto"}, {"Run menu help", "Ajuda do menu Executar"},
+        {"Tools menu help", "Ajuda do menu Ferramentas"}, {"Text-layout menu help", "Ajuda do menu Texto"}, {"Search menu help", "Ajuda do menu Busca"}, {"Print menu help", "Ajuda do menu Imprimir"},
         {"View menu help", "Ajuda do menu Exibir"}, {"Option menu help", "Ajuda do menu Opcoes"},
         // --- mensagens da barra de estado ---
         {"Text not found", "Texto nao encontrado"}, {"Nothing to search for", "Nada para procurar"}, {"No matching bracket", "Sem parentese correspondente"},

@@ -313,7 +313,7 @@ void EditorApp::BasicLineGoto(const std::string &text) {
 
 void EditorApp::BuildStep(int dir) {
     if (build_msgs_.empty()) {
-        Msg("No messages (Build > Assemble)");
+        Msg("No messages (Run > Assemble)");
         return;
     }
     BuildGoto(ed_cycle(static_cast<int>(build_msgs_.size()), build_cur_, dir));
@@ -321,7 +321,7 @@ void EditorApp::BuildStep(int dir) {
 
 void EditorApp::BuildErrors() {
     if (build_msgs_.empty()) {
-        Msg("No messages (Build > Assemble)");
+        Msg("No messages (Run > Assemble)");
         return;
     }
     ShowDialog(Dialog::Errors);
