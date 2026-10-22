@@ -17,6 +17,14 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.10 -- "Yie Ar Kung-Fu: Imprimir em PDF" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "Vamos entao para a E7". Escopo escolhido (AskUserQuestion): imprimir **em PDF reaproveitando o `mamute_pdf`** (nao impressora do sistema); depois Document format, Outline, Load more / Write to cursor / Top of file e preview de Markdown, em versoes seguintes. O `Obifile` parte do Kizuna (Go, `resource/kizuna/pkg/obi`), a converter depois da E7.
+- **Desenho**: a paginacao mora no gerador (`BuildPdfLayout`), nao no editor, para o Mamute e o editor compartilharem o PDF; `BuildPdf` antigo ficou intacto. A pagina e' A4 fixa com 9 pt, entao o Page length do NE (62) cabe e qualquer valor maior e' cortado pelo que cabe na folha (o form feed continua mandando).
+- Validado: Windows e Linux, `ctest` 100%.
+
+---
+
 ## v1.43.9 -- "Yie Ar Kung-Fu: Simbolos do projeto" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "siga para fecharmos E6" (depois dos menus reorganizados).

@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.10] - 2026-10-22 - "Yie Ar Kung-Fu: Imprimir em PDF" (Konami)
+
+### Adicionado -- fase E7 do editor, parte 1
+- **File > Print / Print Block** (antes desabilitados): pedem o nome (sugerem `arquivo.pdf` / `arquivo-block.pdf`) e gravam um PDF A4 em Courier pelo gerador do Mamute. O `Print setup` agora vale: **Top margin** (linhas em branco no alto de cada folha), **Left margin** (colunas em branco) e **Page length** (linhas de texto por folha); uma linha so' com form feed (as quebras de pagina de Tools > Insert page breaks) abre outra folha; tabulacoes viram espacos; linhas mais largas que a folha continuam na linha seguinte.
+- `mamute::BuildPdfLayout` / `WritePdfLayout` (`PdfLayout`: `lines_per_page`, `top_blank`, `left_cols`); `BuildPdf`/`WritePdf` do Mamute continuam iguais. `Editor::PrintLines(bloco)` monta o texto.
+- `Eject page` continua desabilitado: nao faz sentido numa folha de PDF.
+- Testes: `mamutetest` (layout), `editorui` (Print e Print Block, bloco so' com o bloco), `edittest`.
+
 ## [1.43.9] - 2026-10-22 - "Yie Ar Kung-Fu: Simbolos do projeto" (Konami)
 
 ### Adicionado -- fecha a fase E6 do editor (E6 parte 4)

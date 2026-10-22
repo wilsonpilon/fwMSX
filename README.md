@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.9 "Yie Ar Kung-Fu: Simbolos do projeto", Konami)
+## Estado atual (v1.43.10 "Yie Ar Kung-Fu: Imprimir em PDF", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.43.10 o editor imprime em PDF (File > Print / Print Block, com as margens do Print setup)**
 **1.43.9 o completar do editor oferece os rotulos e constantes dos outros arquivos do projeto; `man editor`**
 **1.43.8 os menus do editor foram concentrados em oito (File Edit Search View Project Run Tools + Help), como nas IDEs atuais; as teclas do Norton continuam**
 **1.43.7 com um projeto aberto, o Build (montador e Basic Dignified) le os arquivos incluidos do proprio projeto, nao da copia da pasta**

@@ -177,8 +177,8 @@ COMO ABRIR
 
 MENUS (Alt+letra, ou F10; setas, Enter, a letra do item, Esc)
   File (F)     New, Open, Save, Save As, Merge, Close window, Load more, Write to
-               cursor, Top of file, Print, Print Block, Eject page, Print setup,
-               eXit
+               cursor, Top of file, Print (PDF), Print Block, Eject page, Print
+               setup, eXit
   Edit (E)     Undo, Redo, Copy, Move, Delete, marcadores de bloco, Indent,
                Unindent, Output to file, Paragraph format, Document format,
                Center line
@@ -200,6 +200,12 @@ TECLAS DO NORTON (continuam as mesmas)
   parentese, Ctrl-W / Alt-W apagam palavra, Alt-K apaga a linha, Ctrl-U restaura
   o apagado, Alt-E S (era Alt-B S) marca o bloco. Modernas: Alt-Backspace
   desfaz, Ctrl-Ins / Shift-Ins / Shift-Del copiam, colam e recortam.
+
+IMPRIMIR
+  File > Print grava o arquivo todo em um PDF A4 (Courier) e Print Block so' o
+  bloco marcado; o nome sugerido e' o do arquivo com .pdf. Print setup define a
+  margem superior, a margem esquerda e as linhas por folha, e as quebras de
+  pagina (Tools > Insert page breaks) abrem folha nova.
 
 COMPLETAR
   Alt-/ ou Ctrl-Espaco lista os candidatos para a palavra sob o cursor: as

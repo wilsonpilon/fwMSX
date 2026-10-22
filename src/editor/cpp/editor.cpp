@@ -171,6 +171,37 @@ std::string Editor::BlockText() const {
     return out;
 }
 
+std::vector<std::string> Editor::PrintLines(bool block) const {
+    std::vector<std::string> src;
+    if (block) {
+        const std::string t = BlockText();
+        std::string cur;
+        for (const char c : t) {
+            if (c == '\n') {
+                src.push_back(cur);
+                cur.clear();
+            } else if (c != '\r') {
+                cur.push_back(c);
+            }
+        }
+        src.push_back(cur);
+    } else {
+        for (int i = 0; i < LineCount(); ++i) src.push_back(Line(i));
+    }
+    // o PDF nao tem tabulacao: expande na coluna certa para o desenho do texto na folha ser o mesmo da tela
+    const size_t tab = static_cast<size_t>(std::max(1, set_.tab_width));
+    for (std::string &s : src) {
+        if (s.find('\t') == std::string::npos) continue;
+        std::string o;
+        for (const char c : s) {
+            if (c == '\t') o.append(tab - o.size() % tab, ' ');
+            else o.push_back(c);
+        }
+        s = o;
+    }
+    return src;
+}
+
 bool Editor::ItemEnabled(const MenuItem &item) const {
     const CmdInfo &ci = Info(item.cmd);
     if (!ci.implemented) return false;

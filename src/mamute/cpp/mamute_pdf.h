@@ -13,6 +13,17 @@ namespace mamute {
 // Caracteres fora do ASCII viram '?'. false (+error) se nao foi possivel gravar.
 bool WritePdf(const std::string &path, const std::string &title, const std::vector<std::string> &lines, std::string &error);
 
+// Paginacao pedida por quem imprime (o editor: Print setup). Uma linha com so' "\f" (form feed) encerra a folha.
+struct PdfLayout {
+    int lines_per_page = 0; // linhas de texto por folha (0 = quantas couberem); nunca passa do que cabe na A4
+    int top_blank = 0;      // linhas em branco no alto de cada folha (margem superior)
+    int left_cols = 0;      // colunas em branco a esquerda (margem esquerda)
+};
+
+// Como WritePdf/BuildPdf, mas paginando como `layout` manda; linhas mais largas que a folha continuam na linha seguinte.
+std::string BuildPdfLayout(const std::string &title, const std::vector<std::string> &lines, const PdfLayout &layout);
+bool WritePdfLayout(const std::string &path, const std::string &title, const std::vector<std::string> &lines, const PdfLayout &layout, std::string &error);
+
 // Monta o PDF na memoria (a gravacao acima usa isto; os testes tambem).
 std::string BuildPdf(const std::string &title, const std::vector<std::string> &lines);
 

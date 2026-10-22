@@ -479,8 +479,8 @@ std::string Describe(Cmd c) {
     case Cmd::MatchBracket: return "Moves to the bracket that matches the one under the cursor.";
     case Cmd::WindowDiff: return "Compares the two windows from the cursors.";
     case Cmd::TextInBlock: return "Searches for other copies of the text inside the block.";
-    case Cmd::Print: return "Prints the whole file.";
-    case Cmd::PrintBlock: return "Prints the marked block.";
+    case Cmd::Print: return "Writes the whole file to a PDF (page length and margins from Print setup).";
+    case Cmd::PrintBlock: return "Writes the marked block to a PDF.";
     case Cmd::EjectPage: return "Advances the printer to the next page.";
     case Cmd::PrintSetup: return "Sets margins and page length for printing.";
     case Cmd::Information: return "Shows file name, counts, date and time and the character under the cursor.";

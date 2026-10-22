@@ -13,6 +13,7 @@ namespace {
 constexpr int kPageW = 595, kPageH = 842; // A4 em pontos
 constexpr int kMargin = 40;
 constexpr int kFont = 9, kLeading = 11;
+constexpr int kCols = (kPageW - 2 * kMargin) * 10 / 54; // Courier 9 pt = 5,4 pt por coluna
 constexpr int kLinesPerPage = (kPageH - 2 * kMargin - 2 * kLeading) / kLeading; // sobra espaco para o cabecalho
 
 std::string Escape(const std::string &s) {
@@ -40,8 +41,48 @@ bool IsPdfName(const std::string &path) {
     return e == ".pdf";
 }
 
+namespace {
+std::string Render(const std::string &title, const std::vector<std::vector<std::string>> &sheets);
+}
+
 std::string BuildPdf(const std::string &title, const std::vector<std::string> &lines) {
-    const size_t pages = std::max<size_t>(1, (lines.size() + kLinesPerPage - 1) / kLinesPerPage);
+    std::vector<std::vector<std::string>> sheets;
+    for (size_t i = 0; i < lines.size(); i += kLinesPerPage)
+        sheets.emplace_back(lines.begin() + static_cast<std::ptrdiff_t>(i), lines.begin() + static_cast<std::ptrdiff_t>(std::min(lines.size(), i + kLinesPerPage)));
+    return Render(title, sheets);
+}
+
+std::string BuildPdfLayout(const std::string &title, const std::vector<std::string> &lines, const PdfLayout &layout) {
+    const int top = std::max(0, std::min(layout.top_blank, kLinesPerPage - 1));
+    const int room = kLinesPerPage - top; // linhas de texto que cabem depois da margem superior
+    const int per = layout.lines_per_page > 0 ? std::min(layout.lines_per_page, room) : room;
+    const int left = std::max(0, std::min(layout.left_cols, kCols - 10));
+    const size_t width = static_cast<size_t>(kCols - left);
+    std::vector<std::vector<std::string>> sheets(1);
+    auto fresh = [&]() { sheets.emplace_back(); };
+    auto add = [&](const std::string &s) {
+        if (static_cast<int>(sheets.back().size()) >= top + per) fresh();
+        if (sheets.back().empty()) sheets.back().assign(static_cast<size_t>(top), std::string());
+        sheets.back().push_back(std::string(static_cast<size_t>(left), ' ') + s);
+    };
+    for (const std::string &raw : lines) {
+        if (raw == "\f") { // quebra de pagina do texto: so' abre outra folha se a atual ja' tem algo
+            if (!sheets.back().empty()) fresh();
+            continue;
+        }
+        if (raw.size() <= width) {
+            add(raw);
+            continue;
+        }
+        for (size_t p = 0; p < raw.size(); p += width) add(raw.substr(p, width));
+    }
+    if (sheets.back().empty() && sheets.size() > 1) sheets.pop_back();
+    return Render(title, sheets);
+}
+
+namespace {
+std::string Render(const std::string &title, const std::vector<std::vector<std::string>> &sheets) {
+    const size_t pages = std::max<size_t>(1, sheets.size());
     // objetos: 1 catalogo, 2 paginas, 3 fonte, depois (conteudo, pagina) de cada folha
     std::vector<std::string> obj(3 + pages * 2);
     obj[0] = "<< /Type /Catalog /Pages 2 0 R >>";
@@ -53,7 +94,8 @@ std::string BuildPdf(const std::string &title, const std::vector<std::string> &l
         std::string stream = "BT /F1 " + std::to_string(kFont) + " Tf " + std::to_string(kLeading) + " TL " + std::to_string(kMargin) + " " +
                              std::to_string(kPageH - kMargin) + " Td\n";
         stream += "(" + Escape(title) + "  -  pagina " + std::to_string(p + 1) + "/" + std::to_string(pages) + ") Tj T*\nT*\n";
-        for (size_t i = p * kLinesPerPage; i < lines.size() && i < (p + 1) * kLinesPerPage; ++i) stream += "(" + Escape(lines[i]) + ") Tj T*\n";
+        if (p < sheets.size())
+            for (const std::string &l : sheets[p]) stream += "(" + Escape(l) + ") Tj T*\n";
         stream += "ET";
         obj[3 + p * 2] = "<< /Length " + std::to_string(stream.size()) + " >>\nstream\n" + stream + "\nendstream";
         obj[4 + p * 2] = "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + std::to_string(kPageW) + " " + std::to_string(kPageH) +
@@ -75,6 +117,7 @@ std::string BuildPdf(const std::string &title, const std::vector<std::string> &l
     pdf += "trailer\n<< /Size " + std::to_string(obj.size() + 1) + " /Root 1 0 R >>\nstartxref\n" + std::to_string(xref) + "\n%%EOF\n";
     return pdf;
 }
+} // namespace
 
 bool WritePdf(const std::string &path, const std::string &title, const std::vector<std::string> &lines, std::string &error) {
     std::ofstream f(path, std::ios::binary | std::ios::trunc);
@@ -83,6 +126,17 @@ bool WritePdf(const std::string &path, const std::string &title, const std::vect
         return false;
     }
     const std::string pdf = BuildPdf(title, lines);
+    f.write(pdf.data(), static_cast<std::streamsize>(pdf.size()));
+    return static_cast<bool>(f);
+}
+
+bool WritePdfLayout(const std::string &path, const std::string &title, const std::vector<std::string> &lines, const PdfLayout &layout, std::string &error) {
+    std::ofstream f(path, std::ios::binary | std::ios::trunc);
+    if (!f) {
+        error = "Cannot write " + path;
+        return false;
+    }
+    const std::string pdf = BuildPdfLayout(title, lines, layout);
     f.write(pdf.data(), static_cast<std::streamsize>(pdf.size()));
     return static_cast<bool>(f);
 }

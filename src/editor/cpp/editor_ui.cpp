@@ -11,6 +11,8 @@
 #include <filesystem>
 #include <unordered_map>
 
+#include "../../mamute/cpp/mamute_pdf.h"
+
 namespace ed {
 
 namespace fs = std::filesystem;
@@ -574,9 +576,11 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         }
         ShowDialog(Dialog::BasicLine);
         return true;
-    case Cmd::Outline:
     case Cmd::Print:
     case Cmd::PrintBlock:
+        PrintStart(cmd == Cmd::PrintBlock);
+        return true;
+    case Cmd::Outline:
     case Cmd::EjectPage:
         Msg(std::string(Info(cmd).name) + ": not available yet");
         return false;
@@ -586,6 +590,17 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         return r;
     }
     }
+}
+
+void EditorApp::PrintStart(bool block) {
+    if (block && !Ed().HasBlock()) {
+        Msg("No block marked");
+        return;
+    }
+    print_block_ = block;
+    const std::string &n = Ed().Name();
+    print_default_ = n.empty() ? "noname.pdf" : fs::path(n).stem().string() + (block ? "-block.pdf" : ".pdf");
+    ShowDialog(Dialog::PrintTo);
 }
 
 bool EditorApp::Enabled(const MenuItem &it) const {
@@ -598,7 +613,9 @@ bool EditorApp::Enabled(const MenuItem &it) const {
     if (it.cmd == Cmd::ProjectClose || it.cmd == Cmd::ProjectFiles || it.cmd == Cmd::ProjectAdd || it.cmd == Cmd::ProjectSync) return project_.IsOpen();
     if (it.cmd == Cmd::ProjectNew || it.cmd == Cmd::ProjectOpen) return true;
     if (it.cmd == Cmd::New || it.cmd == Cmd::Exit) return !(Ed().ReadOnly() && it.cmd == Cmd::New);
-    if (it.cmd == Cmd::Outline || it.cmd == Cmd::Print || it.cmd == Cmd::PrintBlock || it.cmd == Cmd::EjectPage) return false;
+    if (it.cmd == Cmd::PrintBlock) return Ed().HasBlock();
+    if (it.cmd == Cmd::Print) return true;
+    if (it.cmd == Cmd::Outline || it.cmd == Cmd::EjectPage) return false; // a folha do PDF nao tem 'ejetar'
     return Ed().ItemEnabled(it);
 }
 
@@ -866,6 +883,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::BasicLine: BuildSimpleInput(d, "BASIC line", "Line or error:", "", 30); break;
     case Dialog::BlockIndent: BuildSimpleInput(d, "Indent", "Amount:", "4", 4); break;
     case Dialog::BlockUnindent: BuildSimpleInput(d, "Unindent", "Amount:", "4", 4); break;
+    case Dialog::PrintTo: BuildSimpleInput(d, print_block_ ? "Print block to PDF" : "Print to PDF", "File name:", print_default_, 40); break;
     case Dialog::BlockOutput: BuildSimpleInput(d, "Output to file", "File name:", "", 40); break;
     case Dialog::TextSetup: BuildTextSetup(); break;
     case Dialog::PrintSetup: BuildPrintSetup(); break;
@@ -1122,6 +1140,23 @@ void EditorApp::DialogDone(int button) {
     case Dialog::BlockUnindent:
         e.Unindent(std::max(1, std::atoi(done.Text(1).c_str())));
         break;
+    case Dialog::PrintTo: {
+        if (button != kBtnOk) break;
+        std::string name = done.Text(1);
+        if (name.empty()) break;
+        if (!mamute::IsPdfName(name)) name += ".pdf";
+        const std::vector<std::string> lines = e.PrintLines(print_block_);
+        mamute::PdfLayout lay;
+        lay.lines_per_page = e.settings().page_length;
+        lay.top_blank = e.settings().top_margin;
+        lay.left_cols = ui_.print_left_margin;
+        const std::string path = fs::path(name).is_absolute() ? name : (fs::path(cwd_.empty() ? fs::current_path().string() : cwd_) / name).string();
+        if (mamute::WritePdfLayout(path, e.Name().empty() ? std::string("noname") : fs::path(e.Name()).filename().string(), lines, lay, err))
+            Msg("Printed to " + path);
+        else
+            Msg(err);
+        break;
+    }
     case Dialog::BlockOutput:
         if (!e.WriteBlock(done.Text(1), err)) Msg(err);
         break;

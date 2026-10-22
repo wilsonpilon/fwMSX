@@ -275,6 +275,22 @@ void TestScreens() {
         check(pdf.rfind("%PDF-1.4", 0) == 0 && has(pdf, "/Count 3") && has(pdf, "%%EOF") && has(pdf, "linha 149 \\(com parenteses\\)") && has(pdf, "/BaseFont /Courier"),
               "PDF: 150 linhas = 3 folhas A4 em Courier, com os parenteses escapados");
     }
+    {
+        // paginacao do editor (Print setup): margem superior/esquerda, linhas por folha e o form feed do texto
+        std::vector<std::string> txt;
+        for (int i = 0; i < 5; ++i) txt.push_back("l" + std::to_string(i));
+        txt.push_back("\f");
+        txt.push_back("depois");
+        txt.push_back(std::string(300, 'x'));
+        mamute::PdfLayout lay;
+        lay.lines_per_page = 3;
+        lay.top_blank = 1;
+        lay.left_cols = 4;
+        const std::string pdf = mamute::BuildPdfLayout("T", txt, lay);
+        // l0..l2 | l3 l4 (o form feed fecha a folha) | depois + o resto da linha larga dobrada em duas
+        check(has(pdf, "/Count 4") && has(pdf, "(    l4) Tj") && has(pdf, "(    depois) Tj"), "PDF com layout: linhas por folha, margem esquerda e form feed");
+        check(!has(pdf, "(" + std::string(300, 'x')), "PDF com layout: a linha mais larga que a folha e' dobrada");
+    }
     const std::string pdfp = TempPath("mamute_t_dump.pdf");
     mon.Execute("M C000,3E,2A,C9");
     checkOut(mon, "P C000,C00F," + pdfp, "(PDF)", "P grava um PDF quando o nome termina em .pdf");

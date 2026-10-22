@@ -34,7 +34,7 @@ std::string Tr(const std::string &en) {
         {"Continue rev", "Continuar para tras"}, {"Line number...", "Ir para a linha..."}, {"Matching bracket", "Parentese correspondente"},
         {"Window Differences", "Diferencas entre paineis"}, {"Text in Block", "Texto do bloco"}, {"Complete word", "Completar palavra"}, {"Block Marker", "Marca do bloco"},
         // Print
-        {"Print Block", "Imprimir bloco"}, {"Eject page", "Ejetar pagina"},
+        {"Print Block", "Imprimir bloco"}, {"Print to PDF", "Imprimir em PDF"}, {"Print block to PDF", "Imprimir bloco em PDF"}, {"Eject page", "Ejetar pagina"},
         // View
         {"Information display", "Informacoes"}, {"Outline display", "Estrutura (outline)"}, {"Language...", "Linguagem..."},
         {"Language", "Linguagem"}, {"(auto)", "(automatica)"}, {"Syntax highlighting", "Destaque de sintaxe"}, {"Language:", "Linguagem:"},

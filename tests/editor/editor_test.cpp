@@ -530,8 +530,8 @@ void test_menus_and_dialogs() {
     check(m.TakeMenuRequest() && !m.TakeMenuRequest(), "F10 pede a barra de menus");
     m.Key("A-f");
     check(m.MenuPrefix() == 'f', "Alt-F abre File");
-    check(!m.Key("p") && m.MenuPrefix() == 0, "Alt-F P (Print) ainda nao existe: o comando recusa");
-    check(!ed::Info(Cmd::Print).implemented && ed::Info(Cmd::Find).implemented, "Info: o que ja' existe");
+    check(!m.Key("e") && m.MenuPrefix() == 0, "Alt-F E (Eject page) nao tem o que fazer num PDF: o comando recusa");
+    check(!ed::Info(Cmd::EjectPage).implemented && ed::Info(Cmd::Print).implemented && ed::Info(Cmd::Find).implemented, "Info: o que ja' existe");
 }
 
 void test_read_only() {

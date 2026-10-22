@@ -1278,6 +1278,41 @@ void test_badig_build() {
 }
 
 // O menu Project: o .msxproject aberto no editor. Salvar leva o arquivo para o banco; Sync compara; conflito pergunta.
+void test_print() {
+    const fs::path dir = fs::temp_directory_path() / "fwedit_print";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    spit(dir / "p.txt", "alfa\tbeta (x)\ngama\n");
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.SetStartDir(dir.string());
+    std::string err;
+    check(a.Open((dir / "p.txt").string(), err), "abre o p.txt");
+
+    K(a, {"A-f", "b"});
+    check(!a.HasDialog(), "Print Block sem bloco marcado: item desabilitado, nada acontece");
+    K(a, {"A-f", "p"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::PrintTo && screen_has(a, "Print to PDF") && screen_has(a, "p.pdf"), "File > Print pergunta o nome, sugerindo p.pdf");
+    K(a, {"Enter"});
+    check(!a.HasDialog() && fs::exists(dir / "p.pdf"), "OK grava o PDF na pasta do editor");
+    const std::string pdf = slurp(dir / "p.pdf");
+    check(pdf.rfind("%PDF-1.4", 0) == 0 && pdf.find("(alfa    beta \\(x\\)) Tj") != std::string::npos, "o PDF traz o texto com a tabulacao expandida e os parenteses escapados");
+    check(a.Ed().Message().find("Printed to") != std::string::npos, "a barra de estado diz onde gravou");
+
+    // o bloco marcado: so' ele sai
+    a.Ed().SetCursor({1, 0});
+    K(a, {"A-e", "s"}); // Edit > Set marker (Alt-E S): o 1o marcador
+    check(!a.HasDialog(), "Alt-E S marca o primeiro marcador");
+    a.Ed().SetCursor({1, 4});
+    K(a, {"A-e", "s"}); // o 2o marcador fecha o bloco
+    K(a, {"A-f", "b"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::PrintTo && screen_has(a, "p-block.pdf"), "Print Block com bloco marcado sugere p-block.pdf");
+    K(a, {"Enter"});
+    const std::string blk = slurp(dir / "p-block.pdf");
+    check(blk.find("(gama) Tj") != std::string::npos && blk.find("alfa") == std::string::npos, "o PDF do bloco so' tem o bloco");
+    fs::remove_all(dir);
+}
+
 void test_project_editor() {
     const fs::path dir = fs::temp_directory_path() / "fwedit_project";
     fs::remove_all(dir);
@@ -1538,6 +1573,7 @@ int main() {
     test_build();
     test_badig_build();
     test_project_editor();
+    test_print();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

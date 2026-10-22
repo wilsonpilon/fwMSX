@@ -282,6 +282,7 @@ private:
     void ProjectWordsRefresh();                      // os simbolos dos outros arquivos do projeto, para o completar (completion.h)
     badig::SourceReader ProjectSourceReader() const; // include/incbin do Build saem do banco do projeto antes da pasta
     std::string ProjectRel(const std::string &abs_path) const;  // o caminho dentro do projeto, ou "" se o arquivo esta' fora da pasta
+    void PrintStart(bool block);                                // Print / Print Block: pergunta o nome e grava o PDF (mamute_pdf)
     void ProjectSyncStart();                                    // compara; se ha' diferencas mostra a lista (OK aplica o que e' seguro)
     void ProjectSyncApply();
     void ProjectAskNext();                                      // o proximo conflito / apagado da fila
@@ -349,6 +350,8 @@ private:
     int after_save_ = 0;        // >0: o Save As aberto continua o fluxo de confirmacao (sair, novo, abrir)
     bool config_dirty_ = false; // alguma caixa de Options mudou a configuracao
     int repl_count_ = 0;
+    bool print_block_ = false;  // o PrintTo em andamento e' do bloco, nao do arquivo todo
+    std::string print_default_; // nome sugerido no dialogo PrintTo
     std::string pending_path_;  // purpose 3: o arquivo a abrir depois do Save
     // busca/troca interativa
     std::string find_text_, repl_text_;

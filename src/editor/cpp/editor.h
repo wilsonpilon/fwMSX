@@ -119,7 +119,8 @@ enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
     InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
     About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference, BadigSetup, BasicLine,
-    ProjectNew, ProjectOpen, ProjectFiles, ProjectSync, ProjectConflict, ProjectActions, ProjectRename, ProjectAddFile, ProjectHistory, ProjectRemoved
+    ProjectNew, ProjectOpen, ProjectFiles, ProjectSync, ProjectConflict, ProjectActions, ProjectRename, ProjectAddFile, ProjectHistory, ProjectRemoved,
+    PrintTo
 };
 
 struct CmdInfo {
@@ -288,6 +289,7 @@ public:
     bool HasBlock() const { return m1_set_ && m2_set_; }
     bool BlockRange(Pos &a, Pos &b) const;              // [a, b) normalizado
     std::string BlockText() const;
+    std::vector<std::string> PrintLines(bool block) const; // o texto (ou so' o bloco) pronto para imprimir: tabulacoes viram espacos
     const std::string &Message() const { return message_; }
     void ClearMessage() { message_.clear(); }
     char MenuPrefix() const { return menu_prefix_; }    // letra do menu aberto por Alt+letra (0 = nenhum)
