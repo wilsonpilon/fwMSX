@@ -96,7 +96,14 @@ bool ParseRecipe(const std::string &text, Recipe &out, std::string &err) {
         } else if (key == "boot") {
             out.boot = value;
         } else if (key == "dos") {
-            if (!ParseBool(value, out.dos)) return Fail(err, ln.num, "'dos' must be true or false");
+            if (value == "1" || value == "2") {
+                out.dos_version = value[0] - '0';
+                out.dos = true;
+            } else if (!ParseBool(value, out.dos)) {
+                return Fail(err, ln.num, "'dos' must be 1, 2, true or false");
+            }
+        } else if (key == "dos_tools") {
+            if (!ParseBool(value, out.dos_tools)) return Fail(err, ln.num, "'dos_tools' must be true or false");
         } else if (key == "dos_disk") {
             out.dos_disk = value;
         } else if (key == "files") {

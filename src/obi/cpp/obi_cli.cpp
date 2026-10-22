@@ -13,11 +13,31 @@ int RunObiCommand(const std::vector<std::string> &args) {
         std::printf("obi: monta um disquete .dsk a partir de uma receita (Obifile)\n"
                     "  obi build [Obifile]   monta e grava o .dsk (sem argumento: o Obifile da pasta atual)\n"
                     "  obi check [Obifile]   monta tudo e confere, sem gravar o .dsk\n"
+                    "  obi dosdisk <1|2> [saida.dsk] [--tools]   disquete de sistema do MSX-DOS (padrao: emulator/msxdosN.dsk)\n"
                     "ver: man obi\n");
         return sub.empty() ? 1 : 0;
     }
+    if (sub == "dosdisk") { // obi dosdisk <1|2> [saida.dsk] [--tools]
+        int version = 0;
+        bool tools = false;
+        std::string out;
+        for (size_t i = 1; i < args.size(); ++i) {
+            if (args[i] == "--tools") tools = true;
+            else if (version == 0 && (args[i] == "1" || args[i] == "2")) version = args[i][0] - '0';
+            else out = args[i];
+        }
+        if (version == 0) {
+            std::fprintf(stderr, "obi: use obi dosdisk <1|2> [saida.dsk] [--tools]\n");
+            return 1;
+        }
+        if (out.empty()) out = (fs::path(EmulatorDir().empty() ? std::string("emulator") : EmulatorDir()) / ("msxdos" + std::to_string(version) + ".dsk")).string();
+        std::string msg;
+        const bool ok = BuildSystemDisk(version, tools, out, msg);
+        std::printf("%s\n", msg.c_str());
+        return ok ? 0 : 1;
+    }
     if (sub != "build" && sub != "check") {
-        std::fprintf(stderr, "obi: comando '%s' desconhecido (build ou check)\n", sub.c_str());
+        std::fprintf(stderr, "obi: comando '%s' desconhecido (build, check ou dosdisk)\n", sub.c_str());
         return 1;
     }
     BuildOptions o;

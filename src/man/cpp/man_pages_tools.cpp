@@ -242,6 +242,9 @@ COMANDOS
   obi build [Obifile]      monta e grava o .dsk (sem argumento: o Obifile da
                            pasta atual, ou o primeiro *.obi)
   obi check [Obifile]      monta e confere tudo, sem gravar o .dsk
+  obi dosdisk <1|2> [saida.dsk] [--tools]
+                           gera o disquete de sistema do MSX-DOS 1 ou 2 (padrao:
+                           emulator/msxdosN.dsk; a build ja' gera os dois)
   obirun [Obifile]         no console do emulador: monta, insere o disco em A: e
                            reinicia (o emulador precisa de --disk)
   fwmsx --obi build ...    o mesmo, fora do emulador
@@ -252,8 +255,9 @@ O OBIFILE
   # comentario
   target: jogo.dsk          o disco a gerar
   boot: JOGO.BMX            quem roda sozinho (padrao: o primeiro .BMX)
-  dos: false                true = parte de um disco de sistema do MSX-DOS
-  dos_disk: msxdos1.dsk     o disco de sistema (com dos: true)
+  dos: 1                    1 ou 2: o disco leva o MSX-DOS 1 ou 2 (arquivos de
+                            emulator/msxdos1 e emulator/msxdos2)
+  dos_tools: false          true (com dos: 2): leva tambem UTILS, HELP...
   files:
     - jogo.dmx              Basic Dignified -> JOGO.BMX
     - rotina.asm            Assembly -> ROTINA.BIN, .COM ou .ROM
@@ -264,7 +268,7 @@ O OBIFILE
 COMO O DISCO INICIA
   boot: X.BMX  -> AUTOEXEC.BAS com RUN "X.BMX"
   boot: X.BIN  -> AUTOEXEC.BAS com BLOAD "X.BIN",R
-  boot: X.COM  -> AUTOEXEC.BAT (precisa de dos: true)
+  boot: X.COM  -> AUTOEXEC.BAT (precisa de dos: 1 ou 2)
 
 NOMES
   No disco o nome e' o do arquivo em maiusculas, no formato 8.3. Se nao couber a

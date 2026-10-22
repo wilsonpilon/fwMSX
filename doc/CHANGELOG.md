@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.12] - 2026-10-22 - "Yie Ar Kung-Fu: Discos do MSX-DOS" (Konami)
+
+### Adicionado
+- **Pasta `emulator/` ao lado do executavel** (`dist/emulator/`, criada pela build): `msxdos1/` e `msxdos2/` (copiados de `resource/`) e os discos de sistema `msxdos1.dsk` e `msxdos2.dsk`, gerados pelo proprio `obi`. Nao entra nos pacotes de distribuicao (licenca de terceiros).
+- **`obi`: `dos: 1` / `dos: 2`** monta o disco com o MSX-DOS 1 ou 2 a partir dessa pasta (disco em branco + MSXDOS.SYS/COMMAND.COM, ou MSXDOS.SYS/MSXDOS2.SYS/COMMAND2.COM) mais os arquivos da receita; **`dos_tools: true`** leva tambem UTILS, HELP e o resto do MSX-DOS 2. `boot: X.COM` gera o `AUTOEXEC.BAT`. `dos: true` + `dos_disk:` continua valendo.
+- **`obi dosdisk <1|2> [saida.dsk] [--tools]`** (CLI e `fwmsx --obi`): o disquete de sistema puro.
+- Teste de ponta a ponta no `controltest`: `obirun` com `dos: 1` inicia o MSX-DOS 1 no emulador, que roda o `AUTOEXEC.BAT` e um `.COM` que imprime na tela. `obitest` confere os arquivos de cada variante.
+
 ## [1.43.11] - 2026-10-22 - "Yie Ar Kung-Fu: Receita de disco" (Konami)
 
 ### Adicionado -- o `obi`: receita (Obifile) que monta um disquete pronto para rodar

@@ -1,5 +1,6 @@
 // Teste da ponte de controle externa (src/control): despachante de comandos sobre uma Machine de
 // verdade e servidor TCP em 127.0.0.1 -- ver doc/control-spec.md.
+#include "../../src/obi/cpp/obi.h"
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -560,6 +561,17 @@ void TestBadigRun(const std::string &bios) {
     if (!orr.ok) std::printf("    %s\n", orr.text.c_str());
     Frames(host, cmd, 2500);
     check(VramHas(host.machine(), "obi run ok"), "obirun: o AUTOEXEC.BAS da receita RODOU o .BMX no DISK BASIC");
+
+    // MSX-DOS 1 (arquivos de resource/msxdos1): o disco da receita inicia o DOS, que roda o AUTOEXEC.BAT e o .COM
+    obi::SetEmulatorDir(OBI_TEST_EMULATOR_DIR);
+    WriteText(dir + "/doshello.asm", ".bios\n.msxdos\n.org 0100h\n ld de,msg\n ld c,9\n call 5\nret_loop:\n jr ret_loop\nmsg: db \"obi dos ok$\"\n");
+    std::filesystem::create_directories(dir + "/dos");
+    WriteText(dir + "/dos/Obifile", "target: dos.dsk\ndos: 1\nboot: DOSHELLO.COM\nfiles:\n  - ../doshello.asm\n");
+    const control::Result dr = cmd.Execute("obirun \"" + dir + "/dos/Obifile\"");
+    check(dr.ok && Contains(dr.text, "DOSHELLO.COM"), "obirun com dos: 1: monta o disco de sistema e reinicia");
+    if (!dr.ok) std::printf("    %s\n", dr.text.c_str());
+    Frames(host, cmd, 3000);
+    check(VramHas(host.machine(), "obi dos ok"), "obirun com dos: 1: o MSX-DOS 1 iniciou, rodou o AUTOEXEC.BAT e o .COM imprimiu na tela");
     check(!cmd.Execute("badigrun \"" + dir + "/ruim.dmx\"").ok, "badigrun: arquivo de apoio inexistente = err");
     std::filesystem::remove_all(dir);
 }

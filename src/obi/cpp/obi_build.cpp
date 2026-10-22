@@ -79,6 +79,92 @@ struct BadigReaderScope {
     bool set_ = false;
 };
 
+std::string DiskErr(msxdisk::DiskError e);
+
+std::string g_emulator_dir;
+
+// A pasta com os arquivos do MSX-DOS `version`: emulator/ ao lado do executavel, a "emulator" da pasta atual e, na arvore de desenvolvimento,
+// resource/msxdosN. Vazia se nao achou.
+std::string SystemDir(int version) {
+    const std::string leaf = "msxdos" + std::to_string(version);
+    std::vector<fs::path> cands;
+    if (!g_emulator_dir.empty()) cands.push_back(fs::path(g_emulator_dir) / leaf);
+    cands.push_back(fs::path("emulator") / leaf);
+    cands.push_back(fs::path("resource") / leaf);
+    cands.push_back(fs::path("..") / "resource" / leaf);
+    for (const fs::path &c : cands) {
+        std::error_code ec;
+        if (fs::is_directory(c, ec)) return c.string();
+    }
+    return {};
+}
+
+// Copia a pasta `dir` (recursiva) para a imagem, com os nomes em maiusculas.
+bool AddTree(msxdisk::DiskImage &img, const fs::path &dir, const std::string &prefix, std::string &err) {
+    std::error_code ec;
+    for (const fs::directory_entry &e : fs::directory_iterator(dir, ec)) {
+        const std::string name = Upper(e.path().filename().string());
+        msxdisk::DiskError de = msxdisk::DiskError::None;
+        if (e.is_directory(ec)) {
+            if (!img.MakeDirectory(prefix + name, &de)) {
+                err = "cannot create the directory " + prefix + name + " on the disk (" + DiskErr(de) + ")";
+                return false;
+            }
+            if (!AddTree(img, e.path(), prefix + name + "\\", err)) return false;
+        } else if (!img.AddFile(e.path(), prefix + name, 0x20, &de)) {
+            err = "cannot put " + prefix + name + " on the disk (" + DiskErr(de) + ")";
+            return false;
+        }
+    }
+    return true;
+}
+
+// Poe o sistema do MSX-DOS `version` num disco em branco: o essencial (MSXDOS.SYS + COMMAND.COM; no 2 tambem MSXDOS2.SYS + COMMAND2.COM) e,
+// com `tools`, o resto da pasta. O setor de boot do CreateBlank carrega o MSXDOS.SYS.
+bool LoadSystem(msxdisk::DiskImage &img, int version, bool tools, std::string &from, std::string &err) {
+    from = SystemDir(version);
+    if (from.empty()) {
+        err = "MSX-DOS " + std::to_string(version) + " files not found: put them in emulator/msxdos" + std::to_string(version) + " next to the program";
+        return false;
+    }
+    const std::vector<std::string> core = version == 1 ? std::vector<std::string>{"MSXDOS.SYS", "COMMAND.COM"}
+                                                       : std::vector<std::string>{"MSXDOS.SYS", "MSXDOS2.SYS", "COMMAND2.COM"};
+    std::error_code ec;
+    std::vector<std::string> done;
+    for (const fs::directory_entry &e : fs::directory_iterator(from, ec)) {
+        const std::string name = Upper(e.path().filename().string());
+        if (std::find(core.begin(), core.end(), name) == core.end()) continue;
+        msxdisk::DiskError de = msxdisk::DiskError::None;
+        if (!img.AddFile(e.path(), name, 0x20, &de)) {
+            err = "cannot put " + name + " on the disk (" + DiskErr(de) + ")";
+            return false;
+        }
+        done.push_back(name);
+    }
+    for (const std::string &c : core) {
+        if (std::find(done.begin(), done.end(), c) == done.end()) {
+            err = c + " is missing in " + from;
+            return false;
+        }
+    }
+    if (!tools) return true;
+    for (const fs::directory_entry &e : fs::directory_iterator(from, ec)) {
+        const std::string name = Upper(e.path().filename().string());
+        if (std::find(core.begin(), core.end(), name) != core.end()) continue;
+        msxdisk::DiskError de = msxdisk::DiskError::None;
+        if (e.is_directory(ec)) {
+            if (!img.MakeDirectory(name, &de) || !AddTree(img, e.path(), name + "\\", err)) {
+                if (err.empty()) err = "cannot create the directory " + name + " on the disk";
+                return false;
+            }
+        } else if (!img.AddFile(e.path(), name, 0x20, &de)) {
+            err = "cannot put " + name + " on the disk (" + DiskErr(de) + ")";
+            return false;
+        }
+    }
+    return true;
+}
+
 const char *NameError(int rc) {
     switch (rc) {
     case OBI_NAME_EMPTY: return "empty name";
@@ -140,6 +226,31 @@ std::string FindObifile(const std::string &dir) {
         if (e.is_regular_file(ec) && Upper(e.path().extension().string()) == ".OBI") return e.path().string();
     }
     return {};
+}
+
+void SetEmulatorDir(const std::string &dir) { g_emulator_dir = dir; }
+const std::string &EmulatorDir() { return g_emulator_dir; }
+
+bool BuildSystemDisk(int version, bool tools, const std::string &out, std::string &msg) {
+    if (version != 1 && version != 2) {
+        msg = "MSX-DOS version must be 1 or 2";
+        return false;
+    }
+    msxdisk::DiskImage img = msxdisk::DiskImage::CreateBlank();
+    std::string from;
+    if (!LoadSystem(img, version, tools, from, msg)) return false;
+    msxdisk::DiskError de = msxdisk::DiskError::None;
+    std::error_code ec;
+    if (fs::path(out).has_parent_path()) fs::create_directories(fs::path(out).parent_path(), ec);
+    if (!img.Save(out, &de)) {
+        msg = "cannot write " + out;
+        return false;
+    }
+    int64_t free_bytes = 0;
+    float pct = 0;
+    img.CapacityStats(&free_bytes, &pct);
+    msg = out + ": MSX-DOS " + std::to_string(version) + " system disk from " + from + ", " + std::to_string(free_bytes / 1024) + " KiB free";
+    return true;
 }
 
 BuildResult Build(const BuildOptions &o) {
@@ -317,7 +428,7 @@ BuildResult Build(const BuildOptions &o) {
         if (ext == "BMX" || ext == "BAS") autoexec_bas = "10 RUN \"" + boot + "\"\r\n";
         else if (ext == "BIN") autoexec_bas = "10 BLOAD \"" + boot + "\",R\r\n";
         else if (ext == "COM") {
-            if (!rc.dos) return fail("Obifile: a .COM runs under MSX-DOS: add 'dos: true' (and a system disk) or boot a .BMX / .BIN");
+            if (!rc.dos) return fail("Obifile: a .COM runs under MSX-DOS: add 'dos: 1' or 'dos: 2' or boot a .BMX / .BIN");
             autoexec_bat = boot.substr(0, boot.find('.')) + "\r\n";
         } else {
             return fail("Obifile: do not know how to start a ." + ext + " (use .BMX, .BAS, .BIN or .COM)");
@@ -334,7 +445,11 @@ BuildResult Build(const BuildOptions &o) {
     // 3) o disco: em branco ou o de sistema do MSX-DOS
     msxdisk::DiskError derr = msxdisk::DiskError::None;
     msxdisk::DiskImage img = msxdisk::DiskImage::CreateBlank();
-    if (rc.dos) {
+    if (rc.dos_version > 0) {
+        std::string from;
+        if (!LoadSystem(img, rc.dos_version, rc.dos_tools, from, err)) return fail("Obifile: " + err);
+        res.log.push_back("MSX-DOS " + std::to_string(rc.dos_version) + " system files: " + from);
+    } else if (rc.dos) {
         std::string sys;
         if (!rc.dos_disk.empty()) {
             sys = JoinPath(dir, rc.dos_disk);
@@ -351,7 +466,7 @@ BuildResult Build(const BuildOptions &o) {
                 if (!sys.empty()) break;
             }
         }
-        if (sys.empty()) return fail("Obifile: 'dos: true' needs a MSX-DOS system disk: set 'dos_disk: msxdos1.dsk'");
+        if (sys.empty()) return fail("Obifile: 'dos: true' needs a MSX-DOS system disk: set 'dos_disk: msxdos1.dsk' (or use 'dos: 1' / 'dos: 2')");
         std::optional<msxdisk::DiskImage> loaded = msxdisk::DiskImage::Load(sys, &derr);
         if (!loaded) return fail("Obifile: cannot open the system disk " + sys);
         img = std::move(*loaded);

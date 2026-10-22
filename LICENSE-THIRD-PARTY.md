@@ -211,7 +211,11 @@ Todo o restante de `resource/` (`fmsxgo/`, `kizuna/`, `msxide/`,
 etc.) e material de terceiros incluido **apenas para estudo/referencia**,
 sob as licencas de seus proprios autores -- ver o aviso em
 [resource/README.md](resource/README.md). Nada disso e distribuido como
-parte do binario compilado do fwMSX/msxdisk.
+parte do binario compilado do fwMSX/msxdisk. Em particular, a pasta
+`emulator/` (arquivos do MSX-DOS 1 e 2 copiados de `resource/` pela build,
+e os discos de sistema gerados a partir deles, usados pelo `obi`) existe
+so' na pasta de trabalho: os pacotes de distribuicao (zip e tar.gz) **nao**
+a incluem.
 
 ## Banco de ROMs (`src/romdb/`, nao lancado)
 

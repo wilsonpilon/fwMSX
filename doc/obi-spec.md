@@ -1,6 +1,6 @@
 # obi -- a receita que monta um disquete (.dsk) pronto para rodar
 
-Versao 1.43.11. Codigo em `src/obi/` (C++, C, Fortran e NASM). Testes: `obitest`, `editorui` (Run > Build disk) e `controltest` (`obi`, `obirun`).
+Versao 1.43.12. Codigo em `src/obi/` (C++, C, Fortran e NASM). Testes: `obitest`, `editorui` (Run > Build disk) e `controltest` (`obi`, `obirun`).
 
 ## 1. Para que serve
 
@@ -39,8 +39,9 @@ No console do emulador: `obi build [Obifile]`, `obi check [Obifile]` e `obirun [
 | `target:` | o `.dsk` a gerar. Obrigatorio. |
 | `files:` | a lista de arquivos (`- caminho` ou `- source: caminho` + `name:`). Obrigatoria. Caminhos relativos a pasta do Obifile. |
 | `boot:` | o arquivo, **pelo nome no disco**, que inicia sozinho. Vazio = o primeiro `.BMX`; sem `.BMX`, o disco nao inicia nada. |
-| `dos:` | `true` = parte de um disco de sistema do MSX-DOS 1 (precisa de `MSXDOS.SYS` + `COMMAND.COM`) em vez de um disco em branco. |
-| `dos_disk:` | o disco de sistema. Vazio = procura `msxdos1.dsk` (na pasta do Obifile, em `dos/` e em `disks/`). |
+| `dos:` | `1` ou `2` = o disco leva o **MSX-DOS 1 ou 2**, montado a partir dos arquivos da pasta `emulator/msxdos1` ou `emulator/msxdos2` (secao 5b). `true` (forma antiga) = parte de um disco de sistema pronto, dado por `dos_disk`. |
+| `dos_tools:` | `true` (so' com `dos: 2`) = leva tambem `UTILS\`, `HELP\`, `AUTOEXEC.BAT` e o resto da pasta do MSX-DOS 2 (cabe: sobram uns 300 KiB). |
+| `dos_disk:` | com `dos: true`: o disco de sistema pronto. Vazio = procura `msxdos1.dsk` (na pasta do Obifile, em `dos/` e em `disks/`). |
 
 Campo desconhecido e' erro com a linha (`Obifile, line 4: unknown key 'foo'`).
 
@@ -64,7 +65,25 @@ Nomes: o nome do disco e' o do arquivo em maiusculas, no formato 8.3 do MSX-DOS.
 | `X.BIN` | `10 BLOAD "X.BIN",R` |
 | `X.COM` | exige `dos: true`; gera `AUTOEXEC.BAT` com `X` |
 
-Com `dos: true` e um `.BMX`/`.BIN`, o disco leva tambem um `AUTOEXEC.BAT` com `BASIC` (o MSX-DOS 1 cai no COMMAND.COM; o comando BASIC entra no BASIC, que roda o `AUTOEXEC.BAS`). **Este caminho (dos: true) nao foi exercitado numa maquina real/emulada ainda**: falta um `msxdos1.dsk` nos testes. Listar na receita um arquivo chamado `AUTOEXEC.BAS`/`.BAT` junto com `boot:` e' erro.
+Com `dos: 1`/`2` (ou `true`) e um `.BMX`/`.BIN`, o disco leva tambem um `AUTOEXEC.BAT` com `BASIC` (o MSX-DOS 1 cai no COMMAND.COM; o comando BASIC entra no BASIC, que roda o `AUTOEXEC.BAS`). **Este caminho (`BASIC` no AUTOEXEC.BAT do DOS) nao foi exercitado no emulador ainda.** Listar na receita um arquivo chamado `AUTOEXEC.BAS`/`.BAT` junto com `boot:` e' erro.
+
+## 5b. A pasta `emulator/` e os discos do MSX-DOS
+
+Ao lado do executavel (`dist/` na pasta de trabalho) existe a pasta **`emulator/`**, criada pela build:
+
+```
+emulator/
+  msxdos1/     MSXDOS.SYS, COMMAND.COM            (copiados de resource/msxdos1)
+  msxdos2/     MSXDOS.SYS, MSXDOS2.SYS, COMMAND2.COM, UTILS\, HELP\...   (de resource/msxdos2)
+  msxdos1.dsk  disquete de sistema do MSX-DOS 1, gerado pelo proprio obi
+  msxdos2.dsk  idem, MSX-DOS 2 (so' o essencial)
+```
+
+- `obi dosdisk <1|2> [saida.dsk] [--tools]` gera o disquete de sistema (padrao: `emulator/msxdosN.dsk`); a build roda isso uma vez para cada versao.
+- Um `Obifile` com `dos: 1` monta o disco **em branco + arquivos do sistema + os seus** (o setor de boot do `msxdisk` carrega o `MSXDOS.SYS`). Os arquivos do MSX-DOS entram antes dos seus, entao um arquivo seu de mesmo nome (um `AUTOEXEC.BAT`, por exemplo) vence.
+- `boot: X.COM` com `dos: 1`: o `AUTOEXEC.BAT` gerado chama `X`; o MSX-DOS 1 nao pergunta a data quando ha' `AUTOEXEC.BAT` e roda direto. **Exercitado de ponta a ponta no `controltest`** (o DOS 1 inicia no emulador, roda o AUTOEXEC.BAT e o `.COM` imprime na tela).
+- **Licenca**: os arquivos do MSX-DOS sao de terceiros. Ficam so' na pasta de trabalho (`dist/emulator/`); o **pacote de distribuicao (zip/tar.gz) nao os leva** (LICENSE-THIRD-PARTY.md). Quem usa o pacote coloca os arquivos em `emulator/msxdos1/` e `emulator/msxdos2/` (a pasta e' procurada ao lado do executavel, depois em `emulator/` e `resource/` a partir da pasta atual).
+- **Nao verificado**: o MSX-DOS 2 so' inicia numa maquina com a ROM do kernel DOS2; o disco `dos: 2` sai com os arquivos certos (testado), mas nao foi iniciado no emulador.
 
 ## 6. De onde saem os fontes
 

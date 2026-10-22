@@ -23,8 +23,10 @@ struct FileSpec {
 struct Recipe {
     std::string target;   // o .dsk a gerar (relativo a pasta do Obifile)
     std::string boot;     // o arquivo (nome no disco) que roda sozinho; vazio = o primeiro .BMX, se houver
-    bool dos = false;     // parte de um disco de sistema do MSX-DOS (MSXDOS.SYS + COMMAND.COM) em vez de um disco em branco
-    std::string dos_disk; // o disco de sistema (relativo a pasta do Obifile); vazio = procura msxdos1.dsk
+    bool dos = false;     // o disco leva o MSX-DOS (um .COM so' roda assim)
+    int dos_version = 0;  // `dos: 1` ou `dos: 2`: monta o sistema a partir da pasta emulator/msxdos1 ou msxdos2 (SetEmulatorDir)
+    bool dos_tools = false; // `dos_tools: true` (MSX-DOS 2): leva tambem UTILS, HELP e o AUTOEXEC.BAT que os poe no PATH
+    std::string dos_disk; // `dos: true` (antigo): parte deste disco de sistema pronto (relativo a pasta do Obifile); vazio = procura msxdos1.dsk
     std::vector<FileSpec> files;
 };
 
@@ -66,6 +68,14 @@ struct BuildOptions {
 };
 
 BuildResult Build(const BuildOptions &opts);
+
+// A pasta `emulator` ao lado do executavel: msxdos1/ e msxdos2/ com os arquivos do sistema (copiados de resource/ na build) e os discos de
+// sistema gerados. Vazia = procura "emulator" e "resource" a partir da pasta atual.
+void SetEmulatorDir(const std::string &dir);
+const std::string &EmulatorDir();
+
+// O disquete de sistema puro do MSX-DOS `version` (1 ou 2) gravado em `out`; `tools` como no Obifile. false + `msg` se faltam os arquivos.
+bool BuildSystemDisk(int version, bool tools, const std::string &out, std::string &msg);
 
 // `fwmsx --obi build [Obifile]` e o comando `obi` do console: devolve o codigo de saida (0 = ok).
 int RunObiCommand(const std::vector<std::string> &args);

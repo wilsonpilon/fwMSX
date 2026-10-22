@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.12 -- "Yie Ar Kung-Fu: Discos do MSX-DOS" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "em resource/msxdos1 e resource/msxdos2 temos os arquivos do MSX-DOS 1 e 2, da para montar o DSK com eles, a partir do executavel, crie uma pasta emulator e voce pode criar os discos por ali".
+- **Desenho**: `obi::SetEmulatorDir` (como o `badig::SetLibraryDir`); `LoadSystem` poe o essencial no disco em branco antes dos arquivos da receita. O MSX-DOS 2 completo (HELP 433 KiB + UTILS) so' entra com `dos_tools` para sobrar espaco. A build copia `resource/msxdosN` para `dist/emulator` e roda `fwMSX --obi dosdisk 1|2`.
+- **Licenca**: os arquivos do MSX-DOS sao de terceiros (`resource/` e' so' estudo); a pasta `emulator/` fica de fora dos pacotes zip/tar.gz, e o LICENSE-THIRD-PARTY diz isso.
+- **Nao verificado**: iniciar o MSX-DOS 2 no emulador (precisa da ROM do kernel DOS2 na maquina).
+- Validado: Windows e Linux, `ctest` 100% (33).
+
+---
+
 ## v1.43.11 -- "Yie Ar Kung-Fu: Receita de disco" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "apenas o obi com nossas ferramentas, ainda nao esta na hora de mexer com o kizuna, so quero algo facil para ter uma receita que pega o .DMX, o .ASM, um .DAT/.BIN, um .SPRITE, um .SCR, etc.. para gerar um .DSK pronto para rodar no fwMSX". Decisoes (AskUserQuestion): boot por `AUTOEXEC.BAS` gerado **e** opcao `dos: true`; aparecer no console/CLI, no menu Run do editor e como arquivo do `.msxproject`.

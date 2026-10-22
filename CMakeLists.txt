@@ -684,6 +684,7 @@ add_test(NAME man COMMAND mantest)
 
 # controltest: ponte de controle (despachante de comandos + servidor TCP) sobre uma Machine de verdade.
 add_executable(controltest tests/z80/control_test.cpp ${CONTROL_LIB_SOURCES} ${Z80_LIB_SOURCES} ${Z80_DEBUG_SESSION_SOURCES} ${MEMMAP_LIB_SOURCES} ${VDP_LIB_SOURCES} ${PPI_LIB_SOURCES} ${PSG_LIB_SOURCES} ${MACHINE_LIB_SOURCES} ${SCC_LIB_SOURCES} ${FM_LIB_SOURCES} ${FDC_LIB_SOURCES} ${TAPE_LIB_SOURCES})
+target_compile_definitions(controltest PRIVATE OBI_TEST_EMULATOR_DIR="${CMAKE_SOURCE_DIR}/resource")
 target_include_directories(controltest PRIVATE src/z80 src/memmap src/vdp src/ppi src/psg src/machine)
 target_compile_definitions(controltest PRIVATE FWMSX_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 set_target_properties(controltest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/controltest)
@@ -794,6 +795,7 @@ add_test(NAME badig COMMAND badigtest)
 
 # obitest: a receita Obifile -> .dsk (nomes 8.3, CRC-32, clusters, parser, build, erros, leitor do projeto).
 add_executable(obitest tests/obi/obi_test.cpp ${OBI_LIB_SOURCES} ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${MSXDISK_CORE_SOURCES})
+target_compile_definitions(obitest PRIVATE OBI_TEST_EMULATOR_DIR="${CMAKE_SOURCE_DIR}/resource")
 set_target_properties(obitest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/obitest)
 if (MINGW)
     target_link_options(obitest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
@@ -1074,3 +1076,11 @@ set_target_properties(fwMSX PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_D
 add_custom_command(TARGET fwMSX POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/src/badig/lib $<TARGET_FILE_DIR:fwMSX>/badig
         COMMENT "Copiando a biblioteca do Basic Dignified (badig/)")
+# dist/emulator: os arquivos do MSX-DOS 1 e 2 (de resource/) e, a partir deles, os discos de sistema msxdos1.dsk e msxdos2.dsk (pelo proprio obi).
+# Material de terceiros: fica so' na pasta de trabalho, o pacote de distribuicao NAO o leva (LICENSE-THIRD-PARTY.md).
+add_custom_command(TARGET fwMSX POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resource/msxdos1 $<TARGET_FILE_DIR:fwMSX>/emulator/msxdos1
+        COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_SOURCE_DIR}/resource/msxdos2 $<TARGET_FILE_DIR:fwMSX>/emulator/msxdos2
+        COMMAND $<TARGET_FILE:fwMSX> --obi dosdisk 1
+        COMMAND $<TARGET_FILE:fwMSX> --obi dosdisk 2
+        COMMENT "Gerando emulator/msxdos1.dsk e msxdos2.dsk")

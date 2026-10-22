@@ -168,6 +168,8 @@ int main(int argc, char* argv[]) {
         badig::SetConfigPath((std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path() / "badig.cfg").string());
         // a biblioteca do Basic Dignified (nbasic.dmx, NBASIC.BIN) mora na pasta badig/ ao lado do executavel
         badig::SetLibraryDir((std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path() / "badig").string());
+        // a pasta emulator/ (msxdos1/, msxdos2/ e os discos de sistema gerados) tambem fica ao lado do executavel
+        obi::SetEmulatorDir((std::filesystem::absolute(std::filesystem::path(argv[0]), ec).parent_path() / "emulator").string());
     }
     // Sem argumento nenhum, com o core de emulacao (Z80+VDP+PSG+mapa de
     // memoria+maquina) ja existindo de verdade, abre a maquina completa em

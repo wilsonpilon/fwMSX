@@ -133,7 +133,7 @@ int main() {
     check(!b.ok && has(b.log, "do not know how to start"), "boot: de um tipo que nao roda");
     spit(dir / "src/prog.asm", ".bios\n.msxdos\n.org 0100h\n ret\n");
     b = build(dir, "target: x.dsk\nboot: PROG.COM\nfiles:\n  - src/prog.asm\n");
-    check(!b.ok && has(b.log, "dos: true"), ".COM sem dos: true explica o que falta");
+    check(!b.ok && has(b.log, "dos: 1"), ".COM sem dos explica o que falta");
     b = build(dir, "target: x.dsk\ndos: true\ndos_disk: nao_existe.dsk\nfiles:\n  - src/prog.asm\n");
     check(!b.ok && has(b.log, "cannot open the system disk"), "dos_disk que nao abre");
     spit(dir / "src/ruim.dmx", "goto {nowhere}\n");
@@ -145,6 +145,20 @@ int main() {
     spit(dir / "src/grande.dat", std::string(800 * 1024, 'g'));
     b = build(dir, "target: x.dsk\nfiles:\n  - src/grande.dat\n");
     check(!b.ok && has(b.log, "need") && has(b.log, "KiB free"), "nao cabe no disco: diz quanto falta");
+
+    // MSX-DOS 1 e 2 a partir dos arquivos de resource/ (a pasta emulator/ na distribuicao)
+    obi::SetEmulatorDir(OBI_TEST_EMULATOR_DIR);
+    b = build(dir, "target: d1.dsk\ndos: 1\nboot: PROG.COM\nfiles:\n  - src/prog.asm\n");
+    check(b.ok && disk_file(dir / "d1.dsk", "MSXDOS.SYS", got) && got.size() == 2432 && disk_file(dir / "d1.dsk", "COMMAND.COM", got) && got.size() == 7168, "dos: 1 leva MSXDOS.SYS e COMMAND.COM");
+    check(disk_file(dir / "d1.dsk", "PROG.COM", got) && disk_file(dir / "d1.dsk", "AUTOEXEC.BAT", got) && got == "PROG\r\n", "dos: 1 com boot de .COM: AUTOEXEC.BAT chama o programa");
+    b = build(dir, "target: d2.dsk\ndos: 2\nfiles:\n  - src/dados.dat\n");
+    check(b.ok && disk_file(dir / "d2.dsk", "MSXDOS2.SYS", got) && disk_file(dir / "d2.dsk", "COMMAND2.COM", got) && !disk_file(dir / "d2.dsk", "AUTOEXEC.BAT", got), "dos: 2 leva MSXDOS2.SYS e COMMAND2.COM, sem as ferramentas");
+    b = build(dir, "target: d2t.dsk\ndos: 2\ndos_tools: true\nfiles:\n  - src/dados.dat\n");
+    check(b.ok && disk_file(dir / "d2t.dsk", "UTILS\\XDIR.COM", got) && disk_file(dir / "d2t.dsk", "AUTOEXEC.BAT", got) && disk_file(dir / "d2t.dsk", "DADOS.DAT", got), "dos_tools: true leva UTILS e AUTOEXEC.BAT do MSX-DOS 2");
+    std::string msg;
+    check(obi::BuildSystemDisk(1, false, (dir / "sys1.dsk").string(), msg) && fs::exists(dir / "sys1.dsk") && msg.find("MSX-DOS 1 system disk") != std::string::npos, "BuildSystemDisk(1)");
+    check(!obi::BuildSystemDisk(3, false, (dir / "x.dsk").string(), msg), "BuildSystemDisk: versao invalida");
+    check(obi::RunObiCommand({"dosdisk", "2", (dir / "sys2.dsk").string()}) == 0 && fs::exists(dir / "sys2.dsk") && obi::RunObiCommand({"dosdisk", "9"}) != 0, "RunObiCommand dosdisk");
 
     // so' conferir (check) nao grava
     fs::remove(dir / "c.dsk");
