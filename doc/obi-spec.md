@@ -1,6 +1,6 @@
 # obi -- a receita que monta um disquete (.dsk) pronto para rodar
 
-Versao 1.43.12. Codigo em `src/obi/` (C++, C, Fortran e NASM). Testes: `obitest`, `editorui` (Run > Build disk) e `controltest` (`obi`, `obirun`).
+Versao 1.43.13. Codigo em `src/obi/` (C++, C, Fortran e NASM). Testes: `obitest`, `editorui` (Run > Build disk) e `controltest` (`obi`, `obirun`).
 
 ## 1. Para que serve
 
@@ -82,7 +82,7 @@ emulator/
 - `obi dosdisk <1|2> [saida.dsk] [--tools]` gera o disquete de sistema (padrao: `emulator/msxdosN.dsk`); a build roda isso uma vez para cada versao.
 - Um `Obifile` com `dos: 1` monta o disco **em branco + arquivos do sistema + os seus** (o setor de boot do `msxdisk` carrega o `MSXDOS.SYS`). Os arquivos do MSX-DOS entram antes dos seus, entao um arquivo seu de mesmo nome (um `AUTOEXEC.BAT`, por exemplo) vence.
 - `boot: X.COM` com `dos: 1`: o `AUTOEXEC.BAT` gerado chama `X`; o MSX-DOS 1 nao pergunta a data quando ha' `AUTOEXEC.BAT` e roda direto. **Exercitado de ponta a ponta no `controltest`** (o DOS 1 inicia no emulador, roda o AUTOEXEC.BAT e o `.COM` imprime na tela).
-- **Licenca**: os arquivos do MSX-DOS sao de terceiros. Ficam so' na pasta de trabalho (`dist/emulator/`); o **pacote de distribuicao (zip/tar.gz) nao os leva** (LICENSE-THIRD-PARTY.md). Quem usa o pacote coloca os arquivos em `emulator/msxdos1/` e `emulator/msxdos2/` (a pasta e' procurada ao lado do executavel, depois em `emulator/` e `resource/` a partir da pasta atual).
+- **Licenca**: os arquivos do MSX-DOS sao de terceiros. Desde a 1.43.13 a pasta `emulator/` **vai nos pacotes** (zip/tar.gz), por decisao do autor, e sera retirada se algum titular dos direitos pedir (LICENSE-THIRD-PARTY.md). Se a pasta faltar (instalacao propria, build do codigo-fonte sem `resource/`), basta por os arquivos do sistema em `emulator/msxdos1/` e `emulator/msxdos2/` (procurada ao lado do executavel, depois em `emulator/` e `resource/` a partir da pasta atual).
 - **Nao verificado**: o MSX-DOS 2 so' inicia numa maquina com a ROM do kernel DOS2; o disco `dos: 2` sai com os arquivos certos (testado), mas nao foi iniciado no emulador.
 
 ## 6. De onde saem os fontes

@@ -916,6 +916,9 @@ bool Editor::Execute(Cmd cmd, int arg) {
     case Cmd::CenterLine:
         CenterLineCmd();
         return true;
+    case Cmd::ParagraphFormat:
+        FormatParagraphCmd();
+        return true;
     case Cmd::WordWrap:
         set_.word_wrap = !set_.word_wrap;
         return true;

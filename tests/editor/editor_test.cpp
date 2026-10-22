@@ -877,6 +877,37 @@ void test_completion() {
     }
     check(found, "Search > Complete word existe no menu");
 
+
+    // Paragraph format / Document format (E7): reflui pelo Text-layout (largura 20, recuo de 2 na 1a linha)
+    {
+        Editor f;
+        f.settings().line_length = 20;
+        f.settings().first_margin = 2;
+        f.settings().left_margin = 0;
+        f.SetText("aaa bbb ccc ddd eee fff ggg hhh iii jjj\nkkk\n\nnext para here\n");
+        f.SetCursor({1, 1});
+        f.Execute(Cmd::ParagraphFormat);
+        check(f.Text() == "  aaa bbb ccc ddd\neee fff ggg hhh iii\njjj kkk\n\nnext para here\n", "Paragraph format: junta as linhas e quebra na largura, com o recuo da 1a");
+        check(f.Cursor().line == 4 && f.Cursor().col == 0, "Paragraph format: o cursor vai para o paragrafo seguinte");
+        f.Execute(Cmd::Undo);
+        check(f.Text() == "aaa bbb ccc ddd eee fff ggg hhh iii jjj\nkkk\n\nnext para here\n", "Paragraph format: desfaz de uma vez");
+        f.SetCursor({2, 0});
+        f.Execute(Cmd::ParagraphFormat);
+        check(f.Text() == "aaa bbb ccc ddd eee fff ggg hhh iii jjj\nkkk\n\nnext para here\n" && f.Message().find("No paragraph") != std::string::npos, "Paragraph format: numa linha em branco nao faz nada");
+        f.ApplyFormatDocument(true);
+        check(f.Text() == "  aaa bbb ccc ddd\neee fff ggg hhh iii\njjj kkk\n\n  next para here\n", "Document format: todos os paragrafos, a linha em branco fica");
+        f.SetText("um\n\f\ndois tres\n");
+        f.ApplyFormatDocument(true);
+        check(f.Text() == "  um\n\f\n  dois tres\n", "Document format: a quebra de pagina separa paragrafos");
+        f.settings().left_margin = 4;
+        f.SetText("x y\nz\n");
+        f.ApplyFormatDocument(true);
+        check(f.Text() == "      x y z\n", "margem esquerda + recuo da 1a linha");
+        f.SetReadOnly(true);
+        f.SetCursor({0, 0});
+        f.Execute(Cmd::ParagraphFormat);
+        check(f.Text() == "      x y z\n", "somente leitura: Paragraph format desabilitado");
+    }
     // simbolos do PROJETO (1.43.9): o extrator por tipo de arquivo e os candidatos vindos dos outros arquivos
     std::vector<std::string> sym;
     ed::CollectSymbols("; biblioteca\nVDP_PORT equ 0x98\nrotina_um:\n    ld a,1\n    call rotina_dois\nrotina_dois: ret\nCOUNT = 5\nMACRO_X macro\n  ld hl,VDP_PORT\n", "asm", sym);

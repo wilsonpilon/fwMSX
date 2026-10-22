@@ -17,6 +17,17 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.13 -- "Yie Ar Kung-Fu: Formatar texto" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "Pode incluir o msxdos1 e o msxdos2 eles estao amplamente disponiveis na internet, caso alguem reclame os direitos eu tiro, e coloque no manual que precisa colocar os arquivos na pasta emulator. Dito isso, pode seguir com o E7" (escopo: Document format, Outline, Load more / Write to cursor / Top of file, preview de Markdown).
+- **Pacote**: `build.ps1`/`build.sh` copiam `dist/emulator` para o zip/tar.gz; `LICENSE-THIRD-PARTY.md` registra a excecao e a promessa de retirar a pedido.
+- **Descoberta**: `Paragraph format` e `Document format` estavam na tabela como "ainda nao" (so' `Center line` existia). `Paragraph format` entrou junto, porque o Document format e' o mesmo reflow sobre todos os paragrafos.
+- **Definicao** (nao havia no NE descrito no projeto): a largura da linha e' o campo que comeca na margem esquerda (igual ao `Center line`); o recuo da 1a linha conta dentro dela. Linhas em branco e quebras de pagina separam paragrafos e ficam como estao.
+- **Falta da E7**: Outline, Load more / Write to cursor / Top of file, preview de Markdown.
+- Validado: Windows e Linux, `ctest` 100%.
+
+---
+
 ## v1.43.12 -- "Yie Ar Kung-Fu: Discos do MSX-DOS" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "em resource/msxdos1 e resource/msxdos2 temos os arquivos do MSX-DOS 1 e 2, da para montar o DSK com eles, a partir do executavel, crie uma pasta emulator e voce pode criar os discos por ali".

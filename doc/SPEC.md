@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.43.12)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-20, depois da v1.43.13)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.43.12, publicada em `main`):**
+**Funcionando (v1.43.13, publicada em `main`):**
+- [x] **E7 parte 2 -- formatar texto** (1.43.13): `Paragraph format` e `Document format` (reflow pelo Text layout setup). O pacote leva a pasta `emulator/` (MSX-DOS). Falta da E7: Outline, Load more / Write to cursor / Top of file, preview de Markdown.
 - [x] **Discos do MSX-DOS 1 e 2** (1.43.12): pasta `emulator/` ao lado do executavel (arquivos do sistema de `resource/` + `msxdos1.dsk`/`msxdos2.dsk` gerados), `dos: 1|2` no `Obifile` e `obi dosdisk`. O DOS 1 inicia e roda um `.COM` no emulador (teste); o DOS 2 nao foi iniciado. Fora dos pacotes (licenca).
 - [x] **`obi`: receita (Obifile) -> `.dsk` pronto para rodar** (1.43.11): `.dmx` (badig), `.asm` (fwasm), dados soltos num disquete de 720 KB, com `AUTOEXEC.BAS` de boot; comandos `obi`/`obirun`, `fwmsx --obi` e Run > Build disk (F6). Ver `doc/obi-spec.md`. Falta: `dos: true` testado de ponta a ponta, outros formatos de disco, o Kizuna inteiro (compiladores/linker).
 - [x] **E7 parte 1 -- imprimir em PDF** (1.43.10): `File > Print` / `Print Block` gravam um PDF (Courier, A4) com as margens e o tamanho de pagina do `Print setup`, pelo `mamute::BuildPdfLayout`. Falta da E7: Document format, Outline, Load more / Write to cursor / Top of file, preview de Markdown.

@@ -1318,6 +1318,19 @@ void test_build_disk() {
     fs::remove_all(dir);
 }
 
+void test_format() {
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.Ed().settings().line_length = 12;
+    a.Ed().SetText("um dois tres quatro cinco\nseis\n");
+    K(a, {"A-e", "g"});
+    check(a.HasDialog() && a.Current()->kind == ed::Dialog::FormatDocument && screen_has(a, "Format all paragraphs"), "Edit > Document format pergunta de onde formatar");
+    K(a, {"Enter"});
+    check(!a.HasDialog() && a.Ed().Text() == "um dois tres\nquatro cinco\nseis\n", "Document format (do topo) reflui o texto");
+    K(a, {"C-Home", "A-e", "p"});
+    check(a.Ed().Cursor().line >= 0, "Edit > Paragraph format roda pelo menu");
+}
+
 void test_print() {
     const fs::path dir = fs::temp_directory_path() / "fwedit_print";
     fs::remove_all(dir);
@@ -1614,6 +1627,7 @@ int main() {
     test_badig_build();
     test_project_editor();
     test_print();
+    test_format();
     test_build_disk();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;

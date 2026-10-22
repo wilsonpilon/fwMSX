@@ -322,4 +322,110 @@ void Editor::ApplyRemovePageBreaks(bool from_top) {
     MoveTo(cur_);
 }
 
+namespace {
+
+// Linha que separa paragrafos: vazia, so' de espacos ou a quebra de pagina (form feed).
+bool Separator(const std::string &s) {
+    if (s == "\f") return true;
+    for (const char c : s)
+        if (c != ' ' && c != '\t') return false;
+    return true;
+}
+
+// Reflui um paragrafo: as palavras (separadas por espacos/tabs) vao enchendo linhas de ate' `width` colunas de texto. A margem esquerda `left`
+// vale para todas as linhas e a 1a ganha `first` colunas a mais (o recuo de paragrafo), que contam dentro da largura, como no Center line.
+void Reflow(const std::vector<std::string> &para, int width, int first, int left, std::vector<std::string> &out) {
+    std::vector<std::string> words;
+    for (const std::string &l : para) {
+        size_t i = 0;
+        while (i < l.size()) {
+            while (i < l.size() && (l[i] == ' ' || l[i] == '\t')) ++i;
+            size_t j = i;
+            while (j < l.size() && l[j] != ' ' && l[j] != '\t') ++j;
+            if (j > i) words.push_back(l.substr(i, j - i));
+            i = j;
+        }
+    }
+    std::string cur;
+    bool first_line = true;
+    auto flush = [&]() {
+        const int indent = std::max(0, left + (first_line ? first : 0));
+        out.push_back(std::string(static_cast<size_t>(indent), ' ') + cur);
+        cur.clear();
+        first_line = false;
+    };
+    for (const std::string &w : words) {
+        const int room = std::max(1, width - (first_line ? std::max(0, first) : 0));
+        if (!cur.empty() && static_cast<int>(cur.size() + 1 + w.size()) > room) flush();
+        if (!cur.empty()) cur.push_back(' ');
+        cur += w;
+    }
+    if (!cur.empty()) flush();
+}
+
+} // namespace
+
+// As linhas [a, b) viram os paragrafos reflowidos; as linhas separadoras ficam como estao. false se nada mudou.
+bool Editor::FormatRange(int a, int b) {
+    std::vector<std::string> out;
+    int l = a;
+    while (l < b) {
+        const std::string &s = lines_[static_cast<size_t>(l)];
+        if (Separator(s)) {
+            out.push_back(s);
+            ++l;
+            continue;
+        }
+        std::vector<std::string> para;
+        while (l < b && !Separator(lines_[static_cast<size_t>(l)])) para.push_back(lines_[static_cast<size_t>(l++)]);
+        Reflow(para, set_.line_length, set_.first_margin, set_.left_margin, out);
+    }
+    bool same = static_cast<int>(out.size()) == b - a;
+    for (int i = 0; same && i < b - a; ++i) same = out[static_cast<size_t>(i)] == lines_[static_cast<size_t>(a + i)];
+    if (same) return false;
+    std::string joined;
+    for (size_t i = 0; i < out.size(); ++i) {
+        if (i) joined.push_back('\n');
+        joined += out[i];
+    }
+    DoDelete({a, 0}, {b - 1, static_cast<int>(lines_[static_cast<size_t>(b - 1)].size())});
+    DoInsert({a, 0}, joined);
+    return true;
+}
+
+void Editor::FormatParagraphCmd() {
+    if (!Writable()) return;
+    if (Separator(lines_[static_cast<size_t>(cur_.line)])) {
+        message_ = "No paragraph here";
+        return;
+    }
+    int a = cur_.line, b = cur_.line + 1;
+    while (a > 0 && !Separator(lines_[static_cast<size_t>(a - 1)])) --a;
+    while (b < LineCount() && !Separator(lines_[static_cast<size_t>(b)])) ++b;
+    const int old_count = b - a;
+    BeginGroup(false);
+    // quantas linhas o paragrafo ocupa depois: o cursor segue para o proximo paragrafo, e Alt-E P repetido formata o texto todo, um a um
+    const int before = LineCount();
+    FormatRange(a, b);
+    const int end = a + old_count + (LineCount() - before);
+    int next = end;
+    while (next < LineCount() && Separator(lines_[static_cast<size_t>(next)])) ++next;
+    if (next >= LineCount()) next = std::max(0, LineCount() - 1);
+    MoveTo({next, 0});
+}
+
+void Editor::ApplyFormatDocument(bool from_top) {
+    if (!Writable()) return;
+    int a = 0;
+    if (!from_top) {
+        a = cur_.line;
+        while (a > 0 && !Separator(lines_[static_cast<size_t>(a)]) && !Separator(lines_[static_cast<size_t>(a - 1)])) --a;
+    }
+    BeginGroup(false);
+    const Pos keep = cur_;
+    FormatRange(a, LineCount());
+    cur_ = {std::min(keep.line, LineCount() - 1), 0};
+    MoveTo(cur_);
+}
+
 } // namespace ed

@@ -202,6 +202,12 @@ TECLAS DO NORTON (continuam as mesmas)
   o apagado, Alt-E S (era Alt-B S) marca o bloco. Modernas: Alt-Backspace
   desfaz, Ctrl-Ins / Shift-Ins / Shift-Del copiam, colam e recortam.
 
+FORMATAR
+  Edit > Paragraph format (Alt-E P) refaz as quebras de linha do paragrafo do
+  cursor pelo Tools > Text layout setup (largura, margem esquerda, recuo da
+  1a linha) e vai para o seguinte; Edit > Document format (Alt-E G) faz o
+  mesmo com todos. Linha em branco e quebra de pagina separam paragrafos.
+
 IMPRIMIR
   File > Print grava o arquivo todo em um PDF A4 (Courier) e Print Block so' o
   bloco marcado; o nome sugerido e' o do arquivo com .pdf. Print setup define a

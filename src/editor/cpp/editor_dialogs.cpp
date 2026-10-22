@@ -461,8 +461,8 @@ std::string Describe(Cmd c) {
     case Cmd::BlockDeleteNoAsk: return "Deletes the block without asking.";
     case Cmd::BlockLine: return "Marks the current line as a block.";
     case Cmd::BlockToEol: return "Marks a block from the cursor to the end of the line.";
-    case Cmd::ParagraphFormat: return "Formats the paragraph.";
-    case Cmd::DocumentFormat: return "Formats all paragraphs.";
+    case Cmd::ParagraphFormat: return "Re-flows the paragraph to the Text layout setup (line length, margins) and moves to the next one.";
+    case Cmd::DocumentFormat: return "Re-flows every paragraph, from the top of the file or from the cursor paragraph.";
     case Cmd::CenterLine: return "Centers the line between the left margin and the line length.";
     case Cmd::TextSetup: return "Sets the line length and margins used to format and wrap.";
     case Cmd::WordWrap: return "Turns word wrap on or off (WW=On in the status line).";

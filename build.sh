@@ -118,6 +118,8 @@ cp "$dist_dir/SUPER-X-PT.notas" "$stage_dir/"
 cp "$root/packaging/linux/fwmsx.png" "$stage_dir/"
 cp "$root/packaging/linux/fwmsx.desktop" "$stage_dir/"
 cp -r "$dist_dir/badig" "$stage_dir/badig"
+# Pasta emulator/ (arquivos do MSX-DOS 1 e 2 e os discos de sistema gerados pelo obi): decisao do usuario em 2026-10-22, entra no pacote
+cp -r "$dist_dir/emulator" "$stage_dir/emulator"
 cp "$root/README.md" "$stage_dir/"
 cp "$root/LICENSE" "$stage_dir/"
 cp "$root/LICENSE-THIRD-PARTY.md" "$stage_dir/"

@@ -235,6 +235,7 @@ public:
     void ApplyExpandTabs(bool from_top);
     void ApplyPutInTabs(bool from_top);
     void ApplyInsertPageBreaks(bool from_top);
+    void ApplyFormatDocument(bool from_top);   // Edit > Document format: reflui todos os paragrafos (do topo ou do paragrafo do cursor)
     void ApplyRemovePageBreaks(bool from_top);
     DocInfo Information() const;
 
@@ -345,6 +346,8 @@ private:
     // primitivas (todas as edicoes passam por aqui, para desfazer e marcadores)
     Pos RawInsert(Pos p, const std::string &s);
     std::string RawDelete(Pos a, Pos b);
+    void FormatParagraphCmd();                 // Edit > Paragraph format: reflui o paragrafo do cursor e vai para o seguinte
+    bool FormatRange(int a, int b);            // troca as linhas [a, b) pelas reformatadas; false se ja' estavam assim
     Pos DoInsert(Pos p, const std::string &s);
     std::string DoDelete(Pos a, Pos b);
     void AdjustForInsert(Pos p, Pos end, Pos &q) const;

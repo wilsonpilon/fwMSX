@@ -7,6 +7,13 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.13] - 2026-10-22 - "Yie Ar Kung-Fu: Formatar texto" (Konami)
+
+### Adicionado -- fase E7 do editor, parte 2
+- **Edit > Paragraph format** (`Alt-E P`) e **Edit > Document format** (`Alt-E G`), antes desabilitados: reflui o texto pelo `Tools > Text layout setup` (largura da linha, margem esquerda e recuo da 1a linha). O paragrafo vai da linha do cursor ate' a linha em branco; o cursor vai para o paragrafo seguinte (repetir o comando formata o texto todo, um a um). O Document format pergunta se comeca do topo ou do paragrafo do cursor e trata a quebra de pagina como separador. Tudo desfaz de uma vez (`Alt-Backspace`); em modo somente leitura ficam desabilitados.
+- **O pacote de distribuicao passa a levar a pasta `emulator/`** (arquivos do MSX-DOS 1 e 2 + `msxdos1.dsk` e `msxdos2.dsk`), por decisao do usuario; o manual diz onde colocar os arquivos se a pasta faltar.
+- Testes: `edittest` (reflow, margens, quebra de pagina, desfazer, somente leitura) e `editorui` (dialogo do Document format).
+
 ## [1.43.12] - 2026-10-22 - "Yie Ar Kung-Fu: Discos do MSX-DOS" (Konami)
 
 ### Adicionado

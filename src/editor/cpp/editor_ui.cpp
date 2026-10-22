@@ -904,7 +904,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::RemovePageBreaks: BuildPageBreakPrompt(d, "Remove page breaks starting at..."); break;
     case Dialog::ExpandTabs: BuildPageBreakPrompt(d, "Expand tabs to spaces starting at..."); break;
     case Dialog::PutInTabs: BuildPageBreakPrompt(d, "Replace left-hand spaces with tabs starting at..."); break;
-    case Dialog::FormatDocument: Msg("Document format: not available yet"); break;
+    case Dialog::FormatDocument: BuildPageBreakPrompt(d, "Format all paragraphs starting at..."); break;
     case Dialog::Outline: Msg("Outline display: not available yet"); break;
     default: break;
     }
@@ -1295,6 +1295,9 @@ void EditorApp::DialogDone(int button) {
     }
     case Dialog::SaveConfig:
         SaveConfigNow(done.Group(0) == 1);
+        break;
+    case Dialog::FormatDocument:
+        e.ApplyFormatDocument(button == kBtnTop);
         break;
     case Dialog::InsertPageBreaks:
         e.ApplyInsertPageBreaks(button == kBtnTop);
