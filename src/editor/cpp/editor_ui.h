@@ -279,6 +279,7 @@ private:
     // menu Project (editor_project.cpp)
     std::string ProjectMemoPath() const;                        // fwedit.project: guarda o ultimo projeto entre sessoes ("" sem configuracao)
     void ProjectRemember() const;
+    void ProjectWordsRefresh();                      // os simbolos dos outros arquivos do projeto, para o completar (completion.h)
     badig::SourceReader ProjectSourceReader() const; // include/incbin do Build saem do banco do projeto antes da pasta
     std::string ProjectRel(const std::string &abs_path) const;  // o caminho dentro do projeto, ou "" se o arquivo esta' fora da pasta
     void ProjectSyncStart();                                    // compara; se ha' diferencas mostra a lista (OK aplica o que e' seguro)
@@ -299,6 +300,11 @@ private:
     void ProjectAddCurrent();
 
     prj::Project project_;
+    // a lista de simbolos do completar e' GLOBAL (como os snippets do usuario): quem a montou a desfaz ao sair, para nao vazar para outro EditorApp
+    struct WordsGuard {
+        ~WordsGuard() { SetProjectWords({}); }
+    } words_guard_;
+    bool project_words_dirty_ = false; // o projeto mudou: a lista de simbolos do completar e' refeita no proximo ProjectFlush
     std::string project_root_;
     std::string last_project_;                // o ultimo .msxproject aberto: Open project... o propoe de novo
     std::vector<prj::SyncItem> sync_queue_;  // conflitos e apagados que esperam a resposta do usuario

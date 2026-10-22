@@ -25,6 +25,15 @@ void CollectBufferWords(const std::vector<std::string> &lines, std::vector<std::
 // depois a mais curta, depois ordem alfabetica). Nunca devolve o proprio prefixo. No maximo `max`.
 std::vector<Candidate> CompletionCandidates(const Lang *lang, const std::string &prefix, const std::vector<std::string> &buffer_words, size_t max = 60);
 
+// Simbolos do PROJETO (os outros arquivos do .msxproject): entram como candidatos depois das palavras do texto. O editor (EditorApp) monta a lista
+// quando o projeto muda; aqui so' ha' o estado e o extrator. Vazia = sem projeto.
+void SetProjectWords(std::vector<std::string> words);
+const std::vector<std::string> &ProjectWords();
+
+// Os simbolos de UM arquivo do projeto, pelo "tipo" do projeto (prj_kind): `asm` -> so' as DEFINICOES (rotulo:, nome equ/=/macro); `symbols`
+// (.sym) -> o 1o nome de cada linha; os demais textos (BASIC, Dignified, Pascal, C...) -> todos os identificadores de 3 letras ou mais.
+void CollectSymbols(const std::string &text, const std::string &kind, std::vector<std::string> &out);
+
 struct SnippetDef {
     std::string trigger;
     std::string body; // '\n' = nova linha; $1..$9 = pontos de parada (Tab pula de um para o outro); $0 = onde o cursor termina

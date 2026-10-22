@@ -1438,13 +1438,25 @@ void test_project_editor() {
         a.OpenProjectFile("src/m.dmx");
         K(a, {"F9"});
         check(a.Ed().Message().rfind("Converted", 0) == 0, "F9 no .dmx: o include do Dignified sai do projeto");
+        // simbolos do projeto no completar (1.43.9): salvar um fonte da pasta leva os rotulos dele para a lista dos outros arquivos
+        spit(dir / "src/syms.asm", "zzrotina_unica:\n ret\n");
+        check(a.Open((dir / "src/syms.asm").string(), err), "abre o syms.asm");
+        K(a, {"C-End"});
+        a.Ed().Type("; fim"); // depois do rotulo (digitar no inicio viraria comentario)
+        K(a, {"A-f", "s"}); // salva: ProjectFlush leva ao projeto e marca a lista de simbolos para refazer
+        check(a.ProjectRef().Has("src/syms.asm"), "o fonte salvo entrou no projeto");
+        a.Ed().SetText("  call zzrot");
+        a.Ed().SetCursor({0, 12});
+        K(a, {"A-/"});
+        check(a.Ed().Text() == "  call zzrotina_unica", "completar: o rotulo de OUTRO arquivo do projeto aparece");
+
         // o que o projeto nao tem continua saindo da pasta
         spit(dir / "src/solo.dmx", "y = 2\n");
         spit(dir / "src/m2.dmx", "include \"solo.dmx\"\nprint y\n");
         check(a.Open((dir / "src/m2.dmx").string(), err), "abre o m2.dmx da pasta (fora do projeto)");
         K(a, {"F9"});
         check(a.Ed().Message().rfind("Converted", 0) == 0, "include que so' existe na pasta cai no disco");
-        for (const char *p : {"src/lib.asm", "src/lib.dmx", "src/m.asm", "src/m.dmx", "src/m2.dmx", "src/solo.dmx"}) {
+        for (const char *p : {"src/lib.asm", "src/lib.dmx", "src/m.asm", "src/m.dmx", "src/m2.dmx", "src/solo.dmx", "src/syms.asm"}) {
             a.ProjectRef().Remove(p, err);
             fs::remove(dir / p);
         }

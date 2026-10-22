@@ -50,6 +50,7 @@ bool EditorApp::ProjectNew(const std::string &file, std::string &err) {
     last_project_ = file;
     project_root_ = project_.DefaultRoot();
     for (Editor &w : wins_) w.SetProjectSeen(w.SaveCount()); // o que ja' foi salvo antes nao e' do projeto: entra pelo Sync
+    project_words_dirty_ = true;
     ProjectRemember();
     return true;
 }
@@ -60,12 +61,15 @@ bool EditorApp::ProjectOpen(const std::string &file, std::string &err) {
     last_project_ = file;
     project_root_ = project_.DefaultRoot();
     for (Editor &w : wins_) w.SetProjectSeen(w.SaveCount());
+    project_words_dirty_ = true;
     ProjectRemember();
     return true;
 }
 
 void EditorApp::ProjectClose(bool forget) {
     project_.Close();
+    SetProjectWords({});
+    project_words_dirty_ = false;
     project_root_.clear();
     sync_queue_.clear();
     sync_pos_ = 0;
@@ -120,6 +124,32 @@ std::string EditorApp::ProjectRel(const std::string &abs_path) const {
 // salvar: o arquivo da pasta vai tambem para o banco
 // ---------------------------------------------------------------------------------------------------------------
 
+void EditorApp::ProjectWordsRefresh() {
+    project_words_dirty_ = false;
+    std::vector<std::string> words;
+    if (project_.IsOpen()) {
+        constexpr size_t kMaxWords = 8000;       // o completar lista no maximo 60; mais que isso so' custaria tempo
+        constexpr int64_t kMaxFile = 512 * 1024; // um fonte; arquivos maiores sao dados
+        std::set<std::string> seen;
+        for (const prj::FileInfo &f : project_.List()) {
+            if (words.size() >= kMaxWords) break;
+            if (f.size > kMaxFile || !(f.kind == "asm" || f.kind == "basic" || f.kind == "dignified" || f.kind == "pascal" || f.kind == "c" ||
+                                       f.kind == "symbols" || f.kind == "mml" || f.kind == "dml"))
+                continue;
+            std::vector<uint8_t> d;
+            if (!project_.Get(f.path, d)) continue;
+            std::vector<std::string> got;
+            CollectSymbols(std::string(d.begin(), d.end()), f.kind, got);
+            for (std::string &w : got) {
+                std::string key = w;
+                for (char &c : key) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                if (seen.insert(key).second) words.push_back(std::move(w));
+            }
+        }
+    }
+    SetProjectWords(std::move(words));
+}
+
 void EditorApp::ProjectFlush() {
     if (!project_.IsOpen()) return;
     for (Editor &w : wins_) {
@@ -129,7 +159,9 @@ void EditorApp::ProjectFlush() {
         if (rel.empty() || !prj::PathOk(rel) || prj::IsIgnored(rel)) continue; // fora da pasta, copia de seguranca, .git...
         std::string err;
         if (!project_.Push(rel, project_root_, err)) Msg("Project: " + err);
+        project_words_dirty_ = true; // um fonte salvo pode ter simbolos novos
     }
+    if (project_words_dirty_) ProjectWordsRefresh(); // depois do laco: o fonte recem-salvo ja' conta para a proxima tecla
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -197,6 +229,7 @@ void EditorApp::ProjectSyncApply() {
     sync_queue_.insert(sync_queue_.end(), s.removed.begin(), s.removed.end());
     sync_pos_ = 0;
     ProjectReloadBuffers(sync_before_);
+    project_words_dirty_ = true;
     std::string m = "Sync: " + std::to_string(s.pulled) + " to folder, " + std::to_string(s.pushed) + " to project, " + std::to_string(s.same) + " equal";
     if (!s.errors.empty()) m += "; ERROR " + s.errors.front();
     Msg(m);
@@ -344,6 +377,7 @@ void EditorApp::ProjectActionsDialog(int row) {
 
 void EditorApp::ProjectDo(ProjAct a, const std::string &path, bool from_files) {
     if (!project_.IsOpen()) return;
+    project_words_dirty_ = true; // qualquer acao (adicionar, tirar, renomear, restaurar) pode mudar os simbolos
     act_path_ = path;
     act_from_files_ = from_files;
     const bool dir = !path.empty() && path.back() == '/';
@@ -422,6 +456,7 @@ void EditorApp::ProjectRestoreRevision(int64_t id) {
     const auto before = ProjectStamps();
     if (!project_.Restore(hist_path_, id, project_root_, err)) Msg("Project: " + err);
     else Msg("Restored " + hist_path_ + " (the previous content is in the history)");
+    project_words_dirty_ = true;
     ProjectReloadBuffers(before);
 }
 

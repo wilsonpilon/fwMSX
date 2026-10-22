@@ -876,6 +876,35 @@ void test_completion() {
         for (const ed::MenuItem &it : m.items) found = found || it.cmd == Cmd::Complete;
     }
     check(found, "Search > Complete word existe no menu");
+
+    // simbolos do PROJETO (1.43.9): o extrator por tipo de arquivo e os candidatos vindos dos outros arquivos
+    std::vector<std::string> sym;
+    ed::CollectSymbols("; biblioteca\nVDP_PORT equ 0x98\nrotina_um:\n    ld a,1\n    call rotina_dois\nrotina_dois: ret\nCOUNT = 5\nMACRO_X macro\n  ld hl,VDP_PORT\n", "asm", sym);
+    auto has = [&](const char *w) { return std::find(sym.begin(), sym.end(), std::string(w)) != sym.end(); };
+    check(has("VDP_PORT") && has("rotina_um") && has("rotina_dois") && has("COUNT") && has("MACRO_X"), "CollectSymbols(asm): rotulos, equ, = e macro");
+    check(!has("call") && !has("biblioteca") && sym.size() == 5, "CollectSymbols(asm): mnemonicos, registradores e comentarios ficam de fora");
+    sym.clear();
+    ed::CollectSymbols("BIOS_CHPUT 0x00A2\n; nada\nWRTVDP 0x0047\n", "symbols", sym);
+    check(sym.size() == 2 && sym[0] == "BIOS_CHPUT" && sym[1] == "WRTVDP", "CollectSymbols(symbols): o 1o nome de cada linha");
+    sym.clear();
+    ed::CollectSymbols("10 contador = 5\n20 print contador\n", "basic", sym);
+    check(sym.size() == 2 && sym[0] == "contador" && sym[1] == "print", "CollectSymbols(basic): os identificadores do texto");
+
+    ed::SetProjectWords({"rotina_um", "MYPORT_X", "print"});
+    e.SetLanguage(ed::LangById("z80asm"), true);
+    e.SetText("  call rot");
+    e.SetCursor({0, 10});
+    e.Execute(Cmd::Complete);
+    check(e.Text() == "  call rotina_um", "o completar oferece o simbolo de outro arquivo do projeto");
+    e.SetText("  ld a,myp");
+    e.SetCursor({0, 10});
+    e.Execute(Cmd::Complete);
+    check(e.Text() == "  ld a,MYPORT_X", "o simbolo do projeto vale sem distinguir a caixa");
+    ed::SetProjectWords({});
+    e.SetText("  call rot");
+    e.SetCursor({0, 10});
+    e.Execute(Cmd::Complete);
+    check(e.Text() == "  call rot", "sem projeto nao ha' simbolo extra");
 }
 
 void test_snippets() {

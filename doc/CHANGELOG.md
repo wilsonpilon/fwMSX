@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.9] - 2026-10-22 - "Yie Ar Kung-Fu: Simbolos do projeto" (Konami)
+
+### Adicionado -- fecha a fase E6 do editor (E6 parte 4)
+- **Simbolos do projeto no completar** (`Alt-/`, `Ctrl-Espaco`): com um projeto aberto, os candidatos incluem os simbolos dos OUTROS arquivos dele. Assembly: so' as definicoes (`rotulo:`, `nome equ`, `nome =`, `macro`); `.sym`: o 1o nome de cada linha; BASIC, Dignified, Pascal, C, MML e DML: os identificadores. Vem depois das palavras do texto aberto. `CollectSymbols`/`SetProjectWords` em `completion.*`; `EditorApp::ProjectWordsRefresh` refaz a lista ao abrir/criar o projeto, sincronizar, salvar um fonte da pasta, ou agir pela arvore/historico (no maximo 8000 palavras, fontes de ate' 512 KiB).
+- **`man editor`**: a pagina do manual do editor (menus novos, teclas do Norton, completar, projeto e Build, arquivos `fwedit.*`).
+- Testes: `edittest` (extrator por tipo de arquivo; completar com e sem simbolos) e `editorui` (salvar um `.asm` leva o rotulo dele ao completar de outro arquivo).
+- **E6 encerrada** com a decisao de adiar os menus Sprites/Telas/Som: os editores correspondentes ainda nao existem (SPEC 5.4), e menus de itens desabilitados so' ocupariam as 25 linhas.
+
 ## [1.43.8] - 2026-10-22 - "Yie Ar Kung-Fu: Menus reorganizados" (Konami)
 
 ### Alterado -- menus do editor mais concentrados (E6 parte 3)

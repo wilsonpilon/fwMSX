@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.9 -- "Yie Ar Kung-Fu: Simbolos do projeto" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "siga para fecharmos E6" (depois dos menus reorganizados).
+- **Desenho**: a lista de simbolos e' GLOBAL em `completion.cpp` (como os snippets do usuario) e o `EditorApp` a refaz so' quando o projeto muda (flag `project_words_dirty_`, tratada no fim do `ProjectFlush`), nunca a cada tecla. Para assembly so' contam as definicoes: o resto das palavras de uma linha asm e' mnemonico e registrador, que lotariam a lista.
+- **Achado no teste**: o 1o teste de integracao falhou porque a lista era refeita no INICIO do `ProjectFlush`, antes do `Push` que acabara de marcar a lista como suja; passou a ser refeita DEPOIS do laco, entao o fonte recem-salvo ja' conta na tecla seguinte. O segundo erro foi do proprio teste (digitar no inicio do arquivo transformava o rotulo em comentario).
+- **Decisao minha (a rever)**: Sprites/Telas/Som ficaram de fora do E6; entram junto com os editores graficos (SPEC 5.4). Um guarda (`WordsGuard`) zera a lista global quando o `EditorApp` e' destruido.
+- Validado: Windows (`build.ps1`) e Linux (WSL), `ctest` 100% (32).
+
+---
+
 ## v1.43.8 -- "Yie Ar Kung-Fu: Menus reorganizados" (Konami) (2026-10-22)
 
 **Pedido do usuario**: comecar pelo E6 do editor/IDE e reorganizar os menus, concentrando as opcoes como as IDEs e emuladores modernos. Perguntei (opcoes: 8, 7 ou 6 menus; teclas) e ele escolheu **8 menus modernos** com os atalhos diretos do NE mantidos.

@@ -163,6 +163,67 @@ EXEMPLOS
 VER TAMBEM
   badig, asm)MAN");
 
+    add("editor", "editor [--edit|--view] [arquivo [arquivo2]]", "o editor de textos do fwMSX (estilo Norton Editor 2) com menus, projeto e Build",
+        R"MAN(DESCRICAO
+  Editor de textos para fontes de MSX (BASIC, Basic Dignified, Assembly Z80,
+  Pascal...), no estilo do Norton Editor 2, em duas versoes do MESMO codigo:
+  na tela de texto (fwMSXc --edit) e numa janela grafica (fwMSX --edit, ou
+  embutido no emulador). As mesmas teclas valem nas duas.
+
+COMO ABRIR
+  fwMSXc --edit [arquivo [arquivo2]]   um arquivo novo abre vazio com esse nome
+  fwMSXc --view arquivo                somente leitura
+  fwMSXc --edit --dump --keys "A-f o"  imprime a tela e sai (para testes)
+
+MENUS (Alt+letra, ou F10; setas, Enter, a letra do item, Esc)
+  File (F)     New, Open, Save, Save As, Merge, Close window, Load more, Write to
+               cursor, Top of file, Print, Print Block, Eject page, Print setup,
+               eXit
+  Edit (E)     Undo, Redo, Copy, Move, Delete, marcadores de bloco, Indent,
+               Unindent, Output to file, Paragraph format, Document format,
+               Center line
+  Search (S)   Find, Find and Replace, Continue, Line number, Matching bracket,
+               Window Differences, Text in Block, Complete word
+  View (V)     Information, Outline, Language, 2nd window (F2)
+  Project (J)  New/Open/Close project, Files, Add current file, Sync
+  Run (R)      Assemble/Convert (F9), Run on MSX (F5), Next/Previous message
+               (F8, Shift-F8), Messages, BASIC line, Dignified setup
+  Tools (T)    Display, Mouse, Editor, Save configuration, Text layout setup,
+               Word wrap, Auto indent, Expand tabs, Put in Tabs, Insert/Remove
+               page breaks, DOS shell
+  F1=Help      ajuda paginada: um topico por menu, Keys e On word (Ctrl-F1)
+  (ate' a 1.43.7 eram os dez menus do NE: Block e Text-layout foram para Edit e
+  Tools, Print para File, Options para Tools e Build para Run.)
+
+TECLAS DO NORTON (continuam as mesmas)
+  Ctrl-F / Ctrl-R buscam e trocam, Alt-C / Ctrl-C continuam, Ctrl-] acha o
+  parentese, Ctrl-W / Alt-W apagam palavra, Alt-K apaga a linha, Ctrl-U restaura
+  o apagado, Alt-E S (era Alt-B S) marca o bloco. Modernas: Alt-Backspace
+  desfaz, Ctrl-Ins / Shift-Ins / Shift-Del copiam, colam e recortam.
+
+COMPLETAR
+  Alt-/ ou Ctrl-Espaco lista os candidatos para a palavra sob o cursor: as
+  palavras da linguagem, os gatilhos de snippet (Tab expande), as palavras do
+  texto e, com um PROJETO aberto, os SIMBOLOS dos outros arquivos dele: em
+  Assembly os rotulos e as constantes (nome:, nome equ, nome =, macro), nos
+  arquivos .sym o primeiro nome de cada linha, e nos demais fontes os
+  identificadores. A lista e' refeita ao abrir o projeto, sincronizar e salvar.
+
+PROJETO E BUILD
+  Com um projeto aberto (man project) o arquivo salvo na pasta vai tambem para o
+  .msxproject, o nome aparece na barra de estado, a arvore de arquivos fica na
+  janela (e em Project > Files... na tela de texto, com o menu de contexto) e o
+  F9 / F5 leem os include / incbin do proprio projeto antes da pasta.
+
+ARQUIVOS
+  fwedit.cfg       configuracao (Tools > Save configuration)
+  fwedit.project   o ultimo projeto aberto (reaberto na proxima sessao)
+  fwedit.session   as abas abertas
+  fwedit.snippets  seus snippets: [idDaLinguagem] e gatilho=texto
+
+VER TAMBEM
+  project, badig, asm, asmrun)MAN");
+
     add("romdb", "romdb <comando> [opcoes]", "banco de ROMs: downloads, busca, verificacao",
         R"MAN(DESCRICAO
   Banco de ROMs (roms/roms.db ao lado do executavel; --roms <pasta> muda a

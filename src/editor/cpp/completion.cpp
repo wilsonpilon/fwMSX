@@ -130,6 +130,62 @@ void CollectBufferWords(const std::vector<std::string> &lines, std::vector<std::
     }
 }
 
+namespace {
+std::vector<std::string> g_project_words;
+
+std::vector<std::string> SplitLines(const std::string &text) {
+    std::vector<std::string> lines;
+    std::string cur;
+    for (const char c : text) {
+        if (c == '\n') {
+            lines.push_back(cur);
+            cur.clear();
+        } else if (c != '\r') {
+            cur.push_back(c);
+        }
+    }
+    lines.push_back(cur);
+    return lines;
+}
+
+bool Blank(char c) { return c == ' ' || c == '\t'; }
+} // namespace
+
+void SetProjectWords(std::vector<std::string> words) { g_project_words = std::move(words); }
+const std::vector<std::string> &ProjectWords() { return g_project_words; }
+
+void CollectSymbols(const std::string &text, const std::string &kind, std::vector<std::string> &out) {
+    const std::vector<std::string> lines = SplitLines(text);
+    if (kind != "asm" && kind != "symbols") {
+        CollectBufferWords(lines, out);
+        return;
+    }
+    // assembly: o que o programa DEFINE (um rotulo ou uma constante); o resto das palavras de uma linha asm sao mnemonicos e registradores
+    for (const std::string &raw : lines) {
+        const int n = static_cast<int>(raw.size());
+        int i = 0;
+        while (i < n && Blank(raw[static_cast<size_t>(i)])) ++i;
+        if (i >= n || !ed_hl_ident_start(static_cast<unsigned char>(raw[static_cast<size_t>(i)]))) continue;
+        const int e = ed_hl_ident_end(raw.data(), n, i, 0);
+        if (e - i < 3) continue;
+        const std::string name = raw.substr(static_cast<size_t>(i), static_cast<size_t>(e - i));
+        if (kind == "symbols") {
+            out.push_back(name);
+            continue;
+        }
+        int j = e;
+        while (j < n && Blank(raw[static_cast<size_t>(j)])) ++j;
+        if (j < n && (raw[static_cast<size_t>(j)] == ':' || raw[static_cast<size_t>(j)] == '=')) { // rotulo:  ou  nome = valor
+            out.push_back(name);
+            continue;
+        }
+        int k = j;
+        while (k < n && std::isalpha(static_cast<unsigned char>(raw[static_cast<size_t>(k)]))) ++k;
+        const std::string word = Lower(raw.substr(static_cast<size_t>(j), static_cast<size_t>(k - j)));
+        if (word == "equ" || word == "defl" || word == "macro" || word == "set") out.push_back(name); // nome equ valor
+    }
+}
+
 std::vector<SnippetDef> SnippetsFor(const Lang *lang) {
     const std::string id = lang ? lang->Id() : std::string("plain");
     std::vector<SnippetDef> out;
@@ -189,6 +245,10 @@ std::vector<Candidate> CompletionCandidates(const Lang *lang, const std::string 
     for (const SnippetDef &d : SnippetsFor(lang)) consider(d.trigger, true);
     for (const std::string &w : buffer_words) {
         if (have.count("w:" + Lower(w))) continue; // a palavra que a linguagem ja' conhece nao entra de novo
+        consider(w, false);
+    }
+    for (const std::string &w : g_project_words) { // os simbolos dos outros arquivos do projeto: por ultimo, o texto aberto vale mais
+        if (have.count("w:" + Lower(w))) continue;
         consider(w, false);
     }
     std::stable_sort(found.begin(), found.end(), [](const Scored &a, const Scored &b) {
