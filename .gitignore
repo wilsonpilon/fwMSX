@@ -208,3 +208,11 @@ imgui.ini
 /dist/splashtest.exe
 /dist/splashtest
 /dist/fwmsx.cfg
+
+### Midia de terceiros: fica no disco do autor, nao no repositorio publico (doc/media-review.md, 2026-10-22)
+tests/media/
+dist/roms/
+dist/*.zip
+dist/*.tar.gz
+*.sst
+/fwmsx-*.png

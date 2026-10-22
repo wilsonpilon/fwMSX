@@ -9,6 +9,7 @@ e o historico de fases, veja [SPEC.md](SPEC.md).
 
 ## [Sem versao] - 2026-10-22 - revisao das licencas de midia (so' documentacao)
 - `doc/media-review.md`: o levantamento do que o repositorio PUBLICO rastreia de terceiros (1221 `.rom`, 266 `.dsk`, 136 `.pdf`, 105 `.zip`; 19 ROMs de jogos comerciais em `tests/media/`; 637 ROMs de sistema em `dist/roms/`; pacotes antigos em `dist/`), o risco por grupo e uma recomendacao em ordem de custo. Nada removido.
+- **Aplicado o passo 1 da recomendacao**: 818 arquivos de midia de terceiros (`tests/media/`, `dist/roms/`, `dist/*.zip|gz`, `*.sst`, capturas soltas) deixam de ser rastreados e vao para o `.gitignore`; continuam no disco; o historico nao foi alterado.
 - `LICENSE-THIRD-PARTY.md`: registra que o repositorio e' publico, aponta o levantamento e lista as bibliotecas baixadas pelo CMake que faltavam (SQLite, CLI11, replxx, FTXUI, ImGui, GLFW).
 
 ## [1.43.16] - 2026-10-22 - "Yie Ar Kung-Fu: Scripts em Lua" (Konami)

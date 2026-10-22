@@ -48,6 +48,12 @@ Totais rastreados: ~50 mil arquivos em `resource/`, 813 em `dist/`; **1221 `.rom
 5. **Texto do README publico**: o aviso "se o detentor dos direitos pedir, o arquivo e' removido" ja' esta' previsto (`LICENSE-THIRD-PARTY.md`); copiar para o `README.md`, com um contato.
 6. **Para os testes manuais**: documentar que as ROMs de `tests/media/` sao do usuario e como obte-las (a pasta fica fora do git).
 
+## 4b. Aplicado (2026-10-22, decisao do usuario: "1")
+
+Passo 1 da recomendacao: `git rm --cached` (os arquivos **continuam no disco**) e entradas no `.gitignore` para `tests/media/` (19 ROMs de jogos), `dist/roms/` (637 ROMs de sistema, `roms.db` e o resto do banco: 700 arquivos), os 96 pacotes antigos `dist/*.zip` e `dist/*.tar.gz`, `*.sst` e as capturas soltas `/fwmsx-*.png`. Total: 818 arquivos deixam de ser rastreados. **O historico NAO foi mexido**: o que ja' foi publicado continua nos commits antigos (so' o passo 3, que nao foi feito, apagaria isso). Fica para decidir: `resource/` (passo 2), a origem dos tres arquivos do passo 4 e o texto do README (passo 5).
+
+Consequencia para quem clonar o repositorio: os testes que precisam de uma BIOS (`controltest` com `dist/roms/bios/MSX2P.ROM`, `asme2etest` e `audiotest` com `resource/fMSX/ROMs/MSX.ROM`) so' rodam onde a BIOS existir; a do autor continua em `dist/roms/` no disco dele.
+
 ## 5. O que este documento nao resolve
 
 - Nao e' parecer juridico. A tabela diz o que esta' publicado e de quem parece ser; a decisao de risco e' do autor.

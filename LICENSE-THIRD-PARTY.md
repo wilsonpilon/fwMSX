@@ -264,7 +264,7 @@ titular dos direitos pedir.
 O repositorio `github.com/wilsonpilon/fwMSX` e' **publico**, e o que o git rastreia fica disponivel a quem o clonar, historico incluido -- mesmo o que
 os pacotes de release nao levam. A frase acima ("nada disso e' distribuido como parte do binario") vale para os **pacotes**; o levantamento do que
 o **repositorio** publica (ROMs de jogos em `tests/media/`, o banco `dist/roms/`, discos e ROMs dentro de `resource/`, pacotes antigos em `dist/`...)
-e as opcoes de tratamento estao em [doc/media-review.md](doc/media-review.md). Nada foi removido ainda: a decisao e' do autor.
+e as opcoes de tratamento estao em [doc/media-review.md](doc/media-review.md). **Aplicado em 2026-10-22**: `tests/media/`, `dist/roms/`, os pacotes antigos de `dist/`, `*.sst` e as capturas soltas deixaram de ser rastreados e estao no `.gitignore` (continuam no disco do autor); o historico nao foi reescrito, e `resource/` segue como estava, a decidir.
 
 ## Politica de distribuicao de midias de terceiros (2026-10-06)
 
