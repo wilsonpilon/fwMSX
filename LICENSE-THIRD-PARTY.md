@@ -229,6 +229,13 @@ O comando `lua` do console (doc/script-spec.md) usa o interpretador Lua
 oficial de https://www.lua.org/ftp/ (SHA-256 fixo) e o compila como
 biblioteca estatica; o fonte do Lua nao e' copiado para este repositorio.
 
+## fmsxgo, paleobasic, msxide e kizuna (projetos proprios do autor)
+
+`resource/fmsxgo/`, `resource/paleobasic/`, `resource/msxide/` e `resource/kizuna/` sao **projetos do proprio autor do fwMSX**, mantidos so' como
+referencia (editores de tela, sprites, som, draw...) para as versoes novas em C/C++/ASM/Fortran, e serao eliminados ao final do projeto, ficando uma
+unica licenca (BSD-3-Clause). O que cada um **carrega de terceiros** (SDKs como MSXgl e Fusion-C, discos e ROMs de jogos, BIOS, copias de outros
+projetos) nao e' do autor e continua sob as licencas de origem; o autor esta' fazendo uma limpeza manual dessas pastas (doc/media-review.md, 4d).
+
 ## Resto de `resource/`
 
 Todo o restante de `resource/` (`fmsxgo/`, `kizuna/`, `msxide/`,

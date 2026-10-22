@@ -64,6 +64,9 @@ Consequencia para quem clonar o repositorio: os testes que precisam de uma BIOS 
 
 - **`resource/Amazonia64kV5/` EXCLUIDA** (398 MB, **nunca foi rastreada** pelo git). Tinha so' exemplos grandes em asMSX para testes que ja' foram automatizados: o `asme2etest` usa as COPIAS em `tests/asm/real/amazonia` e `tests/asm/real/pt3`, nada le a pasta de `resource/`. Conferido antes de excluir: com a pasta fora do lugar, os testes Amazonia (`.rom` e `.sym` iguais ao asMSX 1.2.0) e PT3 passaram.
 
+- **`resource/fmsxgo/`, `paleobasic/`, `msxide/`, `kizuna/`: projetos PROPRIOS do autor**, mantidos por enquanto porque trazem os editores de tela, sprites, som, draw etc. que servirao de referencia para as versoes novas em C/C++/ASM/Fortran; serao eliminados quando o fwMSX estiver completo, e o resultado fica sob uma unica licenca (a do fwMSX, BSD-3-Clause). **Atencao ao relicenciar**: o que cada um carrega de TERCEIROS nao e' do autor e nao entra na licenca unica. O levantamento de 2026-10-22 viu dentro deles: copias umas das outras (`fmsxgo/third-party/msxide|paleobasic|openmsx|graphos|tools`), discos de jogos comerciais (por exemplo "F-1 Spirit 3D Special (1988)(Konami)"), ROMs de BIOS (`MSX2.ROM`, `MSX2P.ROM`, `PAINTER.ROM`...) e os SDKs `kizuna/resource/MSXgl` e `MSXFusionC` (105 `.rom`/`.dsk`, licencas proprias). **Decisao do autor: ele mesmo faz uma limpeza manual dessas quatro pastas e avisa; depois relemos o que ainda precisa de tratamento.** Nada foi mexido nelas.
+- Pendentes ainda: `openMSX`, `openMSX_TSXadv`, `CLK`, `asMSX`, `fMSX`, `makeTSX`, `msxDiskUtil`, `DiskUtilities`, `basic-dignified`, `msxdos1/2`, `MSXDOS23.DSK` e os arquivos soltos de `resource/`.
+
 ## 5. O que este documento nao resolve
 
 - Nao e' parecer juridico. A tabela diz o que esta' publicado e de quem parece ser; a decisao de risco e' do autor.
