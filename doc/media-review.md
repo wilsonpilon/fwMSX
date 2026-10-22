@@ -60,6 +60,10 @@ Consequencia para quem clonar o repositorio: os testes que precisam de uma BIOS 
 - **`NBASIC.BIN`** (Konamiman; o repositorio dele **nao declara licenca**): o autor indicou `github.com/Konamiman/MSX/tree/master/SRC/NBASIC` como origem. Em vez de redistribui-lo, ele **saiu** do repositorio (`git rm --cached` + `.gitignore`) e dos pacotes (`build.ps1`/`build.sh` o removem do que sobrar em `dist/badig/`) e passou a ser **baixado sob demanda** pela janela Downloads (1.43.17, `doc/download-spec.md`). O `nbasic.dmx` (rotinas `.NB_*`, do msxIDE do proprio autor) continua nos pacotes.
 - **`SUPER-X-PT.notas`** e **`resource/`**: seguem pendentes (origem do arquivo; decisao pasta por pasta).
 
+## 4d. `resource/` pasta a pasta (decisoes do autor, 2026-10-22)
+
+- **`resource/Amazonia64kV5/` EXCLUIDA** (398 MB, **nunca foi rastreada** pelo git). Tinha so' exemplos grandes em asMSX para testes que ja' foram automatizados: o `asme2etest` usa as COPIAS em `tests/asm/real/amazonia` e `tests/asm/real/pt3`, nada le a pasta de `resource/`. Conferido antes de excluir: com a pasta fora do lugar, os testes Amazonia (`.rom` e `.sym` iguais ao asMSX 1.2.0) e PT3 passaram.
+
 ## 5. O que este documento nao resolve
 
 - Nao e' parecer juridico. A tabela diz o que esta' publicado e de quem parece ser; a decisao de risco e' do autor.
