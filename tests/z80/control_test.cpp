@@ -545,6 +545,21 @@ void TestBadigRun(const std::string &bios) {
     Frames(host, cmd, 2500);
     check(VramHas(host.machine(), "apoio no disco"), "badigrun: o programa LEU o arquivo de apoio do disco de execucao");
     WriteText(dir + "/ruim.dmx", "##BB:disk_files=nao_existe.bin\nprint 1\n");
+
+    // obi / obirun: a receita junta o .dmx e um dado no .dsk, que entra em A: e roda sozinho
+    WriteText(dir + "/dado.dat", "do disco da receita");
+    WriteText(dir + "/ohello.dmx", "[?](4,4) \"obi run ok\"\n{fim}\ngoto {fim}\n");
+    WriteText(dir + "/Obifile", "target: receita.dsk\nfiles:\n  - ohello.dmx\n  - dado.dat\n");
+    const control::Result oc = cmd.Execute("obi check \"" + dir + "/Obifile\"");
+    check(oc.ok && Contains(oc.text, "OHELLO.BMX") && !std::filesystem::exists(dir + "/receita.dsk"), "obi check: confere a receita sem gravar o .dsk");
+    const control::Result ob = cmd.Execute("obi build \"" + dir + "/Obifile\"");
+    check(ob.ok && std::filesystem::exists(dir + "/receita.dsk") && Contains(ob.text, "DADO.DAT"), "obi build: grava o .dsk");
+    check(!cmd.Execute("obi").ok && !cmd.Execute("obi build \"" + dir + "/nao_existe/Obifile\"").ok, "obi: sem subcomando e Obifile inexistente = err");
+    const control::Result orr = cmd.Execute("obirun \"" + dir + "/Obifile\"");
+    check(orr.ok && Contains(orr.text, "reiniciada"), "obirun: monta o disco, insere em A: e reinicia");
+    if (!orr.ok) std::printf("    %s\n", orr.text.c_str());
+    Frames(host, cmd, 2500);
+    check(VramHas(host.machine(), "obi run ok"), "obirun: o AUTOEXEC.BAS da receita RODOU o .BMX no DISK BASIC");
     check(!cmd.Execute("badigrun \"" + dir + "/ruim.dmx\"").ok, "badigrun: arquivo de apoio inexistente = err");
     std::filesystem::remove_all(dir);
 }

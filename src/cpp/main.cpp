@@ -85,6 +85,7 @@
 #include "repl/repl.h"
 #include "asm/cpp/cli.h"
 #include "badig/cpp/badig.h"
+#include "obi/cpp/obi.h"
 #include "mamute/cpp/mamute_config.h"
 #include "splash/splash.h"
 #include "term/term_app.h"
@@ -265,6 +266,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--badig") { // converte .dmx (Basic Dignified) em .amx e .bmx
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return badig::RunBadigCommand(tokens, badig::ConfigPath());
+    }
+    if (argc > 1 && std::string(argv[1]) == "--obi") { // monta um .dsk a partir de uma receita (Obifile)
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return obi::RunObiCommand(tokens);
     }
     if (argc > 1 && std::string(argv[1]) == "--disknew") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);

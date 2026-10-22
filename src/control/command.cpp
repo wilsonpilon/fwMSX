@@ -12,6 +12,7 @@
 
 #include "../asm/cpp/cli.h"
 #include "../badig/cpp/badig.h"
+#include "../obi/cpp/obi.h"
 #include "../common/version.h"
 #include "../debug/c/dbg_flow.h"
 #include "../mamute/cpp/mamute_monitor.h"
@@ -56,6 +57,7 @@ const char *kHelp =
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
     "Basic Dignified: badig [opcoes] <fonte.dmx> (gera .amx e .bmx) badigrun <fonte.dmx> (converte, monta o disco e executa) | "
+    "disco por receita: obi <build|check> [Obifile] (monta o .dsk) obirun [Obifile] (monta, insere em A: e reinicia; ver man obi) | "
     "projeto: project <new|open|close|info|ls|add|get|rm|set|root|status|sync|pull|push|export|import> (ver man project) | "
     "montador e simbolos: asmrun [-z] [-n] [--dos-disk <arq>] <fonte.asm> sym [load <arq.sym>|clear|list [txt]|<nome|end>] src [n] markers <on|off> | "
     "monitor Mamute: mon [linha] (ver doc/mamute-spec.md)";
@@ -714,6 +716,8 @@ Result Commander::Execute(const std::string &line) {
     if (cmd == "asmrun") return AsmRun(t);
     if (cmd == "badig") return BadigCmd(t, false);
     if (cmd == "badigrun") return BadigCmd(t, true);
+    if (cmd == "obi") return ObiCmd(t, false);
+    if (cmd == "obirun") return ObiCmd(t, true);
     if (cmd == "project") return ProjectCmd(t);
 
     if (cmd == "events") {
@@ -1163,6 +1167,44 @@ Result Commander::BadigCmd(const std::vector<std::string> &t, bool run) {
     mm.Reset();
     out += (out.empty() ? "" : "\n") + std::string("disco ") + dsk + " (" + msx + ".BMX + AUTOEXEC.BAS" + names + ") em A:; maquina reiniciada: o DISK BASIC roda o programa sozinho";
     return Ok(out);
+}
+
+// obi <build|check> [Obifile] | obirun [Obifile]
+Result Commander::ObiCmd(const std::vector<std::string> &t, bool run) {
+    namespace fs = std::filesystem;
+    const std::string name = run ? "obirun" : "obi";
+    obi::BuildOptions o;
+    size_t arg = 1;
+    if (!run) {
+        if (t.size() < 2 || (t[1] != "build" && t[1] != "check")) return Err("obi: use obi <build|check> [Obifile] (ver man obi)");
+        o.write = t[1] == "build";
+        arg = 2;
+    }
+    o.obifile = t.size() > arg ? t[arg] : obi::FindObifile("");
+    if (o.obifile.empty()) return Err(name + ": nao achei um Obifile na pasta atual; informe o caminho");
+    std::error_code ec;
+    o.obifile = fs::absolute(o.obifile, ec).lexically_normal().string();
+    const obi::BuildResult r = obi::Build(o);
+    std::string out;
+    for (const std::string &l : r.log) out += l + "\n";
+    if (!r.ok) {
+        while (!out.empty() && out.back() == '\n') out.pop_back();
+        return Err(out.empty() ? name + ": a build falhou" : out);
+    }
+    for (const obi::BuiltFile &f : r.files) {
+        char line[160];
+        std::snprintf(line, sizeof(line), "  %-12s %7zu bytes  crc %08X  <- %s\n", f.name.c_str(), f.size, static_cast<unsigned>(f.crc), f.from.c_str());
+        out += line;
+    }
+    out += (o.write ? r.dsk : std::string("(nada gravado)")) + ": " + std::to_string(r.files.size()) + " arquivos, " + std::to_string(r.free_bytes / 1024) + " KiB livres";
+    if (!run) return Ok(out);
+
+    machine::Machine &mm = host_.machine();
+    if (!mm.has_disk_interface()) return Err(name + ": a maquina nao tem interface de disquete (inicie o emulador com --disk); o disco foi gerado: " + r.dsk + "\n" + out);
+    std::string error;
+    if (!mm.InsertDisk(0, r.dsk, error)) return Err(name + ": " + error);
+    mm.Reset();
+    return Ok(out + "\ndisco em A:; maquina reiniciada");
 }
 
 void Commander::Tick() {

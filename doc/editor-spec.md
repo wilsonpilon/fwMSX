@@ -186,6 +186,8 @@ Em aberto: (3) como a barra de menus comporta os novos menus (80 colunas); (10) 
 
 ## 7. Estado (atualizado em 2026-10-22)
 
+**1.43.11: Run > Build disk (F6).** `EditorApp::BuildDisk` roda o `obi` (`doc/obi-spec.md`) com os buffers abertos e o banco do projeto como fontes; as mensagens com arquivo e linha entram na lista do F8.
+
 **1.43.10: E7 parte 1.** `Print` e `Print Block` gravam PDF (`EditorApp::PrintStart`, `Dialog::PrintTo`, `Editor::PrintLines`, `mamute::BuildPdfLayout`). `Eject page` fica desabilitado. Faltam Document format, Outline, Load more / Write to cursor / Top of file e o preview de Markdown.
 
 **1.43.9: E6 encerrada.** Completar com os simbolos do projeto (`completion.h`: `CollectSymbols`, `SetProjectWords`; `EditorApp::ProjectWordsRefresh`) e a pagina `man editor`. Os menus Sprites/Telas/Som foram adiados: dependem dos editores graficos (SPEC 5.4), que ainda nao existem.

@@ -7,6 +7,15 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.11] - 2026-10-22 - "Yie Ar Kung-Fu: Receita de disco" (Konami)
+
+### Adicionado -- o `obi`: receita (Obifile) que monta um disquete pronto para rodar
+- **`src/obi/`** (nas 4 linguagens): C++ (receita, build e comando), C (`obi_name`: nome 8.3 e tipo pela extensao), Fortran (`obi_fit`: clusters), NASM dual-ABI (`obi_crc`: CRC-32). Sintaxe do `Obifile` do Kizuna (subconjunto), mas usando as ferramentas do fwMSX: `.dmx` -> `.BMX` (badig), `.asm` -> `.BIN`/`.COM`/`.ROM` (fwasm), o resto copiado como esta'; tudo num `.dsk` de 720 KB (`msxdisk`).
+- Campos: `target`, `boot`, `dos`, `dos_disk`, `files` (`source`, `name`). `boot` gera o `AUTOEXEC.BAS` (`RUN`/`BLOAD ,R`) ou `AUTOEXEC.BAT` (.COM, com `dos: true`).
+- **Comandos**: `obi build|check [Obifile]` e `obirun [Obifile]` (monta, insere em A: e reinicia) no console; `fwmsx --obi ...` na linha de comando; **Run > Build disk (`F6`)** no editor, lendo os fontes dos buffers abertos, do banco do projeto e da pasta (nesta ordem). Erros viram mensagens com arquivo e linha (F8 / Shift-F8).
+- `man obi` e `doc/obi-spec.md`.
+- Testes: `obitest` (novo: nomes, CRC, clusters, receita, build, erros, leitor do projeto), `editorui` (F6) e `controltest` (`obirun` roda o `.BMX` no DISK BASIC).
+
 ## [1.43.10] - 2026-10-22 - "Yie Ar Kung-Fu: Imprimir em PDF" (Konami)
 
 ### Adicionado -- fase E7 do editor, parte 1

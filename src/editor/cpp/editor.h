@@ -106,7 +106,7 @@ enum class Cmd {
     // menu View
     Information, Outline, About, Language,
     // menu Build (fase E6): montar o fonte do buffer, executar no MSX, navegar pelas mensagens, ajuda da palavra
-    Assemble, RunMsx, NextError, PrevError, ErrorList, HelpWord, BadigSetup, BasicLine,
+    Assemble, RunMsx, BuildDisk, NextError, PrevError, ErrorList, HelpWord, BadigSetup, BasicLine,
     // menu Project (E6 parte 2): o .msxproject aberto no editor
     ProjectNew, ProjectOpen, ProjectClose, ProjectFiles, ProjectAdd, ProjectSync,
     // menu Options

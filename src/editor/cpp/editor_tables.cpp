@@ -117,6 +117,7 @@ const CmdInfo kInfos[] = {
     {Cmd::Language, "language", false, D::Language, true},
     {Cmd::Assemble, "assemble", false, D::None, true},
     {Cmd::RunMsx, "run-msx", false, D::None, true},
+    {Cmd::BuildDisk, "build-disk", false, D::None, true},
     {Cmd::NextError, "next-error", false, D::None, true},
     {Cmd::PrevError, "prev-error", false, D::None, true},
     {Cmd::ErrorList, "error-list", false, D::None, true},
@@ -224,7 +225,8 @@ const std::vector<Menu> &Menus() {
         {"Run", 'r', 38,
          {
              {"Assemble / Convert", 'a', "F9", Cmd::Assemble, 0, false, false},
-             {"Run on MSX", 'r', "F5", Cmd::RunMsx, 0, true, false},
+             {"Run on MSX", 'r', "F5", Cmd::RunMsx, 0, false, false},
+             {"Build disk", 'k', "F6", Cmd::BuildDisk, 0, true, false},
              {"Next message", 'n', "F8", Cmd::NextError, 0, false, false},
              {"Previous message", 'p', "Shift-F8", Cmd::PrevError, 0, false, false},
              {"Messages...", 'm', "", Cmd::ErrorList, 0, true, false},
@@ -299,7 +301,7 @@ const std::vector<KeyBinding> &Bindings() {
         {"F10", Cmd::MenuOpen, true},
         {"A-/", Cmd::Complete, true}, {"C-Space", Cmd::Complete, true},
         // menu Build (fase E6)
-        {"F9", Cmd::Assemble, true}, {"F5", Cmd::RunMsx, true}, {"F8", Cmd::NextError, true}, {"S-F8", Cmd::PrevError, true},
+        {"F9", Cmd::Assemble, true}, {"F5", Cmd::RunMsx, true}, {"F6", Cmd::BuildDisk, true}, {"F8", Cmd::NextError, true}, {"S-F8", Cmd::PrevError, true},
         {"C-F1", Cmd::HelpWord, true},
         // --- alternativas modernas (o Norton Editor nao tem) ---
         {"A-BS", Cmd::Undo, true}, {"A-S-BS", Cmd::Redo, true},

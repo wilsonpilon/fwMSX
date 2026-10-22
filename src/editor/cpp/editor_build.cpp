@@ -16,6 +16,7 @@ extern "C" {
 #include "../c/ed_syntax.h"
 }
 #include "../../asm/cpp/assembler.h"
+#include "../../obi/cpp/obi.h"
 
 namespace fs = std::filesystem;
 
@@ -239,6 +240,80 @@ bool EditorApp::BuildRun() {
     }
     Msg("Running on the MSX: " + fs::path(e.Name()).filename().string());
     if (embedded_) hide_request_ = true; // a janela do editor sai da frente para ver o programa rodar
+    return true;
+}
+
+// Run > Build disk (F6): a receita (Obifile) monta o .dsk com o .dmx, o .asm e os dados. Qual receita: o proprio arquivo aberto, se for um Obifile;
+// senao o do projeto (raiz); senao o da pasta do arquivo aberto. Os fontes vem, nesta ordem, dos buffers abertos (o que esta' na tela, salvo ou nao),
+// do banco do projeto e da pasta.
+bool EditorApp::BuildDisk() {
+    Editor &e = Ed();
+    const std::string name = e.Name();
+    std::string ext = fs::path(name).extension().string();
+    for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    std::string recipe;
+    if (!name.empty() && (fs::path(name).filename() == "Obifile" || ext == ".obi")) recipe = name;
+    if (recipe.empty() && project_.IsOpen()) recipe = obi::FindObifile(project_root_);
+    if (recipe.empty()) {
+        std::error_code ec;
+        const std::string where = !name.empty() && fs::path(name).has_parent_path() ? fs::path(name).parent_path().string() : (cwd_.empty() ? std::string(".") : cwd_);
+        if (fs::is_directory(where, ec)) recipe = obi::FindObifile(where);
+    }
+    if (recipe.empty()) {
+        Msg("Build disk: no Obifile here (see man obi)");
+        return false;
+    }
+    std::error_code ec;
+    recipe = fs::absolute(recipe, ec).lexically_normal().string();
+
+    obi::BuildOptions o;
+    o.obifile = recipe;
+    o.reader = [this](const std::string &p, std::vector<uint8_t> &data) {
+        std::error_code e2;
+        for (int w = 0; w < WindowCount(); ++w) { // o buffer aberto vale mais que qualquer copia
+            const std::string &n = Win(w).Name();
+            if (n.empty() || !(fs::path(n).lexically_normal() == fs::path(p).lexically_normal())) continue;
+            const std::string t = Win(w).Text();
+            data.assign(t.begin(), t.end());
+            return true;
+        }
+        const std::string rel = ProjectRel(p);
+        return project_.IsOpen() && !rel.empty() && project_.Get(rel, data);
+    };
+    const obi::BuildResult r = obi::Build(o);
+
+    build_msgs_.clear();
+    build_cur_ = -1;
+    build_src_ = recipe;
+    build_name_ = fs::path(recipe).filename().string();
+    int errors = 0, warnings = 0;
+    for (const obi::Message &m : r.msgs) {
+        BuildMsg b;
+        b.file = m.file == recipe ? build_name_ : (m.file.empty() ? std::string() : fs::path(m.file).filename().string());
+        b.line = m.line;
+        b.warning = m.warning;
+        b.text = m.text;
+        if (!m.file.empty() && m.file != recipe) b.path = m.file;
+        (b.warning ? warnings : errors)++;
+        build_msgs_.push_back(b);
+    }
+    if (!r.ok) {
+        if (errors == 0) {
+            BuildMsg b;
+            b.text = "build failed";
+            build_msgs_.push_back(b);
+            errors = 1;
+        }
+        size_t first = 0;
+        while (first < build_msgs_.size() && build_msgs_[first].warning) ++first;
+        if (first >= build_msgs_.size()) first = 0;
+        BuildGoto(static_cast<int>(first));
+        Msg("Build disk: " + std::to_string(errors) + " error(s), " + std::to_string(warnings) + " warning(s)  [" + std::to_string(first + 1) + "/" +
+            std::to_string(build_msgs_.size()) + "] " + build_msgs_[first].text);
+        return false;
+    }
+    Msg("Disk built: " + fs::path(r.dsk).filename().string() + ", " + std::to_string(r.files.size()) + " files, " + std::to_string(r.free_bytes / 1024) +
+        " KiB free" + (warnings ? ", " + std::to_string(warnings) + " warning(s)" : std::string()));
     return true;
 }
 

@@ -97,6 +97,8 @@ private:
     Result AsmRun(const std::vector<std::string> &t);
     // badig / badigrun: converte um .dmx (Basic Dignified) em .amx/.bmx; badigrun tambem monta um disco com o .bmx e o AUTOEXEC.BAS, insere em A: e reinicia.
     Result BadigCmd(const std::vector<std::string> &t, bool run);
+    // obi build|check [Obifile] / obirun [Obifile]: a receita que monta o .dsk (src/obi; doc/obi-spec.md); obirun tambem insere o disco em A: e reinicia.
+    Result ObiCmd(const std::vector<std::string> &t, bool run);
     // project: o .msxproject (SQLite) e as copias soltas numa pasta (src/control/project_cmd.cpp; doc/project-spec.md).
     Result ProjectCmd(const std::vector<std::string> &t);
     std::unique_ptr<prj::Project> project_;

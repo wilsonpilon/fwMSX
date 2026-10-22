@@ -1278,6 +1278,46 @@ void test_badig_build() {
 }
 
 // O menu Project: o .msxproject aberto no editor. Salvar leva o arquivo para o banco; Sync compara; conflito pergunta.
+void test_build_disk() {
+    const fs::path dir = fs::temp_directory_path() / "fwedit_obi";
+    fs::remove_all(dir);
+    fs::create_directories(dir);
+    spit(dir / "jogo.dmx", "print 1\n");
+    spit(dir / "dados.dat", "DADOS");
+    spit(dir / "Obifile", "target: jogo.dsk\nfiles:\n  - jogo.dmx\n  - dados.dat\n");
+    EditorApp a;
+    a.SetSize(80, 25);
+    a.SetStartDir(dir.string());
+    std::string err;
+    check(a.Open((dir / "jogo.dmx").string(), err), "abre o jogo.dmx");
+
+    K(a, {"A-r", "k"});
+    check(a.Ed().Message().find("Disk built: jogo.dsk, 3 files") != std::string::npos && fs::exists(dir / "jogo.dsk"), "Run > Build disk monta o .dsk do Obifile da pasta (.BMX + dado + AUTOEXEC.BAS)");
+    fs::remove(dir / "jogo.dsk");
+    K(a, {"F6"});
+    check(fs::exists(dir / "jogo.dsk"), "F6 faz o mesmo");
+
+    // o buffer aberto (nao salvo) vale mais que o arquivo da pasta: um erro digitado e' pego
+    a.Ed().SetText("goto {nowhere}\n");
+    K(a, {"F6"});
+    check(a.Ed().Message().find("Build disk: ") != std::string::npos && a.Ed().Message().find("error") != std::string::npos && !a.BuildMessages().empty(), "o buffer com erro (sem salvar) faz a build falhar, com mensagem");
+    bool nowhere = false;
+    for (const ed::BuildMsg &m : a.BuildMessages()) nowhere = nowhere || m.text.find("nowhere") != std::string::npos;
+    check(nowhere, "a mensagem do Badig vira mensagem do editor");
+
+    // erro na receita: leva a' linha do Obifile
+    spit(dir / "Obifile", "target: jogo.dsk\nfiles:\n  - falta.dat\n");
+    a.Ed().SetText("print 1\n");
+    K(a, {"F6"});
+    check(!a.BuildMessages().empty() && a.BuildMessages().front().line == 3 && a.BuildMessages().front().file == "Obifile", "arquivo que falta: a mensagem aponta a linha 3 do Obifile");
+
+    // sem Obifile
+    fs::remove(dir / "Obifile");
+    K(a, {"F6"});
+    check(a.Ed().Message().find("no Obifile") != std::string::npos, "sem Obifile: diz o que falta");
+    fs::remove_all(dir);
+}
+
 void test_print() {
     const fs::path dir = fs::temp_directory_path() / "fwedit_print";
     fs::remove_all(dir);
@@ -1574,6 +1614,7 @@ int main() {
     test_badig_build();
     test_project_editor();
     test_print();
+    test_build_disk();
     std::printf("\n%s (%d falha%s)\n", g_failures == 0 ? "TODOS OS TESTES PASSARAM" : "HA' FALHAS", g_failures, g_failures == 1 ? "" : "s");
     return g_failures == 0 ? 0 : 1;
 }

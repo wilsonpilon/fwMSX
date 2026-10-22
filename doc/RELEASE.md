@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.11 -- "Yie Ar Kung-Fu: Receita de disco" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "apenas o obi com nossas ferramentas, ainda nao esta na hora de mexer com o kizuna, so quero algo facil para ter uma receita que pega o .DMX, o .ASM, um .DAT/.BIN, um .SPRITE, um .SCR, etc.. para gerar um .DSK pronto para rodar no fwMSX". Decisoes (AskUserQuestion): boot por `AUTOEXEC.BAS` gerado **e** opcao `dos: true`; aparecer no console/CLI, no menu Run do editor e como arquivo do `.msxproject`.
+- **Achado ao ler o Kizuna**: o `Obifile` dele e' so' a receita; quem trabalha sao `kaji80`/`wirth80`/`dignac`/`musubi`/`hako` e o objeto `.MOB`, que o fwMSX nao tem. Converter so' o `obi` nao montaria nada, entao o `obi` do fwMSX fala com `fwasm`/`badig`/`msxdisk` e mantem so' a sintaxe.
+- **Desenho**: `obi::Build` recebe um `Reader` (como o `badig::SourceReader` da 1.43.7): o editor passa buffers abertos + banco do projeto e a build enxerga o que esta' na tela. As mensagens saem estruturadas (`obi::Message`: arquivo, linha) para o F8 do editor.
+- **Nao testado**: `dos: true` (falta um `msxdos1.dsk` nos testes); esse caminho so' tem os testes de erro.
+- Validado: Windows e Linux, `ctest` 100% (33 testes, com o `obi` novo).
+
+---
+
 ## v1.43.10 -- "Yie Ar Kung-Fu: Imprimir em PDF" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "Vamos entao para a E7". Escopo escolhido (AskUserQuestion): imprimir **em PDF reaproveitando o `mamute_pdf`** (nao impressora do sistema); depois Document format, Outline, Load more / Write to cursor / Top of file e preview de Markdown, em versoes seguintes. O `Obifile` parte do Kizuna (Go, `resource/kizuna/pkg/obi`), a converter depois da E7.

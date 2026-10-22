@@ -268,6 +268,7 @@ private:
     void BuildBadigSetup(int page);
     void ReadBadigPage(const DialogBox &d, int page);
     bool BuildRun();
+    bool BuildDisk();                                          // Run > Build disk (F6): monta o .dsk da receita (Obifile) do projeto ou da pasta
     void BuildStep(int dir);
     void BuildGoto(int i);
     void BasicLineGoto(const std::string &text); // erro de execucao do BASIC ("Syntax error in 130") -> a linha do .dmx

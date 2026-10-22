@@ -40,7 +40,7 @@ bool IsAppCmd(Cmd c) {
     switch (c) {
     case Cmd::Window2: case Cmd::CloseWindow: case Cmd::DividerUp: case Cmd::DividerDown: case Cmd::WindowDiff:
     case Cmd::New: case Cmd::Exit: case Cmd::Outline: case Cmd::Print: case Cmd::PrintBlock: case Cmd::EjectPage:
-    case Cmd::Assemble: case Cmd::RunMsx: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord: case Cmd::BadigSetup: case Cmd::BasicLine:
+    case Cmd::Assemble: case Cmd::RunMsx: case Cmd::BuildDisk: case Cmd::NextError: case Cmd::PrevError: case Cmd::ErrorList: case Cmd::HelpWord: case Cmd::BadigSetup: case Cmd::BasicLine:
     case Cmd::ProjectNew: case Cmd::ProjectOpen: case Cmd::ProjectClose: case Cmd::ProjectFiles: case Cmd::ProjectAdd: case Cmd::ProjectSync:
         return true;
     default:
@@ -518,6 +518,9 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         return true;
     case Cmd::RunMsx:
         BuildRun();
+        return true;
+    case Cmd::BuildDisk:
+        BuildDisk();
         return true;
     case Cmd::NextError:
         BuildStep(+1);

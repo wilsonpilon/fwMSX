@@ -461,6 +461,17 @@ set(BADIG_LIB_SOURCES
         src/badig/asm/badig_str.asm
 )
 
+# obi: a receita (Obifile) que monta um .dsk pronto para rodar. C++ (receita, build, comando), C (nomes 8.3), Fortran (clusters), NASM (CRC-32).
+# doc/obi-spec.md. Usa o fwasm, o badig e o msxdisk; o comando `obi` do console e o Run > Build disk do editor usam a mesma biblioteca.
+set(OBI_LIB_SOURCES
+        src/obi/cpp/obi_parse.cpp
+        src/obi/cpp/obi_build.cpp
+        src/obi/cpp/obi_cli.cpp
+        src/obi/c/obi_name.c
+        src/obi/fortran/obi_fit.f90
+        src/obi/asm/obi_crc.asm
+)
+
 # O projeto .msxproject (SQLite + copias soltas): C++ (banco e sincronizacao), C (tipo pela extensao), Fortran (caminho seguro), NASM (hash sem CR).
 # doc/project-spec.md. Usa o SHA-1 do romdb e o sqlite3.
 set(PROJECT_LIB_SOURCES
@@ -472,7 +483,7 @@ set(PROJECT_LIB_SOURCES
 )
 
 # O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto. O comando `project` do console usa o projeto.
-list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${PROJECT_LIB_SOURCES})
+list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${PROJECT_LIB_SOURCES} ${OBI_LIB_SOURCES})
 
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
@@ -737,6 +748,8 @@ set(EDITOR_LIB_SOURCES
         src/editor/asm/ed_hash.asm
         ${FWASM_LIB_SOURCES}
         ${BADIG_LIB_SOURCES}
+        ${OBI_LIB_SOURCES} # Run > Build disk
+        ${MSXDISK_CORE_SOURCES}
 )
 add_executable(edittest tests/editor/editor_test.cpp ${EDITOR_LIB_SOURCES})
 set_target_properties(edittest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/edittest)
@@ -778,6 +791,14 @@ if (MINGW)
     target_link_options(badigtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME badig COMMAND badigtest)
+
+# obitest: a receita Obifile -> .dsk (nomes 8.3, CRC-32, clusters, parser, build, erros, leitor do projeto).
+add_executable(obitest tests/obi/obi_test.cpp ${OBI_LIB_SOURCES} ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${MSXDISK_CORE_SOURCES})
+set_target_properties(obitest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/obitest)
+if (MINGW)
+    target_link_options(obitest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME obi COMMAND obitest)
 
 # projecttest: o .msxproject (banco, configuracao, caminhos), as copias soltas sincronizadas por hash de base, conflitos, copia para outro PC e import de pasta.
 add_executable(projecttest tests/project/project_test.cpp ${PROJECT_LIB_SOURCES})

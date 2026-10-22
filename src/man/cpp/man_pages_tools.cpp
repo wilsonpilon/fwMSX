@@ -186,7 +186,8 @@ MENUS (Alt+letra, ou F10; setas, Enter, a letra do item, Esc)
                Window Differences, Text in Block, Complete word
   View (V)     Information, Outline, Language, 2nd window (F2)
   Project (J)  New/Open/Close project, Files, Add current file, Sync
-  Run (R)      Assemble/Convert (F9), Run on MSX (F5), Next/Previous message
+  Run (R)      Assemble/Convert (F9), Run on MSX (F5), Build disk (F6), Next/Previous
+               message
                (F8, Shift-F8), Messages, BASIC line, Dignified setup
   Tools (T)    Display, Mouse, Editor, Save configuration, Text layout setup,
                Word wrap, Auto indent, Expand tabs, Put in Tabs, Insert/Remove
@@ -229,6 +230,48 @@ ARQUIVOS
 
 VER TAMBEM
   project, badig, asm, asmrun)MAN");
+
+    add("obi", "obi <build|check> [Obifile]", "monta um disquete .dsk pronto para rodar a partir de uma receita (Obifile)",
+        R"MAN(DESCRICAO
+  O obi le uma receita de texto (Obifile) com os arquivos do seu programa -- o
+  fonte Basic Dignified (.dmx), o fonte Assembly (.asm), dados (.dat, .bin),
+  sprites (.spr), telas (.scr)... -- converte o que precisa e grava tudo num
+  disquete .dsk de 720 KB que o fwMSX roda sozinho.
+
+COMANDOS
+  obi build [Obifile]      monta e grava o .dsk (sem argumento: o Obifile da
+                           pasta atual, ou o primeiro *.obi)
+  obi check [Obifile]      monta e confere tudo, sem gravar o .dsk
+  obirun [Obifile]         no console do emulador: monta, insere o disco em A: e
+                           reinicia (o emulador precisa de --disk)
+  fwmsx --obi build ...    o mesmo, fora do emulador
+  Run > Build disk (F6)    no editor: usa o Obifile aberto, o do projeto ou o da
+                           pasta do arquivo; os fontes vem dos buffers abertos
+
+O OBIFILE
+  # comentario
+  target: jogo.dsk          o disco a gerar
+  boot: JOGO.BMX            quem roda sozinho (padrao: o primeiro .BMX)
+  dos: false                true = parte de um disco de sistema do MSX-DOS
+  dos_disk: msxdos1.dsk     o disco de sistema (com dos: true)
+  files:
+    - jogo.dmx              Basic Dignified -> JOGO.BMX
+    - rotina.asm            Assembly -> ROTINA.BIN, .COM ou .ROM
+    - dados.dat             copiado como esta'
+    - source: hero.spr      outro nome no disco
+      name: HERO.SPR
+
+COMO O DISCO INICIA
+  boot: X.BMX  -> AUTOEXEC.BAS com RUN "X.BMX"
+  boot: X.BIN  -> AUTOEXEC.BAS com BLOAD "X.BIN",R
+  boot: X.COM  -> AUTOEXEC.BAT (precisa de dos: true)
+
+NOMES
+  No disco o nome e' o do arquivo em maiusculas, no formato 8.3. Se nao couber a
+  build para e pede "name:". O log mostra cada arquivo com tamanho e CRC-32.
+
+VER TAMBEM
+  badig, asm, asmrun, project, editor)MAN");
 
     add("romdb", "romdb <comando> [opcoes]", "banco de ROMs: downloads, busca, verificacao",
         R"MAN(DESCRICAO
