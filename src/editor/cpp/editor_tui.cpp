@@ -53,6 +53,20 @@ Pal SynPal(int scheme, uint8_t style) {
     case kSynBiosSt: return {Color::RedLight, bg, true};
     case kSynHeadingSt: return {Color::YellowLight, bg, true};
     case kSynErrorSt: return {Color::RedLight, bg, true, true};
+    // preview do Markdown
+    case kSynMdH2St: return {blue ? Color::GreenLight : Color::GreenLight, bg, true};
+    case kSynMdH3St: return {Color::CyanLight, bg, true};
+    case kSynMdBoldSt: return {Color::White, bg, true};
+    case kSynMdItalicSt: return {blue ? Color::CyanLight : Color::Cyan, bg};
+    case kSynMdCodeSt: return {blue ? Color::YellowLight : Color::GreenLight, bg};
+    case kSynMdLinkSt: return {blue ? Color::CyanLight : Color::BlueLight, bg, false, true};
+    case kSynMdUrlSt: return {blue ? Color::GrayLight : Color::GrayDark, bg};
+    case kSynMdQuoteSt: return {blue ? Color::GreenLight : Color::GrayLight, bg};
+    case kSynMdRuleSt: return {blue ? Color::GrayLight : Color::GrayDark, bg};
+    case kSynMdBlockSt: return {blue ? Color::YellowLight : Color::Cyan, bg};
+    case kSynMdTableSt: return {blue ? Color::White : Color::GrayLight, bg};
+    case kSynMdBulletSt: return {Color::MagentaLight, bg, true};
+    case kSynMdImageSt: return {Color::MagentaLight, bg};
     default: return {Color::White, bg};
     }
 }

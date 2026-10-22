@@ -186,6 +186,8 @@ Em aberto: (3) como a barra de menus comporta os novos menus (80 colunas); (10) 
 
 ## 7. Estado (atualizado em 2026-10-22)
 
+**1.43.15: E7 encerrada.** O preview do Markdown e' um modo da janela (`Editor::SetPreview`, F7), colorido pelas classes `kSynMd*`; o arquivo em partes (`load_limit`, `has_tail_`, `spill_`) tem o Save que junta o topo gravado, o buffer e o resto do original. Preview dividido ao vivo: nao feito.
+
 **1.43.14: E7 parte 3.** `Editor::Outline()` (por linguagem) e o preview de Markdown (`markdown.h/.cpp`, F7): texto simples numa lista de rolagem; sem tela dividida ao vivo nem cores.
 
 **1.43.13: E7 parte 2.** `Paragraph format`/`Document format` (`Editor::FormatRange`): a largura do campo comeca na margem esquerda, o recuo da 1a linha conta dentro dela, linhas em branco e `\f` separam paragrafos.

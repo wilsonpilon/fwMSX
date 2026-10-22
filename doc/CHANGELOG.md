@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.15] - 2026-10-22 - "Yie Ar Kung-Fu: Markdown colorido" (Konami)
+
+### Adicionado -- fecha a fase E7 do editor
+- **Preview do Markdown com cores, na propria janela** (`F7` alterna entre o texto puro e o renderizado; `Esc` tambem volta). Substitui o dialogo da 1.43.14. Na TUI e na janela grafica: titulo 1 (maiusculas, `===`), titulo 2 (`---`), titulo 3, **negrito**, *italico*, `codigo`, links (texto e `(url)` em cores diferentes), imagens, citacoes, marcadores de lista, blocos de codigo, tabelas e linha horizontal, cada tipo com a sua cor do esquema atual (12 classes de cor novas, `kSynMd*`). Rola com setas, PgUp/PgDn, Home/End e a roda do mouse; a barra de estado mostra `Preview`. No preview a janela e' so' leitura (nada edita o texto).
+- **Arquivos maiores que a memoria** (`File > Load more`, `Write to cursor`, `Top of file`), antes desabilitados: o `Load` traz no maximo `load_limit` bytes (padrao 256 MiB, chave `load_limit_kb` no `fwedit.cfg`; 0 = tudo), cortando numa quebra de linha; **Load more** traz a proxima parte; **Write to cursor** manda as linhas acima do cursor para um temporario e libera a memoria; **Top of file** traz o topo de volta. O **Save junta tudo** -- o topo gravado, o buffer e o resto do original por ler -- num arquivo ao lado que so' substitui o original no fim (o original e' a fonte do que falta); o Ctrl-Z e o CRLF do arquivo continuam como estavam. Se o arquivo mudou no disco, o Load more recusa. Enquanto o arquivo esta' em partes a barra mostra `Part`; montar (F9) e a sessao ignoram o editor (so' veriam um pedaco do texto).
+- Testes: `edittest` (arquivo em partes byte a byte, Write to cursor, Top of file, Ctrl-Z; classes do Markdown) e `editorui` (o preview, as cores e o bloqueio da edicao).
+- **E7 encerrada.** Fica de fora, por decisao: preview dividido ao vivo (texto de um lado e renderizado do outro).
+
 ## [1.43.14] - 2026-10-22 - "Yie Ar Kung-Fu: Outline e preview" (Konami)
 
 ### Adicionado -- fase E7 do editor, parte 3

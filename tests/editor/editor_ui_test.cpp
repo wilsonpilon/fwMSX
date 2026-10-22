@@ -1352,17 +1352,36 @@ void test_preview() {
     a.Ed().SetLanguage(ed::LangById("plain"), true);
     a.Ed().SetText("# Oi\n");
     K(a, {"F7"});
-    check(!a.HasDialog() && a.Ed().Message().find("not a Markdown") != std::string::npos, "F7 fora de um .md so' avisa");
+    check(!a.Ed().Previewing() && a.Ed().Message().find("not a Markdown") != std::string::npos, "F7 fora de um .md so' avisa");
     a.Ed().SetLanguage(ed::LangById("markdown"), true);
-    a.Ed().SetText("# Titulo Grande\n\nUm paragrafo com **negrito**.\n\n- item A\n- item B\n");
+    a.Ed().SetText("# Titulo Grande\n\nUm paragrafo com **negrito** e `codigo`.\n\n- item A\n- item B\n");
     K(a, {"F7"});
-    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Preview && screen_has(a, "TITULO GRANDE") && screen_has(a, "Um paragrafo com negrito.") && screen_has(a, "* item B"),
-          "View > Markdown preview (F7) mostra o texto renderizado");
+    check(a.Ed().Previewing() && screen_has(a, "TITULO GRANDE") && screen_has(a, "Um paragrafo com negrito e codigo.") && screen_has(a, "* item B") && screen_has(a, "Preview"),
+          "F7 mostra o Markdown renderizado na propria janela, com Preview na barra de estado");
+    // as cores: o titulo, o negrito, o codigo e o marcador da lista tem cada um o seu estilo
+    ed::Grid g;
+    a.Render(g);
+    uint8_t title = 255, bold = 255, code = 255, bullet = 255, plain = 255;
+    for (int y = 1; y < g.rows - 1; ++y) {
+        std::string row;
+        for (int x = 0; x < g.cols; ++x) row.push_back(static_cast<char>(g.at(x, y).ch < 128 ? g.at(x, y).ch : ' '));
+        auto at = [&](const char *w) { const size_t p = row.find(w); return p == std::string::npos ? static_cast<uint8_t>(255) : g.at(static_cast<int>(p), y).style; };
+        if (at("TITULO") != 255) title = at("TITULO");
+        if (at("negrito") != 255) bold = at("negrito");
+        if (at("codigo") != 255) code = at("codigo");
+        if (at("* item A") != 255) bullet = at("* item A");
+        if (at("Um paragrafo") != 255) plain = at("Um paragrafo");
+    }
+    check(title == ed::kSynHeadingSt && bold == ed::kSynMdBoldSt && code == ed::kSynMdCodeSt && bullet == ed::kSynMdBulletSt && plain == ed::kText, "cada tipo de trecho tem a sua cor (titulo, negrito, codigo, lista, texto)");
+    K(a, {"x"});
+    K(a, {"Down"});
+    check(a.Ed().Text().find("x") == std::string::npos, "no preview as teclas de edicao nao editam");
     K(a, {"Esc"});
-    check(!a.HasDialog() && a.Ed().Text().find("**negrito**") != std::string::npos, "Esc fecha e o texto continua o mesmo");
+    check(!a.Ed().Previewing() && a.Ed().Text().find("**negrito**") != std::string::npos, "Esc volta ao texto puro, que nao mudou");
     K(a, {"A-v", "p"});
-    check(a.HasDialog() && a.Current()->kind == ed::Dialog::Preview, "pelo menu tambem");
-    K(a, {"Esc"});
+    check(a.Ed().Previewing(), "pelo menu tambem");
+    K(a, {"F7"});
+    check(!a.Ed().Previewing(), "F7 de novo volta ao texto");
 }
 
 void test_print() {

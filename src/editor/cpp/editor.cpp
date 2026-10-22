@@ -205,7 +205,7 @@ std::vector<std::string> Editor::PrintLines(bool block) const {
 bool Editor::ItemEnabled(const MenuItem &item) const {
     const CmdInfo &ci = Info(item.cmd);
     if (!ci.implemented) return false;
-    if (read_only_ && ci.destructive) return false;
+    if ((read_only_ || preview_) && ci.destructive) return false;
     return true;
 }
 
@@ -425,7 +425,7 @@ void Editor::MoveSel(Cmd base) {
 // ---------------------------------------------------------------------------------------------------------------
 
 bool Editor::InsertLiteral(const std::string &base, bool ctrl) {
-    if (read_only_) return true;
+    if (read_only_ || preview_) return true;
     int byte = -1;
     if (base.size() == 1) {
         const int c = static_cast<unsigned char>(base[0]);
@@ -522,7 +522,7 @@ bool Editor::DispatchMenuLetter(char menu, const std::string &canon) {
 bool Editor::Type(const std::string &text) {
     message_.clear();
     if (text.empty()) return false;
-    if (read_only_) return true; // modo leitura: a tecla nao faz nada
+    if (read_only_ || preview_) return true; // modo leitura: a tecla nao faz nada
     undel_valid_ = false;
     found_here_ = false;
     BeginGroup(last_typed_ && cur_ == last_type_end_);
@@ -608,7 +608,7 @@ bool Editor::Execute(Cmd cmd, int arg) {
         message_ = std::string(ci.name) + ": not available yet";
         return false;
     }
-    if (read_only_ && ci.destructive) return true; // consumida, sem efeito: o destrutivo fica desligado na leitura
+    if ((read_only_ || preview_) && ci.destructive) return true; // consumida, sem efeito: o destrutivo fica desligado na leitura
     if (cmd != Cmd::Literal) last_typed_ = false;
     if (!IsDeleteCmd(cmd) && cmd != Cmd::Undelete) undel_valid_ = false;
     if (cmd != Cmd::ContinueFwd && cmd != Cmd::ContinueRev && cmd != Cmd::TextInBlock) found_here_ = false;
@@ -918,6 +918,15 @@ bool Editor::Execute(Cmd cmd, int arg) {
         return true;
     case Cmd::ParagraphFormat:
         FormatParagraphCmd();
+        return true;
+    case Cmd::LoadMore:
+        LoadMoreCmd();
+        return true;
+    case Cmd::WriteToCursor:
+        WriteToCursorCmd();
+        return true;
+    case Cmd::TopOfFile:
+        TopOfFileCmd();
         return true;
     case Cmd::WordWrap:
         set_.word_wrap = !set_.word_wrap;

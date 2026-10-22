@@ -344,7 +344,7 @@ void EditorPanel::DrawStatus() {
     std::string left = "Lin " + std::to_string(e.Cursor().line + 1) + ", Col " + std::to_string(e.DisplayCol(e.Cursor()) + 1);
     ImGui::TextUnformatted(left.c_str());
     ImGui::SameLine(0, 24);
-    ImGui::TextDisabled("%s", e.ReadOnly() ? "Somente leitura" : (e.InsertMode() ? "Insert" : "Sobrescrever"));
+    ImGui::TextDisabled("%s", e.Previewing() ? "Visualizacao" : (e.ReadOnly() ? "Somente leitura" : (e.InsertMode() ? "Insert" : "Sobrescrever")));
     ImGui::SameLine(0, 16);
     ImGui::TextUnformatted(e.Language()->Name().c_str()); // a linguagem do destaque: clicar escolhe outra
     if (ImGui::IsItemHovered()) {
@@ -501,12 +501,78 @@ void EditorPanel::ContextMenu(Editor &ed) {
     ImGui::EndPopup();
 }
 
+// O Markdown renderizado: as linhas e as cores vem do modelo (markdown.h), a rolagem e' a do ImGui (a roda do mouse e a barra) e as teclas
+// (setas, PgUp/PgDn) movem o topo no modelo; os dois se acompanham como no texto comum.
+void EditorPanel::DrawPreviewPane(int pane, ImVec2 size, Editor &ed) {
+    PaneState &st = panes_[pane];
+    if (mono_) ImGui::PushFont(mono_, mono_size_);
+    ImFont *font = ImGui::GetFont();
+    const float fs = ImGui::GetFontSize();
+    static const std::string kProbe(64, 'M');
+    const float cw = std::max(1.0f, ImGui::CalcTextSize(kProbe.c_str()).x / 64.0f);
+    const float lh = std::ceil(fs * 1.35f);
+    const ImU32 fg = ImGui::GetColorU32(ImGuiCol_Text);
+    const ImVec4 wbg = ImGui::GetStyleColorVec4(ImGuiCol_WindowBg);
+    const bool dark = wbg.x * 0.299f + wbg.y * 0.587f + wbg.z * 0.114f < 0.5f;
+    const float sb = ImGui::GetStyle().ScrollbarSize;
+    const int cols = std::max(20, static_cast<int>((size.x - sb) / cw) - 2);
+    const std::vector<MdLine> &lines = ed.PreviewLines(cols);
+    const int n = static_cast<int>(lines.size());
+    ImGui::PushStyleColor(ImGuiCol_ChildBg, ImGui::GetColorU32(ImGuiCol_FrameBg));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    if (ed.PreviewTop() != st.last_top) ImGui::SetNextWindowScroll(ImVec2(0, static_cast<float>(ed.PreviewTop()) * lh));
+    ImGui::SetNextWindowContentSize(ImVec2(0, static_cast<float>(n + 1) * lh));
+    const std::string child_id = "##edprev" + std::to_string(pane);
+    if (ImGui::BeginChild(child_id.c_str(), size, ImGuiChildFlags_None, ImGuiWindowFlags_NoNavInputs)) {
+        const ImVec2 origin = ImGui::GetCursorScreenPos();
+        const ImVec2 wsize = ImGui::GetWindowSize();
+        const int rows = std::max(1, static_cast<int>(wsize.y / lh));
+        ed.SetViewSize(cols, rows, false);
+        const int first = std::max(0, static_cast<int>(ImGui::GetScrollY() / lh));
+        ed.SetPreviewTop(first);
+        st.last_top = ed.PreviewTop();
+        ImDrawList *dl = ImGui::GetWindowDrawList();
+        const int last = std::min(n, first + rows + 2);
+        for (int l = first; l < last; ++l) {
+            const MdLine &ml = lines[static_cast<size_t>(l)];
+            const float text_y = origin.y + static_cast<float>(l) * lh + (lh - fs) / 2;
+            size_t i = 0;
+            while (i < ml.text.size()) { // um trecho por classe
+                size_t j = i;
+                std::string run;
+                while (j < ml.text.size() && ml.cls[j] == ml.cls[i]) {
+                    const unsigned char ch = static_cast<unsigned char>(ml.text[j]);
+                    AppendUtf8(run, (ch < 32 || ch == 127 || (ch >= 0x80 && ch < 0xA0)) ? 0xB7u : ch);
+                    ++j;
+                }
+                if (run.find_first_not_of(' ') != std::string::npos) {
+                    bool bold = false;
+                    const uint8_t sc = MdToSynClass(ml.cls[i]);
+                    const ImU32 col = sc == 0 ? fg : ColRgb(SyntaxRgb(sc, dark, &bold));
+                    const ImVec2 pt(origin.x + static_cast<float>(1 + i) * cw, text_y);
+                    dl->AddText(font, fs, pt, col, run.c_str(), run.c_str() + run.size());
+                    if (bold) dl->AddText(font, fs, ImVec2(pt.x + 1, pt.y), col, run.c_str(), run.c_str() + run.size());
+                }
+                i = j;
+            }
+        }
+    }
+    ImGui::EndChild();
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor();
+    if (mono_) ImGui::PopFont();
+}
+
 void EditorPanel::DrawPane(int pane, ImVec2 size) {
     const int doc = app_.PaneDoc(pane);
     Editor &ed = app_.Win(doc);
     PaneState &st = panes_[pane];
     ImGuiIO &io = ImGui::GetIO();
     const bool is_active = doc == app_.Active();
+    if (ed.Previewing()) {
+        DrawPreviewPane(pane, size, ed);
+        return;
+    }
 
     if (mono_) ImGui::PushFont(mono_, mono_size_);
     ImFont *font = ImGui::GetFont();

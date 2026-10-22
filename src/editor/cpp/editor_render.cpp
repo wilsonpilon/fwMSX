@@ -43,6 +43,7 @@ void Editor::SetViewSize(int cols, int text_rows, bool reveal) {
 }
 
 bool Editor::CursorScreen(int &x, int &y) const {
+    if (preview_) return false; // o texto renderizado nao tem cursor
     x = DisplayCol(cur_) - left_ + Gutter();
     y = cur_.line - top_ + 1;
     return x >= 0 && x < cols_ - 1 && y >= 1 && y <= TextRows();
@@ -83,7 +84,100 @@ void Editor::Render(Grid &g) const {
     RenderStatus(g, rows_ - 1);
 }
 
+namespace {
+
+// A cor de cada classe do Markdown renderizado: as do destaque de sintaxe (a TUI e a janela ja' pintam as duas).
+uint8_t MdStyle(uint8_t cls) { return SynStyle(MdToSynClass(cls)); }
+
+} // namespace
+
+uint8_t MdToSynClass(uint8_t md_class) {
+    switch (md_class) {
+    case kMdH1: return kSynHeading;
+    case kMdH2: return kSynMdH2;
+    case kMdH3: return kSynMdH3;
+    case kMdBold: return kSynMdBold;
+    case kMdItalic: return kSynMdItalic;
+    case kMdCode: return kSynMdCode;
+    case kMdLink: return kSynMdLink;
+    case kMdUrl: return kSynMdUrl;
+    case kMdImage: return kSynMdImage;
+    case kMdQuote: return kSynMdQuote;
+    case kMdBullet: return kSynMdBullet;
+    case kMdRule: return kSynMdRule;
+    case kMdBlock: return kSynMdBlock;
+    case kMdTable: return kSynMdTable;
+    default: return kSynNone;
+    }
+}
+
+void Editor::PreviewBuild(int width) const {
+    if (pv_rev_ == rev_ && pv_width_ == width && !pv_lines_.empty()) return;
+    pv_lines_ = RenderMarkdownStyled(lines_, width);
+    pv_rev_ = rev_;
+    pv_width_ = width;
+}
+
+bool Editor::SetPreview(bool on) {
+    if (!on) {
+        preview_ = false;
+        return true;
+    }
+    if (!lang_ || lang_->Id() != "markdown") {
+        message_ = "Preview: this is not a Markdown file (View > Language)";
+        return false;
+    }
+    preview_ = true;
+    pv_top_ = 0;
+    pv_rev_ = 0;
+    // abre perto de onde se estava: a primeira linha renderizada que traz o titulo mais perto, acima do cursor
+    return true;
+}
+
+void Editor::PreviewScroll(int delta) {
+    const int n = static_cast<int>(pv_lines_.size());
+    pv_top_ = std::max(0, std::min(pv_top_ + delta, std::max(0, n - TextRows())));
+}
+
+void Editor::PreviewTo(int line) {
+    pv_top_ = 0;
+    PreviewScroll(line);
+}
+
+void Editor::RenderPreview(Grid &g, int y0, bool scrollbar) const {
+    const int h = TextRows();
+    const int width = scrollbar ? cols_ - 1 : cols_;
+    PreviewBuild(std::max(20, width - 2));
+    const int n = static_cast<int>(pv_lines_.size());
+    const int top = std::max(0, std::min(pv_top_, std::max(0, n - h)));
+    for (int row = 0; row < h; ++row) {
+        const int l = top + row;
+        if (l >= n) break;
+        const MdLine &ml = pv_lines_[static_cast<size_t>(l)];
+        for (size_t i = 0; i < ml.text.size(); ++i) {
+            const int x = 1 + static_cast<int>(i);
+            if (x >= width) break;
+            Cell &c = g.at(x, y0 + row);
+            c.ch = static_cast<unsigned char>(ml.text[i]);
+            c.style = MdStyle(ml.cls[i]);
+        }
+    }
+    if (!scrollbar) return;
+    PutWide(g, cols_ - 1, y0, 0x2191, kScrollArrow);
+    PutWide(g, cols_ - 1, y0 + h - 1, 0x2193, kScrollArrow);
+    const int track = std::max(0, h - 2);
+    for (int i = 0; i < track; ++i) PutWide(g, cols_ - 1, y0 + 1 + i, 0x2591, kScrollTrack);
+    if (track > 0) {
+        const int span = std::max(1, n - h);
+        PutWide(g, cols_ - 1, y0 + 1 + (n <= h ? 0 : std::min(track - 1, top * track / span)), 0x2588, kScrollThumb);
+    }
+}
+
 void Editor::RenderBody(Grid &g, int y0, bool scrollbar) const {
+    if (preview_) {
+        RenderPreview(g, y0, scrollbar);
+        return;
+    }
     const int h = TextRows();
     Pos ba, bb;
     const bool has_block = BlockRange(ba, bb);
@@ -157,9 +251,10 @@ void Editor::RenderStatus(Grid &g, int sy, const std::string &project) const {
     std::string name = name_.empty() ? "Untitled" : name_;
     if (name.size() > 20) name = name.substr(name.size() - 20);
     g.Put(kColName, sy, name, kBar);
-    g.Put(kColMode, sy, read_only_ ? "View" : (insert_ ? "Insert" : "Over"), kBar);
+    g.Put(kColMode, sy, preview_ ? "Preview" : (read_only_ ? "View" : (insert_ ? "Insert" : "Over")), kBar);
     g.Put(kColWw, sy, set_.word_wrap ? "WW=On" : "WW=Off", kBar);
     if (set_.auto_indent) g.Put(kColAuto, sy, "Auto", kBar);
+    else if (Partial()) g.Put(kColAuto, sy, "Part", kBar); // o arquivo esta' em partes (Load more / Write to cursor)
     if (!message_.empty()) {
         // a mensagem passageira cobre o nome do arquivo (o NE tambem usa a barra de estado para avisos)
         g.Put(kColName - 4, sy, std::string(static_cast<size_t>(kColMode - kColName + 4), ' '), kBar);

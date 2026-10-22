@@ -184,8 +184,8 @@ MENUS (Alt+letra, ou F10; setas, Enter, a letra do item, Esc)
                Center line
   Search (S)   Find, Find and Replace, Continue, Line number, Matching bracket,
                Window Differences, Text in Block, Complete word
-  View (V)     Information, Outline, Markdown preview (F7), Language, 2nd window
-               (F2)
+  View (V)     Information, Outline, Markdown preview (F7: texto/renderizado),
+               Language, 2nd window (F2)
   Project (J)  New/Open/Close project, Files, Add current file, Sync
   Run (R)      Assemble/Convert (F9), Run on MSX (F5), Build disk (F6), Next/Previous
                message
@@ -206,7 +206,14 @@ TECLAS DO NORTON (continuam as mesmas)
 INDICE E PREVIEW
   View > Outline display lista os titulos (Markdown), as linhas REM (MSX-BASIC),
   os rotulos (Assembly) ou as linhas da coluna 1, e Enter salta para a escolhida.
-  View > Markdown preview (F7) mostra o .md renderizado; Esc fecha.
+  View > Markdown preview (F7) alterna a janela entre o texto e o .md renderizado
+  com cores (titulos, listas, codigo, links...); F7 ou Esc volta ao texto.
+
+ARQUIVOS GRANDES
+  O editor le ate' 256 MiB por vez (load_limit_kb no fwedit.cfg). Se o arquivo e'
+  maior a barra mostra Part: File > Load more traz a proxima parte, Write to
+  cursor manda as linhas acima do cursor para o disco e Top of file as traz de
+  volta. O Save grava sempre o arquivo inteiro.
 
 FORMATAR
   Edit > Paragraph format (Alt-E P) refaz as quebras de linha do paragrafo do

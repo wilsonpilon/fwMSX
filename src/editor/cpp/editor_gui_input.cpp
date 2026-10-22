@@ -85,6 +85,19 @@ Rgb SyntaxRgb(uint8_t cls, bool dark, bool *bold) {
     case kSynBios: if (bold) *bold = false; return dark ? Rgb{79, 193, 255} : Rgb{0, 112, 193};
     case kSynHeading: if (bold) *bold = true; return dark ? Rgb{86, 156, 214} : Rgb{0, 0, 200};
     case kSynError: if (bold) *bold = true; return dark ? Rgb{244, 71, 71} : Rgb{205, 49, 49};
+    case kSynMdH2: if (bold) *bold = true; return dark ? Rgb{78, 201, 176} : Rgb{0, 128, 128};
+    case kSynMdH3: if (bold) *bold = true; return dark ? Rgb{156, 220, 254} : Rgb{0, 16, 128};
+    case kSynMdBold: if (bold) *bold = true; return dark ? Rgb{255, 255, 255} : Rgb{0, 0, 0};
+    case kSynMdItalic: return dark ? Rgb{197, 134, 192} : Rgb{175, 0, 219};
+    case kSynMdCode: return dark ? Rgb{206, 145, 120} : Rgb{163, 21, 21};
+    case kSynMdLink: return dark ? Rgb{86, 156, 214} : Rgb{0, 0, 200};
+    case kSynMdUrl: return dark ? Rgb{133, 133, 133} : Rgb{120, 120, 120};
+    case kSynMdQuote: return dark ? Rgb{106, 153, 85} : Rgb{0, 128, 0};
+    case kSynMdRule: return dark ? Rgb{110, 110, 110} : Rgb{150, 150, 150};
+    case kSynMdBlock: return dark ? Rgb{181, 206, 168} : Rgb{9, 134, 88};
+    case kSynMdTable: return dark ? Rgb{212, 212, 212} : Rgb{60, 60, 60};
+    case kSynMdBullet: if (bold) *bold = true; return dark ? Rgb{220, 220, 170} : Rgb{121, 94, 38};
+    case kSynMdImage: return dark ? Rgb{197, 134, 192} : Rgb{175, 0, 219};
     default: return dark ? Rgb{212, 212, 212} : Rgb{30, 30, 30};
     }
 }

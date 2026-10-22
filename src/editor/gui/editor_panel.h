@@ -57,6 +57,7 @@ private:
     void DrawTabs();
     void DrawPanes(float height);
     void DrawPane(int pane, ImVec2 size);
+    void DrawPreviewPane(int pane, ImVec2 size, Editor &ed); // o Markdown renderizado (F7) no lugar do texto
     void DrawStatus();
     void DrawProjectTree(float height);  // o painel da esquerda com os arquivos do projeto aberto (clicar abre)
     void DrawDialog();

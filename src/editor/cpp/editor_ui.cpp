@@ -281,6 +281,7 @@ bool EditorApp::SaveSession(const std::string &path) const {
     std::vector<int> keep;
     for (int i = 0; i < WindowCount(); ++i) {
         const Editor &e = wins_[static_cast<size_t>(i)];
+        if (e.Partial()) continue; // a sessao guarda o texto do buffer: de um arquivo em partes seria so' um pedaco
         if (!e.Name().empty() || e.Modified() || e.LineCount() > 1 || !e.Line(0).empty()) keep.push_back(i);
     }
     std::error_code ec;
@@ -587,7 +588,8 @@ bool EditorApp::ExecuteCmd(Cmd cmd, int arg) {
         OutlineStart();
         return true;
     case Cmd::Preview:
-        PreviewStart();
+        if (e.Previewing()) e.SetPreview(false);
+        else if (!e.SetPreview(true)) Msg(e.Message());
         return true;
     case Cmd::EjectPage:
         Msg(std::string(Info(cmd).name) + ": not available yet");
@@ -677,6 +679,20 @@ bool EditorApp::Key(const std::string &canon) {
         OpenMenu(0);
         return true;
     }
+    if (Ed().Previewing()) { // texto renderizado: so' rola; F7/Esc voltam ao texto puro (as outras teclas seguem, mas nao editam)
+        Editor &pe = Ed();
+        const int page = std::max(1, pe.TextRows() - 1);
+        if (canon == "F7" || canon == "Esc") pe.SetPreview(false);
+        else if (canon == "Up") pe.PreviewScroll(-1);
+        else if (canon == "Down") pe.PreviewScroll(1);
+        else if (canon == "PgUp") pe.PreviewScroll(-page);
+        else if (canon == "PgDn") pe.PreviewScroll(page);
+        else if (canon == "Home" || canon == "C-Home") pe.PreviewTo(0);
+        else if (canon == "End" || canon == "C-End") pe.PreviewTo(1 << 20);
+        else goto normal_keys;
+        return true;
+    }
+normal_keys:
     Cmd cmd = LookupCmd(canon);
     if (cmd == Cmd::None && canon.size() == 3 && canon[0] == 'A' && canon[1] == '-') {
         const char l = canon[2];
@@ -918,7 +934,7 @@ void EditorApp::ShowDialog(Dialog d, int arg) {
     case Dialog::MouseSetup: BuildMouse(); break;
     case Dialog::Language: BuildLanguage(); break;
     case Dialog::Errors: BuildMessagesDialog(); break;
-    case Dialog::Outline: case Dialog::Preview: case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: case Dialog::ProjectActions: case Dialog::ProjectRename: case Dialog::ProjectAddFile: case Dialog::ProjectHistory: case Dialog::ProjectRemoved: break; // montados por quem abre
+    case Dialog::Outline: case Dialog::ProjectNew: case Dialog::ProjectOpen: case Dialog::ProjectFiles: case Dialog::ProjectSync: case Dialog::ProjectConflict: case Dialog::ProjectActions: case Dialog::ProjectRename: case Dialog::ProjectAddFile: case Dialog::ProjectHistory: case Dialog::ProjectRemoved: break; // montados por quem abre
     case Dialog::EditorSetup: BuildEditorSetup(); break;
     case Dialog::SaveConfig: BuildSaveConfig(); break;
     case Dialog::Help: BuildHelp(arg, 0); break;
@@ -1449,11 +1465,13 @@ void EditorApp::Wheel(int x, int y, int dy) {
     for (int i = 0; i < static_cast<int>(wins_.size()); ++i) {
         const WinRect r = Rect(i);
         if (y >= r.y0 && y < r.y0 + r.h) {
-            wins_[static_cast<size_t>(i)].ScrollView(dy * 3);
+            if (wins_[static_cast<size_t>(i)].Previewing()) wins_[static_cast<size_t>(i)].PreviewScroll(dy * 3);
+            else wins_[static_cast<size_t>(i)].ScrollView(dy * 3);
             return;
         }
     }
-    Ed().ScrollView(dy * 3);
+    if (Ed().Previewing()) Ed().PreviewScroll(dy * 3);
+    else Ed().ScrollView(dy * 3);
 }
 
 // ---------------------------------------------------------------------------------------------------------------

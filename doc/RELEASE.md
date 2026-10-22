@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.15 -- "Yie Ar Kung-Fu: Markdown colorido" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "Faca o markdown bonito no TUI tambem, com cores para simular os tipos e tudo mais, permita editar apenas o .MD puro e Visualizar o .MD renderizado, acho melhor do que dividir a tela, salvo se nao der muito trabalho ai deixe como duas opcoes. Faca o ultimo item do E7 para fecharmos este ponto de vez".
+- **Preview**: virou um MODO da janela (nao mais um dialogo): `Editor::SetPreview`, `RenderPreview` (grade da TUI) e `EditorPanel::DrawPreviewPane` (ImGui) leem o mesmo `RenderMarkdownStyled`. Para as cores reaproveitei o caminho do destaque de sintaxe: 12 classes novas (`kSynMd*`) com cor na TUI e na janela. Italico/negrito so' mudam de COR (a grade de celulas nao tem atributo de fonte). A edicao e' bloqueada pelo mesmo caminho do modo somente leitura (`Writable()`).
+- **Preview dividido**: nao feito. Na TUI exigiria uma segunda arvore de desenho (a TUI e' uma grade de celulas, a janela grafica desenha os paineis sozinha), e o usuario preferiu a alternancia. Fica registrado como opcao futura.
+- **Arquivos em partes** (decisao minha entre as duas propostas, pelo "faca o ultimo item"): a variante completa. Seguranca do Save: grava num `.fwtmp` e troca no fim; o `tail` aponta para o original e e' recalculado depois de cada Save; mudanca do arquivo em disco entre o Load e o Load more e' detectada pelo tamanho. O undo e' zerado no Write to cursor / Top of file (as posicoes mudam).
+- Validado: Windows e Linux, `ctest` 100%.
+
+---
+
 ## v1.43.14 -- "Yie Ar Kung-Fu: Outline e preview" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "pode seguir neste caminho" (Outline e preview de Markdown depois do Document format).

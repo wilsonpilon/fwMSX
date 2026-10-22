@@ -146,6 +146,10 @@ bool EditorApp::BuildDignified() {
 
 bool EditorApp::BuildAssemble() {
     Editor &e = Ed();
+    if (e.Partial()) {
+        Msg("Assemble: the file is only partly in memory (File > Top of file / Load more)");
+        return false;
+    }
     if (e.Language() && e.Language()->Id() == "dignified") return BuildDignified();
     if (!e.Language() || e.Language()->Id() != "z80asm") {
         Msg("Assemble: this is not a Z80 assembly or Basic Dignified source (View > Language)");

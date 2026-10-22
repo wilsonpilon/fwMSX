@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "completion.h"
+#include "markdown.h"
 #include "syntax.h"
 
 namespace ed {
@@ -43,6 +44,7 @@ enum Style : uint8_t {
     // destaque de sintaxe (um por SynClass, na mesma ordem; use SynStyle)
     kSynKeywordSt, kSynKeyword2St, kSynDirectiveSt, kSynCommentSt, kSynStringSt, kSynNumberSt, kSynLabelSt, kSynRegisterSt, kSynOperatorSt,
     kSynLineNoSt, kSynVariableSt, kSynBiosSt, kSynHeadingSt, kSynErrorSt,
+    kSynMdH2St, kSynMdH3St, kSynMdBoldSt, kSynMdItalicSt, kSynMdCodeSt, kSynMdLinkSt, kSynMdUrlSt, kSynMdQuoteSt, kSynMdRuleSt, kSynMdBlockSt, kSynMdTableSt, kSynMdBulletSt, kSynMdImageSt,
     kStyleCount
 };
 
@@ -117,7 +119,7 @@ enum class Cmd {
 
 enum class Dialog {
     None, Open, SaveAs, Merge, Find, Replace, LineNumber, BlockIndent, BlockUnindent, BlockOutput, TextSetup,
-    InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline, Preview,
+    InsertPageBreaks, RemovePageBreaks, FormatDocument, ExpandTabs, PutInTabs, PrintSetup, Information, Outline,
     About, DisplaySetup, MouseSetup, EditorSetup, SaveConfig, Help, ConfirmExit, Window2, Language, Errors, Reference, BadigSetup, BasicLine,
     ProjectNew, ProjectOpen, ProjectFiles, ProjectSync, ProjectConflict, ProjectActions, ProjectRename, ProjectAddFile, ProjectHistory, ProjectRemoved,
     PrintTo
@@ -183,8 +185,12 @@ struct Settings {
     int autosave_minutes = 0;     // salvamento automatico periodico (Editor setup); 0 = desligado
     bool autosave_files = false;  // o autosave tambem grava nos arquivos que ja' tem nome (senao so' a sessao de recuperacao)
     bool line_numbers = true;     // numeracao de linhas na margem esquerda (Display setup: Line numbers); o NE nao tinha, os editores de hoje sim
+    long load_limit = 268435456;  // bytes que o Load traz de uma vez (0 = o arquivo todo); o que passa disso vem em partes: File > Load more
     bool auto_complete = false;   // abre a lista de completar sozinha ao digitar (Editor setup: Auto completion); Alt-/ abre sempre
 };
+
+// A classe de destaque (SynClass) que pinta cada MdClass do Markdown renderizado (0 = texto comum).
+uint8_t MdToSynClass(uint8_t md_class);
 
 // Uma linha do Outline: o numero (base 0) e o texto a mostrar.
 struct OutlineEntry {
@@ -219,6 +225,19 @@ public:
 
     // --- arquivo ---------------------------------------------------------------------------------------------------
     bool Load(const std::string &path, std::string &err);
+    // Arquivo maior que a memoria (E7): so' uma parte esta' no buffer. `Partial` = ha' texto fora dele (o resto do arquivo por ler, ou o topo que o
+    // Write to cursor mandou para um arquivo temporario); o Save junta tudo, mas quem usa Text() para outra coisa (montar, guardar a sessao) nao
+    // pode confiar nele.
+    bool Partial() const { return has_tail_ || !spill_.path.empty(); }
+    // Preview do Markdown (E7): a janela mostra o texto renderizado em vez do texto puro (so' leitura); F7 alterna. O cursor e as teclas de
+    // edicao ficam sem efeito enquanto isso.
+    bool Previewing() const { return preview_; }
+    bool SetPreview(bool on);                  // false (+ mensagem) se o arquivo nao e' Markdown
+    void PreviewScroll(int delta);
+    const std::vector<MdLine> &PreviewLines(int width) const { PreviewBuild(width); return pv_lines_; } // a janela grafica desenha ela mesma
+    int PreviewTop() const { return pv_top_; }
+    void SetPreviewTop(int top) { pv_top_ = 0; PreviewScroll(top); }
+    void PreviewTo(int line);                  // a linha do texto renderizado que esta' no topo (a mais perto da linha do fonte: ver PreviewSyncFromCursor)
     bool Save(std::string &err, bool make_backup = true); // grava no nome atual (make_backup = false: nao refaz a copia { )
     bool SaveAs(const std::string &path, std::string &err);
     bool Merge(const std::string &path, std::string &err); // insere o arquivo no cursor
@@ -385,7 +404,7 @@ private:
     std::string LeadingIndent(int line) const;
     void ClearSelectionIfPlain();
     void BeginGroup(bool merge);
-    bool Writable() const { return !read_only_; }
+    bool Writable() const { return !read_only_ && !preview_; }
     bool InsertLiteral(const std::string &base, bool ctrl);
     bool Search(bool fwd);
     bool KeyImpl(const std::string &name);
@@ -421,6 +440,32 @@ private:
     int save_count_ = 0;     // gravacoes bem-sucedidas deste buffer
     int project_seen_ = 0;   // a ultima que o projeto (.msxproject) ja' levou para o banco
     bool autosaved_ = false; // o autosave ja' guardou a copia { do arquivo original
+    bool preview_ = false;
+    int pv_top_ = 0;                          // a 1a linha do texto renderizado que aparece
+    mutable uint64_t pv_rev_ = 0;             // o texto (rev_) e a largura para os quais pv_lines_ vale
+    mutable int pv_width_ = 0;
+    mutable std::vector<MdLine> pv_lines_;
+    void PreviewBuild(int width) const;
+    void RenderPreview(Grid &g, int y0, bool scrollbar) const;
+    // --- arquivo em partes ---
+    struct SpillFile { // o temporario com o topo do texto (Write to cursor); some com o editor
+        std::string path;
+        SpillFile() = default;
+        SpillFile(const SpillFile &) {} // uma copia do editor nao herda o arquivo: so' o original o apaga
+        SpillFile(SpillFile &&o) noexcept : path(std::move(o.path)) { o.path.clear(); }
+        SpillFile &operator=(const SpillFile &) { Drop(); return *this; }
+        SpillFile &operator=(SpillFile &&o) noexcept { if (this != &o) { Drop(); path = std::move(o.path); o.path.clear(); } return *this; }
+        ~SpillFile() { Drop(); }
+        void Drop();
+    };
+    SpillFile spill_;
+    bool has_tail_ = false;      // ainda ha' arquivo por ler depois do que esta' no buffer
+    std::string tail_src_;       // de onde ler o resto
+    long long tail_off_ = 0;     // a partir de que byte (o fim de linha que fecha a ultima linha do buffer e' o primeiro byte do resto)
+    long long tail_size_ = 0;    // o tamanho do arquivo quando foi aberto: se mudar, nao da' para continuar
+    void LoadMoreCmd();
+    void WriteToCursorCmd();
+    void TopOfFileCmd();
     std::string message_;
     std::string profile_ = "norton";
     Settings set_;

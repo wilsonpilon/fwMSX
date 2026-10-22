@@ -52,9 +52,46 @@ std::vector<std::string> SplitLines(const std::string &data, bool crlf) {
     return lines;
 }
 
+// `count` bytes de `path` a partir de `offset` (menos, se o arquivo acabar antes).
+bool ReadRange(const std::string &path, long long offset, long long count, std::string &out, std::string &err) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) {
+        err = "Cannot open " + path;
+        return false;
+    }
+    f.seekg(static_cast<std::streamoff>(offset));
+    out.resize(static_cast<size_t>(std::max(0LL, count)));
+    f.read(&out[0], static_cast<std::streamsize>(out.size()));
+    out.resize(static_cast<size_t>(f.gcount()));
+    return true;
+}
+
+// Copia o arquivo `path` (a partir de `offset`) para o fim de `out`.
+bool AppendFile(std::ofstream &out, const std::string &path, long long offset) {
+    std::ifstream in(path, std::ios::binary);
+    if (!in) return false;
+    in.seekg(static_cast<std::streamoff>(offset));
+    char buf[65536];
+    while (in) {
+        in.read(buf, sizeof(buf));
+        if (in.gcount() > 0) out.write(buf, in.gcount());
+    }
+    return static_cast<bool>(out);
+}
+
 } // namespace
 
+void Editor::SpillFile::Drop() {
+    if (path.empty()) return;
+    std::error_code ec;
+    fs::remove(path, ec);
+    path.clear();
+}
+
 void Editor::NewFile() {
+    spill_.Drop();
+    has_tail_ = false;
+    tail_src_.clear();
     ++rev_;
     snip_stops_.clear();
     comp_open_ = false;
@@ -104,7 +141,14 @@ std::string Editor::Text() const {
 
 bool Editor::Load(const std::string &path, std::string &err) {
     std::string data;
-    if (!ReadAll(path, data, err)) return false;
+    std::error_code sec;
+    const long long total = static_cast<long long>(fs::file_size(path, sec));
+    const bool partial = !sec && set_.load_limit > 0 && total > set_.load_limit;
+    if (partial) {
+        if (!ReadRange(path, 0, set_.load_limit, data, err)) return false;
+    } else if (!ReadAll(path, data, err)) {
+        return false;
+    }
     bool bom = false;
     if (data.size() >= 3 && static_cast<unsigned char>(data[0]) == 0xEF && static_cast<unsigned char>(data[1]) == 0xBB &&
         static_cast<unsigned char>(data[2]) == 0xBF) {
@@ -112,13 +156,29 @@ bool Editor::Load(const std::string &path, std::string &err) {
         data.erase(0, 3);
     }
     bool ctrl_z = false;
-    const size_t z = data.find('\x1A');
-    if (z != std::string::npos) {
-        ctrl_z = true;
-        data.erase(z);
+    long long tail_off = 0;
+    if (partial) {
+        // corta na ultima quebra de linha lida: o fim de linha que fecha a ultima linha do buffer e' o 1o byte do que fica por ler (sem nenhuma, o bloco todo)
+        const size_t nl = data.rfind('\n');
+        size_t cut = nl == std::string::npos ? data.size() : nl;
+        if (nl != std::string::npos && nl > 0 && data[nl - 1] == '\r') cut = nl - 1;
+        tail_off = (bom ? 3 : 0) + static_cast<long long>(cut);
+        data.erase(cut);
+    } else {
+        const size_t z = data.find('\x1A');
+        if (z != std::string::npos) {
+            ctrl_z = true;
+            data.erase(z);
+        }
     }
     const bool crlf = data.empty() ? true : data.find("\r\n") != std::string::npos;
     NewFile();
+    has_tail_ = partial;
+    if (partial) {
+        tail_src_ = path;
+        tail_off_ = tail_off;
+        tail_size_ = total;
+    }
     lines_ = SplitLines(data, crlf);
     snip_stops_.clear();
     comp_open_ = false;
@@ -155,26 +215,167 @@ bool Editor::Save(std::string &err, bool make_backup) {
         bak.replace_extension(ext);
         fs::copy_file(name_, bak, fs::copy_options::overwrite_existing, ec);
     }
-    std::ofstream f(name_, std::ios::binary | std::ios::trunc);
-    if (!f) {
-        err = "Cannot write " + name_;
-        return false;
+    // Com texto fora do buffer (arquivo em partes) o Save monta o arquivo novo ao lado e so' troca no fim: o original e' a fonte do que ainda nao foi lido
+    const bool composed = Partial();
+    const std::string target = composed ? name_ + ".fwtmp" : name_;
+    long long before_tail = 0;
+    {
+        std::ofstream f(target, std::ios::binary | std::ios::trunc);
+        if (!f) {
+            err = "Cannot write " + target;
+            return false;
+        }
+        if (bom_) f.write("\xEF\xBB\xBF", 3);
+        if (!spill_.path.empty() && !AppendFile(f, spill_.path, 0)) {
+            err = "Cannot read the temporary file " + spill_.path;
+            return false;
+        }
+        const char *eol = crlf_ ? "\r\n" : "\n";
+        for (size_t i = 0; i < lines_.size(); ++i) {
+            if (i) f.write(eol, static_cast<std::streamsize>(std::char_traits<char>::length(eol)));
+            f.write(lines_[i].data(), static_cast<std::streamsize>(lines_[i].size()));
+        }
+        before_tail = static_cast<long long>(f.tellp());
+        if (has_tail_ && !AppendFile(f, tail_src_, tail_off_)) {
+            err = "Cannot read the rest of " + tail_src_;
+            return false;
+        }
+        if (eof_ctrl_z_) f.put('\x1A');
+        if (!f) {
+            err = "Write error on " + target;
+            return false;
+        }
     }
-    if (bom_) f.write("\xEF\xBB\xBF", 3);
-    const char *eol = crlf_ ? "\r\n" : "\n";
-    for (size_t i = 0; i < lines_.size(); ++i) {
-        if (i) f.write(eol, static_cast<std::streamsize>(std::char_traits<char>::length(eol)));
-        f.write(lines_[i].data(), static_cast<std::streamsize>(lines_[i].size()));
-    }
-    if (eof_ctrl_z_) f.put('\x1A');
-    if (!f) {
-        err = "Write error on " + name_;
-        return false;
+    if (composed) {
+        fs::rename(target, name_, ec);
+        if (ec) {
+            err = "Cannot replace " + name_ + ": " + ec.message();
+            return false;
+        }
+        if (has_tail_) { // o resto agora esta' no arquivo novo, depois do que foi gravado
+            tail_src_ = name_;
+            tail_off_ = before_tail;
+            tail_size_ = static_cast<long long>(fs::file_size(name_, ec));
+        }
     }
     modified_ = false;
     ++save_count_;
     if (make_backup) autosaved_ = false; // um Save manual refaz a copia na proxima vez que o autosave gravar
     return true;
+}
+
+// File > Load more: acrescenta ao buffer a proxima parte do arquivo (veja Load). So' vale se o arquivo nao mudou desde que foi aberto.
+void Editor::LoadMoreCmd() {
+    if (!has_tail_) {
+        message_ = "Nothing more to load";
+        return;
+    }
+    std::error_code ec;
+    const long long size = static_cast<long long>(fs::file_size(tail_src_, ec));
+    if (ec || size != tail_size_) {
+        message_ = "The file changed on disk: cannot load more";
+        return;
+    }
+    const long long remain = tail_size_ - tail_off_;
+    const long long want = std::min(remain, set_.load_limit > 0 ? static_cast<long long>(set_.load_limit) : remain);
+    std::string chunk, err;
+    if (!ReadRange(tail_src_, tail_off_, want, chunk, err)) {
+        message_ = err;
+        return;
+    }
+    const bool last = want >= remain;
+    size_t cut = chunk.size();
+    bool ctrl_z = false;
+    if (last) {
+        const size_t z = chunk.find('\x1A');
+        if (z != std::string::npos) {
+            ctrl_z = true;
+            chunk.erase(z);
+        }
+        cut = chunk.size();
+    } else {
+        const size_t nl = chunk.rfind('\n');
+        if (nl != std::string::npos && nl > 1) { // nl <= 1: so' o fim de linha que ja' abre o bloco (uma linha gigante): leva o bloco todo
+            cut = nl;
+            if (chunk[nl - 1] == '\r') cut = nl - 1;
+        }
+    }
+    const std::vector<std::string> ls = SplitLines(chunk.substr(0, cut), crlf_);
+    lines_.back() += ls[0]; // o 1o pedaco continua a ultima linha (vazio quando o bloco comeca no fim de linha)
+    lines_.insert(lines_.end(), ls.begin() + 1, ls.end());
+    tail_off_ += static_cast<long long>(cut);
+    if (last) {
+        has_tail_ = false;
+        eof_ctrl_z_ = ctrl_z;
+    }
+    ++rev_;
+    hl_states_.clear();
+    message_ = (last ? "Loaded the rest: " : "Loaded ") + std::to_string(ls.size() - 1) + " more lines";
+}
+
+// File > Write to cursor: as linhas acima da do cursor vao para um temporario e saem do buffer. O Save junta tudo de volta.
+void Editor::WriteToCursorCmd() {
+    if (!Writable()) return;
+    if (cur_.line == 0) {
+        message_ = "Nothing above the cursor";
+        return;
+    }
+    if (spill_.path.empty()) {
+        static int counter = 0;
+        spill_.path = (fs::temp_directory_path() / ("fwedit_top_" + std::to_string(++counter) + "_" + std::to_string(reinterpret_cast<uintptr_t>(this) % 100000) + ".tmp")).string();
+        std::ofstream(spill_.path, std::ios::binary | std::ios::trunc);
+    }
+    std::ofstream f(spill_.path, std::ios::binary | std::ios::app);
+    const char *eol = crlf_ ? "\r\n" : "\n";
+    for (int i = 0; i < cur_.line; ++i) {
+        f.write(lines_[static_cast<size_t>(i)].data(), static_cast<std::streamsize>(lines_[static_cast<size_t>(i)].size()));
+        f.write(eol, static_cast<std::streamsize>(std::char_traits<char>::length(eol)));
+    }
+    if (!f) {
+        message_ = "Cannot write the temporary file";
+        return;
+    }
+    const int n = cur_.line;
+    lines_.erase(lines_.begin(), lines_.begin() + n);
+    cur_.line = 0;
+    top_ = 0;
+    m1_set_ = m2_set_ = sel_active_ = false;
+    undo_.clear();
+    redo_.clear();
+    undel_valid_ = false;
+    snip_stops_.clear();
+    comp_open_ = false;
+    hl_states_.clear();
+    ++rev_;
+    MoveTo(cur_);
+    message_ = "Wrote " + std::to_string(n) + " lines to disk";
+}
+
+// File > Top of file: traz de volta o que o Write to cursor tirou e vai para o inicio.
+void Editor::TopOfFileCmd() {
+    if (spill_.path.empty()) {
+        message_ = "Nothing was written (use Write to cursor first)";
+        return;
+    }
+    std::string data, err;
+    if (!ReadAll(spill_.path, data, err)) {
+        message_ = err;
+        return;
+    }
+    std::vector<std::string> ls = SplitLines(data, crlf_);
+    if (!ls.empty() && ls.back().empty()) ls.pop_back(); // o fim de linha da ultima linha gravada
+    lines_.insert(lines_.begin(), ls.begin(), ls.end());
+    spill_.Drop();
+    cur_ = {0, 0};
+    top_ = 0;
+    m1_set_ = m2_set_ = sel_active_ = false;
+    undo_.clear();
+    redo_.clear();
+    undel_valid_ = false;
+    hl_states_.clear();
+    ++rev_;
+    MoveTo(cur_);
+    message_ = "Top of the file restored";
 }
 
 bool Editor::SaveAs(const std::string &path, std::string &err) {

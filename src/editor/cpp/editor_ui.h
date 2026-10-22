@@ -283,7 +283,6 @@ private:
     void ProjectWordsRefresh();                      // os simbolos dos outros arquivos do projeto, para o completar (completion.h)
     badig::SourceReader ProjectSourceReader() const; // include/incbin do Build saem do banco do projeto antes da pasta
     std::string ProjectRel(const std::string &abs_path) const;  // o caminho dentro do projeto, ou "" se o arquivo esta' fora da pasta
-    void PreviewStart();                                        // View > Markdown preview (F7)
     void OutlineStart();                                        // View > Outline: lista as linhas que importam; Enter leva o cursor a' escolhida
     void PrintStart(bool block);                                // Print / Print Block: pergunta o nome e grava o PDF (mamute_pdf)
     void ProjectSyncStart();                                    // compara; se ha' diferencas mostra a lista (OK aplica o que e' seguro)

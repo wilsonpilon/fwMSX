@@ -11,7 +11,6 @@
 
 #include "../../common/version.h"
 #include "editor_ui.h"
-#include "markdown.h"
 
 namespace ed {
 
@@ -36,6 +35,7 @@ bool SaveConfigFile(const std::string &path, const Settings &s, const UiSettings
     f << "alt_selects_menu=" << s.alt_selects_menu << "\n";
     f << "auto_indent=" << s.auto_indent << "\n";
     f << "word_wrap=" << s.word_wrap << "\n";
+    f << "load_limit_kb=" << s.load_limit / 1024 << "\n";
     f << "line_length=" << s.line_length << "\n";
     f << "first_margin=" << s.first_margin << "\n";
     f << "left_margin=" << s.left_margin << "\n";
@@ -79,6 +79,7 @@ bool LoadConfigFile(const std::string &path, Settings &s, UiSettings &u) {
         else if (k == "alt_selects_menu") s.alt_selects_menu = v != 0;
         else if (k == "auto_indent") s.auto_indent = v != 0;
         else if (k == "word_wrap") s.word_wrap = v != 0;
+        else if (k == "load_limit_kb") s.load_limit = std::max(0, v) * 1024L;
         else if (k == "line_length") s.line_length = std::max(10, v);
         else if (k == "first_margin") s.first_margin = std::max(0, v);
         else if (k == "left_margin") s.left_margin = std::max(0, v);
@@ -445,9 +446,9 @@ std::string Describe(Cmd c) {
     case Cmd::Merge: return "Inserts another file at the cursor.";
     case Cmd::Window2: return "Opens a second window; with two open, moves to the other one.";
     case Cmd::CloseWindow: return "Closes the second window.";
-    case Cmd::LoadMore: return "Loads more of a file that did not fit in memory.";
-    case Cmd::WriteToCursor: return "Writes the text above the cursor to disk to make room.";
-    case Cmd::TopOfFile: return "Reloads the top of the file after Write to cursor.";
+    case Cmd::LoadMore: return "Reads the next part of a file that was opened in parts (see load_limit).";
+    case Cmd::WriteToCursor: return "Moves the lines above the cursor to a temporary file to free memory (Save still writes everything).";
+    case Cmd::TopOfFile: return "Brings back the text that Write to cursor moved out and goes to the top.";
     case Cmd::DosShell: return "Runs a shell and returns to the editor.";
     case Cmd::Exit: return "Leaves the editor (asks about unsaved files).";
     case Cmd::BlockCopy: return "Copies the marked block to the cursor.";
@@ -485,7 +486,7 @@ std::string Describe(Cmd c) {
     case Cmd::EjectPage: return "Advances the printer to the next page.";
     case Cmd::PrintSetup: return "Sets margins and page length for printing.";
     case Cmd::Information: return "Shows file name, counts, date and time and the character under the cursor.";
-    case Cmd::Preview: return "Shows the Markdown text rendered (headings, lists, code, links); Esc closes.";
+    case Cmd::Preview: return "Toggles between the Markdown text and its colored, rendered view (read-only); F7 or Esc goes back.";
     case Cmd::Outline: return "Lists the headings (Markdown), labels (Assembly) or REM lines (BASIC) and jumps to the one you pick.";
     case Cmd::About: return "Shows information about the editor.";
     case Cmd::DisplaySetup: return "Colors, screen lines, scroll bar, tab width and cursor.";
@@ -855,31 +856,6 @@ void EditorApp::BuildMessagesDialog() {
     list.top = std::max(0, list.sel - 5);
     dlg_.ws.push_back(list);
     OkCancel(dlg_, 14);
-    dlg_.BuildFields();
-}
-
-// View > Markdown preview (F7): o texto renderizado (markdown.h) numa janela de rolagem, que ocupa a tela toda. Esc fecha.
-void EditorApp::PreviewStart() {
-    Editor &e = Ed();
-    if (!e.Language() || e.Language()->Id() != "markdown") {
-        Msg("Preview: this is not a Markdown file (View > Language)");
-        return;
-    }
-    std::vector<std::string> src;
-    for (int i = 0; i < e.LineCount(); ++i) src.push_back(e.Line(i));
-    const int w = std::max(40, cols_ - 2);
-    const int h = std::max(10, rows_ - 2);
-    const std::vector<std::string> view = RenderMarkdown(src, w - 8);
-    dlg_ = DialogBox();
-    dlg_.kind = Dialog::Preview;
-    dlg_.title = "Preview: " + (e.Name().empty() ? std::string("noname") : fs::path(e.Name()).filename().string());
-    dlg_.w = w;
-    dlg_.h = h;
-    Widget list = ListW(2, 2, 1, w - 6, h - 5, "");
-    list.items = view.empty() ? std::vector<std::string>{std::string("(empty)")} : view;
-    // abre perto do que o cursor mostra: a primeira linha renderizada do titulo mais proximo acima nao existe 1:1, entao comeca no topo
-    dlg_.ws.push_back(list);
-    OkCancel(dlg_, h - 3);
     dlg_.BuildFields();
 }
 

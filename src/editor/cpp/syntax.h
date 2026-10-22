@@ -28,6 +28,8 @@ enum SynClass : uint8_t {
     kSynBios,      // chamadas e variaveis da BIOS (CHPUT, LINL40)
     kSynHeading,   // titulos (Markdown)
     kSynError,     // comando que o compilador do bloco nao aceita (Kun BASIC)
+    // preview do Markdown (so' o RenderPreview as usa; o titulo de nivel 1 e' o kSynHeading)
+    kSynMdH2, kSynMdH3, kSynMdBold, kSynMdItalic, kSynMdCode, kSynMdLink, kSynMdUrl, kSynMdQuote, kSynMdRule, kSynMdBlock, kSynMdTable, kSynMdBullet, kSynMdImage,
     kSynClassCount
 };
 

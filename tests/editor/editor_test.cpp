@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "../../src/editor/asm/ed_indent.h"
-#include "../../src/editor/asm/ed_indent.h"
 #include "../../src/editor/c/ed_syntax.h"
 #include "../../src/editor/c/ed_text.h"
 #include "../../src/editor/cpp/editor.h"
@@ -932,6 +931,100 @@ void test_completion() {
     }
 
 
+
+    // Arquivo em partes (E7): Load more, Write to cursor, Top of file e o Save que junta tudo
+    {
+        namespace fs = std::filesystem;
+        const fs::path dir = fs::temp_directory_path() / "fwedit_big";
+        fs::remove_all(dir);
+        fs::create_directories(dir);
+        auto slurp = [](const fs::path &p) {
+            std::ifstream in(p, std::ios::binary);
+            return std::string((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        };
+        auto spit = [](const fs::path &p, const std::string &d) {
+            std::ofstream out(p, std::ios::binary | std::ios::trunc);
+            out.write(d.data(), static_cast<std::streamsize>(d.size()));
+        };
+        std::string orig;
+        std::string plain; // o mesmo texto como o editor o guarda (so' LF)
+        for (int i = 0; i < 20; ++i) {
+            orig += "linha " + std::to_string(100 + i) + " com algum texto\r\n";
+            plain += "linha " + std::to_string(100 + i) + " com algum texto\n";
+        }
+        orig += "ultima sem fim";
+        plain += "ultima sem fim";
+        spit(dir / "a.txt", orig);
+
+        Editor b;
+        b.settings().load_limit = 120;
+        std::string err;
+        check(b.Load((dir / "a.txt").string(), err) && b.Partial() && b.LineCount() >= 2 && b.LineCount() < 20, "Load: arquivo maior que o limite vem so' em parte");
+        check(b.Text() == plain.substr(0, b.Text().size()) && b.Crlf(), "Load: a parte e' o comeco do arquivo, em linhas inteiras (CRLF detectado)");
+        int guard = 0;
+        while (b.Partial() && guard++ < 100) b.Execute(Cmd::LoadMore);
+        check(!b.Partial() && b.Text() == plain, "Load more repetido junta o arquivo todo");
+        b.Execute(Cmd::LoadMore);
+        check(b.Message().find("Nothing more") != std::string::npos, "Load more sem nada por ler avisa");
+
+        // salvar uma edicao no topo de um arquivo ainda em partes: o resto vem do original
+        Editor c;
+        c.settings().load_limit = 120;
+        check(c.Load((dir / "a.txt").string(), err) && c.Partial(), "recarrega em partes");
+        c.SetCursor({0, 0});
+        c.Type("X");
+        check(c.Save(err) && slurp(dir / "a.txt") == "X" + orig, "Save de um arquivo em partes grava o buffer + o resto do original, byte a byte");
+        check(!fs::exists(dir / "a.txt.fwtmp") && c.Partial(), "o temporario do Save some e o arquivo segue em partes");
+        guard = 0;
+        while (c.Partial() && guard++ < 100) c.Execute(Cmd::LoadMore);
+        check(c.Text() == "X" + plain, "Load more depois do Save continua do lugar certo");
+        spit(dir / "a.txt", orig);
+
+        // Write to cursor / Top of file
+        Editor d;
+        check(d.Load((dir / "a.txt").string(), err) && !d.Partial(), "sem limite: carrega tudo");
+        d.SetCursor({0, 0});
+        d.Execute(Cmd::WriteToCursor);
+        check(d.Message().find("Nothing above") != std::string::npos && !d.Partial(), "Write to cursor na 1a linha avisa");
+        d.SetCursor({10, 3});
+        d.Execute(Cmd::WriteToCursor);
+        check(d.Partial() && d.LineCount() == 11 && d.Cursor().line == 0 && d.Cursor().col == 3 && d.Line(0).rfind("linha 110", 0) == 0, "Write to cursor: as linhas de cima saem do buffer, o cursor fica na mesma linha");
+        d.Execute(Cmd::Undo);
+        check(d.LineCount() == 11, "Write to cursor nao e' desfazivel (o undo foi zerado): nada muda");
+        d.SetCursor({0, 0});
+        d.Type("Y");
+        check(d.Save(err) && slurp(dir / "a.txt") == orig.substr(0, orig.find("linha 110")) + "Y" + orig.substr(orig.find("linha 110")), "Save junta o topo gravado, o buffer e o resto");
+        d.Execute(Cmd::TopOfFile);
+        check(!d.Partial() && d.Cursor().line == 0 && d.Text() == plain.substr(0, plain.find("linha 110")) + "Y" + plain.substr(plain.find("linha 110")), "Top of file traz o topo de volta");
+        d.Execute(Cmd::TopOfFile);
+        check(d.Message().find("Nothing was written") != std::string::npos, "Top of file sem nada gravado avisa");
+
+        // junto: em partes + Write to cursor + Load more + Save, com Ctrl-Z no fim
+        spit(dir / "z.txt", orig + "\x1A");
+        Editor e;
+        e.settings().load_limit = 150;
+        check(e.Load((dir / "z.txt").string(), err) && e.Partial(), "arquivo com Ctrl-Z, em partes");
+        e.SetCursor({e.LineCount() - 1, 0});
+        e.Execute(Cmd::WriteToCursor);
+        e.Execute(Cmd::LoadMore);
+        e.SetCursor({e.LineCount() - 1, 0});
+        e.Type("!");
+        check(e.Save(err), "Save com topo gravado + resto por ler");
+        guard = 0;
+        while (e.Partial() && e.Cursor().line >= 0 && guard++ < 100) {
+            e.Execute(Cmd::LoadMore);
+            if (!e.Partial() || e.Message().find("Nothing") != std::string::npos) break;
+        }
+        e.Execute(Cmd::TopOfFile);
+        std::string want = plain;
+        const size_t k = want.size() - 1;
+        (void)k;
+        check(!e.Partial() && e.Text().find("!") != std::string::npos, "o que o Save juntou volta inteiro com Top of file e Load more");
+        std::string out = slurp(dir / "z.txt");
+        check(!out.empty() && out.back() == '\x1A' && out.size() == orig.size() + 2, "o Ctrl-Z do fim do arquivo e' preservado");
+        e.settings().load_limit = 0;
+        fs::remove_all(dir);
+    }
     // Preview do Markdown (E7)
     {
         auto has = [](const std::vector<std::string> &v, const std::string &x) { return std::find(v.begin(), v.end(), x) != v.end(); };
@@ -948,6 +1041,24 @@ void test_completion() {
         check(has(r, std::string(30, '-')) && has(r, "snake_case fica"), "Markdown: linha horizontal e snake_case preservado");
         check(ed::MarkdownInline("![logo](a.png) e \\*lit\\*") == "[imagem: logo] e *lit*", "Markdown: imagem e escapes");
         check(ed::RenderMarkdown({}, 30).empty(), "Markdown: texto vazio = nada");
+        const std::vector<ed::MdLine> sty = ed::RenderMarkdownStyled({"# Oi", "Isso e **forte** e *torto* e `cod` e [x](http://u).", "> cita", "- item"}, 60);
+        auto cls_of = [&](const std::string &line_has, const std::string &word) -> int {
+            for (const ed::MdLine &l : sty) {
+                const size_t p = l.text.find(word);
+                if (l.text.find(line_has) != std::string::npos && p != std::string::npos) return l.cls[p];
+            }
+            return -1;
+        };
+        check(cls_of("OI", "OI") == ed::kMdH1 && cls_of("Isso", "forte") == ed::kMdBold && cls_of("Isso", "torto") == ed::kMdItalic && cls_of("Isso", "cod") == ed::kMdCode &&
+                  cls_of("Isso", "(http") == ed::kMdUrl && cls_of("Isso", "Isso") == ed::kMdText && cls_of("cita", "cita") == ed::kMdQuote && cls_of("item", "*") == ed::kMdBullet,
+              "Markdown: a classe de cada trecho (titulo, negrito, italico, codigo, url, citacao, lista)");
+        check(cls_of("Isso", "x (") == ed::kMdLink || cls_of("Isso", "x") == ed::kMdLink, "Markdown: o texto do link tem a classe de link");
+        for (const ed::MdLine &l : sty) {
+            if (l.text.size() != l.cls.size()) {
+                check(false, "Markdown: uma classe por byte");
+                break;
+            }
+        }
     }
     // simbolos do PROJETO (1.43.9): o extrator por tipo de arquivo e os candidatos vindos dos outros arquivos
     std::vector<std::string> sym;
