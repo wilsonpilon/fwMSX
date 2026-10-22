@@ -76,6 +76,26 @@ endif()
 add_library(sqlite3 STATIC ${sqlite3_SOURCE_DIR}/sqlite3.c)
 target_include_directories(sqlite3 PUBLIC ${sqlite3_SOURCE_DIR})
 
+# Lua 5.4 (MIT): os scripts do console (comando `lua`; doc/script-spec.md). O tarball oficial, versao e hash fixos; so' o interpretador
+# (lua.c) e o compilador (luac.c) ficam de fora, e a biblioteca e' compilada como C.
+FetchContent_Declare(
+        lua
+        URL https://www.lua.org/ftp/lua-5.4.7.tar.gz
+        URL_HASH SHA256=9fbf5e28ef86c69858f6d3d34eccc32e911c1a28b4120ff3e84aaa70cfbf1e30
+)
+FetchContent_GetProperties(lua)
+if (NOT lua_POPULATED)
+    FetchContent_Populate(lua)
+endif ()
+file(GLOB LUA_CORE_SOURCES ${lua_SOURCE_DIR}/src/*.c)
+list(FILTER LUA_CORE_SOURCES EXCLUDE REGEX "/(lua|luac)\\.c$")
+add_library(fwlua STATIC ${LUA_CORE_SOURCES})
+target_include_directories(fwlua PUBLIC ${lua_SOURCE_DIR}/src)
+if (UNIX)
+    target_compile_definitions(fwlua PRIVATE LUA_USE_POSIX)
+    target_link_libraries(fwlua PUBLIC m)
+endif ()
+
 # GUI (Dear ImGui + GLFW + OpenGL3, Fase 5) -- atras de uma opcao pra
 # quem quiser compilar so a versao console, sem puxar OpenGL/GLFW.
 option(FWMSX_MSXDISK_GUI "Compila a GUI do msxdisk (Dear ImGui + GLFW + OpenGL3)" ON)
@@ -197,7 +217,7 @@ endfunction()
 # MinGW/UCRT (pra rodar sem depender de DLLs do MSYS2 na maquina destino).
 function(msxdisk_link_target target)
     target_include_directories(${target} PRIVATE ${CMAKE_SOURCE_DIR}/src)
-    target_link_libraries(${target} PRIVATE CLI11::CLI11 replxx ftxui::component ftxui::dom ftxui::screen sqlite3)
+    target_link_libraries(${target} PRIVATE CLI11::CLI11 replxx ftxui::component ftxui::dom ftxui::screen sqlite3 fwlua)
     if (FWMSX_MSXDISK_GUI)
         target_link_libraries(${target} PRIVATE imgui OpenGL::GL)
         # comdlg32 (dialogos nativos de arquivo) so existe no Windows --
@@ -483,7 +503,7 @@ set(PROJECT_LIB_SOURCES
 )
 
 # O Mamute (EDIT/A) monta pelo fwasm: quem usa o controle leva o montador junto. O comando `project` do console usa o projeto.
-list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${PROJECT_LIB_SOURCES} ${OBI_LIB_SOURCES})
+list(APPEND CONTROL_LIB_SOURCES ${FWASM_LIB_SOURCES} ${BADIG_LIB_SOURCES} ${PROJECT_LIB_SOURCES} ${OBI_LIB_SOURCES} src/script/script_engine.cpp)
 
 # --- Disquete novo em branco e formatado (C + Assembly + C++) -- ver doc/diskfmt-spec.md.
 # msxdos1_boot.cpp (bootstrap do setor de boot) ja' esta' em MSXDISK_LIB_SOURCES no fwMSX.
@@ -815,6 +835,10 @@ add_test(NAME project COMMAND projecttest)
 # o controle (comando `project`) e o editor (menu Project) carregam o projeto, que precisa do sqlite3
 foreach (t repltest controltest asme2etest mamutetest edittest editorui syntaxtest)
     target_link_libraries(${t} PRIVATE sqlite3)
+endforeach ()
+# o comando `lua` do console vive no controle: quem leva o controle leva o Lua
+foreach (t repltest controltest asme2etest mamutetest)
+    target_link_libraries(${t} PRIVATE fwlua)
 endforeach ()
 
 # diskfmttest: disquete novo formatado (C/Assembly/C++) e o WRITE TRACK do WD2793.

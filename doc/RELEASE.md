@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.16 -- "Yie Ar Kung-Fu: Scripts em Lua" (Konami) (2026-10-22)
+
+**Pedido do usuario**: "2" (o spike do Lua, item 2 da lista de pendencias). Decisoes (AskUserQuestion): o Lua vem por FetchContent; o primeiro passo entrega os degraus 1 e 2 enxutos (`source` e a API `msx` com ganchos), nao o editor.
+- **Desenho**: `on_change` e' por polling de um byte a cada quadro, e nao um `on_write` de verdade: o `watch` do depurador PARA a maquina quando dispara (nao serve de gancho) e um gancho por escrita no barramento custaria em toda escrita. O tradeoff esta' escrito no `doc/script-spec.md`.
+- **Armadilhas**: `luaL_error` usa `longjmp` e pula os destrutores C++, entao as funcoes C da API nao guardam `std::string` vivas quando podem dar erro (`msx.reg` usa buffer fixo); um script pode chamar `lua`/`lua stop` por `msx.cmd`, entao o `Tick` nao segura referencias para dentro da lista de corrotinas e o `stop` pedido de dentro de um script so' vale quando ele volta.
+- **Dependencia nova na configuracao**: o primeiro `cmake` baixa o tarball do lua.org (como ja' fazia com SQLite, FTXUI e CLI11).
+- Validado: Windows e Linux, `ctest` 100% (33).
+
+---
+
 ## v1.43.15 -- "Yie Ar Kung-Fu: Markdown colorido" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "Faca o markdown bonito no TUI tambem, com cores para simular os tipos e tudo mais, permita editar apenas o .MD puro e Visualizar o .MD renderizado, acho melhor do que dividir a tela, salvo se nao der muito trabalho ai deixe como duas opcoes. Faca o ultimo item do E7 para fecharmos este ponto de vez".

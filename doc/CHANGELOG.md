@@ -7,6 +7,16 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.16] - 2026-10-22 - "Yie Ar Kung-Fu: Scripts em Lua" (Konami)
+
+### Adicionado -- scripts no console (o spike do Lua combinado em 2026-10-22)
+- **`lua <codigo|arquivo.lua|stop|status>`** e **`source <arquivo>`** no console (TUI, janela, servidor TCP). O Lua 5.4.7 (MIT) vem por `FetchContent` no build, com hash fixo; `src/script/` tem o `Engine` (C++).
+- **Tabela `msx`**: `cmd` (qualquer comando do console), `peek`/`poke`/`peek16`/`poke16`, `reg`, `frame`, **`wait(n)`** (corrotinas: o script espera quadros sem travar o emulador) e os ganchos `on_frame`, `on_change(addr, fn)` e `on_stop`, mais `clear_hooks`. Nada roda por instrucao do Z80: os ganchos olham a maquina entre um quadro e outro.
+- **Seguranca**: o Lua nasce so' com base/table/string/math/coroutine/utf8 (sem io, os, package, debug, dofile, require) e cada chamada tem 20 milhoes de instrucoes (um laco infinito vira erro). A saida de um script que acorda depois vira o evento `! lua ...`.
+- `man lua`, `doc/script-spec.md`; o Lua entra no `LICENSE-THIRD-PARTY.md`.
+- Teste: `controltest` (`TestLua`: expressoes, memoria, registradores, `msx.cmd`, sandbox, limite, corrotinas, os tres ganchos, `lua stop`, arquivo `.lua`, `source`).
+- Fica para depois: `.lua` como tipo do projeto e Run > Run script no editor, ganchos por escrita com custo (`on_write`), `msx.type`/VRAM/VDP/PSG.
+
 ## [1.43.15] - 2026-10-22 - "Yie Ar Kung-Fu: Markdown colorido" (Konami)
 
 ### Adicionado -- fecha a fase E7 do editor

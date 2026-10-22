@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.15 "Yie Ar Kung-Fu: Markdown colorido", Konami)
+## Estado atual (v1.43.16 "Yie Ar Kung-Fu: Scripts em Lua", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.43.16 scripts em Lua no console: `lua`, `source` e a tabela `msx` (peek/poke, registradores, `msx.wait`, ganchos por quadro, por byte e por parada)**
 **1.43.15 preview do Markdown colorido na propria janela (F7) e arquivos maiores que a memoria (Load more / Write to cursor / Top of file); fecha a E7**
 **1.43.14 o editor tem Outline (titulos, REMs, rotulos) e preview de Markdown (`F7`)**
 **1.43.13 o editor formata paragrafos e o documento (Edit > Paragraph format / Document format); o pacote leva a pasta `emulator/`**

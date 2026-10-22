@@ -576,6 +576,110 @@ void TestBadigRun(const std::string &bios) {
     std::filesystem::remove_all(dir);
 }
 
+// lua / source: scripts no console (src/script; doc/script-spec.md)
+void TestLua(const std::string &bios) {
+    machine::MachineConfig config;
+    config.bios_path = bios;
+    TestHost host(config);
+    if (!host.ok()) {
+        check(false, "Machine para os testes do Lua");
+        return;
+    }
+    control::Commander cmd(host);
+    Frames(host, cmd, 120);
+
+    // expressoes e print
+    check(cmd.Execute("lua 1+2").text == "3", "lua: uma expressao mostra o valor (estilo REPL)");
+    check(cmd.Execute("lua print(\"ola\", 7)").text == "ola\t7", "lua: print vai para a resposta, com as aspas do Lua intactas");
+    check(!cmd.Execute("lua x = = 1").ok && Contains(cmd.Execute("lua x = = 1").text, "unexpected"), "lua: erro de sintaxe = err com a mensagem do Lua");
+    check(!cmd.Execute("lua error('falhou')").ok && Contains(cmd.Execute("lua error('falhou')").text, "falhou"), "lua: erro de execucao = err");
+    check(!cmd.Execute("lua").ok, "lua sem argumento = err");
+
+    // memoria e registradores
+    check(cmd.Execute("lua msx.poke(0xC000, 65, 66)").ok && cmd.Execute("peek 0xC000 2").text == "41 42", "msx.poke escreve na memoria da maquina");
+    check(cmd.Execute("lua msx.peek(0xC000, 2)").text == "65\t66" && cmd.Execute("lua msx.peek16(0xC000)").text == "16961", "msx.peek / msx.peek16");
+    cmd.Execute("lua msx.poke16(0xC002, 0x1234)");
+    check(cmd.Execute("peek 0xC002 2").text == "34 12", "msx.poke16 grava em little-endian");
+    cmd.Execute("lua msx.reg('a', 7)");
+    check(cmd.Execute("lua msx.reg('a')").text == "7" && !cmd.Execute("lua msx.reg('zz')").ok, "msx.reg le e escreve registradores");
+    check(!cmd.Execute("lua msx.poke(0x10000, 1)").ok && !cmd.Execute("lua msx.poke(0xC000, 256)").ok, "msx.poke recusa endereco e valor fora da faixa");
+
+    // msx.cmd: qualquer comando do console
+    const control::Result v = cmd.Execute("lua msx.cmd('version')");
+    check(v.ok && Contains(v.text, "true") && Contains(v.text, "fwMSX"), "msx.cmd roda um comando do console e devolve (ok, texto)");
+
+    // o Lua nasce sem io/os/package/debug
+    check(cmd.Execute("lua io").text == "nil" && cmd.Execute("lua os").text == "nil" && cmd.Execute("lua dofile").text == "nil" && cmd.Execute("lua debug").text == "nil", "sandbox: sem io, os, dofile nem debug");
+
+    // laco infinito vira erro, nao trava o emulador
+    const control::Result inf = cmd.Execute("lua while true do end");
+    check(!inf.ok && Contains(inf.text, "took too long"), "um laco infinito e' cortado pelo limite de instrucoes");
+
+    // corrotinas: msx.wait devolve o controle e o script volta depois
+    cmd.TakeEvents();
+    check(cmd.Execute("lua local n = msx.frame(); msx.wait(5); print('acordou', msx.frame() - n); msx.poke(0xC010, 99)").ok, "lua: um script com msx.wait comeca e volta");
+    check(Contains(cmd.Execute("lua status").text, "1 script"), "lua status conta o script esperando");
+    Frames(host, cmd, 3);
+    check(host.machine().ReadMemory(0xC010) != 99, "antes de passar os quadros o script ainda espera");
+    Frames(host, cmd, 4);
+    check(host.machine().ReadMemory(0xC010) == 99, "depois de 5 quadros o script acordou e gravou");
+    bool woke = false;
+    for (const std::string &e : cmd.TakeEvents()) woke = woke || Contains(e, "! lua acordou");
+    check(woke, "o print de um script que acorda depois vira o evento '! lua ...'");
+    check(Contains(cmd.Execute("lua status").text, "0 script"), "o script que acabou sai da lista");
+
+    // ganchos
+    cmd.Execute("lua cnt = 0; msx.on_frame(function(f) cnt = cnt + 1 end)");
+    Frames(host, cmd, 10);
+    check(cmd.Execute("lua cnt").text == "10", "msx.on_frame roda uma vez por quadro");
+    cmd.Execute("lua msx.poke(0xC020, 0)");
+    cmd.Execute("lua last = -1; msx.on_change(0xC020, function(new, old, addr) last = new * 1000 + old end)");
+    Frames(host, cmd, 2);
+    check(cmd.Execute("lua last").text == "-1", "on_change nao dispara enquanto o byte nao muda");
+    cmd.Execute("lua msx.poke(0xC020, 7)");
+    Frames(host, cmd, 2);
+    check(cmd.Execute("lua last").text == "7000", "msx.on_change chama fn(novo, antigo, end) no quadro em que o byte mudou");
+    cmd.Execute("lua stopped_for = nil; msx.on_stop(function(why) stopped_for = why end)");
+    cmd.Execute("break 0x0038");
+    Frames(host, cmd, 4);
+    check(host.machine().debugger().stopped() && cmd.Execute("lua stopped_for").text == "break", "msx.on_stop chama fn(motivo) quando a maquina para num breakpoint");
+    cmd.Execute("unbreak all");
+    cmd.Execute("resume");
+
+    // parar tudo
+    check(cmd.Execute("lua stop").ok && Contains(cmd.Execute("lua status").text, "0 on_frame, 0 on_change, 0 on_stop"), "lua stop tira os ganchos");
+    cmd.Execute("lua cnt = 0; msx.on_frame(function() cnt = cnt + 1 end)");
+    cmd.Execute("lua msx.clear_hooks()");
+    Frames(host, cmd, 3);
+    check(cmd.Execute("lua cnt").text == "0", "msx.clear_hooks");
+    cmd.Execute("lua msx.on_frame(function() error('quebrou') end)");
+    cmd.TakeEvents();
+    Frames(host, cmd, 1);
+    bool hookerr = false;
+    for (const std::string &e : cmd.TakeEvents()) hookerr = hookerr || Contains(e, "error in a hook") && Contains(e, "quebrou");
+    check(hookerr, "o erro de um gancho vira evento, a maquina segue");
+    cmd.Execute("lua stop");
+
+    // arquivo .lua e source
+    const std::string dir = TempPath("fwmsx_lua_dir");
+    std::filesystem::remove_all(dir);
+    std::filesystem::create_directories(dir);
+    WriteText(dir + "/a.lua", "msx.poke(0xC040, 11)\nprint('do arquivo')\n");
+    const control::Result lf = cmd.Execute("lua " + dir + "/a.lua");
+    check(lf.ok && lf.text == "do arquivo" && host.machine().ReadMemory(0xC040) == 11, "lua <arquivo.lua> roda o arquivo");
+    check(!cmd.Execute("lua " + dir + "/nao_existe.lua").ok, "arquivo .lua inexistente = err");
+    WriteText(dir + "/s.txt", "# comentario\npoke 0xC050 5\n\n-- outro\npeek 0xC050\nlua msx.peek(0xC050)\n");
+    const control::Result sr = cmd.Execute("source " + dir + "/s.txt");
+    check(sr.ok && Contains(sr.text, "05") && host.machine().ReadMemory(0xC050) == 5, "source roda um comando por linha, pulando # e --");
+    WriteText(dir + "/ruim.txt", "poke 0xC050 6\ncomando_que_nao_existe\npoke 0xC050 9\n");
+    const control::Result bad = cmd.Execute("source " + dir + "/ruim.txt");
+    check(!bad.ok && Contains(bad.text, "ruim.txt:2:") && host.machine().ReadMemory(0xC050) == 6, "source para na 1a linha que falha e diz qual");
+    WriteText(dir + "/rec.txt", "source " + dir + "/rec.txt\n");
+    check(!cmd.Execute("source " + dir + "/rec.txt").ok, "source dentro de source tem limite (nao trava)");
+    check(!cmd.Execute("source").ok && !cmd.Execute("source " + dir + "/nao.txt").ok, "source: argumento faltando ou arquivo inexistente = err");
+    std::filesystem::remove_all(dir);
+}
+
 void TestDebugger(const std::string &bios) {
     machine::MachineConfig config;
     config.bios_path = bios;
@@ -1152,6 +1256,7 @@ int main() {
     TestAsmRun(bios);
     TestAsmRunDos(FWMSX_SOURCE_DIR, bios);
     TestBadigRun(bios);
+    TestLua(bios);
     TestProjectCmd(bios);
     TestDebugView(bios);
     TestDbgUiCommand(bios);

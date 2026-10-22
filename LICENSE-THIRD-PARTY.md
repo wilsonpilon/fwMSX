@@ -204,6 +204,13 @@ fwMSX. Usado so como referencia/confirmacao de comportamento (ver
 BSD-3-Clause do fwMSX exigiria relicenciar o projeto inteiro como GPL,
 o que nao foi feito.
 
+## Lua (`lua-5.4.7`, baixado na configuracao do build)
+
+O comando `lua` do console (doc/script-spec.md) usa o interpretador Lua
+5.4.7, copyright PUC-Rio, sob a licenca MIT. O CMake baixa o tarball
+oficial de https://www.lua.org/ftp/ (SHA-256 fixo) e o compila como
+biblioteca estatica; o fonte do Lua nao e' copiado para este repositorio.
+
 ## Resto de `resource/`
 
 Todo o restante de `resource/` (`fmsxgo/`, `kizuna/`, `msxide/`,

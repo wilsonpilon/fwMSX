@@ -19,6 +19,7 @@
 #include "../mamute/cpp/mamute_online.h"
 #include "../msxdisk/core/disk_image.h"
 #include "../project/cpp/project.h"
+#include "../script/script_engine.h"
 #include "../tape/cpp/cas_format.h"
 #include "../z80/debug/z80_disasm.h"
 
@@ -57,6 +58,7 @@ const char *kHelp =
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
     "Basic Dignified: badig [opcoes] <fonte.dmx> (gera .amx e .bmx) badigrun <fonte.dmx> (converte, monta o disco e executa) | "
+    "scripts: lua <codigo|arquivo.lua|stop|status> source <arquivo> (ver man lua) | "
     "disco por receita: obi <build|check> [Obifile] (monta o .dsk) obirun [Obifile] (monta, insere em A: e reinicia; ver man obi) | "
     "projeto: project <new|open|close|info|ls|add|get|rm|set|root|status|sync|pull|push|export|import> (ver man project) | "
     "montador e simbolos: asmrun [-z] [-n] [--dos-disk <arq>] <fonte.asm> sym [load <arq.sym>|clear|list [txt]|<nome|end>] src [n] markers <on|off> | "
@@ -392,6 +394,11 @@ Commander::Commander(Host &host) : host_(host) {}
 Commander::~Commander() = default;
 
 Result Commander::Execute(const std::string &line) {
+    {   // lua <codigo>: o texto vai CRU para o Lua, antes de partir a linha em palavras (as aspas do codigo nao sao do console)
+        size_t b = 0;
+        while (b < line.size() && std::isspace(static_cast<unsigned char>(line[b]))) ++b;
+        if (line.compare(b, 3, "lua") == 0 && (b + 3 == line.size() || std::isspace(static_cast<unsigned char>(line[b + 3])))) return LuaCmd(line.substr(b));
+    }
     std::string tokenize_error;
     const std::vector<std::string> t = Tokenize(line, tokenize_error);
     if (!tokenize_error.empty()) return Err(tokenize_error);
@@ -401,6 +408,7 @@ Result Commander::Execute(const std::string &line) {
     machine::Machine &m = host_.machine();
 
     if (cmd == "help") return Ok(kHelp);
+    if (cmd == "source") return SourceCmd(t, source_depth_);
 
     // mon <linha do Mamute>: o monitor Z80 (doc/mamute-spec.md). O texto depois da palavra vai CRU para ele (virgulas,
     // apostrofos e barras dos caminhos do Windows sao dele). `mon @prompt` devolve o prompt (quem mantem o modo do
@@ -1207,7 +1215,74 @@ Result Commander::ObiCmd(const std::vector<std::string> &t, bool run) {
     return Ok(out + "\ndisco em A:; maquina reiniciada");
 }
 
+script::Engine &Commander::Lua() {
+    if (!lua_) {
+        script::EngineHost h;
+        h.machine = [this]() -> machine::Machine & { return host_.machine(); };
+        h.command = [this](const std::string &line, std::string &text) {
+            const Result r = Execute(line);
+            text = r.text;
+            return r.ok;
+        };
+        h.event = [this](const std::string &line) { host_.machine().debugger().PostEvent("! lua " + line); };
+        lua_ = std::make_unique<script::Engine>(std::move(h));
+    }
+    return *lua_;
+}
+
+// lua <codigo> | lua <arquivo.lua> | lua stop | lua status. O texto depois da palavra vai CRU para o Lua (aspas, virgulas e barras sao dele).
+Result Commander::LuaCmd(const std::string &line) {
+    std::string rest = line;
+    const size_t sp = rest.find_first_of(" 	");
+    rest = sp == std::string::npos ? std::string() : rest.substr(sp + 1);
+    while (!rest.empty() && std::isspace(static_cast<unsigned char>(rest.front()))) rest.erase(0, 1);
+    while (!rest.empty() && std::isspace(static_cast<unsigned char>(rest.back()))) rest.pop_back();
+    if (rest.empty()) return Err("lua: use lua <codigo> | lua <arquivo.lua> | lua stop | lua status (ver man lua)");
+    if (rest == "stop") {
+        if (lua_) lua_->Stop();
+        return Ok();
+    }
+    if (rest == "status") return Ok(lua_ ? lua_->Status() : std::string("lua: nao iniciado"));
+    std::string path = rest;
+    if (path.size() >= 2 && path.front() == '"' && path.back() == '"') path = path.substr(1, path.size() - 2);
+    std::error_code ec;
+    const bool is_file = path.find('(') == std::string::npos && path.find(' ') == std::string::npos
+                             ? (path.size() > 4 && Lower(path.substr(path.size() - 4)) == ".lua") || std::filesystem::is_regular_file(path, ec)
+                             : (path.size() > 4 && Lower(path.substr(path.size() - 4)) == ".lua" && std::filesystem::is_regular_file(path, ec));
+    std::string out;
+    const bool ok = is_file ? Lua().RunFile(path, out) : Lua().RunString(rest, "=lua", out, true);
+    while (!out.empty() && (out.back() == '\n' || out.back() == '\r')) out.pop_back();
+    return ok ? Ok(out) : Err(out);
+}
+
+// source <arquivo>: um comando do console por linha; linhas em branco e as que comecam com # ou -- sao comentarios. Para na 1a que falhar.
+Result Commander::SourceCmd(const std::vector<std::string> &t, int depth) {
+    if (t.size() != 2) return Err("source: use source <arquivo>");
+    if (depth >= 8) return Err("source: arquivos demais um dentro do outro (limite 8)");
+    std::ifstream f(t[1]);
+    if (!f) return Err("source: nao foi possivel abrir " + t[1]);
+    std::string out, line;
+    int n = 0;
+    ++source_depth_;
+    while (std::getline(f, line)) {
+        ++n;
+        while (!line.empty() && (line.back() == '\r' || std::isspace(static_cast<unsigned char>(line.back())))) line.pop_back();
+        size_t b = 0;
+        while (b < line.size() && std::isspace(static_cast<unsigned char>(line[b]))) ++b;
+        if (b == line.size() || line[b] == '#' || line.compare(b, 2, "--") == 0) continue;
+        const Result r = Execute(line.substr(b));
+        if (!r.ok) {
+            --source_depth_;
+            return Err(t[1] + ":" + std::to_string(n) + ": " + r.text);
+        }
+        if (!r.text.empty()) out += (out.empty() ? "" : "\n") + r.text;
+    }
+    --source_depth_;
+    return Ok(out);
+}
+
 void Commander::Tick() {
+    if (lua_) lua_->Tick();
     machine::Machine &m = host_.machine();
     if (key_phase_ == 0) {
         if (typing_.empty()) return;

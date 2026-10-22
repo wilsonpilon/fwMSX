@@ -27,6 +27,10 @@ namespace prj {
 class Project;
 } // namespace prj
 
+namespace script {
+class Engine;
+} // namespace script
+
 namespace control {
 
 struct Result {
@@ -99,6 +103,12 @@ private:
     Result BadigCmd(const std::vector<std::string> &t, bool run);
     // obi build|check [Obifile] / obirun [Obifile]: a receita que monta o .dsk (src/obi; doc/obi-spec.md); obirun tambem insere o disco em A: e reinicia.
     Result ObiCmd(const std::vector<std::string> &t, bool run);
+    // lua <codigo|arquivo.lua|stop|status> e source <arquivo>: scripts (src/script; doc/script-spec.md).
+    Result LuaCmd(const std::string &line);
+    Result SourceCmd(const std::vector<std::string> &t, int depth);
+    script::Engine &Lua();
+    std::unique_ptr<script::Engine> lua_;
+    int source_depth_ = 0;
     // project: o .msxproject (SQLite) e as copias soltas numa pasta (src/control/project_cmd.cpp; doc/project-spec.md).
     Result ProjectCmd(const std::vector<std::string> &t);
     std::unique_ptr<prj::Project> project_;

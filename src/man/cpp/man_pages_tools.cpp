@@ -250,6 +250,47 @@ ARQUIVOS
 VER TAMBEM
   project, badig, asm, asmrun)MAN");
 
+    add("lua", "lua <codigo|arquivo.lua|stop|status>", "scripts em Lua no console do emulador (e o comando source)",
+        R"MAN(DESCRICAO
+  O console (TUI, janela, servidor TCP) roda scripts em Lua 5.4. Um script fala
+  com a maquina pela tabela msx e pode esperar quadros sem travar o emulador.
+
+COMANDOS
+  lua <codigo>        roda o texto; uma expressao mostra o valor: lua 1+2 -> 3
+  lua <arquivo.lua>   roda o arquivo
+  lua stop            acaba com os scripts que esperam e com os ganchos
+  lua status          o que esta' ativo
+  source <arquivo>    um comando do console por linha (# e -- sao comentarios);
+                      para na primeira linha que falhar
+
+A TABELA msx
+  msx.cmd("linha")          roda um comando do console -> ok, texto
+  msx.peek(end [, n])       le n bytes (1 a 256)
+  msx.poke(end, v1, v2...)  grava bytes
+  msx.peek16(end)  msx.poke16(end, v)
+  msx.reg("pc") / msx.reg("a", 7)    le / escreve um registrador
+  msx.frame()               o numero do quadro
+  msx.wait(n)               volta n quadros depois (so' dentro de um script)
+  msx.on_frame(fn)          fn(quadro) a cada quadro
+  msx.on_change(end, fn)    fn(novo, antigo, end) quando o byte muda
+  msx.on_stop(fn)           fn(motivo) quando a maquina para
+  msx.clear_hooks()
+
+EXEMPLO
+  -- vidas.lua
+  msx.on_frame(function() msx.poke(0xE000, 9) end)
+  msx.on_change(0xE001, function(novo, antigo) print("fase", antigo, novo) end)
+
+NOTAS
+  - A saida de um script que roda depois de comecar vira o evento "! lua ...".
+  - Cada chamada tem 20 milhoes de instrucoes; um laco infinito vira erro.
+  - Sem io, os, package nem debug: o script so' fala pela tabela msx.
+  - Os ganchos olham a maquina entre um quadro e outro (nada por instrucao);
+    para parar a CPU num endereco use o comando watch.
+
+VER TAMBEM
+  project, badig, asm)MAN");
+
     add("obi", "obi <build|check> [Obifile]", "monta um disquete .dsk pronto para rodar a partir de uma receita (Obifile)",
         R"MAN(DESCRICAO
   O obi le uma receita de texto (Obifile) com os arquivos do seu programa -- o
