@@ -204,6 +204,13 @@ fwMSX. Usado so como referencia/confirmacao de comportamento (ver
 BSD-3-Clause do fwMSX exigiria relicenciar o projeto inteiro como GPL,
 o que nao foi feito.
 
+## Bibliotecas baixadas na configuracao do build (FetchContent)
+
+Nenhuma e' copiada para este repositorio; o CMake baixa e compila (todas permissivas):
+**SQLite** (dominio publico; o `.msxproject` e o banco de ROMs), **CLI11** (BSD-3-Clause; linha de comando), **replxx** (BSD-3-Clause; o console),
+**FTXUI** (MIT; a TUI), **Dear ImGui** (MIT) e **GLFW** (zlib; a janela grafica), **miniaudio** (dominio publico / MIT-0; ver abaixo), **miniz** (MIT; ver abaixo)
+e **Lua** (MIT; abaixo).
+
 ## Lua (`lua-5.4.7`, baixado na configuracao do build)
 
 O comando `lua` do console (doc/script-spec.md) usa o interpretador Lua
@@ -251,6 +258,13 @@ titular dos direitos pedir.
   comportamento observado do `asmsx.exe` como caixa-preta (`tools/asmdiff/`, usado so' para gerar os casos de
   teste); nao ha codigo do asMSX no fwMSX. O `asmsx.exe` (oraculo) nao e' versionado. Sera retirado do
   repositorio quando o fwMSX estiver pronto.
+
+## O repositorio e' publico (revisao de 2026-10-22)
+
+O repositorio `github.com/wilsonpilon/fwMSX` e' **publico**, e o que o git rastreia fica disponivel a quem o clonar, historico incluido -- mesmo o que
+os pacotes de release nao levam. A frase acima ("nada disso e' distribuido como parte do binario") vale para os **pacotes**; o levantamento do que
+o **repositorio** publica (ROMs de jogos em `tests/media/`, o banco `dist/roms/`, discos e ROMs dentro de `resource/`, pacotes antigos em `dist/`...)
+e as opcoes de tratamento estao em [doc/media-review.md](doc/media-review.md). Nada foi removido ainda: a decisao e' do autor.
 
 ## Politica de distribuicao de midias de terceiros (2026-10-06)
 
