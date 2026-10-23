@@ -1221,6 +1221,29 @@ void test_badig_build() {
     K(c, {"F5"});
     check(got == c.Ed().Name() && c.TakeHideRequest(), "F5 num .dmx converte e chama o gancho com o caminho do .dmx");
 
+    // depois do F5 o editor vigia a tela do MSX: "Syntax error in N" + "Ok" leva o cursor ate' a linha do .dmx e pede para o editor voltar
+    {
+        const int first = std::atoi(slurp(dir / "prog.amx").c_str());
+        std::string scr = "MSX BASIC\nOk\n";
+        c.SetScreenHook([&]() { return scr; });
+        K(c, {"F5"});
+        c.TakeHideRequest();
+        check(c.Watching(), "F5 num .dmx arma a vigia da tela");
+        double t = 100;
+        c.RunWatchTick(t);
+        scr = "Hello in 5\nSyntax error in " + std::to_string(first) + "\n";
+        check(!c.RunWatchTick(t + 0.1) && !c.RunWatchTick(t + 2.5) && !c.RunWatchTick(t + 2.9), "sem o prompt Ok embaixo nao e' erro do BASIC");
+        scr = "Hello in 5\nSyntax error in " + std::to_string(first) + "\nOk\n";
+        check(!c.RunWatchTick(t + 3.3), "a primeira leitura com erro so' guarda");
+        check(c.RunWatchTick(t + 3.7) && c.TakeShowRequest() && !c.Watching(), "a segunda leitura igual confirma: o editor volta");
+        check(c.Ed().Message().find("BASIC line " + std::to_string(first)) == 0, "e leva ao fonte pelo mesmo caminho do Run > BASIC line");
+        K(c, {"F5"});
+        c.TakeHideRequest();
+        scr = "Ok\n";
+        c.RunWatchTick(200);
+        check(!c.RunWatchTick(200.5) && c.Watching() && !c.RunWatchTick(200 + 181) && !c.Watching(), "sem erro a vigia espera e desiste depois do prazo");
+    }
+
     // o snippet do carregador do NestorBASIC
     EditorApp n;
     n.SetSize(80, 25);

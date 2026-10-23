@@ -157,6 +157,7 @@ void EditorPanel::Configure(const std::string &exe_dir, const std::string &cwd) 
 
 void EditorPanel::Tick() {
     if (app_.AutosaveTick(ImGui::GetTime())) blink_reset_ = ImGui::GetTime();
+    app_.RunWatchTick(ImGui::GetTime()); // o erro do BASIC depois do F5: o aviso de que o editor deve voltar sai por TakeShowRequest
 }
 
 void EditorPanel::ShowOpenDialog() {

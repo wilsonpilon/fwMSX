@@ -52,7 +52,7 @@ int DriveIndex(const std::string &s) {
 }
 
 const char *kHelp =
-    "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] "
+    "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] screen (texto da tela, SCREEN 0/1) "
     "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
@@ -390,6 +390,32 @@ bool Commander::ParseTypeSpec(machine::Machine &m, const std::string &spec, bool
     return true;
 }
 
+// A tela de texto como o BIOS a mantem: SCRMOD (FCAF) diz o modo; a tabela de nomes esta' em TXTNAM (F3B3, SCREEN 0) ou T32NAM (F3BD, SCREEN 1);
+// LINLEN (F3B0) e CRTCNT (F3B1) dao as colunas e as linhas. O texto sai da VRAM, entao vale mesmo com a maquina parada.
+std::string ScreenText(machine::Machine &m) {
+    const uint8_t mode = m.ReadMemory(0xFCAF);
+    if (mode > 1) return std::string();
+    const uint16_t base_addr = mode == 0 ? 0xF3B3 : 0xF3BD;
+    const uint32_t base = m.ReadMemory(base_addr) | (m.ReadMemory(static_cast<uint16_t>(base_addr + 1)) << 8);
+    const int cols = m.ReadMemory(0xF3B0);
+    const int rows = m.ReadMemory(0xF3B1);
+    if (cols < 1 || cols > 80 || rows < 1 || rows > 27) return std::string();
+    const VdpState &v = m.vdp_state();
+    std::string out;
+    for (int r = 0; r < rows; ++r) {
+        std::string l;
+        for (int c = 0; c < cols; ++c) {
+            const uint32_t a = base + static_cast<uint32_t>(r * cols + c);
+            const uint8_t ch = a < sizeof(v.vram) ? v.vram[a] : 0;
+            l.push_back(ch >= 32 && ch < 127 ? static_cast<char>(ch) : ' ');
+        }
+        while (!l.empty() && l.back() == ' ') l.pop_back();
+        out += l;
+        if (r + 1 < rows) out += '\n';
+    }
+    return out;
+}
+
 Commander::Commander(Host &host) : host_(host) {}
 Commander::~Commander() = default;
 
@@ -497,6 +523,12 @@ Result Commander::Execute(const std::string &line) {
             out += Hex(m.ReadMemory(static_cast<uint16_t>((addr + i) & 0xFFFF)), 2);
         }
         return Ok(out);
+    }
+
+    if (cmd == "screen") {
+        const std::string text = ScreenText(m);
+        if (text.empty()) return Err("screen: a tela nao esta' em SCREEN 0 ou 1 (so' o texto e' lido)");
+        return Ok(text);
     }
 
     if (cmd == "poke") {

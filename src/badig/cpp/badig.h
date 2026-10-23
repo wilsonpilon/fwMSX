@@ -111,6 +111,10 @@ bool CollectDiskFiles(const Result &r, std::vector<DiskFile> &out, std::string &
 // O numero da linha BASIC de uma mensagem de execucao ("Syntax error in 130", "Type mismatch in 40"), ou um numero solto ("130"): o ultimo
 // numero do texto, depois de " in " se houver. 0 se nao achou.
 int ParseBasicErrorLine(const std::string &text);
+// Procura numa tela de texto do MSX (linhas separadas por \n) o fim de uma execucao com erro: uma linha "<mensagem> in <n>" (ou "Break in <n>") seguida
+// do prompt "Ok". Devolve o numero da linha BASIC (e a mensagem em `message`, se nao for nullptr); 0 se a tela nao mostra erro. O "Ok" abaixo evita
+// confundir com a saida do proprio programa ("Hello in 5").
+int FindBasicError(const std::string &screen, std::string *message = nullptr);
 // A linha do fonte que gerou a linha BASIC `basic`. false se o BASIC nao tem essa linha; `entry.line` = 0 quando e' linha gerada pelo Badig.
 bool MapBasicLine(const Result &r, int basic, LineMapEntry &entry);
 

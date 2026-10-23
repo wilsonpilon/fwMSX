@@ -118,6 +118,12 @@ public:
     // palavra e devolve o texto do manual (vazio = sem pagina). Sem gancho o item fica cinza / avisa. O editor nao conhece a maquina nem o `man`.
     void SetRunHook(std::function<std::string(const std::string &)> f) { run_hook_ = std::move(f); }
     void SetHelpHook(std::function<std::string(const std::string &)> f) { help_hook_ = std::move(f); }
+    // F5 num .dmx: depois de rodar, o editor olha a tela do MSX (este gancho devolve o texto dela) e, se o BASIC parar com "Syntax error in 130", volta
+    // para a janela do editor na linha do .dmx. Chamar RunWatchTick a cada quadro (`now` em segundos); true = achou o erro e ja' posicionou o cursor.
+    void SetScreenHook(std::function<std::string()> f) { screen_hook_ = std::move(f); }
+    bool RunWatchTick(double now);
+    bool Watching() const { return watch_ > 0; }
+    bool TakeShowRequest() { const bool r = show_request_; show_request_ = false; return r; }
     const std::vector<BuildMsg> &BuildMessages() const { return build_msgs_; }
     int BuildCurrent() const { return build_cur_; }
 
@@ -373,6 +379,11 @@ private:
     std::string build_src_;     // arquivo montado por ultimo (caminho completo; vazio = buffer sem nome)
     std::function<std::string(const std::string &)> run_hook_;
     std::function<std::string(const std::string &)> help_hook_;
+    std::function<std::string()> screen_hook_;
+    int watch_ = 0;             // 0 = nao vigia; >0 = vigiando a tela depois do F5 (conta as leituras seguidas com o mesmo erro)
+    double watch_start_ = 0, watch_next_ = 0;
+    int watch_line_ = 0;        // o erro visto na leitura anterior (confirmado na seguinte, para nao pegar a tela no meio de uma troca)
+    bool show_request_ = false; // o editor deve voltar para a frente (o erro foi achado)
 };
 
 } // namespace ed

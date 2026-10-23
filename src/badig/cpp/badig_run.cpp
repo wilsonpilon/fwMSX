@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -760,6 +761,48 @@ int ParseBasicErrorLine(const std::string &text) {
         }
     }
     return found > 65529 ? 0 : static_cast<int>(found); // o maior numero de linha do MSX BASIC e' 65529
+}
+
+int FindBasicError(const std::string &screen, std::string *message) {
+    std::vector<std::string> lines;
+    size_t pos = 0;
+    while (pos <= screen.size()) {
+        size_t nl = screen.find('\n', pos);
+        if (nl == std::string::npos) nl = screen.size();
+        std::string l = screen.substr(pos, nl - pos);
+        while (!l.empty() && (l.back() == ' ' || l.back() == '\r')) l.pop_back();
+        lines.push_back(l);
+        pos = nl + 1;
+    }
+    // do fim para o comeco: vale o ultimo erro que ainda esta' na tela
+    for (size_t i = lines.size(); i-- > 0;) {
+        const std::string &l = lines[i];
+        const size_t in = l.rfind(" in ");
+        if (in == std::string::npos || in == 0) continue;
+        // so' as mensagens do BASIC (MSX BASIC 1/2 e DISK BASIC): "Hello in 5" impresso pelo programa nao conta
+        static const char *const kErrors[] = {"NEXT without FOR", "Syntax error", "RETURN without GOSUB", "Out of DATA", "Illegal function call", "Overflow",
+                                              "Out of memory", "Undefined line number", "Subscript out of range", "Redimensioned array", "Division by zero",
+                                              "Illegal direct", "Type mismatch", "Out of string space", "String too long", "String formula too complex",
+                                              "Can't CONTINUE", "Undefined user function", "Device I/O error", "Verify error", "No RESUME",
+                                              "RESUME without error", "Unprintable error", "Missing operand", "Line buffer overflow", "Device unavailable",
+                                              "Bad file number", "File not found", "File already open", "Input past end", "Bad file name",
+                                              "Direct statement in file", "Sequential I/O only", "File not OPEN", "Bad FAT", "Bad file mode", "Bad drive name",
+                                              "Disk full", "Disk I/O error", "Disk offline", "File still open", "Rename across disk", "File already exists",
+                                              "Too many files", "Write protected", "Break"};
+        bool known = false;
+        for (const char *k : kErrors) known = known || l.compare(0, std::strlen(k), k) == 0;
+        if (!known) continue;
+        const std::string digits = l.substr(in + 4);
+        if (digits.empty() || digits.size() > 5 || digits.find_first_not_of("0123456789") != std::string::npos) continue;
+        bool prompt = false;
+        for (size_t j = i + 1; j < lines.size() && j <= i + 2; ++j) prompt = prompt || lines[j] == "Ok";
+        if (!prompt) continue;
+        const int n = std::atoi(digits.c_str());
+        if (n <= 0 || n > 65529) continue;
+        if (message) *message = l;
+        return n;
+    }
+    return 0;
 }
 
 bool MapBasicLine(const Result &r, int basic, LineMapEntry &entry) {

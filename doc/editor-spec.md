@@ -184,7 +184,9 @@ Fechadas pelas telas (2026-10-20): (1) a tabela de teclas do NE 2 esta' completa
 Respondidas em 1c: perfil Norton padrao + teclas modernas alternativas + perfil "fwEditor" opcional; teclas alternativas para o que o terminal entrega mal; Load more/Write to cursor/Top of file serao implementados (baixa prioridade); modo somente leitura `view`.
 Em aberto: (3) como a barra de menus comporta os novos menus (80 colunas); (10) desenhar o perfil "fwEditor" (so' depois do Norton funcionar); (11) a tabela das teclas alternativas (uma por tecla problematica); (4) arquivos grandes (o NE tem "Load more"): e' preciso ou basta carregar tudo?; (5) tema padrao: cinza do NE ou escuro moderno?; (6) varios arquivos abertos: 2 janelas como o NE, ou abas tambem?; (7) NE 2 e' da Symantec: o fwMSX copia o JEITO (menus/teclas), nunca codigo nem textos de ajuda do original.
 
-## 7. Estado (atualizado em 2026-10-22)
+## 7. Estado (atualizado em 2026-10-23)
+
+**1.43.18: erro do BASIC volta ao fonte.** F5 num `.dmx` arma `EditorApp::RunWatchTick` (ganchos `SetScreenHook`/`TakeShowRequest`; `badig::FindBasicError` sobre o `control::ScreenText`): erro + `Ok` na tela do MSX = `BasicLineGoto` e a janela volta. Le' so' SCREEN 0/1; 180 s de prazo.
 
 **1.43.15: E7 encerrada.** O preview do Markdown e' um modo da janela (`Editor::SetPreview`, F7), colorido pelas classes `kSynMd*`; o arquivo em partes (`load_limit`, `has_tail_`, `spill_`) tem o Save que junta o topo gravado, o buffer e o resto do original. Preview dividido ao vivo: nao feito.
 

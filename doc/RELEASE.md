@@ -17,6 +17,13 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.18 -- "Yie Ar Kung-Fu: Erro do BASIC no editor" (Konami) (2026-10-23)
+
+**Pedido do usuario**: "da lista qual seria o mais rapido, para fazer ainda hoje" -> "entao vamos no Dignified" (item pendente desde a 1.42.2: "salto automatico lendo a mensagem da tela do MSX depois do F5").
+- **Desenho**: `ScreenText(Machine&)` (control) le a tabela de nomes da VRAM pelas variaveis do BIOS (SCRMOD FCAF, TXTNAM F3B3 / T32NAM F3BD, LINLEN F3B0, CRTCNT F3B1); funciona com a maquina parada e so' em SCREEN 0/1. `badig::FindBasicError` procura "<mensagem> in <n>" com a mensagem numa **lista fechada** das mensagens do MSX BASIC/DISK BASIC e o prompt `Ok` nas duas linhas seguintes (assim "Hello in 5" impresso pelo programa nao conta). `EditorApp::RunWatchTick` (chamado todo quadro por `EditorPanel::Tick`, com o editor visivel ou escondido) le a tela a cada 0,3 s, depois de 2 s de boot, exige o mesmo erro em duas leituras seguidas, chama `BasicLineGoto` e pede para a janela voltar (`TakeShowRequest`). Prazo de 180 s.
+- **Nao verificado**: a volta automatica da janela ImGui numa sessao grafica real (so' o modelo esta' no teste); erros que o programa imprime em tela grafica (SCREEN 2+) nao sao vistos.
+- Validado: Windows e Linux, `ctest` 100% (34).
+
 ## v1.43.17 -- "Yie Ar Kung-Fu: Downloads" (Konami) (2026-10-22)
 
 **Pedido do usuario**: "fwMSX-splash.png e arte nossa, NBASIC.BIN e importante, mas pode ser baixado de github.com/Konamiman/MSX/tree/master/SRC/NBASIC [...] que tal criar uma opcao no menu que baixa ROMs do File Hunter, DSK, PDF... tudo no file hunter, e os utilitarios dos sites especificos, fazemos uma opcao que abre uma janela onde o usuario vai poder baixar item por item". Decisoes (AskUserQuestion): janela unica com fontes; busca pelo `allfiles.txt`; NBASIC.BIN baixado sob demanda.

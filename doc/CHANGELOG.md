@@ -7,6 +7,13 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.18] - 2026-10-23 - "Yie Ar Kung-Fu: Erro do BASIC no editor" (Konami)
+
+### Adicionado -- F5 num .dmx volta sozinho ao fonte quando o BASIC para com erro (pendencia do Dignified)
+- Depois do **F5** num `.dmx`/`.bad` o editor passa a **vigiar a tela do MSX**: se o BASIC parar com `Syntax error in 130` (ou qualquer mensagem do MSX BASIC/DISK BASIC, ou `Break in 130`) seguida do prompt `Ok`, a janela do editor **volta para a frente** com o cursor na linha do `.dmx` (ou do `.include`) que gerou a linha 130 -- o mesmo caminho de *Run > BASIC line...*, sem digitar o numero. O erro precisa aparecer em duas leituras seguidas; a vigia comeca 2 s depois do F5 (boot) e desiste em 180 s.
+- Comando novo **`screen`** no console/ponte: o texto da tela do MSX (SCREEN 0 ou 1) lido da VRAM pelas variaveis do BIOS (SCRMOD, TXTNAM/T32NAM, LINLEN, CRTCNT); `badig::FindBasicError` reconhece o erro na tela.
+- Testes: `badigtest` (FindBasicError) e `edittest`/`editorui` (vigia, confirmacao, prazo).
+
 ## [1.43.17] - 2026-10-22 - "Yie Ar Kung-Fu: Downloads" (Konami)
 
 ### Adicionado -- janela de downloads item por item (pendencia "downloader de ROMs/discos")

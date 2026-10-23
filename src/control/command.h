@@ -49,6 +49,9 @@ struct Result {
     }
 };
 
+// O texto da tela do MSX (SCREEN 0 ou 1), uma linha por linha da tela; vazio se a tela esta' em outro modo. Comando `screen`.
+std::string ScreenText(machine::Machine &m);
+
 // O que o Commander precisa do dono da maquina (a janela, a TUI ou um teste). A maquina pode ser
 // RECRIADA pelo host (ex.: trocar de cartucho reinicia), por isso nunca e' guardada aqui.
 class Host {

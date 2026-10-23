@@ -244,6 +244,39 @@ bool EditorApp::BuildRun() {
     }
     Msg("Running on the MSX: " + fs::path(e.Name()).filename().string());
     if (embedded_) hide_request_ = true; // a janela do editor sai da frente para ver o programa rodar
+    std::string ext = fs::path(e.Name()).extension().string();
+    for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+    watch_ = (screen_hook_ && !basic_map_.empty() && (ext == ".dmx" || ext == ".bad")) ? 1 : 0;
+    watch_start_ = -1;
+    watch_line_ = 0;
+    return true;
+}
+
+// Depois do F5 num .dmx: o BASIC pode parar com erro de execucao. A tela do MSX diz "Syntax error in 130" e o prompt "Ok"; lendo-a de tempos em tempos
+// o editor leva o cursor sozinho para a linha do .dmx (o mesmo caminho do Run > BASIC line), sem o usuario digitar o numero. A espera tem prazo e
+// o primeiro olhar vem so' depois do boot (a reinicializacao ainda pode estar mostrando a tela anterior); o erro precisa aparecer em duas leituras
+// seguidas, para nao pegar a tela no meio de uma troca.
+bool EditorApp::RunWatchTick(double now) {
+    if (watch_ <= 0 || !screen_hook_) return false;
+    if (watch_start_ < 0) {
+        watch_start_ = now;
+        watch_next_ = now + 2.0;
+    }
+    if (now - watch_start_ > 180.0) {
+        watch_ = 0;
+        return false;
+    }
+    if (now < watch_next_) return false;
+    watch_next_ = now + 0.3;
+    std::string message;
+    const int line = badig::FindBasicError(screen_hook_(), &message);
+    if (line <= 0 || line != watch_line_) {
+        watch_line_ = line;
+        return false;
+    }
+    watch_ = 0;
+    BasicLineGoto(message);
+    show_request_ = true;
     return true;
 }
 

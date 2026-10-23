@@ -204,6 +204,12 @@ void test_units() {
                   badig::ParseBasicErrorLine("130") == 130 && badig::ParseBasicErrorLine("in 10 in 20") == 20 && badig::ParseBasicErrorLine("Syntax error") == 0 &&
                   badig::ParseBasicErrorLine("Error in 70000") == 0,
               "extrai o numero da linha da mensagem do BASIC");
+        std::string msg;
+        check(badig::FindBasicError("Syntax error in 130\nOk\n", &msg) == 130 && msg == "Syntax error in 130" &&
+                  badig::FindBasicError("RUN\nType mismatch in 40   \r\n\nOk\n") == 40 && badig::FindBasicError("Break in 20\nOk") == 20 &&
+                  badig::FindBasicError("Hello in 5\nOk\n") == 0 && badig::FindBasicError("Syntax error in 130\nrunning\n") == 0 &&
+                  badig::FindBasicError("Syntax error\nOk\n") == 0 && badig::FindBasicError("Error in 70000\nOk\n") == 0 && badig::FindBasicError("") == 0,
+              "acha o erro de execucao e o prompt Ok na tela do MSX (sem confundir a saida do programa)");
     }
 
     // gravando

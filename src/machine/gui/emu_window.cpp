@@ -584,6 +584,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
         const control::Result res = ctl_commander.Execute(std::string(cmd) + " \"" + path + "\"");
         return res.ok ? std::string() : res.text;
     });
+    editor_panel.app().SetScreenHook([&]() { return control::ScreenText(*machine); }); // F5 num .dmx: vigia o erro do BASIC na tela
     control::Server ctl_server;
     // Arquivos fwmsx.port (pasta do executavel e pasta de trabalho): apagados ao sair, para uma
     // ferramenta nao tentar uma porta que ja' fechou.
@@ -1725,6 +1726,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
         }
 
         editor_panel.Tick(); // autosave periodico, com o editor visivel ou escondido
+        if (editor_panel.app().TakeShowRequest()) { // o BASIC rodado por F5 parou com erro: o editor volta, no cursor ja' posicionado na linha do .dmx
+            show_editor = true;
+            editor_panel.RequestFocus();
+        }
         if (show_editor) editor_panel.DrawWindow(&show_editor);
         if (editor_was_open && !show_editor) editor_panel.app().SaveSession(editor_session); // ao esconder o editor: guarda as anotacoes
         editor_was_open = show_editor;
