@@ -220,3 +220,11 @@ dist/*.tar.gz
 ### NBASIC.BIN (Konamiman, sem licenca declarada): baixado pela janela Downloads, nao distribuido
 src/badig/lib/NBASIC.BIN
 dist/badig/NBASIC.BIN
+
+### Pasta de trabalho do usuario (nao rastrear)
+/temp/
+
+### third-party/msxbas2rom: so' o codigo, a documentacao e os fontes; os ROMs/discos/zips compilados dos exemplos nao sobem (2026-10-23)
+third-party/msxbas2rom/**/*.rom
+third-party/msxbas2rom/**/*.dsk
+third-party/msxbas2rom/**/*.zip
