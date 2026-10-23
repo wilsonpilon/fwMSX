@@ -17,6 +17,15 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.25 -- "Yie Ar Kung-Fu: Maquina OCM" (Konami) (2026-10-24)
+
+**Pedido do usuario**: "sim, vamos para o OCM" (depois da analise do pacote do KdL: o OCM como maquina e' viavel). **Achados**: (1) o mapa de slots completo esta' nos comentarios do `emsx_top.vhd`; (2) as ROMs do pacote bastam (BIOS A1WSX, sub-ROM, MSX-Music, XBASIC, Kanji JIS1/JIS2, Kanji BASIC); (3) **o Kanji BASIC anima o logo esperando a colisao de sprites linha a linha** - o VDP so' a avaliava no fim do quadro, e a inicializacao levava ~70 s; com a colisao por linha leva ~10 s; (4) o teclado do `a1wsxbsl` e' o brasileiro.
+- **Feito**: `src/ocm` (C/Fortran/ASM/C++), `MachineConfig::ocm*`, `ConfigureOcm`, o ramo do OCM em `DefaultLayout`, a celula 3-1 de 48 KB, `--ocm/--ocm-main/--ocm-logo`, o item do menu de modelos, `vdp_sprites_collision_on_line`, `doc/ocm-spec.md`.
+- **Testes**: `msx2test` 8e (Kanji, portas comutadas, `ConfigureOcm` e o boot real do OCM com o Nextor; pulado sem as ROMs), `vdp2test` (colisao por linha).
+- **Nao feito**: velocidade da CPU, DIP-SW virtuais, ESE-SCC nos slots 1 e 2, mapper extra em 0-1, BIOS do turbo R, MIDI/UART/Wi-Fi, estado salvo do OCM, documentacao de como baixar o pacote e a opcao de download "INTERNAL".
+- **Nao verificado**: o item do menu na janela grafica (so' compila); o desenho do logo (so' o texto e o boot foram conferidos).
+- Validado: Windows e Linux, `ctest` 100% (35).
+
 ## v1.43.24 -- "Yie Ar Kung-Fu: Cartao SD" (Konami) (2026-10-24)
 
 **Pedido do usuario**: vasculhar o pacote do KdL (`third-party/ocm`, OCM-PLD e SDBIOS) e dizer se serve para a ESE-MegaSCSI e se da' para emular o OCM como maquina. Resposta: a MEGA-SCSI **nao** (nenhum driver, e o OCM nem emula o MB89352), mas o **MegaSD** sim, e o OCM como maquina e' viavel (mapa de slots no `emsx_top.vhd`). Decisao do usuario: copiar para `dist/roms` o que for necessario (utilitarios, ROMs, discos) e ir para a 1.43.24; a documentacao de como baixar do site do KdL e a opcao de download (modo INTERNAL) ficam para depois.

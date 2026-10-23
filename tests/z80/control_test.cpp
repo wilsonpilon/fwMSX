@@ -923,6 +923,11 @@ void TestDebugView(const std::string &bios) {
     for (int r = 0; r < 8; ++r) a_ok = a_ok || font.glyph[0x41][r] != 0;
     check(a_ok, "a letra 'A' da fonte tem pixels");
 
+    // O programa de teste e' uma rampa de NOPs na RAM da pagina 3: a desmontagem para tras (Up) fica sem ambiguidade e o teste nao depende de em que
+    // instrucao da BIOS o boot estava no instante da parada (o que mudou quando a colisao de sprites passou a ser por linha).
+    for (uint16_t a = 0xC300; a < 0xC340; ++a) m.WriteMemory(a, 0x00);
+    m.cpu().set_pc(0xC300);
+
     dbgui::DebugView v;
     v.Enter(m);
     check(m.debugger().stopped() && v.mode() == dbgui::ViewMode::Disasm && v.cursor() == m.cpu().state().pc.w, "Enter: para a maquina, vista de desmontagem, cursor no PC");
@@ -951,7 +956,7 @@ void TestDebugView(const std::string &bios) {
     v.Press(dbgui::Key::Down, m);
     check(v.cursor() == static_cast<uint16_t>(c1 + dbgui::InstructionLength(m, c1)), "Down: instrucao seguinte");
     v.Press(dbgui::Key::Up, m);
-    check(v.cursor() == c1, "Up: volta para a instrucao anterior");
+    check(v.cursor() == c1, "Up: volta para a instrucao anterior (de " + Hex4(c1) + " para " + Hex4(v.cursor()) + ")");
     const uint16_t c2 = v.cursor();
     v.Press(dbgui::Key::Right, m);
     check(v.cursor() != c2, "Right: rola uma pagina para baixo");

@@ -291,3 +291,43 @@ int vdp_sprites_check_collision(const VdpState *v) {
     }
     return 0;
 }
+
+// Colisao NA LINHA `line` (o V9938/V9958 acende o bit de colisao do S#0 no momento em que o feixe desenha dois sprites sobrepostos, nao so' no fim do quadro).
+// Rotinas que sincronizam efeitos de rastreio pela colisao (o logo do Kanji BASIC do OCM) esperam esse bit linha a linha. Mesmas regras do CheckSprites():
+// so' os sprites antes do terminador, ampliacao ignorada, linhas do padrao pela posicao Y (a linha de um sprite em Y e' Y+1...Y+size).
+int vdp_sprites_collision_on_line(const VdpState *v, int line) {
+    const int big = (v->regs[1] & 0x02) != 0;
+    const int size = big ? 16 : 8;
+    int rows[32];
+    int xs[32];
+    uint32_t pats[32];
+    int n = 0;
+    int a, b;
+
+    if (!SpritesActive(v)) return 0;
+    for (a = 0; a < 32; ++a) {
+        const uint32_t at = v->spr_tab + (uint32_t)a * 4u;
+        const uint8_t y = VramAt(v, at);
+        int row;
+        if (y == (ColorMode(v) ? 216 : 208)) break;
+        row = (int)(uint8_t)(line - (int)y - 1);
+        if (row >= size) continue;
+        rows[n] = row;
+        xs[n] = VramAt(v, at + 1);
+        pats[n] = v->spr_gen + ((uint32_t)(big ? (VramAt(v, at + 2) & 0xFC) : VramAt(v, at + 2)) << 3);
+        ++n;
+    }
+    for (a = 0; a < n; ++a) {
+        const unsigned la = big ? ((unsigned)VramAt(v, pats[a] + (uint32_t)rows[a]) << 8) + VramAt(v, pats[a] + (uint32_t)rows[a] + 16) : VramAt(v, pats[a] + (uint32_t)rows[a]);
+        for (b = a + 1; b < n; ++b) {
+            const unsigned lb = big ? ((unsigned)VramAt(v, pats[b] + (uint32_t)rows[b]) << 8) + VramAt(v, pats[b] + (uint32_t)rows[b] + 16) : VramAt(v, pats[b] + (uint32_t)rows[b]);
+            const int dx = xs[a] - xs[b];
+            if (dx >= 0 && dx < size) {
+                if (lb & (la >> dx)) return 1;
+            } else if (dx < 0 && -dx < size) {
+                if (la & (lb >> -dx)) return 1;
+            }
+        }
+    }
+    return 0;
+}

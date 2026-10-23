@@ -500,13 +500,15 @@ VdpStepResult vdp_step_scanline(VdpState *v) {
     /* Sprites (Fase 3): efeito colateral de status de Sprites() do fMSX
        em cada linha visivel (flag/numero do 5o sprite) ... */
     if (v->drawing && v->scanline < 192) vdp_sprites_update_status(v, v->scanline);
+    /* colisao na linha (o feixe a acende quando desenha dois sprites sobrepostos; antes so' no fim do quadro) */
+    if (v->drawing && v->scanline < (lines212 ? 212 : 192) && !(v->status[0] & 0x20) && vdp_sprites_collision_on_line(v, v->scanline)) v->status[0] |= 0x20;
 
     /* ... e, na linha 192, limpa o 5o sprite e checa colisao (trecho de
        LoopZ80() do fMSX; so' o de status de sprite, o resto -- teclado,
        joystick, mouse, cheats -- continua fora de escopo). */
     if (v->scanline == 192) {
         v->status[0] = (uint8_t)((v->status[0] & ~0x40) | 0x1F);
-        if (!(v->status[0] & 0x20) && vdp_sprites_check_collision(v)) v->status[0] |= 0x20;
+        /* a colisao agora e' por linha (acima); o teste do quadro inteiro fica so' em vdp_sprites_check_collision() */
     }
 
     /* LoopVDP(): avanca o comando do V9938 em execucao (so' MSX2) */

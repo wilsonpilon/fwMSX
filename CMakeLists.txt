@@ -592,6 +592,14 @@ set(HD_LIB_SOURCES
         src/hd/cpp/cli.cpp
 )
 
+# --- A maquina OCM (1chipMSX / MSX++): ROM de Kanji, portas comutadas e a montagem das ROMs (C + Fortran + Assembly + C++) -- ver doc/ocm-spec.md.
+set(OCM_LIB_SOURCES
+        src/ocm/core/kanji_core.c
+        src/ocm/fortran/ocm_swio.f90
+        src/ocm/asm/ocm_compose.asm
+        src/ocm/cpp/ocm_devices.cpp
+)
+
 set(MACHINE_LIB_SOURCES
         src/machine/machine.cpp
         src/debug/cpp/debugger.cpp
@@ -601,6 +609,7 @@ set(MACHINE_LIB_SOURCES
         src/debug/fortran/dbg_fmt.f90
         src/debug/asm/dbg_range.asm
         ${HD_LIB_SOURCES}
+        ${OCM_LIB_SOURCES}
 )
 
 enable_testing()

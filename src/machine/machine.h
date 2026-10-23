@@ -21,6 +21,7 @@
 #include "../fdc/cpp/fdc_port.h"
 #include "../hd/cpp/hd_image.h"
 #include "../hd/cpp/megasd.h"
+#include "../ocm/cpp/ocm_devices.h"
 #include "../hd/cpp/sunrise_ide.h"
 #include "../memmap/core/slot_state.h"
 #include "../memmap/cpp/ram_mapper.h"
@@ -161,6 +162,14 @@ struct MachineConfig {
     std::string megasd_rom;
     int megasd_slot = 15;
 
+    // A maquina OCM (1chipMSX / MSX++): uma MSX2+ com o mapa de slots do OCM-PLD (BIOS A1WSX em 0-0, MSX-Music em 0-2, mapper de 4 MB em 3-0, sub-ROM + Kanji BASIC em 3-1,
+    // MegaSD + Nextor em 3-2, XBASIC em 3-3), a ROM de Kanji nas portas D8h-DBh e as portas comutadas 40h-4Fh. `ocm_dir` e' a pasta com as ROMs do pacote do KdL
+    // (<pasta de ROMs>/ocm/roms). Ligada por ConfigureOcm(); o cartao SD (`sd_image`) e' opcional.
+    bool ocm = false;
+    std::string ocm_dir;
+    std::string ocm_main = "a1wsxbsl.rom";   // a1wsxbsl (teclado), a1wsxyen ou a1wsxwst
+    std::string ocm_logo = "knmsxppl.rom";   // o Kanji BASIC / logo da inicializacao (knmsxppl = MSX++)
+
     // Layout de slots. Enquanto `layout_set` for false, o layout sai dos campos
     // acima (bios, cartucho, disco, sub-ROM, FM-PAC) pela regra padrao. Depois
     // de editado pelo menu, vale o `layout` e os campos acima sao ignorados.
@@ -199,6 +208,10 @@ void EnableDiskInterface(MachineConfig &config);
 bool SetMapperRam(MachineConfig &config, int internal_kb, int external_kb, std::string &error);
 // O tamanho do mapper interno (celula 3:2) e do primeiro externo (outra celula com mapper), em KB; 0 = nao tem.
 int MapperRamKb(const MachineConfig &config, bool external);
+// Liga a maquina OCM: MSX2+ com o mapa de slots do OCM-PLD usando as ROMs de `dir` (a pasta roms/ocm/roms do pacote do KdL). `main_rom` = a1wsxbsl.rom, a1wsxyen.rom ou
+// a1wsxwst.rom; `logo_rom` = o knXXXXXX.rom do Kanji BASIC (vazios = padrao). O mapper de 4096 KB so' vale se `mapper_kb` ainda e' o de fabrica (128).
+// false + `error` se falta alguma ROM.
+bool ConfigureOcm(MachineConfig &config, const std::string &dir, const std::string &main_rom, const std::string &logo_rom, std::string &error);
 // Liga (ou, com as duas imagens vazias, desliga) a interface IDE com o Nextor, valendo tambem para um layout ja' fixado. Qualquer das imagens
 // pode ser vazia; `nextor` vazio mantem a ROM que ja' estava (ou a que a janela/console achar no banco de ROMs).
 bool SetIde(MachineConfig &config, const std::string &nextor, const std::string &master, const std::string &slave, std::string &error);
@@ -288,6 +301,9 @@ public:
     hd::SunriseIde *ide() { return ide_.get(); }
     // A interface MegaSD do layout, ou nullptr; e uma linha de estado (cartao, setores lidos/gravados) ou vazio.
     hd::MegaSd *megasd() { return megasd_.get(); }
+    // Os dispositivos de E/S da maquina OCM (nullptr nas outras).
+    ocm::SwitchedIo *switched_io() { return swio_.get(); }
+    ocm::KanjiDevice *kanji() { return kanji_.get(); }
     std::string SdInfo();
     // Uma linha por assunto sobre a interface IDE (banco da ROM, discos, setores lidos/gravados); vazio se nao ha' IDE.
     std::string IdeInfo();
@@ -424,6 +440,8 @@ private:
     std::unique_ptr<hd::HdImage> sd_image_;
     std::unique_ptr<hd::SdCard> sd_card_;
     std::unique_ptr<hd::MegaSd> megasd_;
+    std::unique_ptr<ocm::KanjiDevice> kanji_;
+    std::unique_ptr<ocm::SwitchedIo> swio_;
     std::unique_ptr<fm::FmDevice> fm_;
     std::unique_ptr<tape::TapeEngine> tape_;
     bool tape_motor_prev_ = false; // ultimo estado visto do rele (porta C, bit 4)

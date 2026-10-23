@@ -41,6 +41,7 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `peek <end> [n]` | le n bytes (1-4096) como o Z80 enxerga agora; `ok 41 42 ...` |
 | `poke <end> <v>...` | grava bytes (ROM nao e' alterada) |
 | `regs` | registradores do Z80 |
+| (linha de comando) `--ocm [--ocm-main a1wsxyen.rom] [--ocm-logo knXXXXXX.rom]` | a maquina OCM; combina com `--sd`, `--ram`, `--cart` |
 | `sd [imagem.hdd] [nextor.rom]` \| `sd off` | liga o cartao SD pelo MegaSD (Nextor + driver MegaSDHC do pacote do KdL, em `roms/ocm/roms`) no slot 3:3; sem argumentos mostra o estado; `off` tira |
 | `ide [mestre.hdd] [escravo.hdd] [nextor.rom]` \| `ide off` | liga a Sunrise IDE + Nextor (ROM do banco de ROMs se nao der) no slot 3:0 com as imagens; sem argumentos mostra o estado (banco, discos, setores); `off` tira |
 | `newhd <arq> <tam>...` | cria uma imagem de HD/SD (MBR + particoes FAT16 de 8 MB a 2 GB, ate' 4 GB); tamanhos `512`, `512M`, `2G`; `--split <total> <n> <arq>`, `--info <arq>` |

@@ -374,6 +374,12 @@ int main() {
         check(vdp_sprites_check_collision(v) == 1, "colisao entre sprites sobrepostos em SCREEN 5");
         v->vram[0x7A05] = 100;
         check(vdp_sprites_check_collision(v) == 0, "sem colisao quando afastados");
+        // colisao POR LINHA (o feixe acende o bit na linha em que os sprites se sobrepoem, nao so' no fim do quadro)
+        v->vram[0x7A05] = 24;
+        check(vdp_sprites_collision_on_line(v, 12) == 1 && vdp_sprites_collision_on_line(v, 17) == 1, "colisao por linha: dentro das 8 linhas dos sprites (10 a 17)");
+        check(vdp_sprites_collision_on_line(v, 9) == 0 && vdp_sprites_collision_on_line(v, 18) == 0 && vdp_sprites_collision_on_line(v, 100) == 0, "colisao por linha: fora delas nao ha'");
+        v->vram[0x7A05] = 100;
+        check(vdp_sprites_collision_on_line(v, 12) == 0, "colisao por linha: sprites afastados na horizontal");
 
         // sprites desligados (R#8 bit 1)
         Reg(*v, 8, 0x02);

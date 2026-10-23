@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstddef>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 
@@ -136,6 +137,17 @@ bool LoadRomCell(memmap::MemorySystem &mem, int p, int s, const SlotItem &item, 
             error = "BASIC: " + read_error;
             return false;
         }
+        if (data.size() == 0x4000 && second.size() == 0x8000) {
+            // sub-ROM de 16 KB na pagina 0 + ROM de 32 KB nas paginas 1 e 2 (a celula 3-1 do OCM): 0000h-BFFFh
+            std::vector<uint8_t> image(0xC000);
+            ocm_copy(image.data(), data.data(), data.size());
+            ocm_copy(image.data() + 0x4000, second.data(), second.size());
+            if (!mem.LoadRom(p, s, image.data(), image.size(), &load_error)) {
+                error = label + ": " + load_error;
+                return false;
+            }
+            return true;
+        }
         if (data.size() != 0x4000 || second.size() != 0x4000) {
             error = "BIOS + BASIC: cada arquivo precisa ter 16KB (tem " + std::to_string(data.size()) + " e " +
                     std::to_string(second.size()) + " bytes)";
@@ -183,6 +195,33 @@ SlotLayout DefaultLayout(const MachineConfig &config) {
     layout.cell[0][0].path = config.bios_path;
     layout.cell[0][0].page = 0;
 
+    if (config.ocm) {
+        // O mapa de slots do OCM-PLD (emsx_top.vhd): BIOS A1WSX em 0-0, MSX-Music em 0-2, mapper em 3-0, sub-ROM + Kanji BASIC em 3-1, MegaSD + Nextor em 3-2, XBASIC em 3-3.
+        const std::string dir = config.ocm_dir.empty() || config.ocm_dir.back() == '/' || config.ocm_dir.back() == '\\' ? config.ocm_dir : config.ocm_dir + "/";
+        layout.cell[0][2].kind = SlotKind::Rom;
+        layout.cell[0][2].path = dir + "msx2pmus.rom";
+        layout.cell[0][2].page = 1;
+        layout.cell[3][0].kind = SlotKind::Mapper;
+        layout.cell[3][0].size_kb = config.mapper_kb;
+        layout.cell[3][1].kind = SlotKind::Rom;  // sub-ROM (16 KB, pagina 0) + o Kanji BASIC (32 KB, paginas 1 e 2)
+        layout.cell[3][1].path = dir + "2pextrtc.rom";
+        layout.cell[3][1].path2 = dir + config.ocm_logo;
+        layout.cell[3][1].page = 0;
+        layout.cell[3][2].kind = SlotKind::MegaSd;
+        layout.cell[3][2].path = config.megasd_rom.empty() ? dir + "nextsd15.rom" : config.megasd_rom;
+        layout.cell[3][2].path2 = config.sd_image;
+        layout.cell[3][3].kind = SlotKind::Rom;
+        layout.cell[3][3].path = dir + "xbasic21.rom";
+        layout.cell[3][3].page = 1;
+        if (!config.cart_path.empty()) {
+            layout.cell[1][0].kind = SlotKind::Rom;
+            layout.cell[1][0].path = config.cart_path;
+            layout.cell[1][0].page = 1;
+            layout.cell[1][0].mapper = config.cart_mapper;
+        }
+        return layout;
+    }
+
     // RAM: 64KB comuns em 3:2 no MSX1; mapper de 128KB em 3:2 no MSX2.
     if (msx2) {
         layout.cell[3][2].kind = SlotKind::Mapper;
@@ -227,7 +266,7 @@ SlotLayout DefaultLayout(const MachineConfig &config) {
         cell.path3 = config.ide_slave;
     }
     // O MegaSD tambem por ultimo: celula ocupada = Create() acusa.
-    if (!config.sd_image.empty() && config.megasd_slot >= 0 && config.megasd_slot < 16 &&
+    if (!config.ocm && !config.sd_image.empty() && config.megasd_slot >= 0 && config.megasd_slot < 16 &&
         layout.cell[config.megasd_slot / 4][config.megasd_slot % 4].kind == SlotKind::Empty) {
         SlotItem &cell = layout.cell[config.megasd_slot / 4][config.megasd_slot % 4];
         cell.kind = SlotKind::MegaSd;
@@ -297,8 +336,8 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
                     error = where + "so' um MegaSD por maquina";
                     return false;
                 }
-                if (item.path.empty() || item.path2.empty()) {
-                    error = where + "o MegaSD precisa da ROM do Nextor com o driver (--megasd-rom) e da imagem do cartao (--sd)";
+                if (item.path.empty()) {
+                    error = where + "o MegaSD precisa da ROM do Nextor com o driver (--megasd-rom)";
                     return false;
                 }
                 break;
@@ -356,6 +395,29 @@ void EnableDiskInterface(MachineConfig &config) {
 namespace {
 bool MapperKbOk(int kb) { return kb >= 64 && kb <= 4096 && (kb & (kb - 1)) == 0; }
 } // namespace
+
+bool ConfigureOcm(MachineConfig &config, const std::string &dir, const std::string &main_rom, const std::string &logo_rom, std::string &error) {
+    const std::string d = dir.empty() || dir.back() == '/' || dir.back() == '\\' ? dir : dir + "/";
+    if (!main_rom.empty()) config.ocm_main = main_rom;
+    if (!logo_rom.empty()) config.ocm_logo = logo_rom;
+    for (const std::string &name : {config.ocm_main, config.ocm_logo, std::string("2pextrtc.rom"), std::string("msx2pmus.rom"), std::string("xbasic21.rom"),
+                                    std::string("a1xxjis1.rom"), std::string("nextsd15.rom")}) {
+        std::error_code ec;
+        if (!std::filesystem::is_regular_file(d + name, ec)) {
+            error = "OCM: falta " + d + name + " (copie as ROMs do pacote SDBIOS do KdL, SDBIOS/make/roms, para " + d + ")";
+            return false;
+        }
+    }
+    config.ocm = true;
+    config.ocm_dir = dir;
+    config.model = Model::MSX2P;
+    config.bios_path = d + config.ocm_main;
+    config.fmpac_rom_path.clear();  // o MSX-Music do OCM e' a ROM de 0-2 (o chip FM nas portas 7Ch/7Dh existe sempre)
+    config.ext_rom_path.clear();
+    if (config.mapper_kb == 128) config.mapper_kb = 4096;
+    config.layout_set = false;
+    return true;
+}
 
 bool SetSd(MachineConfig &config, const std::string &rom, const std::string &image, std::string &error) {
     if (!config.layout_set) {
@@ -576,7 +638,7 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                 ", que ja' tem outra coisa (escolha outro slot)";
         return nullptr;
     }
-    if (!config.layout_set && !config.sd_image.empty() &&
+    if (!config.layout_set && !config.ocm && !config.sd_image.empty() &&
         (config.megasd_slot < 0 || config.megasd_slot > 15 || layout.cell[config.megasd_slot / 4][config.megasd_slot % 4].kind != SlotKind::MegaSd)) {
         error = "o MegaSD cai no slot " + std::to_string(config.megasd_slot / 4) + ":" + std::to_string(config.megasd_slot % 4) +
                 ", que ja' tem outra coisa (escolha outro slot com --megasd-slot)";
@@ -680,15 +742,17 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                     error = "MegaSD: tamanho invalido da ROM (" + std::to_string(rom.size()) + " bytes; esperava um multiplo de 8 KB, de 16 KB a 1 MB)";
                     return nullptr;
                 }
-                m->sd_image_ = std::make_unique<hd::HdImage>();
-                if (!m->sd_image_->Open(item.path2, config.disk_read_only, error)) return nullptr;
+                if (!item.path2.empty()) {  // sem imagem o soquete fica vazio (no OCM o MegaSD existe mesmo sem cartao)
+                    m->sd_image_ = std::make_unique<hd::HdImage>();
+                    if (!m->sd_image_->Open(item.path2, config.disk_read_only, error)) return nullptr;
+                }
                 std::string load_error;
                 std::vector<uint8_t> first(rom.begin(), rom.begin() + 0x4000);
                 if (!mem.LoadRom(p, s, first.data(), first.size(), &load_error)) {
                     error = "slot " + std::to_string(p) + ":" + std::to_string(s) + " (MegaSD): " + load_error;
                     return nullptr;
                 }
-                m->sd_card_ = std::make_unique<hd::SdCard>(m->sd_image_.get());
+                m->sd_card_ = std::make_unique<hd::SdCard>(m->sd_image_.get());  // sd_image_ nulo = soquete vazio
                 m->megasd_ = std::make_unique<hd::MegaSd>(std::move(rom), m->sd_card_.get());
                 m->startup_.slot_bus->AttachCart(p, s, m->megasd_.get());
                 if (cart_info.empty()) cart_info = "MegaSD + Nextor em " + std::to_string(p) + ":" + std::to_string(s);
@@ -806,6 +870,22 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
             if (paths[d]->empty()) continue;
             if (!m->InsertDisk(d, *paths[d], error)) return nullptr;
         }
+    }
+
+    // A maquina OCM: a ROM de Kanji (portas D8h-DBh) e as portas comutadas (40h-4Fh).
+    if (config.ocm) {
+        std::string kerr;
+        const std::string dir = config.ocm_dir.empty() || config.ocm_dir.back() == '/' || config.ocm_dir.back() == '\\' ? config.ocm_dir : config.ocm_dir + "/";
+        std::vector<uint8_t> jis1, jis2;
+        if (!ReadFile(dir + "a1xxjis1.rom", jis1, kerr)) {
+            error = "OCM: ROM de Kanji nivel 1: " + kerr;
+            return nullptr;
+        }
+        ReadFile(dir + "a1xxjis2.rom", jis2, kerr);  // o nivel 2 e' opcional
+        m->kanji_ = std::make_unique<ocm::KanjiDevice>(std::move(jis1), std::move(jis2));
+        m->startup_.composite_bus->RegisterPortRange(0xD8, 0xDB, m->kanji_.get());
+        m->swio_ = std::make_unique<ocm::SwitchedIo>();
+        m->startup_.composite_bus->RegisterPortRange(0x40, 0x4F, m->swio_.get());
     }
 
     // SCC: o chip liga-se ao primeiro cartucho do layout (ou ao slot 1:0).
@@ -1353,6 +1433,7 @@ void Machine::EjectDisk(int drive) {
 std::string Machine::SdInfo() {
     if (!megasd_) return std::string();
     const hd::SdCard &card = megasd_->card();
+    if (!sd_image_) return "MegaSD: banco 0 = " + std::to_string(megasd_->bank(0)) + "  (sem cartao no soquete)";
     return "MegaSD: banco 0 = " + std::to_string(megasd_->bank(0)) + (megasd_->sd_mode() ? " (SD ligado)" : "") + "  (leituras da ROM " + std::to_string(megasd_->rom_reads()) +
            ", acessos ao SD " + std::to_string(megasd_->sd_accesses()) + ")\n  cartao: " + sd_image_->path() + "  " + std::to_string(static_cast<uint64_t>(sd_image_->sectors()) / 2048) + " MB " +
            (card.sdhc() ? "SDHC" : "SDSC") + (sd_image_->read_only() ? " (somente leitura)" : "") + "  lidos " + std::to_string(card.sectors_read()) + " / gravados " +

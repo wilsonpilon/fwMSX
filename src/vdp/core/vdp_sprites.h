@@ -64,6 +64,8 @@ void vdp_sprites_update_status(VdpState *v, int y);
 // pixels acesos sobrepostos. Chamado por vdp_step_scanline() na linha
 // 192, setando S#0 bit 5.
 int vdp_sprites_check_collision(const VdpState *v);
+/* Colisao entre sprites na linha `line` (sobreposicao de pixels acesos): o bit de colisao do S#0 acende na linha em que acontece. */
+int vdp_sprites_collision_on_line(const VdpState *v, int line);
 
 #ifdef __cplusplus
 }

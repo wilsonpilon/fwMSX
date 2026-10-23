@@ -836,11 +836,11 @@ int main() {
         SetSprite(v, 1, 57, 100, 3, 3); // dv=7: linha 7 do sprite 0 sobre a linha 0 do sprite 1
         check(vdp_sprites_check_collision(&v), "colisao na ultima linha de sobreposicao vertical (dv=7)");
 
-        // 26. De ponta a ponta: S#0 bit 5 sobe via vdp_step_scanline() na linha 192
-        // e e' limpo ao ler o status (porta 99h).
+        // 26. De ponta a ponta: S#0 bit 5 sobe via vdp_step_scanline() NA LINHA em que os sprites se sobrepoem (os dois ultimos se tocam na
+        // linha 58: o sprite 0 ocupa 51-58 e o 1, 58-65) -- desde a 1.43.25 a colisao e' por linha, nao so' no fim do quadro -- e e' limpo ao ler o status (porta 99h).
         v.status[0] = 0;
-        for (int i = 0; i < 2 * 262 && !(v.status[0] & 0x20); ++i) vdp_step_scanline(&v);
-        check((v.status[0] & 0x20) != 0 && v.scanline >= 192, "colisao sinalizada em S#0 bit 5 pela maquina de scanline (linha 192)");
+        for (int i = 0; i < 4 * 262 && !(v.status[0] & 0x20); ++i) vdp_step_scanline(&v);
+        check((v.status[0] & 0x20) != 0 && v.scanline >= 58 && v.scanline <= 59, "colisao sinalizada em S#0 bit 5 pela maquina de scanline na linha da sobreposicao (58)");
         WriteRegisterViaPort99(v, 15, 0);
         const uint8_t st = vdp_in(&v, 0x99);
         check((st & 0x20) && !(v.status[0] & 0x20), "ler S#0 devolve o flag de colisao e o limpa");

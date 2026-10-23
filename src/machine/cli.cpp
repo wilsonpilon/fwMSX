@@ -179,6 +179,8 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
     bool fm_stat = false;
     bool fmpac_explicit = false;
     bool ram_given = false;
+    bool use_ocm = false;
+    std::string ocm_main, ocm_logo;
     bool use_dos2 = false;
     std::string dos2_rom;
     bool cart_mapper_explicit = false; // true so' quando o usuario ESCOLHEU um mapper (nao "auto"/omitido)
@@ -297,6 +299,14 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
             const std::string *v = need(a == "--nextor" ? "a ROM do Nextor" : "uma imagem de disco rigido (crie com fwmsx --hdnew)");
             if (!v) return 2;
             (a == "--ide" ? config.ide_master : a == "--ide-slave" ? config.ide_slave : config.nextor_rom) = *v;
+        } else if (a == "--ocm") {
+            // A maquina OCM (1chipMSX / MSX++): MSX2+ com o mapa de slots do OCM-PLD e as ROMs do pacote do KdL em <pasta de ROMs>/ocm/roms.
+            use_ocm = true;
+        } else if (a == "--ocm-main" || a == "--ocm-logo") {
+            const std::string *v = need(a == "--ocm-main" ? "a1wsxbsl.rom, a1wsxyen.rom ou a1wsxwst.rom" : "o knXXXXXX.rom do Kanji BASIC (padrao knmsxppl.rom)");
+            if (!v) return 2;
+            (a == "--ocm-main" ? ocm_main : ocm_logo) = *v;
+            use_ocm = true;
         } else if (a == "--sd" || a == "--megasd-rom") {
             // Cartao SD pelo MegaSD (o do OCM): a imagem do cartao e a ROM do Nextor com o driver (sem --megasd-rom, roms/ocm/roms/nextsd15.rom).
             const std::string *v = need(a == "--sd" ? "uma imagem de cartao SD (crie com fwmsx --hdnew)" : "a ROM do Nextor com o driver MegaSD");
@@ -483,6 +493,15 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
         TryMapperFromRomDb(config, argv0);
     }
 
+    if (use_ocm) {
+        std::string ocm_error;
+        const std::string dir = (fs::path(romdb::DefaultRomPaths(argv0).root) / "ocm" / "roms").string();
+        if (!machine::ConfigureOcm(config, dir, ocm_main, ocm_logo, ocm_error)) {
+            std::cerr << "fwmsx --msx: --ocm: " << ocm_error << std::endl;
+            return 2;
+        }
+    }
+
     if (config.fmpac_rom_path == "auto") {
         config.fmpac_rom_path = FindDefaultFmpac(argv0);
         if (config.fmpac_rom_path.empty() && !fmpac_explicit) {
@@ -634,6 +653,14 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
                 char regs[160];
                 std::snprintf(regs, sizeof(regs), "PC=%04X SP=%04X AF=%04X BC=%04X DE=%04X HL=%04X IX=%04X IY=%04X", zs.pc.w, zs.sp.w, zs.af.w, zs.bc.w, zs.de.w, zs.hl.w, zs.ix.w, zs.iy.w);
                 std::cout << regs << std::endl;
+                {
+                    const VdpState &dv = m->vdp_state();
+                    char vr[160];
+                    std::snprintf(vr, sizeof(vr), "VDP R15=%02X R17=%02X R26=%02X R27=%02X S0=%02X S2=%02X vkey=%d scan=%d", dv.regs[15], dv.regs[17], dv.regs[26], dv.regs[27], dv.status[0], dv.status[2], dv.vkey, dv.scanline);
+                    std::cout << vr << std::endl;
+                }
+                const auto view = m->memory().CurrentView();
+                for (size_t pg = 0; pg < view.size(); ++pg) std::cout << "  pagina " << pg << ": slot " << view[pg].primary << "-" << view[pg].secondary << (view[pg].writable ? " RAM" : " ROM") << std::endl;
             }
         }
         if (shot_path.empty()) return 0;

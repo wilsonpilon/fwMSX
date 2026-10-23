@@ -7,6 +7,16 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.25] - 2026-10-24 - "Yie Ar Kung-Fu: Maquina OCM" (Konami)
+
+### Adicionado -- a maquina OCM (1chipMSX / MSX++)
+- **OCM** como quarta maquina, ao lado de MSX1, MSX2 e MSX2+: uma MSX2+ com o mapa de slots do OCM-PLD (BIOS A1WSX em 0-0, MSX-Music em 0-2, mapper de 4096 KB em 3-0, sub-ROM + Kanji BASIC em 3-1, MegaSD + Nextor em 3-2, XBASIC em 3-3), a **ROM de Kanji** (D8h-DBh, JIS1 e JIS2) e as **portas comutadas** (40h-4Fh, ID D4h). `fwmsx --msx --ocm [--sd cartao.hdd]`, `--ocm-main`, `--ocm-logo`; menu *Maquina > Modelo > OCM / MSX++*. Precisa das ROMs do pacote do KdL em `roms/ocm/roms`.
+- Modulo `src/ocm` nas 4 linguagens (Kanji em C, portas comutadas em Fortran, montagem das ROMs em Assembly, dispositivos em C++); `doc/ocm-spec.md`.
+- O MegaSD existe no OCM mesmo sem cartao (soquete vazio).
+
+### Corrigido
+- **Colisao de sprites por linha**: o bit de colisao (S#0 bit 5) acende na linha em que os sprites se sobrepoem, nao so' no fim do quadro. O logo do Kanji BASIC do OCM espera esse bit linha a linha: a inicializacao caiu de ~4000 para ~600 quadros.
+
 ## [1.43.24] - 2026-10-24 - "Yie Ar Kung-Fu: Cartao SD" (Konami)
 
 ### Adicionado -- cartao SD (MegaSD + Nextor)

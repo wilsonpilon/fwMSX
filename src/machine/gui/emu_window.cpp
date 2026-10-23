@@ -1026,9 +1026,13 @@ int RunEmulatorWindow(const WindowOptions &options) {
                         const char *label;
                     } models[] = {{Model::MSX1, "MSX1 (TMS9918)"}, {Model::MSX2, "MSX2 (V9938)"}, {Model::MSX2P, "MSX2+ (V9958)"}};
                     for (const auto &entry : models) {
-                        if (ImGui::MenuItem(entry.label, nullptr, current.model == entry.model) && current.model != entry.model) {
+                        if (ImGui::MenuItem(entry.label, nullptr, current.model == entry.model && !current.ocm) && (current.model != entry.model || current.ocm)) {
                             MachineConfig next = snapshot();
                             next.model = entry.model;
+                            if (next.ocm) { // saindo do OCM: volta ao mapper de fabrica e ao layout padrao
+                                next.ocm = false;
+                                next.mapper_kb = 128;
+                            }
                             next.bios_path = BiosFor(current.bios_path, entry.model);
                             // Trocar o modelo volta o layout ao padrao; cartucho e FM-PAC continuam.
                             next.cart_path = CartridgePath(current);
@@ -1039,6 +1043,17 @@ int RunEmulatorWindow(const WindowOptions &options) {
                             reboot(next);
                         }
                     }
+                    if (ImGui::MenuItem("OCM / MSX++ (pacote do KdL)", nullptr, current.ocm)) {
+                        // MSX2+ com o mapa de slots do OCM-PLD, o Kanji, as portas comutadas e o MegaSD (precisa das ROMs do pacote em roms/ocm/roms)
+                        MachineConfig next = snapshot();
+                        next.cart_path = CartridgePath(current);
+                        next.cart_mapper = EffectiveLayout(current).cell[1][0].mapper;
+                        next.layout_set = false;
+                        std::string ocm_error;
+                        if (!ConfigureOcm(next, (std::filesystem::path(options.rom_root) / "ocm" / "roms").string(), std::string(), std::string(), ocm_error)) disk_message = ocm_error;
+                        else reboot(next);
+                    }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("1chipMSX / MSX++: MSX2+ com mapper de 4 MB, Kanji, MegaSD + Nextor.\nPrecisa das ROMs do pacote SDBIOS do KdL em roms/ocm/roms.");
                     ImGui::Separator();
                     ImGui::TextDisabled("Trocar o modelo reinicia a maquina.");
                     ImGui::EndMenu();

@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.24 "Yie Ar Kung-Fu: Cartao SD", Konami)
+## Estado atual (v1.43.25 "Yie Ar Kung-Fu: Maquina OCM", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.43.25 maquina OCM (1chipMSX / MSX++) como quarta maquina: `--ocm`, MSX2+ com mapper de 4 MB, Kanji, portas comutadas e MegaSD + Nextor; colisao de sprites por linha**
 **1.43.24 cartao SD pelo MegaSD (`--sd`, comando `sd`): Nextor 2.1.4 + driver MegaSDHC do OCM sobre imagens SDSC/SDHC; ROMs do pacote do KdL em `dist/roms/ocm`**
 **1.43.23 disco rigido: Sunrise IDE + Nextor (`--ide`, comando `ide`), imagens de HD/SD de ate' 4 GB criadas por `--hdnew`/`newhd`/janela/TUI; portas sem dispositivo leem FFh**
 **1.43.22 RAM mapeada de 64 a 4096 KB (`--ram`) e dois mappers ao mesmo tempo, interno e externo (`--ram2`); comando `mapper`**

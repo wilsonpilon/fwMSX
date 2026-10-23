@@ -477,6 +477,79 @@ int main() {
         }
     }
 
+    // --- 8e. A maquina OCM: dispositivos de E/S (sem ROMs) e o boot com as ROMs do pacote do KdL --------------------------------------------
+    {
+        // ROM de Kanji: o endereco e' (alto 6 bits << 11) | (baixo 6 bits << 5) | contador; ler a porta D9h avanca o contador de linha (5 bits, em volta)
+        std::vector<uint8_t> j1(0x20000), j2(0x20000);
+        for (size_t i = 0; i < j1.size(); ++i) {
+            j1[i] = static_cast<uint8_t>(i ^ (i >> 8));
+            j2[i] = static_cast<uint8_t>(~(i ^ (i >> 8)));
+        }
+        ocm::KanjiDevice kd(j1, j2);
+        kd.out(0xD8, 0x05);
+        kd.out(0xD9, 0x02);
+        const size_t at = (2u << 11) | (5u << 5);
+        check(kd.in(0xD9) == j1[at] && kd.in(0xD9) == j1[at + 1], "Kanji: D8h=05h, D9h=02h aponta para o endereco 10A0h e a leitura de D9h avanca a linha");
+        for (int i = 0; i < 30; ++i) kd.in(0xD9);
+        check(kd.in(0xD9) == j1[at + 0], "Kanji: o contador de linha da a volta em 32 bytes");
+        kd.out(0xDA, 0x3F);
+        kd.out(0xDB, 0x01);
+        check(kd.in(0xDB) == j2[(1u << 11) | (0x3Fu << 5)], "Kanji nivel 2 (DAh/DBh) e' uma ROM a parte");
+        kd.out(0xD8, 0x00);
+        check(kd.in(0xD9) == j1[(2u << 11)], "escrever D8h zera o contador de linha");
+        ocm::KanjiDevice only1(j1, {});
+        check(only1.in(0xDB) == 0xFF, "sem a ROM do nivel 2 as portas DAh/DBh leem FFh");
+
+        // portas comutadas
+        ocm::SwitchedIo sw;
+        check(sw.in(0x40) == 0xFF, "portas comutadas: sem ID escolhido a 40h le FFh");
+        sw.out(0x40, 0xD4);
+        check(sw.in(0x40) == 0x2B, "ID D4h (OCM/MSX++): a 40h devolve o complemento (2Bh)");
+        sw.out(0x40, 0x08);
+        check(sw.in(0x40) == 0xF7, "ID 08h (Panasonic): complemento F7h");
+        sw.out(0x40, 0x55);
+        check(sw.in(0x40) == 0xFF, "ID desconhecido: FFh");
+
+        namespace fsys = std::filesystem;
+        const fsys::path odir = fsys::path(FWMSX_SOURCE_DIR) / "dist/roms/ocm/roms";
+        std::error_code ec;
+        std::string oerr;
+        machine::MachineConfig oc;
+        if (!fsys::is_regular_file(odir / "a1wsxbsl.rom", ec) || !fsys::is_regular_file(odir / "nextsd15.rom", ec)) {
+            std::printf("[SKIP] OCM: ROMs do pacote do KdL nao encontradas em dist/roms/ocm/roms\n");
+        } else {
+            check(machine::ConfigureOcm(oc, odir.string(), "", "", oerr) && oc.ocm && oc.model == machine::Model::MSX2P && oc.mapper_kb == 4096, "ConfigureOcm: MSX2+ com mapper de 4096 KB (" + oerr + ")");
+            machine::MachineConfig bad;
+            check(!machine::ConfigureOcm(bad, (fsys::temp_directory_path() / "nao_existe_ocm").string(), "", "", oerr) && oerr.find("falta") != std::string::npos, "ConfigureOcm sem as ROMs: erro dizendo o que copiar");
+            std::unique_ptr<machine::Machine> om = machine::Machine::Create(oc, oerr);
+            check(om != nullptr && om->kanji() != nullptr && om->switched_io() != nullptr && om->megasd() != nullptr, "OCM: Create() com Kanji, portas comutadas e MegaSD (" + oerr + ")");
+            if (om) {
+                check(om->memory().MapperSegments(3, 0) == 256, "OCM: mapper interno de 4096 KB em 3-0");
+                Frames(*om, 1000);
+                check(VramHas(*om, "MSX BASIC version 3.0") && VramHas(*om, "Copyright 1988 by Microsoft"), "OCM: a BIOS A1WSX (MSX2+) sobe ate' o MSX BASIC 3.0");
+                check(VramHas(*om, "Nextor BASIC version 2."), "OCM: o Nextor do MegaSD (slot 3-2) assume o disco");
+                // digita pela tabela de teclas da propria maquina (o A1WSXBSL tem o teclado brasileiro; a tabela do teste e' a internacional)
+                auto type_native = [&](const std::string &text) {
+                    for (const char ch : text) {
+                        std::string key;
+                        bool shift = false;
+                        if (ch == '|') { key = "enter"; }
+                        else if (!om->KeysFor(ch, key, shift)) continue;
+                        if (shift) om->KeyDown("shift");
+                        om->KeyDown(key);
+                        Frames(*om, 6);
+                        om->KeyUp(key);
+                        if (shift) om->KeyUp("shift");
+                        Frames(*om, 6);
+                    }
+                };
+                type_native("out 64,212:print inp(64)|");
+                Frames(*om, 200);
+                check(VramHas(*om, " 43"), "OCM: OUT 64,212 / INP(64) = 43 (portas comutadas, ID D4h)");
+            }
+        }
+    }
+
     // --- 9. MSX1 continua igual ----------------------------------------------------------------
     {
         machine::MachineConfig c1;
