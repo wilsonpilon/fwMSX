@@ -65,6 +65,17 @@ std::string FindMsxDos2Rom(const RomPaths &paths, std::string &error) {
     return "";
 }
 
+std::string FindMegaSdRom(const RomPaths &paths, std::string &error) {
+    for (const char *name : {"nextsd15.rom", "nextsd14.rom", "n3xtsd15.rom", "n3xtsd14.rom", "megasd1s.rom"}) {
+        const fs::path p = fs::path(paths.root) / "ocm" / "roms" / name;
+        std::error_code ec;
+        if (fs::is_regular_file(p, ec)) return p.string();
+    }
+    error = "nao achei o Nextor com o driver MegaSD (nextsd15.rom) em " + (fs::path(paths.root) / "ocm" / "roms").string() +
+            ": copie para la' as ROMs do pacote SDBIOS do KdL (SDBIOS/make/roms) ou use --megasd-rom <arquivo>";
+    return "";
+}
+
 std::string FindNextorRom(const RomPaths &paths, std::string &error) {
     RomDb db;
     if (!OpenRomDb(paths, db, error)) return "";

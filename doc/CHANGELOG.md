@@ -7,6 +7,13 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.24] - 2026-10-24 - "Yie Ar Kung-Fu: Cartao SD" (Konami)
+
+### Adicionado -- cartao SD (MegaSD + Nextor)
+- **MegaSD**: a interface de cartao SD do OCM/ESE (mapper ESE-RAM de 1 MB + SPI mapeado em memoria) com o **Nextor 2.1.4 e o driver MegaSDHC** do pacote do KdL, e um **cartao SD em modo SPI** (SDSC ate' 2 GB, SDHC acima; CSD v1/v2) sobre a mesma imagem do `newhd`. `--sd <img>`, `--megasd-rom`, `--megasd-slot`; comando `sd [img] [rom] | off`; menus da janela e do TUI. O Nextor sobe e grava arquivos (testado com 129 MB SDSC e 4097 MB SDHC).
+- O material do OCM/SDBIOS (ROMs, utilitarios e o codigo-fonte do driver) foi copiado para `dist/roms/ocm/` (fora do git); `third-party/ocm/` no `.gitignore`.
+- Slot do MegaSD por padrao 3:3; `man sd`; `doc/hd-spec.md` secao 7b.
+
 ## [1.43.23] - 2026-10-24 - "Yie Ar Kung-Fu: Disco rigido" (Konami)
 
 ### Adicionado -- disco rigido IDE com o Nextor

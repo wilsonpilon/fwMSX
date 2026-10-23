@@ -10,6 +10,8 @@
 #include "../../src/hd/cpp/cli.h"
 #include "../../src/hd/cpp/hd_image.h"
 #include "../../src/hd/cpp/ide_disk.h"
+#include "../../src/hd/cpp/megasd.h"
+#include "../../src/hd/cpp/sd_card.h"
 #include "../../src/hd/cpp/sunrise_ide.h"
 
 namespace fs = std::filesystem;
@@ -23,6 +25,33 @@ static void check(bool cond, const std::string &what) {
 
 static uint32_t Le32(const uint8_t *p) { return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16) | (static_cast<uint32_t>(p[3]) << 24); }
 static uint32_t Le16(const uint8_t *p) { return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8); }
+
+// Manda um comando SPI de 6 bytes e devolve a resposta R1 (procura o 1o byte != FFh nos 16 seguintes, como os drivers).
+static uint8_t SdCmd(hd::SdCard &c, uint8_t cmd, uint32_t arg, uint8_t crc = 0x95) {
+    c.Transfer(0xFF);
+    c.Transfer(static_cast<uint8_t>(0x40 | cmd));
+    c.Transfer(static_cast<uint8_t>(arg >> 24));
+    c.Transfer(static_cast<uint8_t>(arg >> 16));
+    c.Transfer(static_cast<uint8_t>(arg >> 8));
+    c.Transfer(static_cast<uint8_t>(arg));
+    c.Transfer(crc);
+    for (int i = 0; i < 16; ++i) {
+        const uint8_t r = c.Transfer(0xFF);
+        if (r != 0xFF) return r;
+    }
+    return 0xFF;
+}
+
+// A capacidade em setores que o CSD diz (o mesmo calculo do driver do MegaSD).
+static uint64_t CsdSectors(const uint8_t *csd) {
+    auto bits = [&](int hi, int lo) {
+        uint64_t v = 0;
+        for (int b = hi; b >= lo; --b) v = (v << 1) | ((csd[15 - b / 8] >> (b % 8)) & 1u);
+        return v;
+    };
+    if (bits(127, 126) == 1) return (bits(69, 48) + 1) * 1024;
+    return (bits(73, 62) + 1) << (bits(49, 47) + 2 + bits(83, 80) - 9);
+}
 
 // Operacoes de registrador do ATA como o driver do Nextor faria.
 static void Cmd(hd::IdeDisk &d, uint8_t cmd, uint32_t lba, int count) {
@@ -255,6 +284,166 @@ int main() {
     check(ide.CartRead(0x7E07, MEMMAP_MAPPER_NONE, v) && v == 0x50, "SRST desligado: de volta a 50h");
     ide.Reset();
     check(ide.bank() == 7 && ide.regs_enabled(), "Reset da interface: controle FFh de novo");
+
+    // --- o cartao SD em modo SPI --------------------------------------------------------------------------------------------------------
+    {
+        hd::HdImage simg;
+        simg.Open(img, false, error);  // 48 MB + 1 MiB: SDSC
+        hd::SdCard card(&simg);
+        check(!card.sdhc(), "imagem pequena = cartao SDSC");
+        check(card.Transfer(0x40) == 0xFF && SdCmd(card, 0, 0) == 0xFF, "/CS alto: o cartao nao responde");
+        card.Select(true);
+        check(SdCmd(card, 0, 0) == 0x01, "CMD0: R1 = 01h (idle)");
+        check(SdCmd(card, 8, 0x1AA, 0x87) == 0x01, "CMD8: R1 = 01h e o eco do padrao vem nos 4 bytes seguintes");
+        uint8_t echo[4];
+        for (auto &e : echo) e = card.Transfer(0xFF);
+        check(echo[2] == 0x01 && echo[3] == 0xAA, "CMD8: eco 000001AAh");
+        int polls = 0;
+        uint8_t r = 0x01;
+        while (r == 0x01 && polls < 10) {
+            SdCmd(card, 55, 0);
+            r = SdCmd(card, 41, 0x40000000);
+            ++polls;
+        }
+        check(r == 0x00 && polls >= 2, "ACMD41 sai do idle depois de algumas consultas (" + std::to_string(polls) + ")");
+        check(SdCmd(card, 58, 0) == 0x00, "CMD58: R1 = 00h");
+        uint8_t ocr[4];
+        for (auto &o : ocr) o = card.Transfer(0xFF);
+        check((ocr[0] & 0x80) != 0 && (ocr[0] & 0x40) == 0, "OCR: pronto, SDSC (bit 30 = 0)");
+        check(SdCmd(card, 9, 0) == 0x00, "CMD9: R1");
+        uint8_t tok = 0xFF;
+        for (int i = 0; i < 8 && tok == 0xFF; ++i) tok = card.Transfer(0xFF);
+        uint8_t csd[16];
+        for (auto &c : csd) c = card.Transfer(0xFF);
+        card.Transfer(0xFF);
+        card.Transfer(0xFF);
+        check(tok == 0xFE && CsdSectors(csd) == simg.sectors(), "CSD v1: token FEh e a capacidade (" + std::to_string(CsdSectors(csd)) + ") bate com a imagem (" + std::to_string(simg.sectors()) + ")");
+
+        // leitura de um bloco
+        check(SdCmd(card, 17, 0) == 0x00, "CMD17: R1");
+        tok = 0xFF;
+        for (int i = 0; i < 8 && tok == 0xFF; ++i) tok = card.Transfer(0xFF);
+        std::vector<uint8_t> blk;
+        for (int i = 0; i < 512; ++i) blk.push_back(card.Transfer(0xFF));
+        card.Transfer(0xFF);
+        card.Transfer(0xFF);
+        check(tok == 0xFE && std::equal(blk.begin(), blk.end(), raw.begin()), "CMD17 (endereco em bytes, SDSC): o bloco 0 e' o MBR");
+        check(SdCmd(card, 17, 512 * 5000) == 0x00, "CMD17 em 5000 * 512");
+        tok = 0xFF;
+        for (int i = 0; i < 8 && tok == 0xFF; ++i) tok = card.Transfer(0xFF);
+        check(tok == 0xFE, "o bloco 5000 vem com o token FEh");
+        for (int i = 0; i < 514; ++i) card.Transfer(0xFF);
+
+        // leitura multipla + CMD12
+        check(SdCmd(card, 18, 0) == 0x00, "CMD18: R1");
+        tok = 0xFF;
+        for (int i = 0; i < 8 && tok == 0xFF; ++i) tok = card.Transfer(0xFF);
+        for (int i = 0; i < 514; ++i) card.Transfer(0xFF);
+        tok = 0xFF;
+        for (int i = 0; i < 8 && tok == 0xFF; ++i) tok = card.Transfer(0xFF);
+        check(tok == 0xFE, "CMD18: o 2o bloco segue sem novo comando");
+        for (int i = 0; i < 514; ++i) card.Transfer(0xFF);
+        SdCmd(card, 12, 0);
+        for (int i = 0; i < 4; ++i) card.Transfer(0xFF);
+        check(card.sectors_read() >= 5, "contador de setores lidos");
+
+        // escrita de um bloco
+        check(SdCmd(card, 24, 512 * 7000) == 0x00, "CMD24: R1");
+        card.Transfer(0xFF);
+        card.Transfer(0xFE);
+        for (int i = 0; i < 512; ++i) card.Transfer(static_cast<uint8_t>(i ^ 0x3C));
+        card.Transfer(0xFF);
+        card.Transfer(0xFF);
+        uint8_t dr = 0xFF;
+        for (int i = 0; i < 4 && dr == 0xFF; ++i) dr = card.Transfer(0xFF);
+        check((dr & 0x1F) == 0x05, "CMD24: resposta de dados 'aceito' (xxx00101b)");
+        for (int i = 0; i < 4; ++i) card.Transfer(0xFF);
+        uint8_t chk[512];
+        simg.ReadSector(7000, chk);
+        check(chk[0] == 0x3C && chk[1] == 0x3D && chk[511] == static_cast<uint8_t>(511 ^ 0x3C), "o bloco gravado esta' no arquivo");
+        check(card.sectors_written() == 1, "contador de setores gravados");
+
+        // erros
+        check(SdCmd(card, 17, 512u * (simg.sectors() + 10)) == 0x40, "CMD17 alem do fim: erro de parametro (40h)");
+        check(SdCmd(card, 63, 0) == 0x04 && card.last_unsupported() == 63, "comando desconhecido: R1 = 04h (ilegal) e fica registrado");
+        card.Select(false);
+        check(card.Transfer(0x00) == 0xFF, "/CS alto de novo: FFh");
+    }
+    {
+        // cartao SDHC (acima de 2 GB): enderecos em setores e CSD v2
+        const std::string big = (tmp / "sdhc.hdd").string();
+        check(hd::CreateHdImage(big, {2048, 1024}, error), "imagem de 3 GB criada (" + error + ")");
+        hd::HdImage himg;
+        himg.Open(big, false, error);
+        hd::SdCard card(&himg);
+        check(card.sdhc(), "imagem de 3 GB = cartao SDHC");
+        card.Select(true);
+        SdCmd(card, 0, 0);
+        SdCmd(card, 8, 0x1AA, 0x87);
+        for (int i = 0; i < 4; ++i) card.Transfer(0xFF);
+        for (int i = 0; i < 4; ++i) {
+            SdCmd(card, 55, 0);
+            SdCmd(card, 41, 0x40000000);
+        }
+        SdCmd(card, 58, 0);
+        uint8_t ocr[4];
+        for (auto &o : ocr) o = card.Transfer(0xFF);
+        check((ocr[0] & 0xC0) == 0xC0, "OCR do SDHC: pronto e CCS (bit 30) ligado");
+        SdCmd(card, 9, 0);
+        uint8_t tok = 0xFF;
+        for (int i = 0; i < 8 && tok == 0xFF; ++i) tok = card.Transfer(0xFF);
+        uint8_t csd[16];
+        for (auto &c : csd) c = card.Transfer(0xFF);
+        check(tok == 0xFE && CsdSectors(csd) == himg.sectors() - himg.sectors() % 1024, "CSD v2: capacidade em unidades de 512 KB (" + std::to_string(CsdSectors(csd)) + ")");
+        for (int i = 0; i < 4; ++i) card.Transfer(0xFF);
+        check(SdCmd(card, 17, 2048) == 0x00, "CMD17 SDHC: o argumento e' o numero do setor");
+        tok = 0xFF;
+        for (int i = 0; i < 8 && tok == 0xFF; ++i) tok = card.Transfer(0xFF);
+        uint8_t bs0[512];
+        for (auto &b : bs0) b = card.Transfer(0xFF);
+        check(tok == 0xFE && bs0[510] == 0x55 && bs0[511] == 0xAA, "o setor 2048 e' o setor de boot da 1a particao");
+    }
+
+    // --- o MegaSD (mapper ESE-RAM de 1 MB com o cartao SD na janela 0) --------------------------------------------------------------------
+    {
+        std::vector<uint8_t> mrom(0x8000);
+        for (size_t i = 0; i < mrom.size(); ++i) mrom[i] = static_cast<uint8_t>((i >> 13) * 16 + (i & 0x0F));  // alto = banco de 8 KB
+        hd::HdImage simg;
+        simg.Open(img, false, error);
+        hd::SdCard card(&simg);
+        hd::MegaSd mega(mrom, &card);
+        uint8_t v = 0;
+        check(mega.CartRead(0x4000, MEMMAP_MAPPER_NONE, v) && v == 0x00 && mega.CartRead(0x6000, MEMMAP_MAPPER_NONE, v) && v == 0x00, "reset: todas as janelas mostram o banco 0");
+        mega.CartWrite(0x6000, 3, MEMMAP_MAPPER_NONE);   // janela 0 (4000h) = banco 3
+        mega.CartWrite(0x6800, 2, MEMMAP_MAPPER_NONE);   // janela 1 (6000h) = banco 2
+        mega.CartWrite(0x7000, 1, MEMMAP_MAPPER_NONE);   // janela 2 (8000h) = banco 1
+        mega.CartWrite(0x7800, 0x80 | 3, MEMMAP_MAPPER_NONE);   // janela 3 (A000h) = banco 3, gravavel
+        check(mega.CartRead(0x4005, MEMMAP_MAPPER_NONE, v) && v == 0x35 && mega.CartRead(0x6005, MEMMAP_MAPPER_NONE, v) && v == 0x25 &&
+                  mega.CartRead(0x8005, MEMMAP_MAPPER_NONE, v) && v == 0x15,
+              "registradores 6000h/6800h/7000h: as janelas de 8 KB mostram os bancos pedidos");
+        mega.CartWrite(0xA000, 0x77, MEMMAP_MAPPER_NONE);
+        mega.CartWrite(0x8000, 0x11, MEMMAP_MAPPER_NONE);   // janela 2 sem o bit 7: ROM, ignora
+        check(mega.CartRead(0xA000, MEMMAP_MAPPER_NONE, v) && v == 0x77 && mega.CartRead(0x8000, MEMMAP_MAPPER_NONE, v) && v == 0x10, "bit 7 do registrador = RAM gravavel; sem ele a janela e' ROM");
+        // modo SD: registrador 0 = 40h
+        mega.CartWrite(0x6000, 0x40, MEMMAP_MAPPER_NONE);
+        check(mega.sd_mode(), "registrador 0 = 40h: a janela 0 vira o cartao SD");
+        check(mega.CartRead(0x5800, MEMMAP_MAPPER_NONE, v) && v == 0x01, "5800h (leitura): estado, bit 0 = acabou de ligar");
+        mega.CartWrite(0x5800, 0x00, MEMMAP_MAPPER_NONE);   // modo: soquete 0 ligado
+        check(mega.CartRead(0x5800, MEMMAP_MAPPER_NONE, v) && v == 0x00, "depois de escrever o modo o bit 'acabou de ligar' cai");
+        // /CS baixo (4000h), CMD0, resposta atrasada de um byte (pipeline da leitura)
+        const uint8_t cmd0[6] = {0x40, 0, 0, 0, 0, 0x95};
+        mega.CartRead(0x4000, MEMMAP_MAPPER_NONE, v);
+        for (uint8_t b : cmd0) mega.CartWrite(0x4000, b, MEMMAP_MAPPER_NONE);
+        uint8_t r1 = 0xFF;
+        for (int i = 0; i < 16 && r1 == 0xFF; ++i) mega.CartRead(0x4000, MEMMAP_MAPPER_NONE, r1);
+        check(r1 == 0x01, "CMD0 pelo registrador de dados: R1 = 01h");
+        mega.CartRead(0x5000, MEMMAP_MAPPER_NONE, v);   // solta o /CS
+        // modo desligado: a janela volta a ser memoria
+        mega.CartWrite(0x6000, 0x00, MEMMAP_MAPPER_NONE);
+        check(!mega.sd_mode() && mega.CartRead(0x4005, MEMMAP_MAPPER_NONE, v) && v == 0x05, "registrador 0 = 00h: a janela 0 volta a ser a ROM");
+        mega.Reset();
+        check(mega.bank(0) == 0 && mega.bank(3) == 0, "Reset zera os bancos");
+    }
 
     // CLI
     const std::string cli_img = (tmp / "cli.hdd").string();

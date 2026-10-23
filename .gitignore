@@ -330,3 +330,6 @@ third-party/msxDiskUtil/**/*.com
 third-party/msxDiskUtil/**/*.sys
 third-party/kizuna/**/*.com
 third-party/kizuna/**/*.sys
+
+# Material do OCM/SDBIOS do KdL (so local; direitos autorais de terceiros)
+third-party/ocm/

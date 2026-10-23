@@ -444,6 +444,39 @@ int main() {
         }
     }
 
+    // --- 8d. Cartao SD: MegaSD + Nextor 2.1.4 com o driver MegaSDHC do OCM (pacote do KdL) sobre uma imagem do fwMSX ---------------------------
+    // A ROM vem de dist/roms/ocm/roms (copiada do pacote SDBIOS; fica fora do git); sem ela o bloco e' pulado.
+    {
+        namespace fsys = std::filesystem;
+        const fsys::path rom = fsys::path(FWMSX_SOURCE_DIR) / "dist/roms/ocm/roms/nextsd15.rom";
+        std::error_code ec;
+        if (!fsys::is_regular_file(rom, ec)) {
+            std::printf("[SKIP] MegaSD: dist/roms/ocm/roms/nextsd15.rom nao encontrada\n");
+        } else {
+            const fsys::path img = fsys::temp_directory_path() / "fwmsx_msx2_megasd.hdd";
+            std::string herr;
+            check(hd::CreateHdImage(img.string(), {16, 16}, herr), "MegaSD: imagem de cartao criada (" + herr + ")");
+            machine::MachineConfig sc = config;
+            sc.sd_image = img.string();
+            sc.megasd_rom = rom.string();
+            std::unique_ptr<machine::Machine> sm = machine::Machine::Create(sc, herr);
+            check(sm != nullptr && sm->megasd() != nullptr, "MegaSD: Create() com o MegaSD em 3:3 (" + herr + ")");
+            if (sm) {
+                Frames(*sm, 1500);
+                check(VramHas(*sm, "Nextor BASIC version 2."), "MegaSD: o kernel sobe e o BASIC mostra 'Nextor BASIC version 2.xx'");
+                check(sm->megasd()->card().sectors_read() >= 1, "MegaSD: o driver inicializou o cartao (CMD0/8/55/41/58) e leu a tabela de particoes (" + std::to_string(sm->megasd()->card().sectors_read()) + " setores)");
+                Type(*sm, "open \"a:sd.txt\" for output as #1:print #1,\"oi\":close #1|");
+                Frames(*sm, 1500);
+                check(sm->megasd()->card().sectors_written() >= 2, "MegaSD: gravou arquivo na particao A: (" + std::to_string(sm->megasd()->card().sectors_written()) + " setores gravados)");
+                std::ifstream f(img, std::ios::binary);
+                std::vector<char> data((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+                const std::string needle = "SD      TXT";
+                check(std::search(data.begin(), data.end(), needle.begin(), needle.end()) != data.end(), "MegaSD: o diretorio do arquivo da imagem tem SD.TXT");
+            }
+            fsys::remove(img, ec);
+        }
+    }
+
     // --- 9. MSX1 continua igual ----------------------------------------------------------------
     {
         machine::MachineConfig c1;

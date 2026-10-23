@@ -587,6 +587,8 @@ set(HD_LIB_SOURCES
         src/hd/cpp/hd_image.cpp
         src/hd/cpp/ide_disk.cpp
         src/hd/cpp/sunrise_ide.cpp
+        src/hd/cpp/sd_card.cpp
+        src/hd/cpp/megasd.cpp
         src/hd/cpp/cli.cpp
 )
 

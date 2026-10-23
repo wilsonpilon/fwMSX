@@ -111,10 +111,32 @@ power-on, controle em 4104h, registradores, latch de dados, escravo ausente, SRS
 sem a ROM): "Nextor BASIC version 2.xx", leu a tabela de particoes, gravou `OLA.TXT` na particao A: e o
 arquivo esta' no diretorio do `.hdd`. `controltest`: `ide`/`newhd`.
 
+## 7b. O cartao SD pelo MegaSD (1.43.24)
+
+Material novo do usuario: o pacote do KdL (OCM-PLD v3.9.2 e SDBIOS) em `third-party/ocm` (788 MB, 3869 arquivos; fora do git). O que
+serve ao SD: `SDBIOS/make/roms/nextsd15.rom` (**Nextor 2.1.4 + driver MegaSDHC v1.5**, 128 KB; ha' tambem `n3xtsd15` com o Nextor 3 beta, as
+versoes 1.4 e os `megasd1s/2s.rom` antigos), o **codigo-fonte Z80 do driver** (`src/20261002 ocm-megasdhc disk drivers for nextor`) e o
+hardware em Verilog (`esemsx3/src/peripheral/megasd.v`, so' como referencia). As ROMs e utilitarios uteis foram **copiados para
+`dist/roms/ocm/`** (fora do git: `dist/roms/` e' ignorado e `third-party/ocm/` entrou no `.gitignore`).
+
+Hardware (`megasd.h`): um mapper "ESE-RAM" de 1 MB com quatro janelas de 8 KB em 4000h/6000h/8000h/A000h; os bancos se escolhem escrevendo em
+6000h/6800h/7000h/7800h (o do 6000h e' de 7 bits na 2a janela); bit 7 = RAM gravavel. Com o registrador do banco 0 em **40h-7Fh** a janela 4000h-5FFFh
+vira o cartao: 4000h-57FFh e' o registrador de dados SPI (cada acesso troca um byte; **a leitura devolve o byte da troca anterior**, por isso os
+drivers fazem uma leitura de enchimento; o bit 12 do endereco e' o /CS: 4000h seleciona, 5000h solta), 5800h-5FFFh e' o modo (escrita: bit 7 baixa
+velocidade, bit 0 = 1 desliga o soquete; leitura de 5800h-5BFFh: estado, bit 0 = acabou de ligar). A ROM do Nextor vai para o inicio da RAM.
+
+O cartao (`sd_card.h`): SPI com CMD0/8/9/10/12/13/16/17/18/23/24/25/32/33/38/55/58/59 e ACMD22/23/41, CSD v1 (SDSC, com blocos de leitura de 1024 bytes acima
+de 1 GB) e v2 (SDHC), OCR com o bit 30. Imagem acima de 2 GB = SDHC (endereco em setores), senao SDSC (em bytes). **Achado:** o driver do MegaSD le e
+descarta dois bytes depois do CRC do comando, entao a resposta tem de vir depois deles; o cartao poe dois FFh antes de cada resposta (o Ncr de um
+cartao real e' de 1 a 8 bytes). Sem isso o Nextor dizia "Disk offline".
+
+Verificado no emulador (MSX2+ com `--sd`): o Nextor 2.1.4 sobe ("Nextor BASIC version 2.10"), inicializa o cartao, le a tabela de particoes e **grava
+arquivos** (`OPEN "A:OI.TXT"` ... `FILES` lista `OI.TXT`), tanto numa imagem SDSC de 129 MB quanto numa SDHC de 4097 MB.
+
 ## 8. O que falta
 
-- **SCSI** (MEGA-SCSI com MB89352 e o SRAM de 1 MB, Gouda, WAVE-SCSI) e o **SD do OCM/MegaSD**: precisam
-  do driver correspondente (Nextor MegaSCSI/MegaSD), que nao esta' no banco de ROMs.
+- **SCSI** (MEGA-SCSI com MB89352 e o SRAM de 1 MB, Gouda, WAVE-SCSI): continua sem driver. O pacote do KdL **nao** tem driver nem emula
+  o MB89352 (no `megaram.vhd` o acesso ao SPC esta' comentado como "reservado"; so' ha' os utilitarios ESET/EP/MGLOAD, que rodam no MSX).
 - Copiar os arquivos do MSX-DOS para dentro de uma imagem de HD pelo `msxdisk` (hoje o `msxdisk` so'
   conhece FAT12 de disquete): para um HD que **inicia sozinho** no MSX-DOS 2 hoje e' preciso copiar os
   arquivos pelo proprio Nextor (testado: `copy "b:command2.com" to "a:cmd2.com"` no BASIC do Nextor gravou o arquivo

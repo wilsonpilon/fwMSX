@@ -226,6 +226,14 @@ SlotLayout DefaultLayout(const MachineConfig &config) {
         cell.path2 = config.ide_master;
         cell.path3 = config.ide_slave;
     }
+    // O MegaSD tambem por ultimo: celula ocupada = Create() acusa.
+    if (!config.sd_image.empty() && config.megasd_slot >= 0 && config.megasd_slot < 16 &&
+        layout.cell[config.megasd_slot / 4][config.megasd_slot % 4].kind == SlotKind::Empty) {
+        SlotItem &cell = layout.cell[config.megasd_slot / 4][config.megasd_slot % 4];
+        cell.kind = SlotKind::MegaSd;
+        cell.path = config.megasd_rom;
+        cell.path2 = config.sd_image;
+    }
     // O mapper externo por ultimo: se a celula ja' tem outra coisa, fica de fora e Create() acusa (nao some em silencio).
     if (config.mapper2_kb > 0 && config.mapper2_slot >= 0 && config.mapper2_slot < 16 &&
         layout.cell[config.mapper2_slot / 4][config.mapper2_slot % 4].kind == SlotKind::Empty) {
@@ -245,7 +253,7 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
         error = "BIOS: falta a BIOS no slot 0:0 (o Z80 comeca la')";
         return false;
     }
-    int mappers = 0, disks = 0, fmpacs = 0, ides = 0;
+    int mappers = 0, disks = 0, fmpacs = 0, ides = 0, megasds = 0;
     for (int p = 0; p < 4; ++p) {
         for (int s = 0; s < 4; ++s) {
             const SlotItem &item = layout.cell[p][s];
@@ -284,6 +292,16 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
                 break;
             case SlotKind::Disk: ++disks; break;
             case SlotKind::FmPac: ++fmpacs; break;
+            case SlotKind::MegaSd:
+                if (++megasds > 1) {
+                    error = where + "so' um MegaSD por maquina";
+                    return false;
+                }
+                if (item.path.empty() || item.path2.empty()) {
+                    error = where + "o MegaSD precisa da ROM do Nextor com o driver (--megasd-rom) e da imagem do cartao (--sd)";
+                    return false;
+                }
+                break;
             case SlotKind::Ide:
                 if (++ides > 1) {
                     error = where + "so' uma interface IDE por maquina";
@@ -338,6 +356,53 @@ void EnableDiskInterface(MachineConfig &config) {
 namespace {
 bool MapperKbOk(int kb) { return kb >= 64 && kb <= 4096 && (kb & (kb - 1)) == 0; }
 } // namespace
+
+bool SetSd(MachineConfig &config, const std::string &rom, const std::string &image, std::string &error) {
+    if (!config.layout_set) {
+        if (!rom.empty()) config.megasd_rom = rom;
+        config.sd_image = image;
+        return true;
+    }
+    SlotLayout layout = config.layout;
+    int cell = -1;
+    for (int i = 0; i < 16; ++i)
+        if (layout.cell[i / 4][i % 4].kind == SlotKind::MegaSd) cell = i;
+    if (image.empty()) {
+        if (cell >= 0) layout.cell[cell / 4][cell % 4] = SlotItem{};
+        config.layout = layout;
+        config.sd_image.clear();
+        return true;
+    }
+    const std::string use_rom = !rom.empty() ? rom : (cell >= 0 ? layout.cell[cell / 4][cell % 4].path : config.megasd_rom);
+    if (cell < 0) cell = config.megasd_slot;
+    if (cell < 0 || cell > 15 || (layout.cell[cell / 4][cell % 4].kind != SlotKind::Empty && layout.cell[cell / 4][cell % 4].kind != SlotKind::MegaSd)) {
+        error = "o slot " + std::to_string(cell / 4) + ":" + std::to_string(cell % 4) + " ja' tem outra coisa (escolha outro slot para o MegaSD)";
+        return false;
+    }
+    SlotItem &item = layout.cell[cell / 4][cell % 4];
+    item = SlotItem{};
+    item.kind = SlotKind::MegaSd;
+    item.path = use_rom;
+    item.path2 = image;
+    config.layout = layout;
+    config.megasd_rom = use_rom;
+    config.sd_image = image;
+    return true;
+}
+
+std::string SdRomPath(const MachineConfig &config) {
+    const SlotLayout layout = EffectiveLayout(config);
+    for (int i = 0; i < 16; ++i)
+        if (layout.cell[i / 4][i % 4].kind == SlotKind::MegaSd) return layout.cell[i / 4][i % 4].path;
+    return std::string();
+}
+
+std::string SdImagePath(const MachineConfig &config) {
+    const SlotLayout layout = EffectiveLayout(config);
+    for (int i = 0; i < 16; ++i)
+        if (layout.cell[i / 4][i % 4].kind == SlotKind::MegaSd) return layout.cell[i / 4][i % 4].path2;
+    return std::string();
+}
 
 bool SetIde(MachineConfig &config, const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) {
     const bool on = !master.empty() || !slave.empty();
@@ -511,6 +576,12 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                 ", que ja' tem outra coisa (escolha outro slot)";
         return nullptr;
     }
+    if (!config.layout_set && !config.sd_image.empty() &&
+        (config.megasd_slot < 0 || config.megasd_slot > 15 || layout.cell[config.megasd_slot / 4][config.megasd_slot % 4].kind != SlotKind::MegaSd)) {
+        error = "o MegaSD cai no slot " + std::to_string(config.megasd_slot / 4) + ":" + std::to_string(config.megasd_slot % 4) +
+                ", que ja' tem outra coisa (escolha outro slot com --megasd-slot)";
+        return nullptr;
+    }
     if (!ValidateLayout(layout, error)) return nullptr;
 
     std::unique_ptr<Machine> m(new Machine());
@@ -597,6 +668,32 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                 mem.AllocateMapperRam(p, s, item.size_kb / 16);
                 m->mappers_.push_back(std::make_unique<memmap::RamMapperDevice>(mem, p, s));
                 break;
+            case SlotKind::MegaSd: {
+                // MegaSD: a ROM do Nextor com o driver (ate' 1 MB; vai para o inicio da RAM de 1 MB do dispositivo) e o cartao SD. A celula guarda os primeiros
+                // 16 KB para a BIOS achar o cartucho; o dispositivo (AttachCart) responde por 4000h-BFFFh.
+                std::vector<uint8_t> rom;
+                if (!ReadFile(item.path, rom, error)) {
+                    error = "MegaSD: " + error;
+                    return nullptr;
+                }
+                if (rom.size() < 0x4000 || rom.size() > 0x100000 || rom.size() % 0x2000) {
+                    error = "MegaSD: tamanho invalido da ROM (" + std::to_string(rom.size()) + " bytes; esperava um multiplo de 8 KB, de 16 KB a 1 MB)";
+                    return nullptr;
+                }
+                m->sd_image_ = std::make_unique<hd::HdImage>();
+                if (!m->sd_image_->Open(item.path2, config.disk_read_only, error)) return nullptr;
+                std::string load_error;
+                std::vector<uint8_t> first(rom.begin(), rom.begin() + 0x4000);
+                if (!mem.LoadRom(p, s, first.data(), first.size(), &load_error)) {
+                    error = "slot " + std::to_string(p) + ":" + std::to_string(s) + " (MegaSD): " + load_error;
+                    return nullptr;
+                }
+                m->sd_card_ = std::make_unique<hd::SdCard>(m->sd_image_.get());
+                m->megasd_ = std::make_unique<hd::MegaSd>(std::move(rom), m->sd_card_.get());
+                m->startup_.slot_bus->AttachCart(p, s, m->megasd_.get());
+                if (cart_info.empty()) cart_info = "MegaSD + Nextor em " + std::to_string(p) + ":" + std::to_string(s);
+                break;
+            }
             case SlotKind::Ide: {
                 // Sunrise ATA-IDE: a ROM do Nextor (ate' 128 KB, bancos de 16 KB) e os discos. A celula guarda o 1o banco (para a BIOS achar o
                 // cartucho); o dispositivo (AttachCart) responde por 4000h-7FFFh, trocando de banco, e pelos registradores do ATA.
@@ -1253,6 +1350,15 @@ void Machine::EjectDisk(int drive) {
     if (fdc_engine_) fdc_attach(fdc_engine_, drive, disks_[drive].disk());
 }
 
+std::string Machine::SdInfo() {
+    if (!megasd_) return std::string();
+    const hd::SdCard &card = megasd_->card();
+    return "MegaSD: banco 0 = " + std::to_string(megasd_->bank(0)) + (megasd_->sd_mode() ? " (SD ligado)" : "") + "  (leituras da ROM " + std::to_string(megasd_->rom_reads()) +
+           ", acessos ao SD " + std::to_string(megasd_->sd_accesses()) + ")\n  cartao: " + sd_image_->path() + "  " + std::to_string(static_cast<uint64_t>(sd_image_->sectors()) / 2048) + " MB " +
+           (card.sdhc() ? "SDHC" : "SDSC") + (sd_image_->read_only() ? " (somente leitura)" : "") + "  lidos " + std::to_string(card.sectors_read()) + " / gravados " +
+           std::to_string(card.sectors_written()) + " setores" + (card.last_unsupported() ? "  (comando SD " + std::to_string(card.last_unsupported()) + " nao suportado)" : "");
+}
+
 std::string Machine::IdeInfo() {
     if (!ide_) return std::string();
     std::string out = "Sunrise IDE: banco " + std::to_string(ide_->bank()) + " da ROM, registradores IDE " + (ide_->regs_enabled() ? "ligados" : "desligados") +
@@ -1276,6 +1382,7 @@ void Machine::Reset() {
     if (fdc_engine_) fdc_reset(fdc_engine_);
     for (auto &d : mappers_) d->Reset();
     if (ide_) ide_->Reset();
+    if (megasd_) megasd_->Reset();
     cpu_->reset();
     startup_.vdp_device->Reset();
     startup_.ppi_device->Reset();

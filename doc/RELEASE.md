@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.24 -- "Yie Ar Kung-Fu: Cartao SD" (Konami) (2026-10-24)
+
+**Pedido do usuario**: vasculhar o pacote do KdL (`third-party/ocm`, OCM-PLD e SDBIOS) e dizer se serve para a ESE-MegaSCSI e se da' para emular o OCM como maquina. Resposta: a MEGA-SCSI **nao** (nenhum driver, e o OCM nem emula o MB89352), mas o **MegaSD** sim, e o OCM como maquina e' viavel (mapa de slots no `emsx_top.vhd`). Decisao do usuario: copiar para `dist/roms` o que for necessario (utilitarios, ROMs, discos) e ir para a 1.43.24; a documentacao de como baixar do site do KdL e a opcao de download (modo INTERNAL) ficam para depois.
+- **Achados**: (1) o MegaSD e' simples: mapper ESE-RAM + SPI em memoria (`megasd.v`, 342 linhas); (2) o driver (`nextsd15.rom`, fonte Z80 incluso) mostra o protocolo; (3) o driver descarta dois bytes depois do CRC do comando, entao o cartao tem de atrasar a resposta (dois FFh) - sem isso "Disk offline"; (4) acima de 1 GB os SDSC usam blocos de leitura de 1024 bytes no CSD.
+- **Feito**: `src/hd/sd_card.{h,cpp}` (cartao SPI), `src/hd/megasd.{h,cpp}` (interface), `SlotKind::MegaSd`, `MachineConfig::sd_image/megasd_rom/megasd_slot`, `SetSd`, `romdb::FindMegaSdRom`, `--sd/--megasd-rom/--megasd-slot`, comando `sd`, menus da janela e do TUI, `Machine::SdInfo`; `third-party/ocm/` no `.gitignore`; copia do material para `dist/roms/ocm/`.
+- **Testes**: `hdtest` (protocolo SPI completo: CMD0/8/55/41/58/9/17/18/12/24, erros, SDSC e SDHC, e o mapper do MegaSD), `msx2test` 8d (boot real do Nextor + MegaSDHC sobre uma imagem do fwMSX, grava `SD.TXT`; pulado sem a ROM), `controltest` (`sd`).
+- **Nao feito**: a maquina OCM (Kanji, portas comutadas, ESE-SCC, mapa de slots), a MEGA-SCSI, o download do pacote (modo INTERNAL), o estado salvo do MegaSD.
+- **Nao verificado**: os menus na janela grafica e o TUI (so' compilam).
+- Validado: Windows e Linux, `ctest` 100% (35).
+
 ## v1.43.23 -- "Yie Ar Kung-Fu: Disco rigido" (Konami) (2026-10-24)
 
 **Pedido do usuario**: HD, "com suporte para IDE e SCSI se voce puder, inclusive suportando ROMs da Sunrise com o kernel do Nextor"; imagens de 2, 4 ou 8 GB (o Nextor so' le particoes de ate' 2 GB); SD pelo Nextor/Sunrise ou OCM/SCSI; criar disco pela CLI/parametros como o openMSX, e na TUI e na GUI. **Respostas**: IDE primeiro e SCSI depois (nao ha' ROM de driver de SCSI no banco: a MEGA-SCSI nao tem ROM propria); imagem ate' 4 GB com particoes de 2 GB; ROM do Nextor escolhida por opcao ou, sem ela, a do banco.

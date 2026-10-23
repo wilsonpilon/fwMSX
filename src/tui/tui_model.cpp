@@ -199,7 +199,11 @@ std::vector<TuiModel::MenuDef> TuiModel::BuildMenus() const {
                   {"Ligar disco rigido (IDE + Nextor)...", wiz("Disco rigido IDE", {{"Imagem .hdd (mestre)", "", true, kHddExts}, {"Imagem do escravo (opcional)", "", true, kHddExts}},
                                                                [](const std::vector<std::string> &v) { return "ide " + Quote(v[0]) + (v[1].empty() ? std::string() : " " + Quote(v[1])); })},
                   {"Disco rigido: estado", cmd("ide")},
-                  {"Desligar o disco rigido", cmd("ide off")}}});
+                  {"Desligar o disco rigido", cmd("ide off")},
+                  {"Ligar cartao SD (MegaSD + Nextor)...", wiz("Cartao SD", {{"Imagem .hdd do cartao", "", true, kHddExts}},
+                                                                 [](const std::vector<std::string> &v) { return "sd " + Quote(v[0]); })},
+                  {"Cartao SD: estado", cmd("sd")},
+                  {"Desligar o cartao SD", cmd("sd off")}}});
 
     m.push_back({"Ferramentas",
                  {{"Banco de ROMs: buscar...", wiz("Buscar ROM", {{"Termo", "", false, {}}},

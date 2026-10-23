@@ -90,6 +90,18 @@ public:
         error = "o disco rigido nao esta' disponivel neste modo";
         return false;
     }
+    // A ROM do Nextor com o driver MegaSD (nextsd15.rom, do pacote SDBIOS copiado para <pasta de ROMs>/ocm/roms); "" = nao achou.
+    virtual std::string FindMegaSdRom(std::string &error) {
+        error = "o cartao SD nao esta' disponivel neste modo";
+        return "";
+    }
+    // Reinicia a maquina com o MegaSD e a imagem de cartao SD `image` (vazia = tira o MegaSD). Mantem o resto da configuracao.
+    virtual bool BootSd(const std::string &rom, const std::string &image, std::string &error) {
+        (void)rom;
+        (void)image;
+        error = "o cartao SD nao esta' disponivel neste modo";
+        return false;
+    }
     // Grava a tela em `path` (PNG na janela; o formato e' do host).
     virtual bool SaveScreenshot(const std::string &path, std::string &error) = 0;
 };

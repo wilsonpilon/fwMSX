@@ -276,6 +276,28 @@ EXEMPLOS
 VER TAMBEM
   romdb, reset)MAN");
 
+    add("sd", "", "Midia e estado", "sd [imagem.hdd] [nextor.rom] | sd off", "liga o cartao SD (MegaSD + Nextor, o do OCM)",
+        R"MAN(DESCRICAO
+  Liga o MegaSD (a interface de cartao SD do OCM/ESE) com o Nextor e o driver MegaSDHC (nextsd15.rom, o pacote
+  SDBIOS do KdL, copiado para roms/ocm/roms) e a imagem de cartao dada, e reinicia. O cartao e' emulado em modo
+  SPI (SDSC ate' 2 GB, SDHC acima) e a imagem e' a mesma do disco rigido: crie com "newhd". Fica no slot 3:3
+  (--megasd-slot P:S muda); com o 2o mapper (--ram2) escolha outro slot para um dos dois. "sd" sem argumentos
+  mostra o estado; "sd off" tira o MegaSD.
+
+  Como no "ide", a 1a particao vira A: e o Nextor so' inicia o MSX-DOS se houver COMMAND2.COM nela; senao cai
+  no BASIC ("Nextor BASIC version 2.10"). As gravacoes vao direto para o arquivo.
+
+  Na linha de comando: fwmsx --msx --msx2p --sd cartao.hdd [--megasd-rom rom] [--megasd-slot P:S]
+  Na janela: Midia > Cartao SD (MegaSD). No TUI: Midia > Ligar cartao SD.
+
+EXEMPLOS
+  newhd cartao.hdd 2G 2G
+  sd cartao.hdd
+  sd off
+
+VER TAMBEM
+  ide, newhd, mapper)MAN");
+
     add("ide", "", "Midia e estado", "ide [mestre.hdd] [escravo.hdd] [nextor.rom] | ide off", "liga o disco rigido (Sunrise IDE + Nextor)",
         R"MAN(DESCRICAO
   Liga a interface Sunrise ATA-IDE com o Nextor (o MSX-DOS 2 novo do Konamiman) e as imagens de disco

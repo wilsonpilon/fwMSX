@@ -54,7 +54,7 @@ int DriveIndex(const std::string &s) {
 
 const char *kHelp =
     "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] screen [info] (texto da tela / modo e tabelas) vdp [pal|n [v]] vdpbios n v (registradores do VDP) "
-    "poke <end> <v>... regs cart <arq|-> [mapper] dos2 [rom] [disco]|off (MSX-DOS 2) newhd <arq> <tam>... ide [mestre] [escravo] [nextor.rom]|off (disco rigido) mapper (RAM mapeada) disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
+    "poke <end> <v>... regs cart <arq|-> [mapper] dos2 [rom] [disco]|off (MSX-DOS 2) newhd <arq> <tam>... ide [mestre] [escravo] [nextor.rom]|off (disco rigido) sd <imagem>|off (cartao SD) mapper (RAM mapeada) disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
@@ -702,6 +702,31 @@ Result Commander::Execute(const std::string &line) {
         uint32_t total = 0;
         for (const uint32_t s : sizes) total += s;
         return Ok(t[1] + ": " + std::to_string(sizes.size()) + " particao(oes) FAT16, " + std::to_string(total) + " MB. Use `ide " + t[1] + "` para ligar.");
+    }
+
+    if (cmd == "sd") {
+        // sd | sd off | sd <imagem> [nextor.rom]: o cartao SD pelo MegaSD (o do OCM) com o Nextor; sem argumentos mostra o estado
+        if (t.size() == 1) {
+            const std::string info = m.SdInfo();
+            return Ok(info.empty() ? std::string("sem MegaSD (use sd <imagem.hdd>)") : info);
+        }
+        std::string rom, image, error;
+        if (t.size() == 2 && t[1] == "off") {
+            if (!host_.BootSd(std::string(), std::string(), error)) return Err("sd: " + error);
+            return Ok("MegaSD desligado; maquina reiniciada");
+        }
+        for (size_t i = 1; i < t.size(); ++i) {
+            std::string ext = std::filesystem::path(t[i]).extension().string();
+            for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (ext == ".rom" || ext == ".bin") rom = t[i];
+            else if (image.empty()) image = t[i];
+            else return Err("sd: use sd [imagem.hdd] [nextor.rom] | sd off");
+        }
+        if (image.empty()) return Err("sd: faltou a imagem do cartao (crie uma com newhd)");
+        if (rom.empty()) rom = host_.FindMegaSdRom(error);
+        if (rom.empty()) return Err("sd: " + error);
+        if (!host_.BootSd(rom, image, error)) return Err("sd: " + error);
+        return Ok("MegaSD + Nextor (" + rom + ") no slot 3:3; cartao " + image + "; maquina reiniciada");
     }
 
     if (cmd == "ide") {

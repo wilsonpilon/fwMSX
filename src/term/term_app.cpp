@@ -203,6 +203,23 @@ public:
         machine_->EnableLiveAudio(audio_ok_);
         return true;
     }
+    std::string FindMegaSdRom(std::string &error) override {
+        return romdb::FindMegaSdRom(romdb::DefaultRomPaths((std::filesystem::path(opts_.exe_dir) / "fwMSX").string()), error);
+    }
+    bool BootSd(const std::string &rom, const std::string &image, std::string &error) override {
+        MachineConfig next = config_;
+        next.disk_a = machine_->disk(0).loaded() ? machine_->disk(0).path() : std::string();
+        next.disk_b = machine_->disk(1).loaded() ? machine_->disk(1).path() : std::string();
+        if (!machine::SetSd(next, rom, image, error)) return false;
+        std::string sram_error;
+        machine_->SaveSram(sram_error);
+        std::unique_ptr<Machine> fresh = Machine::Create(next, error);
+        if (!fresh) return false;
+        machine_ = std::move(fresh);
+        config_ = next;
+        machine_->EnableLiveAudio(audio_ok_);
+        return true;
+    }
     bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) override {
         MachineConfig next = config_;
         next.disk_a = machine_->disk(0).loaded() ? machine_->disk(0).path() : std::string();

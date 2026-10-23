@@ -148,6 +148,8 @@ struct WindowControlHost : control::Host {
     std::function<bool(const std::string &, std::string &)> do_shot;
     std::function<std::string(std::string &)> find_dos2;
     std::function<bool(const std::string &, const std::string &, std::string &)> do_dos2;
+    std::function<std::string(std::string &)> find_megasd;
+    std::function<bool(const std::string &, const std::string &, std::string &)> do_sd;
     std::function<std::string(std::string &)> find_nextor;
     std::function<bool(const std::string &, const std::string &, const std::string &, std::string &)> do_ide;
 
@@ -162,6 +164,8 @@ struct WindowControlHost : control::Host {
     std::string FindDos2Rom(std::string &error) override { return find_dos2(error); }
     bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) override { return do_dos2(rom, disk, error); }
     std::string FindNextorRom(std::string &error) override { return find_nextor(error); }
+    std::string FindMegaSdRom(std::string &error) override { return find_megasd(error); }
+    bool BootSd(const std::string &rom, const std::string &image, std::string &error) override { return do_sd(rom, image, error); }
     bool BootIde(const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) override {
         return do_ide(nextor, master, slave, error);
     }
@@ -606,6 +610,16 @@ int RunEmulatorWindow(const WindowOptions &options) {
             return false;
         }
         cart_mapper_choice = rom.empty() ? MEMMAP_MAPPER_NONE : MEMMAP_MAPPER_MSXDOS2;
+        return true;
+    };
+    ctl_host.find_megasd = [&](std::string &error) { return romdb::FindMegaSdRom(romdb::RomPaths{options.rom_root}, error); };
+    ctl_host.do_sd = [&](const std::string &rom, const std::string &image, std::string &error) {
+        MachineConfig next = snapshot();
+        if (!SetSd(next, rom, image, error)) return false;
+        if (!reboot(next)) {
+            error = disk_message;
+            return false;
+        }
         return true;
     };
     ctl_host.find_nextor = [&](std::string &error) { return romdb::FindNextorRom(romdb::RomPaths{options.rom_root}, error); };
@@ -1259,6 +1273,40 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     ImGui::TextDisabled("Precisa da ROM do Nextor (Full Set System ROMs, janela Downloads).");
                     ImGui::EndMenu();
                 }
+                if (ImGui::BeginMenu("Cartao SD (MegaSD)")) {
+                    // O SD do OCM: MegaSD + Nextor (nextsd15.rom, pacote SDBIOS copiado para roms/ocm/roms). A imagem e' a mesma do disco rigido. Ver doc/hd-spec.md.
+                    const std::string sd_info = machine->SdInfo();
+                    if (sd_info.empty()) ImGui::TextDisabled("Sem MegaSD.");
+                    else ImGui::TextUnformatted(sd_info.c_str());
+                    ImGui::Separator();
+                    const std::string cur_sd = SdImagePath(current);
+                    if (ImGui::MenuItem("Ligar imagem de cartao SD...")) {
+                        if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Imagem de cartao SD", "Cartao SD", "*.hdd;*.img;*.hdi;*.dsk")) {
+                            MachineConfig next = snapshot();
+                            std::string sd_error;
+                            std::string sd_rom = SdRomPath(current).empty() ? current.megasd_rom : SdRomPath(current);
+                            if (sd_rom.empty()) sd_rom = romdb::FindMegaSdRom(romdb::RomPaths{options.rom_root}, sd_error);
+                            if (sd_rom.empty()) disk_message = sd_error;
+                            else if (!SetSd(next, sd_rom, *chosen, sd_error)) disk_message = sd_error;
+                            else reboot(next);
+                        }
+                    }
+                    if (ImGui::MenuItem("Desligar o cartao SD", nullptr, false, !cur_sd.empty())) {
+                        MachineConfig next = snapshot();
+                        std::string sd_error;
+                        if (SetSd(next, std::string(), std::string(), sd_error)) reboot(next);
+                    }
+                    if (ImGui::MenuItem("Novo cartao SD (imagem)...")) {
+                        show_newhd = true;
+                        newhd_message.clear();
+                    }
+                    if (!disk_message.empty()) {
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+                    }
+                    ImGui::TextDisabled("Precisa de roms/ocm/roms/nextsd15.rom (pacote do KdL).");
+                    ImGui::EndMenu();
+                }
                 if (ImGui::BeginMenu("Fita")) {
                     // Ver doc/tape-spec.md: carregamento rapido (gancho de BIOS, sem
                     // som) ou normal (pulsos de verdade, com o barulho do gravador).
@@ -1768,7 +1816,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     "um arquivo de 32KB ocupa a pagina 0 (BIOS, 16KB) e a pagina 1 (BASIC, 16KB); ou dois "
                     "arquivos de 16KB, um para cada pagina (use o botao BASIC). Aplicar reinicia a maquina.");
                 const char *kind_names[] = {"Vazio", "ROM (BIOS, BASIC ou cartucho)", "Sub-ROM MSX2 (16KB)",
-                                            "RAM", "RAM mapeada (mapper)", "Disco (DISK.ROM)", "FM-PAC", "IDE (Sunrise + Nextor)"};
+                                            "RAM", "RAM mapeada (mapper)", "Disco (DISK.ROM)", "FM-PAC", "IDE (Sunrise + Nextor)", "MegaSD (cartao SD)"};
                 if (ImGui::BeginTable("##slots", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
                     ImGui::TableSetupColumn("Slot", ImGuiTableColumnFlags_WidthFixed, 48.0f);
                     ImGui::TableSetupColumn("Conteudo", ImGuiTableColumnFlags_WidthFixed, 230.0f);
@@ -1786,7 +1834,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
                             ImGui::TableSetColumnIndex(1);
                             ImGui::SetNextItemWidth(-FLT_MIN);
                             int kind = static_cast<int>(it.kind);
-                            if (ImGui::Combo("##kind", &kind, kind_names, 8)) {
+                            if (ImGui::Combo("##kind", &kind, kind_names, 9)) {
                                 it = SlotItem{};
                                 it.kind = static_cast<SlotKind>(kind);
                                 if (it.kind == SlotKind::Rom) it.page = (p == 0 && sec == 0) ? 0 : 1;
@@ -1795,7 +1843,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
                             }
                             ImGui::TableSetColumnIndex(2);
                             const bool has_file = it.kind == SlotKind::Rom || it.kind == SlotKind::SubRom ||
-                                                  it.kind == SlotKind::Disk || it.kind == SlotKind::FmPac || it.kind == SlotKind::Ide;
+                                                  it.kind == SlotKind::Disk || it.kind == SlotKind::FmPac || it.kind == SlotKind::Ide || it.kind == SlotKind::MegaSd;
                             if (has_file) {
                                 ImGui::TextDisabled("%s", it.path.empty() ? "(nenhum)" : it.path.c_str());
                                 if (ImGui::SmallButton("Procurar...")) {
@@ -1806,10 +1854,10 @@ int RunEmulatorWindow(const WindowOptions &options) {
                                 }
                             }
                             ImGui::TableSetColumnIndex(3);
-                            const bool second = (it.kind == SlotKind::Rom && p == 0 && sec == 0) || it.kind == SlotKind::Disk || it.kind == SlotKind::Ide;
+                            const bool second = (it.kind == SlotKind::Rom && p == 0 && sec == 0) || it.kind == SlotKind::Disk || it.kind == SlotKind::Ide || it.kind == SlotKind::MegaSd;
                             if (second) {
                                 ImGui::TextDisabled("%s", it.path2.empty() ? "(nenhum)" : it.path2.c_str());
-                                if (ImGui::SmallButton(it.kind == SlotKind::Disk ? "Sub-ROM MSX2..." : it.kind == SlotKind::Ide ? "Disco mestre..." : "BASIC...")) {
+                                if (ImGui::SmallButton(it.kind == SlotKind::Disk ? "Sub-ROM MSX2..." : it.kind == SlotKind::Ide ? "Disco mestre..." : it.kind == SlotKind::MegaSd ? "Cartao SD..." : "BASIC...")) {
                                     if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(
                                             window, "Escolher arquivo", "ROMs e discos", "*.rom;*.bin;*.mx1;*.mx2;*.dat;*.hdd;*.img;*.hdi")) {
                                         it.path2 = *chosen;

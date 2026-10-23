@@ -297,6 +297,21 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
             const std::string *v = need(a == "--nextor" ? "a ROM do Nextor" : "uma imagem de disco rigido (crie com fwmsx --hdnew)");
             if (!v) return 2;
             (a == "--ide" ? config.ide_master : a == "--ide-slave" ? config.ide_slave : config.nextor_rom) = *v;
+        } else if (a == "--sd" || a == "--megasd-rom") {
+            // Cartao SD pelo MegaSD (o do OCM): a imagem do cartao e a ROM do Nextor com o driver (sem --megasd-rom, roms/ocm/roms/nextsd15.rom).
+            const std::string *v = need(a == "--sd" ? "uma imagem de cartao SD (crie com fwmsx --hdnew)" : "a ROM do Nextor com o driver MegaSD");
+            if (!v) return 2;
+            (a == "--sd" ? config.sd_image : config.megasd_rom) = *v;
+        } else if (a == "--megasd-slot") {
+            const std::string *v = need("P:S, ex.: 3:3");
+            if (!v) return 2;
+            const int p = v->size() >= 3 ? (*v)[0] - '0' : -1;
+            const int sec = v->size() >= 3 ? (*v)[2] - '0' : -1;
+            if (p < 0 || p > 3 || sec < 0 || sec > 3 || (*v)[1] != ':') {
+                std::cerr << "fwmsx --msx: --megasd-slot use P:S (primario 0-3, secundario 0-3)" << std::endl;
+                return 2;
+            }
+            config.megasd_slot = p * 4 + sec;
         } else if (a == "--ide-slot") {
             const std::string *v = need("P:S, ex.: 3:0");
             if (!v) return 2;
@@ -436,6 +451,15 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
         config.nextor_rom = romdb::FindNextorRom(romdb::DefaultRomPaths(argv0), nextor_error);
         if (config.nextor_rom.empty()) {
             std::cerr << "fwmsx --msx: --ide: " << nextor_error << std::endl;
+            return 2;
+        }
+    }
+
+    if (!config.sd_image.empty() && config.megasd_rom.empty()) {
+        std::string sd_error;
+        config.megasd_rom = romdb::FindMegaSdRom(romdb::DefaultRomPaths(argv0), sd_error);
+        if (config.megasd_rom.empty()) {
+            std::cerr << "fwmsx --msx: --sd: " << sd_error << std::endl;
             return 2;
         }
     }
@@ -604,6 +628,7 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
                 std::cout << line << std::endl;
             }
             if (m->ide()) std::cout << m->IdeInfo() << std::endl;
+            if (m->megasd()) std::cout << m->SdInfo() << std::endl;
             if (std::getenv("FWMSX_DEBUG_REGS")) {
                 const Z80State &zs = m->cpu().state();
                 char regs[160];

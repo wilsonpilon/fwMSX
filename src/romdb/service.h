@@ -48,6 +48,9 @@ bool DownloadFileHunterEntry(const RomPaths &paths, RomDb &db, const std::string
 // `identify`), depois qualquer ROM de 64KB com o papel "MSX-DOS 2", depois as variantes conhecidas. Devolve o caminho completo ou "" (e `error` diz
 // o que fazer). Nao baixa nada.
 std::string FindMsxDos2Rom(const RomPaths &paths, std::string &error);
+// O Nextor com o driver MegaSD/MegaSDHC do OCM (nextsd15.rom, 128 KB) que esta' em <pasta de ROMs>/ocm/roms (copiado do pacote SDBIOS do KdL): o mais novo
+// que existir (nextsd15, nextsd14, n3xtsd15, n3xtsd14, megasd1s). `error` diz o que fazer quando nao acha. Nao baixa nada.
+std::string FindMegaSdRom(const RomPaths &paths, std::string &error);
 // A ROM do Nextor para a interface Sunrise IDE (128 KB) que o banco ja' tem no disco: a mais nova que existir (2.1.1, 2.1.0, 2.0.1, 2.0).
 std::string FindNextorRom(const RomPaths &paths, std::string &error);
 

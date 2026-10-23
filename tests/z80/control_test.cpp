@@ -109,6 +109,17 @@ public:
         ++ide_calls_;
         return true;
     }
+    std::string FindMegaSdRom(std::string &error) override {
+        if (megasd_found_.empty()) error = "sem MegaSD (teste)";
+        return megasd_found_;
+    }
+    bool BootSd(const std::string &rom, const std::string &image, std::string &error) override {
+        (void)error;
+        sd_rom_ = rom;
+        sd_image_ = image;
+        ++sd_calls_;
+        return true;
+    }
     bool SaveScreenshot(const std::string &path, std::string &error) override {
         std::ofstream f(path, std::ios::binary);
         if (!f) {
@@ -124,6 +135,8 @@ public:
     std::string dos2_found_, dos2_rom_, dos2_disk_;
     int dos2_calls_ = 0;
     std::string nextor_found_, ide_nextor_, ide_master_, ide_slave_;
+    std::string megasd_found_, sd_rom_, sd_image_;
+    int sd_calls_ = 0;
     int ide_calls_ = 0;
 
 private:
@@ -300,6 +313,15 @@ void TestCommander(const std::string &bios) {
     check(cmd.Execute("ide a.hdd b.hdd meu.rom").ok && host.ide_nextor_ == "meu.rom" && host.ide_master_ == "a.hdd" && host.ide_slave_ == "b.hdd", "ide <mestre> <escravo> <rom>: usa a ROM dada");
     check(cmd.Execute("ide off").ok && host.ide_master_.empty() && host.ide_calls_ == 3, "ide off: tira a interface");
     check(!cmd.Execute("ide a.hdd b.hdd c.hdd").ok && !cmd.Execute("ide meu.rom").ok, "ide com tres imagens, ou so' a ROM = err");
+    // sd: o cartao SD pelo MegaSD
+    check(cmd.Execute("sd").ok && Contains(cmd.Execute("sd").text, "sem MegaSD"), "sd sem argumentos: diz que nao ha' MegaSD");
+    check(!cmd.Execute("sd cartao.hdd").ok && host.sd_calls_ == 0, "sd sem a ROM do MegaSD = err, nada reiniciado");
+    host.megasd_found_ = "roms/ocm/roms/nextsd15.rom";
+    const control::Result s1 = cmd.Execute("sd cartao.hdd");
+    check(s1.ok && host.sd_calls_ == 1 && host.sd_rom_ == "roms/ocm/roms/nextsd15.rom" && host.sd_image_ == "cartao.hdd", "sd <img>: ROM do pacote e a imagem (" + s1.text + ")");
+    check(cmd.Execute("sd outro.hdd meu.rom").ok && host.sd_rom_ == "meu.rom" && host.sd_image_ == "outro.hdd", "sd <img> <rom>: usa a ROM dada");
+    check(cmd.Execute("sd off").ok && host.sd_image_.empty() && host.sd_calls_ == 3, "sd off: tira o MegaSD");
+    check(!cmd.Execute("sd a.hdd b.hdd").ok && !cmd.Execute("sd meu.rom").ok, "sd com duas imagens, ou so' a ROM = err");
     {
         const std::string hdd = (std::filesystem::temp_directory_path() / "fwmsx_ctl_newhd.hdd").string();
         std::remove(hdd.c_str());

@@ -20,6 +20,7 @@
 #include "../fdc/cpp/fdc_device.h"
 #include "../fdc/cpp/fdc_port.h"
 #include "../hd/cpp/hd_image.h"
+#include "../hd/cpp/megasd.h"
 #include "../hd/cpp/sunrise_ide.h"
 #include "../memmap/core/slot_state.h"
 #include "../memmap/cpp/ram_mapper.h"
@@ -61,6 +62,7 @@ enum class SlotKind {
     Disk,    // interface de disquete: DISK.ROM na pagina 1 + controladora WD2793
     FmPac,   // FM-PAC: ROM de 16KB e SRAM de 8KB, com o OPLL
     Ide,     // Sunrise ATA-IDE com o Nextor: a ROM (path), a imagem do disco mestre (path2) e a do escravo (path3)
+    MegaSd,  // MegaSD (o SD do OCM): a ROM do Nextor com o driver (path) e a imagem do cartao SD (path2)
 };
 
 struct SlotItem {
@@ -152,6 +154,13 @@ struct MachineConfig {
     std::string nextor_rom;
     int ide_slot = 12;
 
+    // Cartao SD pelo MegaSD (o do OCM): `sd_image` e' a imagem do cartao (MBR + FAT16, como as do `newhd`), `megasd_rom` o Nextor com o driver MegaSD
+    // (nextsd15.rom, 128 KB); a interface fica na celula `megasd_slot` (primario * 4 + secundario; 15 = 3:3). So' valem enquanto `layout_set` e' false;
+    // depois use SetSd().
+    std::string sd_image;
+    std::string megasd_rom;
+    int megasd_slot = 15;
+
     // Layout de slots. Enquanto `layout_set` for false, o layout sai dos campos
     // acima (bios, cartucho, disco, sub-ROM, FM-PAC) pela regra padrao. Depois
     // de editado pelo menu, vale o `layout` e os campos acima sao ignorados.
@@ -195,6 +204,11 @@ int MapperRamKb(const MachineConfig &config, bool external);
 bool SetIde(MachineConfig &config, const std::string &nextor, const std::string &master, const std::string &slave, std::string &error);
 // A ROM, o disco mestre e o escravo da interface IDE do layout ("" = nao tem).
 std::string IdeRomPath(const MachineConfig &config);
+// Liga (ou, com a imagem vazia, desliga) o MegaSD com a imagem de cartao SD, valendo tambem para um layout ja' fixado. `rom` vazia mantem a anterior.
+bool SetSd(MachineConfig &config, const std::string &rom, const std::string &image, std::string &error);
+// A ROM e a imagem do MegaSD do layout ("" = nao tem).
+std::string SdRomPath(const MachineConfig &config);
+std::string SdImagePath(const MachineConfig &config);
 std::string IdeImagePath(const MachineConfig &config, int unit);
 void SetFmPac(MachineConfig &config, const std::string &path);
 // Caminhos atuais no layout (vazio = nenhum).
@@ -272,6 +286,9 @@ public:
     memmap::RamMapperDevice *mapper_at(size_t i) { return i < mappers_.size() ? mappers_[i].get() : nullptr; }
     // A interface IDE (Sunrise) do layout, ou nullptr.
     hd::SunriseIde *ide() { return ide_.get(); }
+    // A interface MegaSD do layout, ou nullptr; e uma linha de estado (cartao, setores lidos/gravados) ou vazio.
+    hd::MegaSd *megasd() { return megasd_.get(); }
+    std::string SdInfo();
     // Uma linha por assunto sobre a interface IDE (banco da ROM, discos, setores lidos/gravados); vazio se nao ha' IDE.
     std::string IdeInfo();
     memmap::RamMapperDevice *mapper() { return mappers_.empty() ? nullptr : mappers_.front().get(); }
@@ -404,6 +421,9 @@ private:
     std::unique_ptr<scc::SccDevice> scc_;
     std::unique_ptr<hd::HdImage> ide_images_[2];
     std::unique_ptr<hd::SunriseIde> ide_;
+    std::unique_ptr<hd::HdImage> sd_image_;
+    std::unique_ptr<hd::SdCard> sd_card_;
+    std::unique_ptr<hd::MegaSd> megasd_;
     std::unique_ptr<fm::FmDevice> fm_;
     std::unique_ptr<tape::TapeEngine> tape_;
     bool tape_motor_prev_ = false; // ultimo estado visto do rele (porta C, bit 4)
