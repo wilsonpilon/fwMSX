@@ -1,0 +1,66 @@
+========== ========== ========== ==========
+  FlashAir RTC Synchronize Tool  v0.03
+========== ========== ========== ==========
+
+【 Software Name 】FlashAir RTC Synchronize Tool
+【 Author 】Yuukun
+【 Operating System 】MSX-DOS2
+【 Version 】0.03
+【 Last Update 】2017/03/12
+【 File Name 】FA_CLOCK.COM
+
+【 Website 】https://miyako.asablo.jp/blog
+
+---------- ----------
+◇ Overview ◇
+Retrieve time from RTC via FlashAir's iSDIO interface and set the MSX time.
+Does not interact with FlashAir through FAT (file system). Should work if there is
+an SD card interface compatible with MegaSD.
+
+◇ Operating Conditions ◇
+Works with MSX having MegaSD-compatible SD card interface (like 1chipMSX) & FlashAir W-03.
+FA_CLOCK.COM itself handles SD card initialization, so SDHC support is not a mandatory requirement.
+
+◇ Usage ◇
+Set the current time on FlashAir's RTC using Lua script at startup.
+Then, running this program from MSX-DOS2 will retrieve the time from FlashAir's RTC
+and set the MSX time.
+
+See the sample Lua script below:
+https://miyako.asablo.jp/blog/2017/03/05/8393672
+
+
+The following options are available:
+
+/R[0-F]   Specify the number of attempts to read FlashAir's RTC.
+          If /R0, it will retry indefinitely (255 times).
+          Pressing any key during retry will interrupt.
+          Default is A (10 times).
+
+/Sxx      Specifies the slot where the SD card is connected.
+          The default is 8D (3-2) for 1chipMSX.
+          Adjust appropriately for use with MegaFlashROM SCC+ SD.
+
+FA_CLOCK.COM itself handles SD card initialization.
+Thus, even normal 1chipMSX (without SDHC support) can retrieve time
+from RTC by running FA_CLOCK.COM from ESE-RAM, etc.
+with FlashAir set to retrieve RTC via Lua script.
+
+◇ Disclaimer ◇
+We are not responsible for any damage or loss
+caused by the use of this software.
+Use at your own risk.
+
+◇ FAQ & Known Bugs ◇
+We do not own a MegaFlashROM SCC+ SD, so slot specifications
+are untested.
+
+----------
+◇ Contact ◇
+https://miyako.asablo.jp/blog
+
+◇ History ◇
+2017/03/05 Ver0.01 Initial release
+2017/03/11 Ver0.02 Changed to automatically retry on time retrieval failure
+          Added R and S options
+2017/03/11 Ver0.03 Added SD card initialization process

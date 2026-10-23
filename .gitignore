@@ -211,7 +211,7 @@ imgui.ini
 
 ### Midia de terceiros: fica no disco do autor, nao no repositorio publico (doc/media-review.md, 2026-10-22)
 tests/media/
-dist/roms/
+# dist/roms/ SOBE provisoriamente (2026-10-24, decisao do usuario: sincronizar entre PCs); remover do repositorio publico antes da release final
 dist/*.zip
 dist/*.tar.gz
 *.sst

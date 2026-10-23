@@ -1,0 +1,107 @@
+--
+-- *.*
+--   OCM-SDBIOS Pack / BIOS Tools for OCM-PLD Firmware
+--
+-- Copyright (c) 2011-2026 KdL
+-- All rights reserved.
+--
+-- Redistribution and use of this source code or any derivative works, are
+-- permitted provided that the following conditions are met:
+--
+-- 1. Redistributions of source code must retain the above copyright notice,
+--    this list of conditions and the following disclaimer.
+-- 2. Redistributions in binary form must reproduce the above copyright
+--    notice, this list of conditions and the following disclaimer in the
+--    documentation and/or other materials provided with the distribution.
+-- 3. Redistributions may not be sold, nor may they be used in a commercial
+--    product or activity without specific prior written permission.
+--
+-- THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+-- "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+-- TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+-- PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+-- CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+-- EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+-- PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
+-- OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+-- WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+-- OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
+-- ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+--
+
+
+_____
+v3.x \_____________________________________________________________________________
+
+
+v3.8.3 (2026.10.02)
+- Updated the Nextor kernel and related tools to version 3.0 beta 2, by Konamiman.
+
+v3.8.2 (2026.09.02)
+- Added the Nextor kernel version 3.0 beta 1, by Konamiman.
+  For the time being, NEXTOR.SYS v2 remains the default version for SDCREATE;
+  to use NEXTOR.SYS v3 and the new tools, manually overwrite the SD card's contents
+  with the files from the 'N3XTOR.ZIP' package obtained by creating a new SD card.
+- Updated the OCM-MegaSDHC driver to version 1.5 in the Nextor kernels.
+- Updated some tools in the [make\sdcreate\utils\] folder.
+
+v3.8.1 [2025.11.16]
+- Updated the Nextor kernel to version 2.1.4, by Konamiman.
+
+v3.8 [2025.06.29]
+- New ++Logo Toolkit v1.0 for Windows, an application designed to make logo
+  creation simple and efficient. It is located in the [make\toolkit\] folder.
+- New C-BIOS v0.29b, a slightly improved version intended for MSX++ machines.
+- Updated the Nextor kernel and related tools to version 2.1.3, by Konamiman.
+- Updated all logos and respective ROM files, including bug fixes.
+- Updated various scripts in alignment with the new content.
+
+Note:
+- Main utilities from OCM-EXTRA Pack v3.1 are already included in this package.
+
+
+v3.7 [2024.01.13]
+- Updated the "MSX++ official logo" to version 1.4, sources are included.
+
+
+v3.6.1 [2023.12.04]
+- Updated the Nextor kernel and related tools to version 2.1.2, by Konamiman.
+
+v3.6 [2023.10.19]
+- Restructuring of the contents of the [make\src\] folder and new additions.
+- New [make\dev\] folder that includes some specific Z80 cross-assemblers.
+- Updated SDBIOS processing with the new u2-SX logo v1.1 by Denjhang, the u2-SX
+  machine is currently in the design phase.
+- Updated 'bin2hex.exe' v1.03 in the [make\bin2hex\] folder.
+
+Note:
+- Main utilities from OCM-EXTRA Pack v3.0 are already included in this package.
+
+
+v3.5 [2022.09.24]
+- Overall improvement of SDBIOS processing and SD card creation scripts.
+- As of this release, most of BIOS have been updated to support cartridges such as
+  Franky that do not correctly implement expanded I/O.
+- Updated the Nextor kernel to v2.1.1 (final release) and the ESP8266 Wi-Fi BIOS.
+- The following changes have been made to the logos:
+  "MSX3 unofficial logo" has been replaced by "MSX++ official logo",
+  "MSX3+ logo by Ferrerico" has been replaced by "OCM generic unbound logo".
+
+Note:
+- Main utilities from OCM-EXTRA Pack v2.9 are already included in this package.
+
+
+v3.4 [2022.03.24] and earlier versions.
+- Previous history is not available.
+
+
+_____
+v1.x \_____________________________________________________________________________
+
+
+v1.2 [2011.07.17]
+- First release.
+
+
+___________________________________________________________________________________
+Enjoy!

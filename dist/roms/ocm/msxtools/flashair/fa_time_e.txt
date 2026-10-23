@@ -1,0 +1,66 @@
+========== ========== ========== ==========
+  FlashAir RTC SET Tool  v0.07
+========== ========== ========== ==========
+
+【 Software Name 】FlashAir RTC SET Tool
+【 Author 】Yuukun
+【 Operating System 】MSX-DOS2
+【 Version 】0.07
+【 Last Update 】2021/09/09
+【 File Name 】FA_TIME.COM
+
+【 Website 】https://miyako.asablo.jp/blog
+
+---------- ----------
+◇ Overview ◇
+Utilizes the Wifi function of FlashAir to obtain time from an NTP server (ntp-a1.nict.go.jp)
+and sets the RTC of FlashAir and the time of MSX.
+Compatible with 1chipMSX, pseudo-SDisk, or devices compatible with MEGASD.
+
+◇ Operating Conditions ◇
+1chipMSX (1chipNextorMSX, etc.) or pseudo-SDisk that can use SDHC & FlashAir W-03, W-04
+W-04 needs firmware 4.00.01 or later.
+
+◇ Usage ◇
+Set FlashAir in the SD card slot of the device and execute this program from MSX-DOS2 or NEXTOR.
+Automatically obtains time from the NTP server and sets the time of MSX.
+
+FlashAir must be able to connect to the internet in ST mode, etc.
+
+
+The following options are available:
+
+/T[+-]xx  Specifies the time zone. The default is /T-09 (Japan Standard Time).
+/Sxx      Specifies the slot where the SD card is connected. The default is slot 1.
+          If using pseudo-SDisk, specify the slot as /S01, /S02, etc.
+          For 1ChipMSX's SD card slot, use /S8B.
+/2        Specifies the use of the second SD card slot on pseudo-SDisk.
+/W        Does not wait if FlashAir is not connected to Wifi.
+/M        Sets only the RTC of FlashAir, does not set the clock of MSX.
+
+◇ Disclaimer ◇
+We are not responsible for any damage or loss
+caused by the use of this software.
+Use at your own risk.
+
+◇ FAQ & Known Bugs ◇
+MegaFlashROM SCC+ SD should be usable with an SD-MicroSD reverse conversion adapter
+but unconfirmed due to lack of MegaFlashROM SCC+ SD.
+NICT plans to stop time distribution via http on March 31, 2022.
+So future functionality of this software is uncertain...
+
+----------
+◇ Contact ◇
+https://miyako.asablo.jp/blog
+
+◇ History ◇
+2017/03/19 Ver0.01 First release
+2017/04/01 Ver0.02 Unreleased
+2018/07/22 Ver0.03 Fixed slot selection bug, default slot value removed.
+2018/08/13 Ver0.04 Addressed issue with TurboR high-speed mode
+          Added /2 option
+          Default slot changed to 01
+2018/08/18 Ver0.05 Added /W option
+          Adjusted SD card initialization timing
+2021/05/21 Ver0.06 Fixes due to NICT specification changes
+2021/09/09 Ver0.07 Fixed patterns that failed to set date and time

@@ -9,11 +9,19 @@ as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.
 SESSAO PARA CONTINUAR: claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61   (em outro computador: abra o Claude Code na pasta, ele le o CLAUDE.md; mande ler OUTLINE.md e esta secao)
 Primeira mensagem sugerida: "voltei; leia o resume.txt, o OUTLINE.md e me diga as opcoes".
 
+PROXIMA SESSAO: segunda-feira (2026-10-26), em OUTRO PC (o Alienware). Fluxo no PC novo: git clone/pull (main = 1.43.26 + o commit de sincronizacao do dist/roms) -> abrir o Claude Code na pasta
+-> mandar ler este arquivo e o OUTLINE.md -> build.ps1 no Windows (precisa de MSYS2 ucrt64 no PATH: gcc, gfortran, nasm, cmake, ninja) e, para o Linux, WSL + ./build.sh.
+dist/roms SOBE PARA O GITHUB PROVISORIAMENTE (decisao do usuario em 2026-10-24, para sincronizar entre PCs): bios, interfaces, tabelas, roms.db, filehunter (cache dos downloads, 113 MB) e
+ocm (ROMs do KdL + utilitarios, 11 MB). Depois do pull ja' esta tudo no lugar, sem baixar nada. NAO sobe: third-party/ocm (788 MB, pacote original do KdL, no .gitignore) nem a midia de
+jogos (tests/media). ANTES DA RELEASE FINAL: tirar dist/roms do repositorio publico (git rm --cached + voltar `dist/roms/` ao .gitignore); sao ROMs de terceiros (Panasonic/KdL/Nextor).
+Se o dist/ de um PC estiver sem roms ou velho: o banco roms.db e a janela ROMs > Downloads (Full Set System ROMs) refazem bios/interfaces; o que e' so' do OCM (ROMs do KdL) so' vem do pacote
+do KdL (ver INTERNAL abaixo). O que o emulador procura e' relativo ao executavel (dist/roms/...), entao nao precisa configurar nada.
+
 FEITO NA 1.43.26 (pedido do usuario): README com o splash no topo, historico das versoes em lista (uma linha por versao; antes era um bolo de texto), 9 screenshots novas + 5 refeitas
 (tools/assets/make_screenshots.py [extra]), MANUAL com a secao MSX-DOS 2/mappers/HD/SD/OCM e as opcoes novas da CLI, man ocm, LICENSE-THIRD-PARTY (pacote do KdL), este arquivo.
 ANOTADO: a abertura do Metal Gear 2 (MSX2) mostra um quadro mal desenhado em ~2600 quadros (nao investigado).
 
-ESTADO: tudo publicado e empurrado no GitHub (main = a 1.43.26); ctest 35/35 no Windows e no Linux. Arvore de trabalho: so' sobras do usuario/build; NAO fazer git add -A.
+ESTADO: tudo publicado e empurrado no GitHub (main = a 1.43.26 + sincronizacao do dist/roms); ctest 35/35 no Windows e no Linux. Arvore de trabalho: so' sobras do usuario/build; NAO fazer git add -A.
 RELEASES DO DIA (todas com release no GitHub): 1.43.20 Download e identificacao (curl sem janela + barra; assinaturas do openMSX no banco de ROMs); 1.43.21 MSX-DOS 2 (cartucho
 msxdos22.rom no slot 1, comando dos2, dos: 2 no obirun); 1.43.22 Mapper de RAM (--ram 64..4096 KB, --ram2 = 2o mapper externo, comando mapper); 1.43.23 Disco rigido (src/hd:
 Sunrise IDE + Nextor, imagens MBR+FAT16 de ate' 4 GB, --ide, --hdnew, comandos ide/newhd); 1.43.24 Cartao SD (MegaSD + cartao SPI SDSC/SDHC, --sd, comando sd);

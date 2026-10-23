@@ -1,0 +1,10 @@
+About Scripts
+=============
+
+MAPDRIVE.BAT        Allows quick partition allocation in Nextor via the MAPDRV.COM command.
+TIMEIS  .BAT        Quickly displays the current date and time.
+XSYS    .BAT        A useful script for exchanging MSXDOS2.SYS and NEXTOR.SYS on the fly.
+
+
+______________
+KdL 2025.06.29
