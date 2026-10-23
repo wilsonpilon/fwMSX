@@ -1,11 +1,53 @@
 Resume this session with:
-claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao de 2026-10-20 a 23: continue ESTA; contexto na secao ONDE PARAMOS 2026-10-23)
-fwMSX -- como retomar (atualizado em 2026-10-23, ao encerrar o dia: ultima release 1.43.19 "Yie Ar Kung-Fu: Comandos do VDP")
+claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao de 2026-10-20 a 24: continue ESTA; contexto na secao ONDE PARAMOS 2026-10-24)
+fwMSX -- como retomar (atualizado em 2026-10-24, ao encerrar o dia: ultima release 1.43.25 "Yie Ar Kung-Fu: Maquina OCM")
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
 
-== ONDE PARAMOS (2026-10-23, FIM DO DIA) -- LEIA ESTA SECAO PRIMEIRO ==
+== ONDE PARAMOS (2026-10-24, FIM DO DIA) -- LEIA ESTA SECAO PRIMEIRO ==
+SESSAO PARA CONTINUAR: claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61   (em outro computador: abra o Claude Code na pasta, ele le o CLAUDE.md; mande ler OUTLINE.md e esta secao)
+Primeira mensagem sugerida: "voltei; leia o resume.txt, o OUTLINE.md e me diga as opcoes".
+
+PEDIDO DO USUARIO PARA A PROXIMA ITERACAO: documentacao e atualizacao dos docs; ele tem uma OBSERVACAO SOBRE O README.md e quer ver o SINCRONISMO do resume.txt
+(este arquivo) com o OUTLINE/SPEC. Perguntar a observacao do README.md antes de mexer nele.
+
+ESTADO: tudo publicado e empurrado no GitHub (main = a 1.43.25); ctest 35/35 no Windows e no Linux. Arvore de trabalho: so' sobras do usuario/build; NAO fazer git add -A.
+RELEASES DO DIA (todas com release no GitHub): 1.43.20 Download e identificacao (curl sem janela + barra; assinaturas do openMSX no banco de ROMs); 1.43.21 MSX-DOS 2 (cartucho
+msxdos22.rom no slot 1, comando dos2, dos: 2 no obirun); 1.43.22 Mapper de RAM (--ram 64..4096 KB, --ram2 = 2o mapper externo, comando mapper); 1.43.23 Disco rigido (src/hd:
+Sunrise IDE + Nextor, imagens MBR+FAT16 de ate' 4 GB, --ide, --hdnew, comandos ide/newhd); 1.43.24 Cartao SD (MegaSD + cartao SPI SDSC/SDHC, --sd, comando sd);
+1.43.25 Maquina OCM (--ocm: MSX2+ com o mapa de slots do OCM-PLD, Kanji D8h-DBh, portas comutadas 40h-4Fh, MegaSD no 3-2; colisao de sprites por linha no VDP).
+
+DECISOES E ACHADOS QUE NAO ESTAO NO CODIGO
+ - O MSX-DOS 2 ja' bootava (mapper msxdos2 + disquete); faltava so' a ROM, identificada pelo SHA-1 do openMSX. Kernel 2.20; na MSX1 pergunta a data (sem relogio).
+ - IDE em 3:0 e nao em 2:1: na MSX2 os slots 1 e 2 sao de cartucho, sem subslot, e a BIOS nao os ve' expandidos. Portas sem dispositivo leem FFh (o Nextor usa o
+   temporizador do turbo R em E6h/E7h). SlotMemoryBus: um SlotCartIo POR SLOT (antes um so', o SCC apagava o IDE).
+ - O driver do MegaSD descarta 2 bytes depois do CRC do comando: o cartao SD poe 2 FFh antes de cada resposta (senao "Disk offline").
+ - Particao FAT16 de 2048 MB nao cabe inteira (65527 clusters): o sistema de arquivos fica com 65524 e o BPB declara so' o que usa.
+ - MEGA-SCSI: o pacote do KdL NAO tem driver nem emula o MB89352 (megaram.vhd: "SPC access (reserved)"); SCSI segue bloqueado. 8192 KB de mapper nao existe (8 bits = 4096 KB).
+ - O logo do Kanji BASIC do OCM espera a colisao de sprites LINHA A LINHA; o VDP so' a avaliava no fim do quadro (boot de 70 s). Agora e' por linha (boot de ~10 s).
+   Isso mudou o PC em que o controltest para: o teste do Up usa agora uma rampa de NOPs em 0C300h.
+ - O teclado do a1wsxbsl.rom e' o brasileiro: testes que digitam no OCM usam Machine::KeysFor (tabela da propria maquina).
+ - ninja no WSL abortou com "Assertion edge && !edge->outputs_ready()" apos adicionar fontes Fortran novas; apagar a pasta build-linux e rodar ./build.sh de novo resolveu.
+
+MATERIAL DO KdL (local, fora do git): third-party/ocm (788 MB, no .gitignore) e a copia util em dist/roms/ocm (ROMs em dist/roms/ocm/roms, utilitarios, msxtools, fonte do driver
+do Nextor). dist/roms/ e' ignorado pelo git. As ROMs do OCM sao do Panasonic FS-A1WSX modificadas pelo KdL (direitos de terceiros): NUNCA publicar.
+  DEPOIS: documentar como a pessoa baixa o pacote do site do KdL (o link do SDBIOS ele manda por e-mail) e extrai o que o emulador precisa; opcao de download com uma flag
+  INTERNAL (a release final fica com INTERNAL = 0 e o download do SDBIOS deixa de existir). O usuario sabe o link.
+
+AINDA NAO VERIFICADO (compilou, mas nao foi aberto numa sessao grafica)
+ - Menus/janelas novos: Midia > Disco rigido (IDE) e a janela "Novo disco rigido / cartao SD", Midia > Cartao SD (MegaSD), Maquina > RAM mapeada, Maquina > Modelo > OCM / MSX++,
+   "Iniciar MSX-DOS 2", os itens novos do TUI (Midia) e a barra de progresso do download; o logo do OCM (so' o texto do boot foi conferido).
+ - Estado salvo (state save) nao guarda a IDE, o MegaSD nem os dispositivos do OCM.
+
+PROXIMAS OPCOES (a escolha e' do usuario)
+ 1. Documentacao/atualizacao (pedido dele) + README.md + este resume.txt.   2. Copiar o MSX-DOS para dentro do HD pelo msxdisk (FAT16) para o HD iniciar sozinho no DOS 2.
+ 3. asmrun/F5 de .com com o DOS 2 (hoje usa msxdos1.dsk).   4. OCM: velocidade da CPU, DIP-SW virtuais (porta 42h), ESE-SCC nos slots 1 e 2, BIOS do turbo R.
+ 5. MAPDRV do Nextor (a 2a particao nao ganha letra).   6. SCSI so' se aparecer um driver.   7. Itens antigos: Dignified (NestorBASIC real, Basic DignifieR), aba Documentacao
+ na janela Downloads (esperar as URLs), saida .MOB do fwasm, Lua passo 3, licencas do resto de resource/, nome do projeto (adiado pelo usuario).
+
+
+== ONDE PARAMOS (2026-10-23, FIM DO DIA) -- historico ==
 SESSAO PARA CONTINUAR (a mesma de 20 a 23/10; o contexto antigo foi resumido automaticamente, mas o historico completo esta nela):
     claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61
 Em outro computador a sessao nao existe: abra o Claude Code na pasta do projeto, ele le o CLAUDE.md; mande ler OUTLINE.md e esta secao.
