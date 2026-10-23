@@ -24,6 +24,8 @@ O console do fwMSX tem comandos demais para uma lista de `peek`/`poke`, mas uma 
 | `msx.peek(addr [, n])` | le `n` bytes (1 a 256) como a CPU enxerga agora; devolve `n` numeros |
 | `msx.poke(addr, v1, v2...)` | grava bytes (respeita ROM) |
 | `msx.peek16(addr)` / `msx.poke16(addr, v)` | palavra de 16 bits, little-endian |
+| `msx.vdp(n [, valor])` | le o registrador n do VDP (grava como o OUT do Z80 se houver valor; n 0-7 no MSX1, 0-46 no MSX2) |
+| `msx.screen()` | o texto da tela do MSX (SCREEN 0/1) como string; `nil` + motivo nos outros modos |
 | `msx.reg(nome [, valor])` | le ou escreve um registrador: `af bc de hl ix iy sp pc af' bc' de' hl' a f b c d e h l i r` |
 | `msx.frame()` | o numero do quadro emulado |
 | `msx.wait(n)` | **entrega o controle e volta `n` quadros depois** (1 a 100000). Vale dentro de um script, nao dentro de um gancho |

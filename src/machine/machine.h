@@ -313,6 +313,8 @@ public:
         s.vram[addr] = value;
         return true;
     }
+    // Grava um registrador do VDP como o OUT do Z80 faria (recalcula modo e tabelas; R#46 dispara o comando do V9938): comandos `vdp`/`vdpbios`, Lua.
+    void WriteVdpRegister(int reg, uint8_t value) { vdp_write_register(&startup_.vdp_device->state(), reg, value); }
     PpiState &ppi_state() { return startup_.ppi_device->state(); }
     psg::PsgDevice &psg() { return *startup_.psg_device; }
     scc::SccDevice &scc() { return *scc_; }

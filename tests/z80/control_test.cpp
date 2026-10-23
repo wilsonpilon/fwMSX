@@ -588,6 +588,25 @@ void TestLua(const std::string &bios) {
     control::Commander cmd(host);
     Frames(host, cmd, 120);
 
+    // tela e VDP: screen / screen info / vdp / vdpbios e o mesmo no Lua
+    {
+        Frames(host, cmd, 300); // o boot do MSX1 termina no banner do BASIC
+        const control::Result scr = cmd.Execute("screen");
+        check(scr.ok && Contains(scr.text, "BASIC"), "screen: o texto da tela do MSX depois do boot");
+        const control::Result info = cmd.Execute("screen info");
+        check(info.ok && Contains(info.text, "SCREEN") && Contains(info.text, "nomes") && Contains(info.text, "padroes"), "screen info: modo e enderecos das tabelas");
+        check(!cmd.Execute("screen xx").ok, "screen com argumento desconhecido = err");
+        check(cmd.Execute("vdp").ok && Contains(cmd.Execute("vdp").text, "R#00-07") && Contains(cmd.Execute("vdp").text, "tela ligada"), "vdp: os registradores e os bits decodificados");
+        check(cmd.Execute("vdp 7 0x1F").ok && cmd.Execute("vdp 7").text == "R#7=1F", "vdp n valor grava e vdp n le");
+        check(!cmd.Execute("vdp 9").ok && !cmd.Execute("vdp 7 0x100").ok, "vdp: registrador acima do VDP / valor acima de FF = err");
+        check(cmd.Execute("vdp pal").ok && Contains(cmd.Execute("vdp pal").text, "fixa"), "vdp pal no TMS9918: paleta fixa");
+        check(cmd.Execute("poke 0xF3E6 0").ok && cmd.Execute("vdpbios 7 0x2E").ok && cmd.Execute("peek 0xF3E6").text == "2E" && cmd.Execute("vdp 7").text == "R#7=2E",
+              "vdpbios: grava o registrador e o espelho RG7SAV do BIOS");
+        check(!cmd.Execute("vdpbios 7").ok, "vdpbios sem valor = err");
+        check(cmd.Execute("lua msx.vdp(7)").text == "46" && cmd.Execute("lua msx.vdp(7, 5)").text == "5" && cmd.Execute("vdp 7").text == "R#7=05", "lua msx.vdp le e grava");
+        check(cmd.Execute("lua type(msx.screen())").text == "string", "lua msx.screen devolve o texto da tela");
+    }
+
     // expressoes e print
     check(cmd.Execute("lua 1+2").text == "3", "lua: uma expressao mostra o valor (estilo REPL)");
     check(cmd.Execute("lua print(\"ola\", 7)").text == "ola\t7", "lua: print vai para a resposta, com as aspas do Lua intactas");

@@ -34,6 +34,9 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `pause` / `resume` | pausa / retoma a emulacao |
 | `step [n]` | avanca n quadros (1-3600); so' com a maquina pausada |
 | `type <texto>` | digita no teclado do MSX; `\n` = ENTER (use aspas); teclas em `{}` fora das aspas ({enter} {esc} {f1} {ctrl}+{c} {ctrl}{c} {enter*3}, ver secao 2b); retorna na hora, a digitacao anda a cada quadro |
+| `vdp` | os registradores do VDP (R#0..R#46; R#0..R#7 no MSX1) em hexa, o status e os bits decodificados; `vdp pal` = a paleta; `vdp <n>` le; `vdp <n> <valor>` grava como o OUT do Z80 |
+| `vdpbios <n> <valor>` | o mesmo e grava tambem o espelho do BIOS (RG0SAV..RG7SAV em F3DF, RG8SAV..RG23SAV em FFE7, RG25SAV..RG27SAV em FFFA) |
+| `screen info` | o modo de tela e os enderecos das tabelas na VRAM (nomes, cores, padroes, atributos, cores e padroes de sprite) |
 | `screen` | o texto da tela do MSX (SCREEN 0/1), uma linha por linha da tela, lido da VRAM pelas variaveis do BIOS; erro em outros modos |
 | `peek <end> [n]` | le n bytes (1-4096) como o Z80 enxerga agora; `ok 41 42 ...` |
 | `poke <end> <v>...` | grava bytes (ROM nao e' alterada) |

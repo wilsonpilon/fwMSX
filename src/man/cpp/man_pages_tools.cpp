@@ -297,6 +297,8 @@ A TABELA msx
   msx.poke(end, v1, v2...)  grava bytes
   msx.peek16(end)  msx.poke16(end, v)
   msx.reg("pc") / msx.reg("a", 7)    le / escreve um registrador
+  msx.vdp(n [, v])          le (e grava, como o OUT do Z80) o registrador n do VDP
+  msx.screen()              o texto da tela do MSX (SCREEN 0/1) como string; nil + motivo nos outros modos
   msx.frame()               o numero do quadro
   msx.wait(n)               volta n quadros depois (so' dentro de um script)
   msx.on_frame(fn)          fn(quadro) a cada quadro

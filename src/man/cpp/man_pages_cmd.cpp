@@ -206,6 +206,47 @@ EXEMPLOS
 VER TAMBEM
   peek, mem, sysvars)MAN");
 
+    add("vdp", "", "Emulador", "vdp [pal | n [valor]]", "registradores do VDP, paleta e tabelas da tela (e o comando screen)",
+        R"MAN(DESCRICAO
+  vdp                 R#0..R#46 em hexa (R#0..R#7 no MSX1), o status S#0..S#9 e uma linha com os bits
+                      decodificados: tela ligada, IE0/IE1, sprites 8x8/16x16 e ampliados, 192/212
+                      linhas, NTSC/PAL, sprites desligados.
+  vdp pal             a paleta (V9938/V9958): 16 entradas em R/G/B de 0 a 7 e em #RRGGBB.
+  vdp <n>             le o registrador n.
+  vdp <n> <valor>     grava como um OUT do Z80 faria: o modo de tela e as tabelas sao recalculados e
+                      R#46 dispara um comando do V9938. O BIOS pode regravar R#0/R#1 depois (ele guarda
+                      copias em RG0SAV..RG7SAV); para a mudanca durar use vdpbios.
+  vdpbios <n> <valor> o mesmo, e grava tambem o espelho do BIOS: RG0SAV..RG7SAV (F3DF), RG8SAV..RG23SAV
+                      (FFE7) e RG25SAV..RG27SAV (FFFA). Os demais registradores nao tem espelho.
+
+  screen              o texto da tela do MSX (SCREEN 0 e 1), lido da VRAM pelas variaveis do BIOS.
+  screen info         o modo de tela e onde ficam as tabelas na VRAM: nomes, cores, padroes, atributos de
+                      sprite, cores de sprite (modo 2) e padroes de sprite, com o tamanho quando e' fixo.
+
+EXEMPLOS
+  vdp                    tudo de uma vez
+  vdp 7 0x1F             borda e cor de fundo (R#7)
+  vdpbios 1 0x60         desliga IE0 e deixa o BIOS saber
+  screen info            SCREEN 1: nomes 1800, cores 2000, padroes 0000, sprites 1B00/3800
+
+NOTAS
+  O Lua tem o mesmo: msx.vdp(n [, valor]) e msx.screen() (man lua).
+
+VER TAMBEM
+  peek, poke, lua, vdpregs, screens)MAN");
+
+    add("vdpbios", "", "Emulador", "vdpbios <n> <valor>", "grava um registrador do VDP e o espelho dele no BIOS",
+        R"MAN(DESCRICAO
+  Como "vdp <n> <valor>", e grava tambem a copia que o BIOS guarda (RG0SAV..RG7SAV em F3DF, RG8SAV..RG23SAV
+  em FFE7, RG25SAV..RG27SAV em FFFA), para que o BIOS nao desfaca a mudanca na proxima vez que regravar
+  o registrador. Nao mexe nas outras variaveis do sistema (TXTNAM, SCRMOD...): serve para experimentar.
+
+EXEMPLOS
+  vdpbios 7 0xF4         borda azul clara que o BIOS respeita
+
+VER TAMBEM
+  vdp, poke, sysvars)MAN");
+
     add("regs", "", "Emulador", "regs", "registradores do Z80 numa linha",
         R"MAN(DESCRICAO
   AF BC DE HL IX IY SP PC numa linha. Para todos (inclusive sombra, I, R e

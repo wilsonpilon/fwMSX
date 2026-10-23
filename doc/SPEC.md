@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-23, depois da v1.43.18)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-23, depois da v1.43.19)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.43.18, publicada em `main`):**
+**Funcionando (v1.43.19, publicada em `main`):**
+- [x] **Comandos do VDP** (1.43.19): `vdp` (R#0..R#46, status, bits decodificados, `pal`, leitura e gravacao como o OUT), `vdpbios` (com o espelho RGnSAV do BIOS), `screen info` (modo e enderecos das tabelas); `msx.vdp`/`msx.screen` no Lua; `man vdp`.
 - [x] **Erro do BASIC volta ao fonte** (1.43.18): depois do F5 num `.dmx` o editor vigia a tela do MSX (`ScreenText`, comando `screen`, `badig::FindBasicError`, `EditorApp::RunWatchTick`) e, se o BASIC parar com "Syntax error in 130" + `Ok`, volta com o cursor na linha do `.dmx`. Do Dignified faltam: NestorBASIC rodando de verdade e o "Basic DignifieR".
 - [x] **Downloads item por item** (1.43.17): janela ROMs > Downloads (File Hunter pelo `allfiles.txt` + utilitarios do Konamiman) e `fwmsx --download`. O NBASIC.BIN deixou o repositorio e os pacotes. Ver `doc/download-spec.md`. Falta: cadastrar no banco de ROMs o que vier fora de System ROMs, tamanho/data na lista, mais fontes no catalogo.
 - [x] **Scripts em Lua no console** (1.43.16): `lua <codigo|arquivo>`, `lua stop|status`, `source <arquivo>`; tabela `msx` (cmd, peek/poke, reg, frame, wait, on_frame, on_change, on_stop) em corrotinas, com sandbox e limite de instrucoes. Lua 5.4.7 por FetchContent. Ver `doc/script-spec.md`. Falta: `.lua` no editor/projeto, `on_write` com custo, VRAM/VDP/PSG.

@@ -163,6 +163,34 @@ int L_cmd(lua_State *L) {
     return 2;
 }
 
+// msx.vdp(n) le o registrador n do VDP; msx.vdp(n, v) grava como o OUT do Z80 (o mesmo do comando `vdp`). O limite do n depende do VDP (MSX1: 0-7).
+int L_vdp(lua_State *L) {
+    Impl *e = Impl::Self(L);
+    const lua_Integer r = luaL_checkinteger(L, 1);
+    const lua_Integer top = e->M().vdp_state().model == 0 ? 7 : 46;
+    if (r < 0 || r > top) luaL_error(L, "vdp: register 0-%d for this VDP", static_cast<int>(top));
+    if (lua_gettop(L) >= 2) {
+        const lua_Integer v = luaL_checkinteger(L, 2);
+        if (v < 0 || v > 0xFF) luaL_error(L, "vdp: 8-bit value (0-255)");
+        e->M().WriteVdpRegister(static_cast<int>(r), static_cast<uint8_t>(v));
+    }
+    lua_pushinteger(L, e->M().vdp_state().regs[r]);
+    return 1;
+}
+
+// msx.screen() devolve o texto da tela do MSX (SCREEN 0/1) como uma string, uma linha por linha da tela; nil + motivo nos outros modos.
+int L_screen(lua_State *L) {
+    Impl *e = Impl::Self(L);
+    std::string text;
+    if (!e->host.command("screen", text)) {
+        lua_pushnil(L);
+        lua_pushlstring(L, text.data(), text.size());
+        return 2;
+    }
+    lua_pushlstring(L, text.data(), text.size());
+    return 1;
+}
+
 int L_peek(lua_State *L) {
     Impl *e = Impl::Self(L);
     const lua_Integer a = Addr(L, 1);
@@ -318,7 +346,7 @@ void Engine::Impl::Install() {
     lua_pushcfunction(L, L_print);
     lua_setglobal(L, "print");
     const luaL_Reg api[] = {{"cmd", L_cmd},         {"peek", L_peek},         {"poke", L_poke},         {"peek16", L_peek16}, {"poke16", L_poke16},
-                            {"reg", L_reg},         {"frame", L_frame},       {"wait", L_wait},         {"on_frame", L_on_frame},
+                            {"reg", L_reg},         {"vdp", L_vdp},           {"screen", L_screen},         {"frame", L_frame},       {"wait", L_wait},         {"on_frame", L_on_frame},
                             {"on_change", L_on_change}, {"on_stop", L_on_stop}, {"clear_hooks", L_clear_hooks}, {nullptr, nullptr}};
     luaL_newlib(L, api);
     lua_setglobal(L, "msx");

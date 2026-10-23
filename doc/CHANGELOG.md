@@ -7,6 +7,15 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.19] - 2026-10-23 - "Yie Ar Kung-Fu: Comandos do VDP" (Konami)
+
+### Adicionado -- olhar e mexer no VDP pelo console (ideia do usuario, a partir do comando `screen`)
+- **`vdp`**: os registradores R#0..R#46 (R#0..R#7 no MSX1) em hexa, o status S#0..S#9 e uma linha com os bits decodificados (tela ligada, IE0/IE1, sprites 8x8/16x16 e ampliados, 192/212 linhas, NTSC/PAL, sprites desligados). `vdp pal` mostra a paleta (V9938/V9958); `vdp <n>` le um registrador; `vdp <n> <valor>` grava **como o OUT do Z80** (recalcula modo e tabelas; R#46 dispara o comando do V9938).
+- **`vdpbios <n> <valor>`**: o mesmo e grava tambem o **espelho do BIOS** (RG0SAV..RG7SAV em F3DF, RG8SAV..RG23SAV em FFE7, RG25SAV..RG27SAV em FFFA), para o BIOS nao desfazer a mudanca.
+- **`screen info`**: o modo de tela e onde ficam as tabelas na VRAM: nomes, cores, padroes, atributos de sprite, cores de sprite (modo 2) e padroes de sprite, com o tamanho quando e' fixo. `screen` continua devolvendo o texto.
+- **Lua**: `msx.vdp(n [, v])` e `msx.screen()`.
+- `man vdp` e `man vdpbios`; testes no `controltest`.
+
 ## [1.43.18] - 2026-10-23 - "Yie Ar Kung-Fu: Erro do BASIC no editor" (Konami)
 
 ### Adicionado -- F5 num .dmx volta sozinho ao fonte quando o BASIC para com erro (pendencia do Dignified)

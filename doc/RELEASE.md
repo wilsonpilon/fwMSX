@@ -17,6 +17,13 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.19 -- "Yie Ar Kung-Fu: Comandos do VDP" (Konami) (2026-10-23)
+
+**Pedido do usuario**: "alem do screen, voce poderia ter um comando VDP que mostre os valores dos registradores do VDP? talvez ate permitindo alterar? e quando dar screen, alem do estado, poderia mostrar quais os enderecos das tabelas? padroes, formacao, cores, sprites, atributos de sprite, etc?" Respostas do usuario as perguntas de desenho: `vdp` + `screen info`; **dois** comandos de gravacao (um igual ao OUT, outro com o espelho do BIOS); Lua (`msx.vdp`, `msx.screen`) e man/manual.
+- **Desenho**: `Machine::WriteVdpRegister` chama `vdp_write_register` (o mesmo caminho da porta 99h); os enderecos das tabelas saem do cache do proprio VDP (`chr_tab`, `col_tab`, `chr_gen`, `spr_tab`, `spr_gen`, ja' calculados de R#2..R#6, R#10, R#11); as cores de sprite do modo 2 ficam 512 bytes antes dos atributos. No MSX1 o limite do registrador e' 7 e a paleta e' fixa.
+- **Nao verificado**: os tamanhos das tabelas do SCREEN 3 e dos modos bitmap (nao mostrados); o espelho do BIOS so' vale com o BIOS padrao do MSX.
+- Validado: Windows e Linux, `ctest` 100% (34).
+
 ## v1.43.18 -- "Yie Ar Kung-Fu: Erro do BASIC no editor" (Konami) (2026-10-23)
 
 **Pedido do usuario**: "da lista qual seria o mais rapido, para fazer ainda hoje" -> "entao vamos no Dignified" (item pendente desde a 1.42.2: "salto automatico lendo a mensagem da tela do MSX depois do F5").

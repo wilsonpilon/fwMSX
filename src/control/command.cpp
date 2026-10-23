@@ -52,7 +52,7 @@ int DriveIndex(const std::string &s) {
 }
 
 const char *kHelp =
-    "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] screen (texto da tela, SCREEN 0/1) "
+    "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] screen [info] (texto da tela / modo e tabelas) vdp [pal|n [v]] vdpbios n v (registradores do VDP) "
     "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
@@ -416,6 +416,112 @@ std::string ScreenText(machine::Machine &m) {
     return out;
 }
 
+namespace {
+
+const char *ScreenName(int mode) {
+    switch (mode) {
+        case 0: return "SCREEN 0 (texto 40x24)";
+        case 1: return "SCREEN 1 (grafico 1, 32x24)";
+        case 2: return "SCREEN 2 (grafico 2, 256x192)";
+        case 3: return "SCREEN 3 (multicor, 64x48)";
+        case 4: return "SCREEN 4 (grafico 3, 256x192)";
+        case 5: return "SCREEN 5 (bitmap 256x212, 16 cores)";
+        case 6: return "SCREEN 6 (bitmap 512x212, 4 cores)";
+        case 7: return "SCREEN 7 (bitmap 512x212, 16 cores)";
+        case 8: return "SCREEN 8 (bitmap 256x212, 256 cores)";
+        case 10: return "SCREEN 10 (bitmap YJK/RGB)";
+        case 11: return "SCREEN 11 (bitmap YJK/RGB)";
+        case 12: return "SCREEN 12 (bitmap YJK)";
+        case 13: return "SCREEN 0 (texto 80x24)";
+        default: return "sem modo de tela";
+    }
+}
+
+// uma linha da lista de tabelas: o nome, o endereco na VRAM e (quando e' fixo naquele modo) o tamanho
+void TableLine(std::string &out, const char *name, uint32_t addr, int size) {
+    char line[96];
+    if (size > 0) std::snprintf(line, sizeof(line), "  %-22s %05X  (%d bytes)\n", name, static_cast<unsigned>(addr), size);
+    else std::snprintf(line, sizeof(line), "  %-22s %05X\n", name, static_cast<unsigned>(addr));
+    out += line;
+}
+
+// O modo de tela e onde ficam as tabelas na VRAM (R#2..R#6, R#10, R#11 ja' calculados pelo VDP): o que o programa precisa para achar
+// os padroes, as cores e os sprites com `vpeek`/o monitor.
+std::string ScreenInfo(machine::Machine &m) {
+    const VdpState &v = m.vdp_state();
+    const int mode = v.scr_mode;
+    std::string out = std::string(ScreenName(mode)) + "  [VDP " + (v.model == VDP_MODEL_MSX1 ? "TMS9918" : v.model == VDP_MODEL_MSX2 ? "V9938" : "V9958") +
+                      ", modo interno " + std::to_string(mode) + "]\n";
+    if (mode > 13 || mode == 9) return out + "  (as tabelas nao se aplicam)";
+    const bool text = mode == 0 || mode == 13;
+    const bool bitmap = mode >= 5 && mode != 13;
+    if (bitmap) {
+        TableLine(out, "bitmap (pagina atual)", v.chr_tab, 0);
+    } else {
+        TableLine(out, "nomes (pattern name)", v.chr_tab, mode == 0 ? 960 : mode == 13 ? 1920 : 768);
+        if (mode == 1) TableLine(out, "cores (color table)", v.col_tab, 32);
+        if (mode == 2 || mode == 4) TableLine(out, "cores (color table)", v.col_tab, 6144);
+        if (mode == 13) TableLine(out, "piscar (blink table)", v.col_tab, 240);
+        TableLine(out, "padroes (pattern gen.)", v.chr_gen, mode == 2 || mode == 4 ? 6144 : mode == 3 ? 0 : 2048);
+    }
+    if (text || mode == 9) return out.substr(0, out.size() - 1);
+    TableLine(out, "atributos de sprite", v.spr_tab, 128);
+    if (mode >= 4) TableLine(out, "cores de sprite (modo 2)", v.spr_tab >= 512 ? v.spr_tab - 512 : 0, 512);
+    TableLine(out, "padroes de sprite", v.spr_gen, 2048);
+    return out.substr(0, out.size() - 1);
+}
+
+// Os 64 registradores em hexa (R#0..R#7 no MSX1, R#0..R#46 no MSX2), o status e uma linha de bits ja' decodificados.
+std::string VdpDump(machine::Machine &m) {
+    const VdpState &v = m.vdp_state();
+    const bool v9938 = v.model != VDP_MODEL_MSX1;
+    const int top = v9938 ? 46 : 7;
+    std::string out = std::string(ScreenName(v.scr_mode)) + ", VDP " + (v.model == VDP_MODEL_MSX1 ? "TMS9918" : v.model == VDP_MODEL_MSX2 ? "V9938" : "V9958") + "\n";
+    for (int base = 0; base <= top; base += 8) {
+        char head[24];
+        std::snprintf(head, sizeof(head), "R#%02d-%02d ", base, std::min(base + 7, top));
+        out += head;
+        for (int i = base; i <= std::min(base + 7, top); ++i) out += Hex(v.regs[i], 2) + " ";
+        out.pop_back();
+        out += "\n";
+    }
+    out += "status  ";
+    for (int i = 0; i <= (v9938 ? 9 : 0); ++i) out += Hex(v.status[i], 2) + " ";
+    out.pop_back();
+    out += "\n";
+    const uint8_t r0 = v.regs[0], r1 = v.regs[1], r8 = v.regs[8], r9 = v.regs[9];
+    out += std::string("tela ") + ((r1 & 0x40) ? "ligada" : "apagada") + ", IE0(vblank) " + ((r1 & 0x20) ? "sim" : "nao") + ", IE1(hblank) " +
+           ((r0 & 0x10) ? "sim" : "nao") + ", sprites " + ((r1 & 0x02) ? "16x16" : "8x8") + ((r1 & 0x01) ? " ampliados" : "");
+    if (v9938) {
+        out += std::string(", ") + ((r9 & 0x80) ? "212" : "192") + " linhas, " + ((r9 & 0x02) ? "PAL" : "NTSC") + ((r8 & 0x02) ? ", sprites desligados" : "") +
+               ((r8 & 0x20) ? ", cor 0 opaca" : "");
+    }
+    return out;
+}
+
+std::string VdpPalette(machine::Machine &m) {
+    const VdpState &v = m.vdp_state();
+    if (v.model == VDP_MODEL_MSX1) return "a paleta do TMS9918 e' fixa (sem registrador de paleta)";
+    std::string out;
+    for (int i = 0; i < 16; ++i) {
+        const int r = (v.palette_r[i] * 7 + 127) / 255, g = (v.palette_g[i] * 7 + 127) / 255, b = (v.palette_b[i] * 7 + 127) / 255;
+        char line[64];
+        std::snprintf(line, sizeof(line), "%2d: R%d G%d B%d  #%02X%02X%02X%s", i, r, g, b, v.palette_r[i], v.palette_g[i], v.palette_b[i], i < 15 ? "\n" : "");
+        out += line;
+    }
+    return out;
+}
+
+// Os espelhos do BIOS dos registradores de escrita apenas: RG0SAV..RG7SAV (F3DF), RG8SAV..RG23SAV (FFE7), RG25SAV..RG27SAV (FFFA). 0 = sem espelho.
+uint16_t VdpMirror(int reg) {
+    if (reg >= 0 && reg <= 7) return static_cast<uint16_t>(0xF3DF + reg);
+    if (reg >= 8 && reg <= 23) return static_cast<uint16_t>(0xFFE7 + reg - 8);
+    if (reg >= 25 && reg <= 27) return static_cast<uint16_t>(0xFFFA + reg - 25);
+    return 0;
+}
+
+} // namespace
+
 Commander::Commander(Host &host) : host_(host) {}
 Commander::~Commander() = default;
 
@@ -525,7 +631,38 @@ Result Commander::Execute(const std::string &line) {
         return Ok(out);
     }
 
+    if (cmd == "vdp" || cmd == "vdpbios") {
+        const bool bios = cmd == "vdpbios";
+        const bool v9938 = m.vdp_state().model != VDP_MODEL_MSX1;
+        const uint32_t top = v9938 ? 46 : 7;
+        if (!bios && t.size() == 1) return Ok(VdpDump(m));
+        if (!bios && t.size() == 2 && (t[1] == "pal" || t[1] == "paleta")) return Ok(VdpPalette(m));
+        uint32_t reg = 0, value = 0;
+        if (t.size() < 2 || t.size() > 3 || !ParseNumber(t[1], reg) || reg > top) {
+            return Err(bios ? "vdpbios: use vdpbios <registrador 0-" + std::to_string(top) + "> <valor>"
+                            : "vdp: use vdp | vdp pal | vdp <registrador 0-" + std::to_string(top) + "> [valor]");
+        }
+        if (t.size() == 2) {
+            if (bios) return Err("vdpbios: use vdpbios <registrador> <valor>");
+            return Ok("R#" + std::to_string(reg) + "=" + Hex(m.vdp_state().regs[reg], 2));
+        }
+        if (!ParseNumber(t[2], value) || value > 0xFF) return Err(cmd + ": valor invalido '" + t[2] + "' (0-FF)");
+        m.WriteVdpRegister(static_cast<int>(reg), static_cast<uint8_t>(value));
+        std::string out = "R#" + std::to_string(reg) + "=" + Hex(m.vdp_state().regs[reg], 2);
+        if (bios) {
+            const uint16_t mirror = VdpMirror(static_cast<int>(reg));
+            if (mirror == 0) return Ok(out + " (esse registrador nao tem espelho no BIOS)");
+            m.WriteMemory(mirror, static_cast<uint8_t>(value));
+            out += " e o espelho " + Hex(mirror, 4) + " do BIOS";
+        }
+        return Ok(out);
+    }
+
     if (cmd == "screen") {
+        if (t.size() > 1) {
+            if (t[1] != "info") return Err("screen: use screen | screen info");
+            return Ok(ScreenInfo(m));
+        }
         const std::string text = ScreenText(m);
         if (text.empty()) return Err("screen: a tela nao esta' em SCREEN 0 ou 1 (so' o texto e' lido)");
         return Ok(text);
