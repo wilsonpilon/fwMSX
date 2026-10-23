@@ -1,11 +1,53 @@
 Resume this session with:
-claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61
-fwMSX -- como retomar (atualizado em 2026-10-22, ao encerrar o dia: ultima release 1.43.17 "Yie Ar Kung-Fu: Downloads")
+claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao de 2026-10-20 a 23: continue ESTA; contexto na secao ONDE PARAMOS 2026-10-23)
+fwMSX -- como retomar (atualizado em 2026-10-23, ao encerrar o dia: ultima release 1.43.19 "Yie Ar Kung-Fu: Comandos do VDP")
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
 
-== ONDE PARAMOS (2026-10-22, fim do dia) -- LEIA ESTA SECAO PRIMEIRO ==
+== ONDE PARAMOS (2026-10-23, FIM DO DIA) -- LEIA ESTA SECAO PRIMEIRO ==
+SESSAO PARA CONTINUAR (a mesma de 20 a 23/10; o contexto antigo foi resumido automaticamente, mas o historico completo esta nela):
+    claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61
+Em outro computador a sessao nao existe: abra o Claude Code na pasta do projeto, ele le o CLAUDE.md; mande ler OUTLINE.md e esta secao.
+Primeira mensagem sugerida: "voltei; leia o resume.txt e me diga as opcoes". Retomada prevista: noite de 23/10, sabado de manha ou segunda.
+
+ESTADO: tudo publicado e empurrado no GitHub (main = 275f5295 ou mais novo); ultima release 1.43.19; ctest 34/34 no Windows e no Linux.
+Arvore de trabalho: so' sobras do usuario/build (dist/ binarios, third-party/NBASIC|fMSX|megasm|nestor|openmsx nao rastreados, volta.txt, resource/basic-dignified);
+NAO fazer git add -A; commits com caminhos explicitos e "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>".
+
+O QUE FOI FEITO NO DIA 2026-10-23
+ a) Limpeza de resource/ -> third-party/ commitada (ver item 0 abaixo, que e' o registro da manha). Depois, por decisao do usuario, subiram tambem fx80 (projeto
+    proprio, sera incluido em partes), fontes (TTF), assets Graphos/Aquarela (alfabetos, telas, shapes, layout, graphos, superx) e figuras dos livros (redbook_images,
+    th2handbook_images): 2.181 arquivos, ~72 MB, commit 3a1b9170. PROVISORIO: os assets irao para um site proprio e serao baixados pela janela Downloads.
+    ATENCAO (repo publico): fx80/FX80_Users_Manual_1983.pdf e' o manual da Epson (terceiros); fontes e figuras de livros tem direitos de terceiros. Retirar se o usuario
+    nao for o dono. Autoria/licenca de Graphos, Aquarela e fontes ainda NAO registradas em LICENSE-THIRD-PARTY.md (preencher quando o usuario confirmar).
+ b) 1.43.18 "Erro do BASIC no editor": F5 num .dmx vigia a tela do MSX (control::ScreenText, badig::FindBasicError com lista fechada de mensagens + "Ok",
+    EditorApp::RunWatchTick/TakeShowRequest, ganchos SetScreenHook); se o BASIC parar com "Syntax error in 130" a janela do editor volta na linha do .dmx.
+ c) 1.43.19 "Comandos do VDP" (ideia do usuario): vdp (R#0-46, status, bits decodificados), vdp pal, vdp n [v] (grava como o OUT), vdpbios n v (grava tambem o espelho
+    RGnSAV do BIOS), screen info (modo + enderecos das tabelas), screen (texto), Lua msx.vdp / msx.screen, man vdp / vdpbios. Machine::WriteVdpRegister.
+
+AINDA NAO VERIFICADO (nao deixar passar)
+ - As janelas ImGui novas (Downloads, preview colorido do Markdown, e a VOLTA AUTOMATICA do editor depois do erro do BASIC) compilaram mas nao foram abertas numa sessao grafica.
+ - screen info nao mostra tamanho das tabelas do SCREEN 3 nem dos modos bitmap; o espelho do vdpbios so' vale com o BIOS padrao.
+ - MSX-DOS 2 nao foi iniciado no emulador (falta a ROM do kernel DOS2); download real (File Hunter/GitHub) nao esta' no ctest.
+
+PROXIMAS OPCOES (a escolha e' do usuario; o usuario perguntou "qual e' o mais rapido" e escolheu o Dignified)
+ 1. Dignified: NestorBASIC rodando de verdade (precisa de NBASIC.BIN, baixavel na janela ROMs > Downloads) e o "Basic DignifieR".
+ 2. Aba "Documentacao" na janela Downloads (esperar as URLs do usuario: Red Book / MSX2 Technical Handbook em Markdown etc.; .md abre no editor com F7).
+ 3. Saida .MOB do fwasm.  4. MSX-DOS 2 no emulador.  5. Fidelidade do emulador/Mamute.  6. Decisao do NOME do projeto (adiada pelo usuario).
+ 7. Licencas: ver o resto de resource/ (openMSX, openMSX_TSXadv, CLK, asMSX, fMSX [testes usam resource/fMSX/ROMs/MSX.ROM], makeTSX, DiskUtilities, basic-dignified, msxdos,
+    soltos), origem do SUPER-X-PT.notas, aviso no README publico; decidir openmsx/fMSX/megasm/nestor/NBASIC de third-party/ (hoje so' no disco).
+ 8. Lua passo 3 (.lua como tipo do projeto, Run > Run script, on_write, VRAM/VDP/PSG, msx.type); Downloads extras (tamanho/data, barra de progresso, mais fontes);
+    menus Sprites/Telas/Som quando houver editores graficos (SPEC 5.4, guiados pelos 4 projetos proprios em third-party/).
+ 9. Man: nao ha' pagina propria para "screen" (esta' dentro de man vdp); a 1.43.18 nao atualizou o man para o screen (so' a 1.43.19).
+
+ARMADILHAS (ja' registradas abaixo, resumo): o shell colapsa barras invertidas e apostrofos em heredocs/python -c -> use a ferramenta Write/Edit para scripts com \n em C++;
+ um \n em python nao-raw vira quebra real (quebrou um comentario e o build em 1.43.19); Windows (.\build.ps1, ~5-10 min) primeiro, Linux (WSL ./build.sh) depois;
+ subir src/common/version.h ANTES de qualquer build de pacote (proxima: 1.43.20); docs vivos em toda release (CHANGELOG, RELEASE, SPEC 5.0, README, MANUAL, OUTLINE, *-spec, man).
+
+(O texto abaixo e' o historico das secoes anteriores; a de 2026-10-22 continua valida para o resto.)
+
+== ONDE PARAMOS (2026-10-22, fim do dia) -- historico ==
 Comando para continuar amanha, na mesma maquina:   claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61
 Primeira mensagem sugerida: "voltei, as pastas estao limpas; releia resource/ e me diga o que ainda precisa de tratamento".
 
