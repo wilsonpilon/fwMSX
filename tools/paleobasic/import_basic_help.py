@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Converte a ajuda de MSX-BASIC do paleobasic (resource/paleobasic/src/editor/help/*.pbi) nas paginas do `man` do fwMSX.
+"""Converte a ajuda de MSX-BASIC do paleobasic (third-party/paleobasic/src/editor/help/*.pbi) nas paginas do `man` do fwMSX.
 
 Uso:  python tools/paleobasic/import_basic_help.py          (gera src/man/cpp/man_pages_basic.cpp)
 
@@ -15,7 +15,7 @@ import re
 import sys
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-HELP = os.path.join(ROOT, 'resource', 'paleobasic', 'src', 'editor', 'help')
+HELP = os.path.join(ROOT, 'third-party', 'paleobasic', 'src', 'editor', 'help')
 OUT = os.path.join(ROOT, 'src', 'man', 'cpp', 'man_pages_basic.cpp')
 
 
@@ -190,7 +190,7 @@ def main():
     lines = []
     w = lines.append
     w('// fwMSX -- MAN: paginas do MSX-BASIC (dicionario de palavras reservadas e manual). ARQUIVO GERADO por')
-    w('// tools/paleobasic/import_basic_help.py a partir de resource/paleobasic/src/editor/help/*.pbi -- nao editar a mao.')
+    w('// tools/paleobasic/import_basic_help.py a partir de third-party/paleobasic/src/editor/help/*.pbi -- nao editar a mao.')
     w('//')
     w('// Fontes dos textos (transcricao feita no projeto paleobasic): livro "Linguagem BASIC MSX" (Denise Santoro Cruz, Editora Aleph/')
     w('// Gradiente, 4a edicao, 1986) e "Manual MSX 2+ FM" (Ademir Carchano / Flavio Monaco, ACVS Eletronica). Obras de terceiros,')

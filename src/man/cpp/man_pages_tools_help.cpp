@@ -1,4 +1,4 @@
-// fwMSX -- MAN: NestorBASIC, SEE Tracker e MSXBAS2ROM. ARQUIVO GERADO por tools/paleobasic/import_tools_help.py a partir de resource/paleobasic -- nao editar a mao.
+// fwMSX -- MAN: NestorBASIC, SEE Tracker e MSXBAS2ROM. ARQUIVO GERADO por tools/paleobasic/import_tools_help.py a partir de third-party/paleobasic -- nao editar a mao.
 //
 // NestorBASIC: Nestor Soriano (Konamiman). SEE: Sound Effect Editor 3.10, Fuzzy Logic 1991/95. MSXBAS2ROM: Amaury Carvalho (GPL).
 // Ver doc/man-spec.md, secao "Origem e direitos".

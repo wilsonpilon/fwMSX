@@ -3,7 +3,7 @@
 
 Uso:  python tools/paleobasic/import_tools_help.py          (gera src/man/cpp/man_pages_tools_help.cpp)
 
-Fontes (resource/paleobasic/):
+Fontes (third-party/paleobasic/):
   src/editor/basic/NestorBasicHelpData.pbi          NestorBASIC (Nestor Soriano / Konamiman): biblioteca de 87 funcoes chamadas por USR do MSX-BASIC
   src/editor/visual_editors/SeeTrackerHelpData.pbi  Sound Effect Editor (SEE) 3.10 (Fuzzy Logic): editor de efeitos sonoros do PSG e o formato .SEE
   resource/tools/msxbas2rom/help/*.md + _index.json MSXBAS2ROM (Amaury Carvalho): compilador de MSX-BASIC para ROM (a "turbo" do paleobasic)
@@ -21,7 +21,7 @@ spec = importlib.util.spec_from_file_location('imp', os.path.join(HERE, 'import_
 imp = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(imp)
 
-PALEO = os.path.join(imp.ROOT, 'resource', 'paleobasic')
+PALEO = os.path.join(imp.ROOT, 'third-party', 'paleobasic')
 OUT = os.path.join(imp.ROOT, 'src', 'man', 'cpp', 'man_pages_tools_help.cpp')
 
 
@@ -134,7 +134,7 @@ def main():
             t['aliases'] = 'see,see-tracker'
 
     # ------------------------------------------------------------------ MSXBAS2ROM
-    help_dir = os.path.join(PALEO, 'resource', 'tools', 'msxbas2rom', 'help')
+    help_dir = os.path.join(imp.ROOT, 'third-party', 'msxbas2rom', 'help')
     index = json.load(open(os.path.join(help_dir, '_index.json'), encoding='utf-8-sig'))
     n_b2r = 0
     for item in index:
@@ -153,7 +153,7 @@ def main():
     # ------------------------------------------------------------------ saida
     lines = []
     w = lines.append
-    w('// fwMSX -- MAN: NestorBASIC, SEE Tracker e MSXBAS2ROM. ARQUIVO GERADO por tools/paleobasic/import_tools_help.py a partir de resource/paleobasic -- nao editar a mao.')
+    w('// fwMSX -- MAN: NestorBASIC, SEE Tracker e MSXBAS2ROM. ARQUIVO GERADO por tools/paleobasic/import_tools_help.py a partir de third-party/paleobasic -- nao editar a mao.')
     w('//')
     w('// NestorBASIC: Nestor Soriano (Konamiman). SEE: Sound Effect Editor 3.10, Fuzzy Logic 1991/95. MSXBAS2ROM: Amaury Carvalho (GPL).')
     w('// Ver doc/man-spec.md, secao "Origem e direitos".')

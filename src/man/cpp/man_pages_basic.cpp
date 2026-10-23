@@ -1,5 +1,5 @@
 // fwMSX -- MAN: paginas do MSX-BASIC (dicionario de palavras reservadas e manual). ARQUIVO GERADO por
-// tools/paleobasic/import_basic_help.py a partir de resource/paleobasic/src/editor/help/*.pbi -- nao editar a mao.
+// tools/paleobasic/import_basic_help.py a partir de third-party/paleobasic/src/editor/help/*.pbi -- nao editar a mao.
 //
 // Fontes dos textos (transcricao feita no projeto paleobasic): livro "Linguagem BASIC MSX" (Denise Santoro Cruz, Editora Aleph/
 // Gradiente, 4a edicao, 1986) e "Manual MSX 2+ FM" (Ademir Carchano / Flavio Monaco, ACVS Eletronica). Obras de terceiros,

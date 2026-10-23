@@ -3,7 +3,7 @@
 
 Uso:  python tools/paleobasic/import_books_help.py          (gera src/man/cpp/man_pages_books.cpp)
 
-Fontes (resource/paleobasic/src/editor/help/):
+Fontes (third-party/paleobasic/src/editor/help/):
   RedBookHelpData.pbi      "The MSX Red Book" (Avalon Software / Kuma Computers, 1985), versao Markdown de Gustavo Seidler
   Th2HandbookHelpData.pbi  "MSX2 Technical Handbook" (ASCII Corporation, 1987), edicao Markdown de Konamiman (Nestor Soriano)
   BasicDignifiedHelpData.pbi  ajuda do Basic Dignified (em portugues) escrita para o paleobasic
@@ -74,7 +74,7 @@ def main():
     lines = []
     w = lines.append
     w('// fwMSX -- MAN: livros de referencia do MSX (The MSX Red Book, MSX2 Technical Handbook) e a ajuda do Basic Dignified. ARQUIVO GERADO por')
-    w('// tools/paleobasic/import_books_help.py a partir de resource/paleobasic/src/editor/help/*.pbi -- nao editar a mao.')
+    w('// tools/paleobasic/import_books_help.py a partir de third-party/paleobasic/src/editor/help/*.pbi -- nao editar a mao.')
     w('//')
     w('// Red Book: Avalon Software / Kuma Computers, 1985 (versao Markdown de Gustavo Seidler). MSX2 Technical Handbook: ASCII Corporation, 1987')
     w('// (edicao Markdown de Konamiman). Texto em ingles, como no original. Ver doc/man-spec.md, secao "Origem e direitos".')

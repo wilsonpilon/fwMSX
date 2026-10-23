@@ -3,7 +3,7 @@
 
 Uso:  python tools/paleobasic/import_manuals_help.py          (gera src/man/cpp/man_pages_manuals.cpp)
 
-Fontes (resource/paleobasic/src/editor/help/), geradas pelo paleobasic a partir dos CHM do RuMSX (Lex Lechz):
+Fontes (third-party/paleobasic/src/editor/help/), geradas pelo paleobasic a partir dos CHM do RuMSX (Lex Lechz):
   MsxSoftwareHelpData.pbi  (SOFTWARE.CHM) comandos do MSX-BASIC (1, 2, 2+, Turbo-R, Disk-BASIC), extensoes CALL de firmware, MSX-DOS 1, CP/M e referencias
                            (tabela de cores, codigos de erro, modos de tela, vozes do MSX-Music...)
   MsxManualsHelpData.pbi   (MANUALS.CHM) MSX-DOS 2 (referencia de comandos, interface de programa, codigos de funcao), Z80, R800, Turbo-Basic, FM-PAC.
@@ -208,7 +208,7 @@ def main():
     lines = []
     w = lines.append
     w('// fwMSX -- MAN: MSX-DOS 2, MSX-DOS 1/CP/M, Z80, R800, FM-PAC, Turbo-Basic e referencias do MSX-BASIC em ingles. ARQUIVO GERADO por')
-    w('// tools/paleobasic/import_manuals_help.py a partir de resource/paleobasic/src/editor/help/Msx{Software,Manuals}HelpData.pbi -- nao editar a mao.')
+    w('// tools/paleobasic/import_manuals_help.py a partir de third-party/paleobasic/src/editor/help/Msx{Software,Manuals}HelpData.pbi -- nao editar a mao.')
     w('//')
     w('// Origem: SOFTWARE.CHM e MANUALS.CHM do RuMSX (Lex Lechz, lexlechz.at), que reunem material publico (boa parte digitada por Konamiman a partir dos')
     w('// manuais oficiais: MSX-DOS 2, MSX2 Technical Handbook, Turbo-Basic Compiler). Texto em ingles, como no original. Ver doc/man-spec.md.')

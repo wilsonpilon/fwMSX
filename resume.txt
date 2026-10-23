@@ -9,6 +9,12 @@ as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.
 Comando para continuar amanha, na mesma maquina:   claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61
 Primeira mensagem sugerida: "voltei, as pastas estao limpas; releia resource/ e me diga o que ainda precisa de tratamento".
 
+0) ATUALIZACAO 2026-10-23 (MANHA): A LIMPEZA TERMINOU E FOI COMMITADA. O usuario devolveu as pastas limpas em third-party/ (raiz). Commits: remocao de resource/{fmsxgo,kizuna,
+   msxide,paleobasic,msxDiskUtil}; third-party/{Konpass,n80,msxbas2rom} (so' codigo/docs); os 5 projetos limpos (sem midia/binarios/SDKs/debugger); /temp ignorada;
+   importadores apontando para third-party/. O resto de third-party/ (openmsx, fMSX, megasm, fx80, nestor, NBASIC, fontes, imagens de livros, alfabetos/telas/shapes/layout
+   de Graphos/Aquarela, graphos, superx) esta' SO' NO DISCO (nao rastreado). PENDENTE: autoria/licenca dos assets Graphos/Aquarela que serao distribuidos com o fwMSX.
+   (A secao 1 abaixo e' o registro da pausa de ontem; ja' foi resolvida.)
+
 1) A PAUSA ATUAL: LIMPEZA MANUAL DE resource/ PELO USUARIO
    - O usuario MOVEU para fora do repositorio fmsxgo, paleobasic, msxide, kizuna e msxDiskUtil (continuam em E:\fmsxgo, E:\paleobasic, E:\msxide, E:\kizuna) para limpar
      a mao o material de TERCEIROS que ha' dentro delas (discos/ROMs de jogos, BIOS, copias de outros projetos, SDKs MSXgl/Fusion-C), e vai DEVOLVE-LAS LIMPAS.

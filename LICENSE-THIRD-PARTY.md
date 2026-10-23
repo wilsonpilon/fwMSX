@@ -229,6 +229,13 @@ O comando `lua` do console (doc/script-spec.md) usa o interpretador Lua
 oficial de https://www.lua.org/ftp/ (SHA-256 fixo) e o compila como
 biblioteca estatica; o fonte do Lua nao e' copiado para este repositorio.
 
+## third-party/ (2026-10-23)
+
+Desde 2026-10-23 o material de apoio do autor mora em **`third-party/`** (raiz do repositorio), nao mais em `resource/`. Estao versionados:
+`Konpass`, `n80` e `msxbas2rom` (software de terceiros mantido por enquanto so' para consulta, com seus proprios `LICENSE`; os binarios compilados
+dos exemplos nao sobem) e os projetos do proprio autor abaixo (limpos de midia, binarios e SDKs de terceiros). O resto de `third-party/` fica so' no disco
+do autor (nao rastreado). Tudo o que e' de terceiros sai antes de a licenca unica entrar em vigor.
+
 ## fmsxgo, paleobasic, msxide e kizuna (projetos proprios do autor)
 
 `resource/fmsxgo/`, `resource/paleobasic/`, `resource/msxide/` e `resource/kizuna/` sao **projetos do proprio autor do fwMSX**, mantidos so' como

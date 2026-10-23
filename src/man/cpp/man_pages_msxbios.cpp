@@ -1,5 +1,5 @@
 // fwMSX -- MAN: rotinas e variaveis da BIOS/BDOS e hardware do MSX. ARQUIVO GERADO por tools/paleobasic/import_bios_help.py a partir de
-// resource/paleobasic/src/editor/help/{BiosCalls,BiosDoc,Hardware}HelpData.pbi -- nao editar a mao.
+// third-party/paleobasic/src/editor/help/{BiosCalls,BiosDoc,Hardware}HelpData.pbi -- nao editar a mao.
 //
 // Origem: MSXBIOS.CHM do RuMSX (Lex Lechz, lexlechz.at), que reune material publico (MSX Assembly Page, manuais do blueMSX e do openMSX,
 // livros da Aleph). Texto em ingles, como no original. Ver doc/man-spec.md, secao "Origem e direitos".

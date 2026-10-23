@@ -3,7 +3,7 @@
 
 Uso:  python tools/paleobasic/import_bios_help.py          (gera src/man/cpp/man_pages_msxbios.cpp)
 
-Fontes (resource/paleobasic/src/editor/help/): BiosCallsHelpData.pbi (rotinas nomeadas de MainROM/SubROM/Disk-ROM/Hangul-ROM, BDOS e variaveis
+Fontes (third-party/paleobasic/src/editor/help/): BiosCallsHelpData.pbi (rotinas nomeadas de MainROM/SubROM/Disk-ROM/Hangul-ROM, BDOS e variaveis
 de RAM), BiosDocHelpData.pbi (documentacao: sequencias ESC de impressora...) e HardwareHelpData.pbi (RTC, PSG, SCC, OPLL, MSX-Audio, MoonSound,
 V9958, V9990, teclado, mapa de portas, Kanji, MIDI, SCSI...). O paleobasic as gerou do MSXBIOS.CHM do RuMSX (Lex Lechz, lexlechz.at), que por sua
 vez reune material publico (MSX Assembly Page, manuais do blueMSX e do openMSX, livros da Aleph). O texto e' em INGLES e vai como no original.
@@ -68,7 +68,7 @@ def main():
     lines = []
     w = lines.append
     w('// fwMSX -- MAN: rotinas e variaveis da BIOS/BDOS e hardware do MSX. ARQUIVO GERADO por tools/paleobasic/import_bios_help.py a partir de')
-    w('// resource/paleobasic/src/editor/help/{BiosCalls,BiosDoc,Hardware}HelpData.pbi -- nao editar a mao.')
+    w('// third-party/paleobasic/src/editor/help/{BiosCalls,BiosDoc,Hardware}HelpData.pbi -- nao editar a mao.')
     w('//')
     w('// Origem: MSXBIOS.CHM do RuMSX (Lex Lechz, lexlechz.at), que reune material publico (MSX Assembly Page, manuais do blueMSX e do openMSX,')
     w('// livros da Aleph). Texto em ingles, como no original. Ver doc/man-spec.md, secao "Origem e direitos".')

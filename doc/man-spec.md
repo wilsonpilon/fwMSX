@@ -76,7 +76,7 @@ de cada diretiva; as tabelas de BIOS vem de `src/asm/cpp/bios_tables.inc`. Nao i
 ### Origem e direitos
 O material do MSX-BASIC e' de duas obras de terceiros (a de BIOS/hardware, acima, e' do MSXBIOS.CHM do RuMSX, que reune fontes publicas: MSX Assembly Page, manuais do blueMSX e
 do openMSX, livros da Aleph). O responsavel pela Aleph autorizou expressamente a distribuicao de material de MSX e ZX81 (informado pelo autor do projeto). Texto transcrito no
-projeto **paleobasic** (`resource/paleobasic/src/editor/help/MsxBasic*Data.pbi`) de duas obras: *Linguagem BASIC MSX*
+projeto **paleobasic** (`third-party/paleobasic/src/editor/help/MsxBasic*Data.pbi`) de duas obras: *Linguagem BASIC MSX*
 (Denise Santoro Cruz, Editora Aleph/Gradiente, 4a edicao, 1986) e *Manual MSX 2+ FM* (Ademir Carchano / Flavio Monaco, ACVS Eletronica). Cada pagina
 cita a fonte e a pagina. A importacao e' feita UMA vez por `tools/paleobasic/import_basic_help.py`, que gera `src/man/cpp/man_pages_basic.cpp`
 (arquivo gerado: nao editar a mao; corrigir no paleobasic e rodar o script de novo). Para distribuir sem esse texto basta tirar o arquivo de

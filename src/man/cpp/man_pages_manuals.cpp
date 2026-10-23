@@ -1,5 +1,5 @@
 // fwMSX -- MAN: MSX-DOS 2, MSX-DOS 1/CP/M, Z80, R800, FM-PAC, Turbo-Basic e referencias do MSX-BASIC em ingles. ARQUIVO GERADO por
-// tools/paleobasic/import_manuals_help.py a partir de resource/paleobasic/src/editor/help/Msx{Software,Manuals}HelpData.pbi -- nao editar a mao.
+// tools/paleobasic/import_manuals_help.py a partir de third-party/paleobasic/src/editor/help/Msx{Software,Manuals}HelpData.pbi -- nao editar a mao.
 //
 // Origem: SOFTWARE.CHM e MANUALS.CHM do RuMSX (Lex Lechz, lexlechz.at), que reunem material publico (boa parte digitada por Konamiman a partir dos
 // manuais oficiais: MSX-DOS 2, MSX2 Technical Handbook, Turbo-Basic Compiler). Texto em ingles, como no original. Ver doc/man-spec.md.
