@@ -53,7 +53,7 @@ int DriveIndex(const std::string &s) {
 
 const char *kHelp =
     "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] screen [info] (texto da tela / modo e tabelas) vdp [pal|n [v]] vdpbios n v (registradores do VDP) "
-    "poke <end> <v>... regs cart <arq|-> [mapper] dos2 [rom] [disco]|off (MSX-DOS 2) disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
+    "poke <end> <v>... regs cart <arq|-> [mapper] dos2 [rom] [disco]|off (MSX-DOS 2) mapper (RAM mapeada) disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
@@ -1154,6 +1154,22 @@ Result Commander::Execute(const std::string &line) {
             }
         }
         return Err("reg: registrador desconhecido '" + t[1] + "'");
+    }
+
+    if (cmd == "mapper") {
+        // Os mappers de RAM (portas FCh-FFh): tamanho, segmentos e o que cada pagina enxerga agora. Util com dois mappers: cada um mascara o valor
+        // escrito na porta pelo proprio tamanho, entao os registradores podem diferir.
+        if (m.mapper_count() == 0) return Ok("sem mapper de RAM nesta maquina");
+        std::string out;
+        for (size_t i = 0; i < m.mapper_count(); ++i) {
+            const memmap::RamMapperDevice *d = m.mapper_at(i);
+            const int segs = m.memory().MapperSegments(d->primary(), d->secondary());
+            if (!out.empty()) out += '\n';
+            out += "slot " + std::to_string(d->primary()) + ":" + std::to_string(d->secondary()) + "  " + std::to_string(segs * 16) + " KB (" +
+                   std::to_string(segs) + " segmentos)  paginas 0-3 (FCh-FFh):";
+            for (int page = 0; page < 4; ++page) out += " " + std::to_string(d->segment(page));
+        }
+        return Ok(out);
     }
 
     if (cmd == "slots") {

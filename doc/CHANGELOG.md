@@ -7,6 +7,15 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.22] - 2026-10-23 - "Yie Ar Kung-Fu: Mapper de RAM" (Konami)
+
+### Adicionado -- RAM mapeada de 64 a 4096 KB e dois mappers
+- O tamanho do mapper de RAM deixa de ser fixo em 128 KB: `--ram <KB>` (64, 128, 256, 512, 1024, 2048 ou 4096; o registrador das portas FCh-FFh tem 8 bits, 256 segmentos de 16 KB, entao 4096 KB e' o maximo do hardware) e o menu *Maquina > RAM mapeada (mapper)*.
+- **Dois mappers ao mesmo tempo**: o interno (slot 3:2) e um "externo" (`--ram2 <KB>`, padrao no slot 3:3, `--ram2-slot P:S` para outro). As portas escrevem nos dois e cada um mascara o valor pelo proprio tamanho, como no hardware - serve para depurar programas que so' reconhecem um dos mappers.
+- Comando **`mapper`**: slot, tamanho, segmentos e o segmento de cada pagina de cada mapper. `man mapper`.
+- `machine::SetMapperRam` / `MapperRamKb` (valem tambem para um layout de slots ja' fixado), `Machine::mapper_count/mapper_at`.
+- **Corrigido**: carregar um estado salvo (`state load`) agora refaz tambem o registrador do mapper (antes so' a memoria; a proxima escrita do mesmo valor na porta era ignorada).
+
 ## [1.43.21] - 2026-10-23 - "Yie Ar Kung-Fu: MSX-DOS 2" (Konami)
 
 ### Adicionado -- MSX-DOS 2

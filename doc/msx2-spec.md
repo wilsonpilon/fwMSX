@@ -57,7 +57,8 @@ identico (os testes antigos so' mudaram onde estavam errados -- ver 5).
 | 0:0 | `MSX2.ROM` (32KB, BIOS + BASIC 2.1) |
 | 1 | cartucho A (como no MSX1) |
 | 3:1 | `MSX2EXT.ROM` (sub-ROM, 16KB) em 0000h-3FFFh e, com disco, `DISK.ROM` em 4000h-7FFFh |
-| 3:2 | RAM de 128KB com mapper (8 segmentos de 16KB) |
+| 3:2 | RAM com mapper: 128 KB de fabrica (8 segmentos de 16KB); 64 a 4096 KB com `--ram` (1.43.22) |
+| 3:3 | (opcional, `--ram2 <KB>`) segundo mapper, "externo": as portas FCh-FFh escrevem nos dois e cada um mascara pelo proprio tamanho |
 
 Regras de subslot do MSX2 (`msx1_subslot_rules = 2`): so' os slots de cartucho (1 e
 2) ficam sem subslot; o slot 0 pode ser expandido (o `SSlot()` do fMSX so' o

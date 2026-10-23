@@ -320,6 +320,60 @@ int main() {
         std::remove(dos_tmp.c_str());
     }
 
+    // --- 8a. RAM mapeada de 64 a 4096 KB e dois mappers (interno 3:2 + externo 3:3) ----------------------------------------------------
+    {
+        check(machine::MapperRamKb(config, false) == 128 && machine::MapperRamKb(config, true) == 0, "MSX2 de fabrica: mapper interno de 128 KB, sem externo");
+        machine::MachineConfig rc = config;
+        std::string rerr;
+        check(!machine::SetMapperRam(rc, 100, 0, rerr) && !machine::SetMapperRam(rc, 128, 8192, rerr) && !machine::SetMapperRam(rc, 32, 0, rerr),
+              "SetMapperRam recusa 100 KB, 8192 KB e 32 KB (o registrador do mapper tem 8 bits: ate' 4096 KB)");
+        for (const int kb : {64, 128, 256, 512, 1024, 2048, 4096}) {
+            machine::MachineConfig c = config;
+            c.mapper_kb = kb;
+            std::unique_ptr<machine::Machine> mm = machine::Machine::Create(c, rerr);
+            check(mm && mm->memory().MapperSegments(3, 2) == kb / 16 && mm->mapper_count() == 1, "mapper interno de " + std::to_string(kb) + " KB: " + std::to_string(kb / 16) + " segmentos");
+        }
+
+        // 512 KB interno + 1024 KB externo: o valor escrito na porta e' mascarado por cada mapper
+        machine::MachineConfig two = config;
+        two.mapper_kb = 512;
+        two.mapper2_kb = 1024;
+        std::unique_ptr<machine::Machine> tm = machine::Machine::Create(two, rerr);
+        check(tm != nullptr && tm->mapper_count() == 2, "dois mappers (512 KB em 3:2 e 1024 KB em 3:3) criados (" + rerr + ")");
+        if (tm) {
+            check(tm->memory().MapperSegments(3, 2) == 32 && tm->memory().MapperSegments(3, 3) == 64, "32 segmentos no interno e 64 no externo");
+            for (size_t i = 0; i < tm->mapper_count(); ++i) tm->mapper_at(i)->out(0xFE, 0x2B); // a porta escreve nos dois
+            memmap::RamMapperDevice *d0 = tm->mapper_at(0), *d1 = tm->mapper_at(1);
+            const bool inner_first = d0->secondary() == 2;
+            memmap::RamMapperDevice *in_dev = inner_first ? d0 : d1, *out_dev = inner_first ? d1 : d0;
+            check(in_dev->segment(2) == (0x2B & 31) && out_dev->segment(2) == 0x2B, "OUT FEh,2Bh: o interno fica com o segmento 11 (mascara 31) e o externo com o 43 (mascara 63)");
+            check(in_dev->in(0xFE) == static_cast<uint8_t>((0x2B & 31) | ~31) && out_dev->in(0xFE) == static_cast<uint8_t>(0x2B | ~63), "IN FEh: os bits acima da mascara de cada mapper leem 1");
+            // estado salvo: os registradores voltam (e o da porta acompanha a memoria)
+            const std::string sst = (std::filesystem::temp_directory_path() / "fwmsx_msx2_mapper.sst").string();
+            check(tm->SaveState(sst, rerr), "SaveState com dois mappers (" + rerr + ")");
+            std::unique_ptr<machine::Machine> t2 = machine::Machine::Create(two, rerr);
+            check(t2 && t2->LoadState(sst, rerr), "LoadState com dois mappers (" + rerr + ")");
+            if (t2) {
+                const bool f2 = t2->mapper_at(0)->secondary() == 2;
+                check(t2->mapper_at(f2 ? 0 : 1)->segment(2) == 11 && t2->mapper_at(f2 ? 1 : 0)->segment(2) == 43, "estado carregado: registradores dos dois mappers de volta (11 e 43)");
+            }
+            std::remove(sst.c_str());
+            Frames(*tm, 600);
+            check(VramHas(*tm, "MSX BASIC version 2.1"), "a BIOS MSX2 sobe com dois mappers (512 KB + 1024 KB)");
+        }
+        // layout ja' fixado (SetCartridge): SetMapperRam mexe nas celulas
+        machine::MachineConfig fz = config;
+        machine::SetCartridge(fz, "", MEMMAP_MAPPER_NONE);
+        check(machine::SetMapperRam(fz, 256, 512, rerr) && machine::MapperRamKb(fz, false) == 256 && machine::MapperRamKb(fz, true) == 512, "SetMapperRam num layout fixado: 256 KB + 512 KB");
+        check(machine::SetMapperRam(fz, 256, 0, rerr) && machine::MapperRamKb(fz, true) == 0, "SetMapperRam com externo 0 tira o 2o mapper");
+        // slot do externo ocupado = erro claro
+        machine::MachineConfig bad2 = config;
+        bad2.mapper2_kb = 256;
+        bad2.mapper2_slot = 13; // 3:1 e' o da sub-ROM/DISK.ROM
+        error.clear();
+        check(machine::Machine::Create(bad2, error) == nullptr && Contains(error, "3:1"), "2o mapper num slot ocupado: Create() recusa citando o slot (" + error + ")");
+    }
+
     // --- 8b. MSX-DOS 2: o kernel de 64KB no slot 1 (mapper msxdos2) + a interface de disquete + um disco de sistema do MSX-DOS 2 ------------------
     // A ROM vem do Full Set System ROMs (nao fica no repositorio) e o disco de sistema e' o de emulator/ (gerado na build); sem eles o bloco e' pulado.
     {
@@ -336,6 +390,7 @@ int main() {
             machine::EnableDiskInterface(dc);
             machine::SetCartridge(dc, rom.string(), MEMMAP_MAPPER_MSXDOS2);
             dc.disk_a = tmp.string();
+            machine::SetMapperRam(dc, 512, 1024, error); // o alvo do usuario: MSX2 com 512 KB internos + 1024 KB externos
             std::unique_ptr<machine::Machine> dm = machine::Machine::Create(dc, error);
             check(dm != nullptr, "MSX-DOS 2: Create() com o cartucho msxdos2 e o disco (" + error + ")");
             if (dm) {

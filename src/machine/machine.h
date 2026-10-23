@@ -131,6 +131,14 @@ struct MachineConfig {
     int disk_port = 0xD0;
     fdc::DiskFormat disk_format = fdc::DiskFormat::Auto;
 
+    // RAM mapeada (portas FCh-FFh), 64 a 4096 KB (potencia de 2; o registrador do mapper tem 8 bits = 256 segmentos de 16 KB). `mapper_kb` e' a interna
+    // da MSX2/2+ (slot 3:2; 128 e' a de uma MSX2 de fabrica). `mapper2_kb` > 0 liga um segundo mapper, "externo", no slot `mapper2_slot` (primario * 4 +
+    // secundario; 15 = 3:3): as portas FCh-FFh escrevem nos dois e cada um mascara pelo proprio tamanho, como no hardware. So' valem enquanto `layout_set` e'
+    // false; depois use SetMapperRam().
+    int mapper_kb = 128;
+    int mapper2_kb = 0;
+    int mapper2_slot = 15;
+
     // Layout de slots. Enquanto `layout_set` for false, o layout sai dos campos
     // acima (bios, cartucho, disco, sub-ROM, FM-PAC) pela regra padrao. Depois
     // de editado pelo menu, vale o `layout` e os campos acima sao ignorados.
@@ -164,6 +172,11 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error);
 void SetCartridge(MachineConfig &config, const std::string &path, MemMapMapperType mapper = MEMMAP_MAPPER_NONE);
 // Liga a interface de disquete mesmo que o layout ja' tenha sido fixado sem ela (a celula 3:1 passa a ter o DISK.ROM, e a sub-ROM da MSX2 na pagina 0).
 void EnableDiskInterface(MachineConfig &config);
+// Troca o tamanho dos mappers (KB; 0 no externo = sem), valendo tambem para um layout ja' fixado (celula 3:2 e a do externo). false + `error` se o tamanho
+// nao e' potencia de 2 entre 64 e 4096 ou se a celula do externo esta' ocupada.
+bool SetMapperRam(MachineConfig &config, int internal_kb, int external_kb, std::string &error);
+// O tamanho do mapper interno (celula 3:2) e do primeiro externo (outra celula com mapper), em KB; 0 = nao tem.
+int MapperRamKb(const MachineConfig &config, bool external);
 void SetFmPac(MachineConfig &config, const std::string &path);
 // Caminhos atuais no layout (vazio = nenhum).
 std::string CartridgePath(const MachineConfig &config);
@@ -235,6 +248,9 @@ public:
     bool is_msx2() const { return model_ != Model::MSX1; }
     // Mapper de RAM e relogio (so' no MSX2; nullptr no MSX1).
     // Primeiro mapper do layout (nullptr sem mapper). Ha' um por celula Mapper.
+    // Todos os mappers de RAM do layout, na ordem dos slots (a leitura das portas FCh-FFh vem do primeiro): para o comando `mapper` e para os testes.
+    size_t mapper_count() const { return mappers_.size(); }
+    memmap::RamMapperDevice *mapper_at(size_t i) { return i < mappers_.size() ? mappers_[i].get() : nullptr; }
     memmap::RamMapperDevice *mapper() { return mappers_.empty() ? nullptr : mappers_.front().get(); }
     rtc::RtcDevice *rtc() { return rtc_.get(); }
 

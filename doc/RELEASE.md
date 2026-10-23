@@ -17,6 +17,15 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.22 -- "Yie Ar Kung-Fu: Mapper de RAM" (Konami) (2026-10-23)
+
+**Pedido do usuario**: o proximo passo do MSX-DOS 2 e' a RAM - opcoes de mapper de 128 a 4096 KB para a MSX2/2+, e, se possivel, **um mapper interno e outro externo** (p. ex. 512 KB + 1024 KB): ha' programas que so' identificam o interno, outros so' o maior e alguns os dois, e a separacao ajuda a depurar e corrigir.
+- **Achados na pesquisa**: o motor ja' suportava ate' 4096 KB (`ValidateLayout`: 64 a 4096 KB) e varios mappers (`MapperPorts` escreve em todos e cada `RamMapperDevice` mascara pelo proprio tamanho). Faltava so' a configuracao: o tamanho padrao era fixo (128 KB) e so' dava para mudar pelo `--slot`/janela de slots. **8192 KB nao existe no mapper padrao**: o registrador e' de 8 bits (256 x 16 KB = 4096 KB); as ROMs de 8192 KB que o usuario lembra sao MegaROMs, outro mecanismo.
+- **Feito**: campos `mapper_kb`, `mapper2_kb`, `mapper2_slot` no `MachineConfig`; `SetMapperRam`/`MapperRamKb`; `--ram`, `--ram2`, `--ram2-slot`; menu da janela; comando `mapper`; correcao do `LoadState` (registrador do mapper).
+- **Testes**: `msx2test` - todos os tamanhos de 64 a 4096 KB, 512 KB + 1024 KB (mascara de cada um, leitura das portas, estado salvo, boot do BASIC 2.1), recusa de 100/8192/32 KB e de slot ocupado, layout fixado, e o boot do MSX-DOS 2 com 512 KB + 1024 KB.
+- **Nao feito**: o MSX-DOS 2 usar de fato a RAM grande (o kernel 2.20 e' que decide; `mapper` mostra o que ele paginou), a leitura das portas com dois mappers vem do primeiro da lista de slots (o hardware real varia), HD.
+- Validado: Windows e Linux, `ctest` 100% (34).
+
 ## v1.43.21 -- "Yie Ar Kung-Fu: MSX-DOS 2" (Konami) (2026-10-23)
 
 **Pedido do usuario**: com a ROM do MSX-DOS 2 identificada (1.43.20), seguir na implementacao do MSX-DOS 2. Respostas do usuario: o MSX-DOS 2 e' um **cartucho no slot 1** e o `dos: 2` do Obifile deve passar a iniciar o disco com ele; o alvo dele e' MSX2/2+ com 512 KB de RAM ou mais e MSX-DOS 2 (ate' com HD); o MSX1/MSX-DOS 1 fica para projetos esporadicos.

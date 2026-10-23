@@ -45,6 +45,13 @@ public:
         }
     }
 
+    // Poe o registrador de uma pagina sem passar pela porta (carregar um estado salvo): o `reg_` tem que acompanhar a memoria, senao a proxima escrita
+    // do mesmo valor na porta seria ignorada por "ja' estava assim".
+    void Restore(int page, uint8_t value) {
+        reg_[page & 3] = static_cast<uint8_t>(value & Mask());
+        memory_.SetMapperSegment(primary_, secondary_, page & 3, reg_[page & 3]);
+    }
+
     uint8_t segment(int page) const { return reg_[page & 3]; }
     int primary() const { return primary_; }
     int secondary() const { return secondary_; }

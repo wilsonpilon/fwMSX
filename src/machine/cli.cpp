@@ -178,6 +178,7 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
     bool dump_text = false;
     bool fm_stat = false;
     bool fmpac_explicit = false;
+    bool ram_given = false;
     bool use_dos2 = false;
     std::string dos2_rom;
     bool cart_mapper_explicit = false; // true so' quando o usuario ESCOLHEU um mapper (nao "auto"/omitido)
@@ -274,6 +275,23 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
                     ++i;
                 }
             }
+        } else if (a == "--ram" || a == "--ram2") {
+            // RAM mapeada da MSX2/2+ (--ram: a interna, 3:2; --ram2: um segundo mapper, "externo"): 64 a 4096 KB, potencia de 2; --ram2 0 = sem.
+            const std::string *v = need("o tamanho em KB (64, 128, 256, 512, 1024, 2048 ou 4096)");
+            if (!v) return 2;
+            (a == "--ram" ? config.mapper_kb : config.mapper2_kb) = std::atoi(v->c_str());
+            ram_given = true;
+        } else if (a == "--ram2-slot") {
+            // Onde fica o segundo mapper: P:S (padrao 3:3).
+            const std::string *v = need("P:S, ex.: 3:3");
+            if (!v) return 2;
+            const int p = v->size() >= 3 ? (*v)[0] - '0' : -1;
+            const int sec = v->size() >= 3 ? (*v)[2] - '0' : -1;
+            if (p < 0 || p > 3 || sec < 0 || sec > 3 || (*v)[1] != ':') {
+                std::cerr << "fwmsx --msx: --ram2-slot use P:S (primario 0-3, secundario 0-3)" << std::endl;
+                return 2;
+            }
+            config.mapper2_slot = p * 4 + sec;
         } else if (a == "--dos2") {
             // MSX-DOS 2: o kernel (cartucho de 64KB, mapper msxdos2) no slot 1 + interface de disquete. Sem arquivo, usa o do banco de ROMs.
             use_dos2 = true;
@@ -438,6 +456,17 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
 
     // Sem janela: roda os quadros pedidos, opcionalmente digita um texto, e
     // salva a tela.
+    if (ram_given) {
+        // so' confere os tamanhos (o layout padrao usa os campos; --slot parte dele)
+        MachineConfig probe = config;
+        probe.layout_set = false;
+        std::string ram_error;
+        if (!machine::SetMapperRam(probe, config.mapper_kb, config.mapper2_kb, ram_error)) {
+            std::cerr << "fwmsx --msx: " << ram_error << std::endl;
+            return 2;
+        }
+    }
+
     if (!slot_specs.empty()) {
         // Layout explicito pela linha de comando: parte do padrao e troca as celulas pedidas.
         config.layout = machine::DefaultLayout(config);

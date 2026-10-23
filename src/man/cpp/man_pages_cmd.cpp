@@ -298,6 +298,30 @@ EXEMPLOS
 VER TAMBEM
   cart, disk, obi, romdb)MAN");
 
+    add("mapper", "", "Midia e estado", "mapper", "mostra os mappers de RAM: tamanho e o segmento de cada pagina",
+        R"MAN(DESCRICAO
+  Lista os mappers de RAM da maquina (portas FCh-FFh): o slot, o tamanho, quantos segmentos de 16 KB e o
+  segmento que cada pagina (0000h, 4000h, 8000h, C000h) enxerga agora. Com dois mappers, as portas
+  escrevem nos dois e cada um mascara o valor pelo proprio tamanho; os registradores podem ser diferentes.
+
+  Escolher o tamanho (so' MSX2/2+ no interno; 64, 128, 256, 512, 1024, 2048 ou 4096 KB - o registrador do
+  mapper tem 8 bits, entao 4096 KB e' o maximo):
+    fwmsx --msx --msx2 --ram 512                 mapper interno (slot 3:2) de 512 KB
+    fwmsx --msx --msx2 --ram 512 --ram2 1024     mais um mapper "externo" de 1024 KB (slot 3:3)
+    --ram2-slot P:S                              outro slot para o externo
+  Na janela: Maquina > RAM mapeada (mapper). Para qualquer arranjo: --slot 3:2=mapper:512 ou
+  Maquina > Configuracao de slots.
+
+  Programas que so' reconhecem um dos mappers (o interno, ou o maior) aparecem aqui: o segmento muda nos
+  dois, mas o programa usa so' um. Teste cada programa com cada arranjo.
+
+EXEMPLOS
+  mapper
+  slot 3:2  512 KB (32 segmentos)  paginas 0-3 (FCh-FFh): 0 1 2 3
+
+VER TAMBEM
+  slots, dos2, cart)MAN");
+
     add("disk", "", "Midia e estado", "disk <A|B> <arq>", "insere um disquete (.dsk) na unidade",
         R"MAN(DESCRICAO
   Insere a imagem .dsk (crua) na unidade A: ou B:. Precisa de interface de

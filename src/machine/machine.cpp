@@ -186,7 +186,7 @@ SlotLayout DefaultLayout(const MachineConfig &config) {
     // RAM: 64KB comuns em 3:2 no MSX1; mapper de 128KB em 3:2 no MSX2.
     if (msx2) {
         layout.cell[3][2].kind = SlotKind::Mapper;
-        layout.cell[3][2].size_kb = 128;
+        layout.cell[3][2].size_kb = config.mapper_kb;
     } else {
         layout.cell[3][2].kind = SlotKind::Ram;
         layout.cell[3][2].size_kb = 64;
@@ -216,6 +216,12 @@ SlotLayout DefaultLayout(const MachineConfig &config) {
     if (!config.fmpac_rom_path.empty()) {
         layout.cell[2][0].kind = SlotKind::FmPac;
         layout.cell[2][0].path = config.fmpac_rom_path;
+    }
+    // O mapper externo por ultimo: se a celula ja' tem outra coisa, fica de fora e Create() acusa (nao some em silencio).
+    if (config.mapper2_kb > 0 && config.mapper2_slot >= 0 && config.mapper2_slot < 16 &&
+        layout.cell[config.mapper2_slot / 4][config.mapper2_slot % 4].kind == SlotKind::Empty) {
+        layout.cell[config.mapper2_slot / 4][config.mapper2_slot % 4].kind = SlotKind::Mapper;
+        layout.cell[config.mapper2_slot / 4][config.mapper2_slot % 4].size_kb = config.mapper2_kb;
     }
     return layout;
 }
@@ -310,6 +316,57 @@ void EnableDiskInterface(MachineConfig &config) {
     if (cell.kind == SlotKind::Empty || cell.kind == SlotKind::SubRom) cell = def.cell[3][1];
 }
 
+namespace {
+bool MapperKbOk(int kb) { return kb >= 64 && kb <= 4096 && (kb & (kb - 1)) == 0; }
+} // namespace
+
+bool SetMapperRam(MachineConfig &config, int internal_kb, int external_kb, std::string &error) {
+    if (!MapperKbOk(internal_kb) || (external_kb != 0 && !MapperKbOk(external_kb))) {
+        error = "RAM de mapper: 64, 128, 256, 512, 1024, 2048 ou 4096 KB (o registrador do mapper tem 8 bits: 256 segmentos de 16 KB); o externo aceita 0 (sem)";
+        return false;
+    }
+    if (config.layout_set) {
+        const int ext = config.mapper2_slot;
+        if (external_kb > 0 && (ext < 0 || ext > 15 || ext == 14)) {
+            error = "o slot do 2o mapper e' invalido";
+            return false;
+        }
+        SlotLayout layout = config.layout;
+        if (config.model != Model::MSX1 || layout.cell[3][2].kind == SlotKind::Mapper) {
+            layout.cell[3][2].kind = SlotKind::Mapper;
+            layout.cell[3][2].size_kb = internal_kb;
+        }
+        // o externo: a celula do mapper2_slot, ou a que ja' tem um mapper (diferente da 3:2)
+        int cell = -1;
+        for (int i = 0; i < 16; ++i)
+            if (i != 14 && layout.cell[i / 4][i % 4].kind == SlotKind::Mapper) cell = i;
+        if (external_kb > 0) {
+            if (cell < 0) cell = ext;
+            if (layout.cell[cell / 4][cell % 4].kind != SlotKind::Empty && layout.cell[cell / 4][cell % 4].kind != SlotKind::Mapper) {
+                error = "o slot " + std::to_string(cell / 4) + ":" + std::to_string(cell % 4) + " ja' tem outra coisa (escolha outro slot do 2o mapper)";
+                return false;
+            }
+            layout.cell[cell / 4][cell % 4] = SlotItem{};
+            layout.cell[cell / 4][cell % 4].kind = SlotKind::Mapper;
+            layout.cell[cell / 4][cell % 4].size_kb = external_kb;
+        } else if (cell >= 0) {
+            layout.cell[cell / 4][cell % 4] = SlotItem{};
+        }
+        config.layout = layout;
+    }
+    config.mapper_kb = internal_kb;
+    config.mapper2_kb = external_kb;
+    return true;
+}
+
+int MapperRamKb(const MachineConfig &config, bool external) {
+    const SlotLayout layout = EffectiveLayout(config);
+    if (!external) return layout.cell[3][2].kind == SlotKind::Mapper ? layout.cell[3][2].size_kb : 0;
+    for (int i = 0; i < 16; ++i)
+        if (i != 14 && layout.cell[i / 4][i % 4].kind == SlotKind::Mapper) return layout.cell[i / 4][i % 4].size_kb;
+    return 0;
+}
+
 void SetFmPac(MachineConfig &config, const std::string &path) {
     SlotLayout layout = EffectiveLayout(config);
     layout.cell[2][0] = SlotItem{};
@@ -371,6 +428,12 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
         return nullptr;
     }
     const SlotLayout layout = EffectiveLayout(config);
+    if (!config.layout_set && config.mapper2_kb > 0 &&
+        (config.mapper2_slot < 0 || config.mapper2_slot > 15 || layout.cell[config.mapper2_slot / 4][config.mapper2_slot % 4].kind != SlotKind::Mapper)) {
+        error = "o 2o mapper de RAM cai no slot " + std::to_string(config.mapper2_slot / 4) + ":" + std::to_string(config.mapper2_slot % 4) +
+                ", que ja' tem outra coisa (escolha outro slot)";
+        return nullptr;
+    }
     if (!ValidateLayout(layout, error)) return nullptr;
 
     std::unique_ptr<Machine> m(new Machine());
@@ -893,7 +956,13 @@ bool Machine::LoadState(const std::string &path, std::string &error) {
             for (uint32_t i = 0; i < count; ++i) {
                 const int primary = payload[off + 0];
                 const int secondary = payload[off + 1];
-                for (int page = 0; page < 4; ++page) mem.SetMapperSegment(primary, secondary, page, payload[off + 2 + page]);
+                memmap::RamMapperDevice *dev = nullptr;
+                for (auto &d : mappers_)
+                    if (d->primary() == primary && d->secondary() == secondary) dev = d.get();
+                for (int page = 0; page < 4; ++page) {
+                    if (dev) dev->Restore(page, payload[off + 2 + page]);
+                    else mem.SetMapperSegment(primary, secondary, page, payload[off + 2 + page]);
+                }
                 off += 6;
             }
         } else if (TagIs(tag, "RAM ")) {

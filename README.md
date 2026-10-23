@@ -17,7 +17,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.21 "Yie Ar Kung-Fu: MSX-DOS 2", Konami)
+## Estado atual (v1.43.22 "Yie Ar Kung-Fu: Mapper de RAM", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -145,6 +145,7 @@ metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-m
 1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
 1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
 1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
+**1.43.22 RAM mapeada de 64 a 4096 KB (`--ram`) e dois mappers ao mesmo tempo, interno e externo (`--ram2`); comando `mapper`**
 **1.43.21 MSX-DOS 2 de verdade: o kernel (`msxdos22.rom`, achado pelo banco de ROMs) como cartucho no slot 1 + disco; comando `dos2`, `--dos2`, e `dos: 2` no Obifile roda com ele (`obirun`)**
 **1.43.20 downloads sem janela de console e com barra de progresso; `romdb sig download`/`identify` reconhecem as ROMs de sistema pelas assinaturas do openMSX (nome oficial, papel, hardware, categoria)**
 **1.43.19 comandos `vdp` (registradores, status, paleta; grava como o OUT), `vdpbios` (com o espelho do BIOS) e `screen info` (modo e enderecos das tabelas); `msx.vdp`/`msx.screen` no Lua**

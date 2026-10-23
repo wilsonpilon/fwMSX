@@ -1005,6 +1005,37 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     ImGui::TextDisabled("Trocar o modelo reinicia a maquina.");
                     ImGui::EndMenu();
                 }
+                if (ImGui::BeginMenu("RAM mapeada (mapper)")) {
+                    // Interna (3:2, so' MSX2/2+) e externa (3:3): as portas FCh-FFh escrevem nos dois e cada um mascara pelo proprio tamanho.
+                    static const int kSizes[] = {64, 128, 256, 512, 1024, 2048, 4096};
+                    const bool has_msx2 = current.model != Model::MSX1;
+                    const int in_kb = MapperRamKb(current, false);
+                    const int out_kb = MapperRamKb(current, true);
+                    ImGui::TextDisabled("Interna (slot 3:2)");
+                    for (const int kb : kSizes) {
+                        const std::string label = (kb >= 1024 ? std::to_string(kb / 1024) + " MB" : std::to_string(kb) + " KB");
+                        if (ImGui::MenuItem(label.c_str(), nullptr, in_kb == kb, has_msx2 && in_kb != kb)) {
+                            MachineConfig next = snapshot();
+                            std::string ram_error;
+                            if (!SetMapperRam(next, kb, out_kb, ram_error)) disk_message = ram_error;
+                            else reboot(next);
+                        }
+                    }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Externa (2o mapper, slot 3:3)");
+                    for (const int kb : {0, 128, 256, 512, 1024, 2048, 4096}) {
+                        const std::string label = kb == 0 ? std::string("Nenhuma") : (kb >= 1024 ? std::to_string(kb / 1024) + " MB" : std::to_string(kb) + " KB");
+                        if (ImGui::MenuItem(label.c_str(), nullptr, out_kb == kb, out_kb != kb)) {
+                            MachineConfig next = snapshot();
+                            std::string ram_error;
+                            if (!SetMapperRam(next, in_kb > 0 ? in_kb : 128, kb, ram_error)) disk_message = ram_error;
+                            else reboot(next);
+                        }
+                    }
+                    ImGui::Separator();
+                    ImGui::TextDisabled("Trocar a RAM reinicia a maquina. Comando `mapper` no console.");
+                    ImGui::EndMenu();
+                }
                 if (ImGui::MenuItem("Configuracao de disco...")) {
                     show_disk_cfg = true;
                     disk_message.clear();
