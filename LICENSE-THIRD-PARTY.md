@@ -236,6 +236,15 @@ Desde 2026-10-23 o material de apoio do autor mora em **`third-party/`** (raiz d
 dos exemplos nao sobem) e os projetos do proprio autor abaixo (limpos de midia, binarios e SDKs de terceiros). O resto de `third-party/` fica so' no disco
 do autor (nao rastreado). Tudo o que e' de terceiros sai antes de a licenca unica entrar em vigor.
 
+### Assets e referencias em third-party/ (2026-10-23, provisorio)
+
+Por decisao do autor entram no git, **por enquanto**, para sincronizar entre computadores e te-los a mao: `fx80` (projeto proprio, usado em partes no fwMSX;
+contem tambem a digitalizacao do manual da Epson FX-80, de 1983, material de terceiros), `fontes` (fontes TrueType de matriz de pontos), os assets
+`alfabetos-aquarela`, `alfabetos-graphos`, `layout-graphos`, `padrao-aquarela`, `shapes-*`, `telas-*`, `graphos`, `superx` (alfabetos, telas, shapes e
+layouts do Graphos e do Aquarela) e as figuras dos livros (`redbook_images`, `th2handbook_images`). **Os assets irao para um site proprio e passarao a ser
+baixados** (janela Downloads) em vez de ficarem no repositorio. A autoria e a licenca de cada grupo (Graphos, Aquarela, as fontes, os livros) ainda nao
+estao registradas aqui: preencher quando o autor confirmar. Continuam so' no disco do autor, nao rastreados: `openmsx`, `fMSX`, `megasm`, `nestor`, `NBASIC`.
+
 ## fmsxgo, paleobasic, msxide e kizuna (projetos proprios do autor)
 
 `resource/fmsxgo/`, `resource/paleobasic/`, `resource/msxide/` e `resource/kizuna/` sao **projetos do proprio autor do fwMSX**, mantidos so' como
