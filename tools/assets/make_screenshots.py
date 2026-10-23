@@ -11,6 +11,8 @@ Nao fotografa a area de trabalho: usa a captura do proprio emulador (`--shot`, s
   06  jogo de MSX2 (Vampire Killer)
   07  Z80 Debugger: desmontagem, parado num breakpoint do jogo
   08  Z80 Debugger: dump de memoria com os caracteres do MSX
+  09  o OCM no prompt   10  o logo do Kanji BASIC do OCM   11  MSX-DOS 2   12  Nextor + disco rigido IDE   13  Nextor + cartao SD (MegaSD)
+  14-17  mais jogos (Yie Ar Kung-Fu, Penguin Adventure, Space Manbow, Aleste)
 
 Precisa de dist/fwMSXc.exe, das BIOS em dist/roms/bios, de resource/fMSX/MSX2PEXT.ROM, MSX2EXT.ROM e dos jogos em tests/media
 (provisorios). Os jogos NAO sao distribuidos; so' as imagens geradas ficam em images/.
@@ -185,8 +187,44 @@ def debugger_shots(font):
         emu.kill()
 
 
+# cria um arquivo no disco novo (o Nextor grava na imagem) e lista: a tela mostra o disco funcionando
+KEYS_FILE = 'OPEN "A:FWMSX.TXT" FOR OUTPUT AS #1:PRINT #1,"OI":CLOSE #1|FILES|'
+
+
+def extra_shots():
+    """Capturas da 1.43.26: o OCM, o MSX-DOS 2, o Nextor com o HD e com o cartao SD, e mais jogos."""
+    keep = os.path.join(TMP, "fwmsx_shots")
+    os.makedirs(keep, exist_ok=True)
+    ocm = ["--ocm"]
+    # 09: o OCM no prompt (MSX BASIC 3.0 + Nextor do MegaSD); 10: o logo do Kanji BASIC no meio da animacao
+    shot("fwMSX-09.png", ocm + ["--frames", "900", "--keys", "PRINT 1234|KEY LIST|", "--wait", "120"], 1.5)
+    shot("fwMSX-10.png", ocm + ["--frames", "230"], 1.5)
+    # 11: MSX-DOS 2 (o kernel do cartucho no slot 1 + o disco de sistema do emulador, so' leitura)
+    shot("fwMSX-11.png", ["--msx2", "--bios", os.path.join(BIOS, "MSX2.ROM"), "--ext", os.path.join(EXT, "MSX2EXT.ROM"), "--dos2", "--diskrom", os.path.join(ROOT, "dist", "roms", "interfaces", "DISK.ROM"), "--disk",
+                          os.path.join(ROOT, "dist", "emulator", "msxdos2.dsk"), "--disk-ro", "--frames", "1500", "--keys", "ver|dir|", "--wait", "700"], 1.5)
+    # 12: Nextor com o disco rigido IDE (a imagem sai do `--hdnew`) e 13: com o cartao SD do MegaSD
+    hdd = os.path.join(keep, "disco.hdd")
+    sd = os.path.join(keep, "cartao.hdd")
+    subprocess.run([EXE, "--hdnew", hdd, "256M", "256M"], check=True, capture_output=True)
+    subprocess.run([EXE, "--hdnew", sd, "2G", "2G"], check=True, capture_output=True)
+    shot("fwMSX-12.png", ["--msx2", "--bios", os.path.join(BIOS, "MSX2.ROM"), "--ext", os.path.join(EXT, "MSX2EXT.ROM"), "--ram", "512", "--ram2", "1024",
+                          "--ide", hdd, "--frames", "900", "--keys", KEYS_FILE, "--wait", "900"], 1.5)
+    shot("fwMSX-13.png", ["--msx2p", "--bios", os.path.join(BIOS, "MSX2P.ROM"), "--ext", os.path.join(EXT, "MSX2PEXT.ROM"), "--sd", sd, "--frames", "1200",
+                          "--keys", KEYS_FILE, "--wait", "900"], 1.5)
+    # 14 a 17: mais jogos
+    shot("fwMSX-14.png", ["--bios", os.path.join(BIOS, "MSX.ROM"), "--cart", media("MSX1_Yie Ar"), "--frames", "900"], 3)
+    shot("fwMSX-15.png", ["--bios", os.path.join(BIOS, "MSX.ROM"), "--cart", media("MSX1_Penguin"), "--frames", "900"], 3)
+    shot("fwMSX-16.png", ["--msx2", "--bios", os.path.join(BIOS, "MSX2.ROM"), "--ext", os.path.join(EXT, "MSX2EXT.ROM"), "--cart", media("MSX2_Space"),
+                          "--frames", "1800"], 1.5)
+    shot("fwMSX-17.png", ["--msx2", "--bios", os.path.join(BIOS, "MSX2.ROM"), "--ext", os.path.join(EXT, "MSX2EXT.ROM"), "--cart", media("MSX2_Aleste"),
+                          "--frames", "1500"], 1.5)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
+    if len(sys.argv) > 1 and sys.argv[1] == "extra":  # so' as capturas novas (09 em diante)
+        extra_shots()
+        return
     # 04: MSX BASIC 3.0 -- digita alguns comandos
     # Nada de pontuacao: o que o --keys digita segue o teclado INTERNACIONAL e a BIOS do fMSX e' japonesa (shift+9 e' '(' no
     # internacional e ')' no japones; '=' sai '^'...). So' letras e digitos aqui.
@@ -199,6 +237,7 @@ def main():
     shot("fwMSX-06.png", ["--msx2", "--bios", os.path.join(BIOS, "MSX2.ROM"), "--ext", os.path.join(EXT, "MSX2EXT.ROM"), "--cart",
                           media("MSX2_Vampire"), "--frames", "2000"], 1.5)
     debugger_shots(load_font())
+    extra_shots()
 
 
 if __name__ == "__main__":

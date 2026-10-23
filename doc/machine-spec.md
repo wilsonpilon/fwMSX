@@ -14,6 +14,12 @@ isto direto, com todos os padroes (sem `--cart`/`--disk`) -- ver
 `doc/SPEC.md`, secao 5.1. `fwmsx --msx` continua existindo igual, para quem
 quer passar opcoes.
 
+## 0. As maquinas (atualizado na 1.43.26)
+
+`fwmsx --msx` monta uma de **quatro maquinas**: MSX1 (padrao), `--msx2`, `--msx2p` e `--ocm` (o 1chipMSX / MSX++: MSX2+ com o mapa de slots do OCM-PLD, ver `ocm-spec.md`).
+Alem do modelo: `--dos2` (kernel do MSX-DOS 2 em cartucho), `--ram`/`--ram2` (mappers de 64 a 4096 KB, interno e externo), `--ide` (disco rigido IDE + Nextor), `--sd` (cartao SD pelo
+MegaSD) e `--slot` (qualquer celula do layout); ver `slots-spec.md`, `hd-spec.md` e a secao "MSX-DOS 2, RAM mapeada, disco rigido, cartao SD e OCM" do `MANUAL.md`.
+
 ## 1. Uso
 
 ```

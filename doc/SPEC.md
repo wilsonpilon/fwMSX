@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-24, depois da v1.43.25)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-24, depois da v1.43.26)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.43.25, publicada em `main`):**
+**Funcionando (v1.43.26, publicada em `main`):**
+- [x] **Documentacao renovada** (1.43.26): README com o splash no topo e o historico em lista; screenshots novas (OCM, MSX-DOS 2, Nextor + IDE/SD, jogos); MANUAL com a secao de MSX-DOS 2/mappers/HD/SD/OCM; `man ocm`.
 - [x] **Maquina OCM (1chipMSX / MSX++)** (1.43.25): `src/ocm` (Kanji em C, portas comutadas em Fortran, `ocm_copy` em Assembly, dispositivos em C++), `ConfigureOcm`, o mapa de slots do OCM-PLD (BIOS A1WSX, MSX-Music, mapper de 4 MB, sub-ROM + Kanji BASIC, MegaSD + Nextor, XBASIC), `--ocm`, menu de modelos; colisao de sprites por linha no VDP. Falta: velocidade da CPU, DIP-SW virtuais, ESE-SCC, BIOS turbo R, MIDI/UART/Wi-Fi, estado salvo. Ver `doc/ocm-spec.md`.
 - [x] **Cartao SD pelo MegaSD** (1.43.24): `SdCard` (SPI, SDSC/SDHC, CSD v1/v2), `MegaSd` (mapper ESE-RAM de 1 MB + SD na janela 0), `--sd`/`sd`, menus, `romdb::FindMegaSdRom`; Nextor 2.1.4 + MegaSDHC (pacote do KdL, em `dist/roms/ocm`) sobe e grava. Falta: a maquina OCM, a MEGA-SCSI (sem driver), estado salvo do MegaSD. Ver `doc/hd-spec.md` 7b.
 - [x] **Disco rigido IDE + Nextor** (1.43.23): `src/hd` (C/Fortran/ASM/C++), Sunrise ATA-IDE em 3:0 com a ROM do Nextor (banco de ROMs), imagens de HD/SD com MBR + FAT16 (particoes de 8 MB a 2 GB, 4 GB ao todo), `--ide`/`--hdnew`, comandos `ide`/`newhd`, menus da janela e do TUI; o Nextor 2.1.1 sobe e grava na particao A:; portas sem dispositivo leem FFh; `SlotMemoryBus` com um `SlotCartIo` por slot. Falta: SCSI/SD do OCM (sem ROM de driver), copiar o DOS para o HD pelo `msxdisk`, estado salvo da IDE, `MAPDRV`. Ver `doc/hd-spec.md`.

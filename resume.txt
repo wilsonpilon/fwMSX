@@ -1,6 +1,6 @@
 Resume this session with:
 claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao de 2026-10-20 a 24: continue ESTA; contexto na secao ONDE PARAMOS 2026-10-24)
-fwMSX -- como retomar (atualizado em 2026-10-24, ao encerrar o dia: ultima release 1.43.25 "Yie Ar Kung-Fu: Maquina OCM")
+fwMSX -- como retomar (atualizado em 2026-10-24, ao encerrar o dia: ultima release 1.43.26 "Yie Ar Kung-Fu: Documentacao")
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
@@ -9,10 +9,11 @@ as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.
 SESSAO PARA CONTINUAR: claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61   (em outro computador: abra o Claude Code na pasta, ele le o CLAUDE.md; mande ler OUTLINE.md e esta secao)
 Primeira mensagem sugerida: "voltei; leia o resume.txt, o OUTLINE.md e me diga as opcoes".
 
-PEDIDO DO USUARIO PARA A PROXIMA ITERACAO: documentacao e atualizacao dos docs; ele tem uma OBSERVACAO SOBRE O README.md e quer ver o SINCRONISMO do resume.txt
-(este arquivo) com o OUTLINE/SPEC. Perguntar a observacao do README.md antes de mexer nele.
+FEITO NA 1.43.26 (pedido do usuario): README com o splash no topo, historico das versoes em lista (uma linha por versao; antes era um bolo de texto), 9 screenshots novas + 5 refeitas
+(tools/assets/make_screenshots.py [extra]), MANUAL com a secao MSX-DOS 2/mappers/HD/SD/OCM e as opcoes novas da CLI, man ocm, LICENSE-THIRD-PARTY (pacote do KdL), este arquivo.
+ANOTADO: a abertura do Metal Gear 2 (MSX2) mostra um quadro mal desenhado em ~2600 quadros (nao investigado).
 
-ESTADO: tudo publicado e empurrado no GitHub (main = a 1.43.25); ctest 35/35 no Windows e no Linux. Arvore de trabalho: so' sobras do usuario/build; NAO fazer git add -A.
+ESTADO: tudo publicado e empurrado no GitHub (main = a 1.43.26); ctest 35/35 no Windows e no Linux. Arvore de trabalho: so' sobras do usuario/build; NAO fazer git add -A.
 RELEASES DO DIA (todas com release no GitHub): 1.43.20 Download e identificacao (curl sem janela + barra; assinaturas do openMSX no banco de ROMs); 1.43.21 MSX-DOS 2 (cartucho
 msxdos22.rom no slot 1, comando dos2, dos: 2 no obirun); 1.43.22 Mapper de RAM (--ram 64..4096 KB, --ram2 = 2o mapper externo, comando mapper); 1.43.23 Disco rigido (src/hd:
 Sunrise IDE + Nextor, imagens MBR+FAT16 de ate' 4 GB, --ide, --hdnew, comandos ide/newhd); 1.43.24 Cartao SD (MegaSD + cartao SPI SDSC/SDHC, --sd, comando sd);

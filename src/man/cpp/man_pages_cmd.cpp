@@ -276,6 +276,22 @@ EXEMPLOS
 VER TAMBEM
   romdb, reset)MAN");
 
+    add("ocm", "", "Midia e estado", "fwmsx --msx --ocm", "a maquina OCM (1chipMSX / MSX++)",
+        R"MAN(DESCRICAO
+  O OCM como quarta maquina, ao lado de MSX1, MSX2 e MSX2+: uma MSX2+ com o mapa de slots do OCM-PLD (o firmware do 1chipMSX): BIOS A1WSX em 0-0, MSX-Music em 0-2,
+  mapper de 4096 KB em 3-0, sub-ROM + Kanji BASIC (o logo MSX++) em 3-1, MegaSD + Nextor em 3-2 e XBASIC em 3-3; a ROM de Kanji nas portas D8h-DBh e as portas comutadas
+  (40h-4Fh; o ID D4h identifica o MSX++).
+
+  As ROMs NAO vem com o emulador: baixe o pacote SDBIOS / OCM-PLD do KdL e copie as ROMs (SDBIOS/make/roms) para roms/ocm/roms, ao lado do executavel.
+
+  Uso: fwmsx --msx --ocm [--sd cartao.hdd] [--ocm-main a1wsxyen.rom] [--ocm-logo knsonyv2.rom] [--ram 2048]
+       ou Maquina > Modelo > OCM / MSX++ na janela.
+  A inicializacao leva uns 10 segundos de tempo emulado (a animacao do logo espera a colisao de sprites linha a linha). O teclado padrao e' o brasileiro.
+  Falta: a velocidade da CPU, os DIP-SW virtuais (porta 42h) e o ESE-SCC de 2 MB nos slots 1 e 2.
+
+VER TAMBEM
+  sd, ide, mapper, newhd)MAN");
+
     add("sd", "", "Midia e estado", "sd [imagem.hdd] [nextor.rom] | sd off", "liga o cartao SD (MegaSD + Nextor, o do OCM)",
         R"MAN(DESCRICAO
   Liga o MegaSD (a interface de cartao SD do OCM/ESE) com o Nextor e o driver MegaSDHC (nextsd15.rom, o pacote

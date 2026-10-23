@@ -1,4 +1,20 @@
-# fwMSX
+<p align="center">
+  <img src="images/fwMSX-splash.png" alt="fwMSX - MSX Emulator &amp; Integration Suite" width="100%">
+</p>
+
+<h1 align="center">fwMSX</h1>
+
+<p align="center"><strong>MSX1 &middot; MSX2 &middot; MSX2+ &middot; OCM (MSX++)</strong><br>
+emulador e suite de integracao em <strong>C, C++, Assembly e Fortran</strong><br>
+<em>Est. 2026 / not perfect, but controlled</em></p>
+
+<p align="center">
+  <a href="doc/MANUAL.md">Manual</a> &middot;
+  <a href="doc/SPEC.md">Especificacao</a> &middot;
+  <a href="doc/CHANGELOG.md">Changelog</a> &middot;
+  <a href="doc/RELEASE.md">Releases</a> &middot;
+  <a href="OUTLINE.md">Onde paramos</a>
+</p>
 
 **fwMSX** e um projeto de aprendizado com o objetivo final de se tornar um
 emulador de MSX, evoluido a partir do [fMSX](https://fms.komkon.org/fMSX/)
@@ -17,11 +33,11 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.25 "Yie Ar Kung-Fu: Maquina OCM", Konami)
+## Estado atual (v1.43.26 "Yie Ar Kung-Fu: Documentacao", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
-O **fwMSX e um emulador de MSX** (MSX1, MSX2 e MSX2+) escrito em C, C++, Assembly e Fortran. Sem
+O **fwMSX e um emulador de MSX** (MSX1, MSX2, MSX2+ e a maquina **OCM / MSX++**) escrito em C, C++, Assembly e Fortran. Sem
 argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX BASIC.
 
 <p align="center">
@@ -30,12 +46,44 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   <em>Um jogo de MSX1 (Gradius / Nemesis) e um de MSX2 (Vampire Killer), como o emulador os desenha.</em>
 </p>
 
+<p align="center">
+  <img src="images/fwMSX-14.png" alt="Yie Ar Kung-Fu (MSX1)" width="32%">
+  <img src="images/fwMSX-15.png" alt="Penguin Adventure (MSX1)" width="32%">
+  <img src="images/fwMSX-16.png" alt="Space Manbow (MSX2)" width="32%"><br>
+  <img src="images/fwMSX-17.png" alt="Aleste (MSX2)" width="32%">
+  <img src="images/fwMSX-06.png" alt="Vampire Killer (MSX2)" width="32%">
+  <img src="images/fwMSX-05.png" alt="Gradius (MSX1)" width="32%"><br>
+  <em>Yie Ar Kung-Fu e Penguin Adventure (MSX1), Space Manbow, Aleste e Vampire Killer (MSX2), Gradius (MSX1): imagens geradas pelo proprio emulador
+  (<code>tools/assets/make_screenshots.py</code>). As ROMs dos jogos <strong>nao</strong> sao distribuidas.</em>
+</p>
+
 **Funciona hoje:**
 
-- **Maquinas**: MSX1 (BASIC 1.0), MSX2 (BASIC 2.1) e MSX2+ (BASIC 3.0, V9958), ate o prompt do BASIC.
+- **Maquinas**: MSX1 (BASIC 1.0), MSX2 (BASIC 2.1), MSX2+ (BASIC 3.0, V9958) e o **OCM / MSX++** (1chipMSX: MSX2+ com mapper de 4 MB, Kanji BASIC, MegaSD + Nextor).
 
   <p align="center"><img src="images/fwMSX-04.png" alt="MSX BASIC 3.0 (MSX2+) no fwMSX" width="60%"><br>
   <em>MSX BASIC 3.0 (MSX2+) com a BIOS real, comandos digitados pela ponte de controle (<code>--keys</code>).</em></p>
+
+- **MSX-DOS 2 e Nextor** (1.43.21 a 1.43.25):
+  - o kernel do **MSX-DOS 2** (`msxdos22.rom`, 64 KB) como cartucho no slot 1, com `dos2`/`--dos2` e `dos: 2` no `Obifile`;
+  - **RAM mapeada de 64 a 4096 KB** (`--ram`) e **dois mappers ao mesmo tempo**, interno e externo (`--ram2`), com o comando `mapper`;
+  - **disco rigido IDE** (interface Sunrise + **Nextor**, `--ide`) e **cartao SD** (MegaSD do OCM + Nextor, `--sd`), com imagens de ate' 4 GB (MBR + particoes FAT16 de ate' 2 GB)
+    criadas por `fwmsx --hdnew`, pelo comando `newhd`, pela janela e pelo TUI;
+  - a maquina **OCM** (`--ocm`): MSX2+ com o mapa de slots do OCM-PLD, ROM de Kanji, portas comutadas (ID D4h) e o Nextor do MegaSD.
+  Ver [hd-spec.md](doc/hd-spec.md) e [ocm-spec.md](doc/ocm-spec.md).
+
+  <p align="center">
+    <img src="images/fwMSX-11.png" alt="MSX-DOS 2 (kernel 2.20) no fwMSX" width="32%">
+    <img src="images/fwMSX-12.png" alt="Nextor com disco rigido IDE no fwMSX" width="32%">
+    <img src="images/fwMSX-13.png" alt="Nextor com cartao SD (MegaSD) no fwMSX" width="32%"><br>
+    <em>MSX-DOS 2 (kernel 2.20), Nextor com um disco rigido IDE de imagem e Nextor com um cartao SD (MegaSD): os arquivos gravados vao para a imagem.</em>
+  </p>
+
+  <p align="center">
+    <img src="images/fwMSX-10.png" alt="O logo MSX++ do OCM" width="48%">
+    <img src="images/fwMSX-09.png" alt="O OCM no prompt: MSX BASIC 3.0 e Nextor" width="48%"><br>
+    <em>A maquina OCM: o logo MSX++ da inicializacao (o Kanji BASIC) e o prompt com o MSX BASIC 3.0 e o Nextor do MegaSD.</em>
+  </p>
 
 - **Disco**: MSX-DOS 1.8 a partir de `.dsk`, com leitura e gravacao (e protecao contra gravacao); tambem pela
   controladora por portas (estilo Microsol, driver DDX 3.0/CDX-2), formatos 180/360/720 KB.
@@ -91,14 +139,16 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   ferramenta batch -- escolhe sempre a 1a opcao. Ver [tape-spec.md](doc/tape-spec.md), secoes 5, 9, 10 e 11.
 - **Jogos**: Lode Runner + SCC, Parodius, R-Type e outros 20 jogos batem com o fMSX na comparacao de quadros; Mega Chase so' foi validado
   ate o titulo e F-1 Spirit 3D (troca de disco pela janela) nao foi testado.
-- **Ausentes**: GameMaster2, `CALL VOICECOPY` e opcao de linha de comando para o layout de slots.
-  Save-state nao valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo.
+- **Ausentes**: GameMaster2 e `CALL VOICECOPY`. Save-state nao valida se o cartucho/disco/fita inserido agora e' o mesmo de quando foi salvo, e nao guarda a interface IDE, o
+  MegaSD nem os dispositivos do OCM.
+- **SCSI** (MEGA-SCSI): nao ha' driver (nem o pacote do OCM tem). **OCM**: faltam a velocidade da CPU, os DIP-SW virtuais e o ESE-SCC (ver [ocm-spec.md](doc/ocm-spec.md)).
 - **BIOS**: so' em 0:0. Outras BIOS (ex.: Gradiente Expert 1.1) montam no layout, mas nao foram testadas.
 
 **Configurar a maquina** (menus da janela; a lista completa de opcoes de linha de comando esta no
 [MANUAL](doc/MANUAL.md)):
 
-- **Maquina > Modelo**: MSX1, MSX2 ou MSX2+ (volta o layout ao padrao).
+- **Maquina > Modelo**: MSX1, MSX2, MSX2+ ou OCM / MSX++ (volta o layout ao padrao).
+- **Maquina > RAM mapeada (mapper)**: o mapper interno e o externo, de 64 KB a 4 MB.
 - **Maquina > Configuracao de slots...**: monta o layout celula a celula. Exemplos que funcionam:
   - uma BIOS de 32KB em 0:0 (a pagina 0 recebe a BIOS, a pagina 1 o BASIC);
   - BIOS e BASIC em dois arquivos de 16KB, na mesma celula 0:0;
@@ -107,92 +157,116 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
 - **Midia > Cartucho**: insere ou retira o cartucho do slot 1:0; escolhe o mapper (auto ou
   explicito -- ex.: MSX-DOS 2) pelo submenu **Mapper**; liga/desliga o FM-PAC no slot 2:0.
 - **Midia > Disco**: insere e ejeta os discos A: e B:.
+- **Midia > Disco rigido (IDE)** e **Midia > Cartao SD (MegaSD)**: ligam uma imagem (ou criam uma nova) com o Nextor.
 - **Midia > Fita**: inserir, criar fita nova, ejetar, rebobinar, trocar o modo de carregamento,
   destravar/travar contra gravacao, escolher o modo de gravacao, e a janela visual "Fita K7".
 - **Tela > Exibir/Video**: zoom, tela cheia, proporcao, interpolacao, scanlines, filtro de cor.
 - **Som, Ferramentas > Interface**: aparencia e audio.
 
-Historico das versoes, em uma linha cada: 1.12.0 abre a maquina sem argumentos; 1.13.0 SCC;
-1.14.0 CPIR/CPDR em Assembly; 1.15.0 MSX2+ (V9958); 1.16.0 janela com menus e filtros; 1.17.0 FM com
-BASIC, layout de slots e SRAM do FM-PAC; 1.18.0 banco de ROMs e disco por portas; 1.19.x fita (leitura);
-1.20.x fita (gravacao); 1.21.0 empacotador `.BIN`/`.BAS` -> `.TSX` (`--cas pack`); 1.22.0 ripper de
-`.WAV` (`--cas rip`); 1.23.0 navegacao de blocos de controle do TZX; 1.24.0 banco de fitas com
-metadados (`--fitadb`, sem download); 1.25.0 banco de ROMs com `verify` e auto-mapper pelo SHA-1;
-1.26.0 Vampier com Platform/CRC32/tamanho; 1.27.0 efeitos de rastreio no meio do quadro;
-1.28.0 MSX-DOS 2 (cartucho generico); 1.29.0 save-state;
-1.30.0 menus reorganizados + mapper do cartucho na janela;
-1.30.1 atalhos de save-state (9 slots), captura de tela (F12) e janela sem console;
-1.31.0 disco novo em branco/formatado (180/360/720 KB) e `CALL FORMAT`;
-1.32.0 ponte de controle externa (comandos de texto por TCP em localhost);
-1.33.0 console `fwMSXc.exe --cli` (inicia o emulador e manda comandos a ele);
-1.34.0 modo terminal `fwMSXc.exe --term` (a maquina rodando dentro do terminal);
-1.35.0 TUI de menus `fwMSXc.exe --tui` (menus que controlam o emulador em janela);
-1.36.0 montador Z80 `fwmsx --asm` (compativel com o asMSX 1.2.0);
-1.36.1 texto de SCREEN 0 como no fMSX (comparacao pixel a pixel com o fMSX original);
-1.36.2 MegaROM com AB no fim (R-Type);
-1.37.0 depurador basico + eventos assincronos (console, TUI, ponte, parametros);
-1.37.1 splash de abertura, icone do aplicativo e configuracoes salvas;
-1.37.2 Z80 Debugger na janela (F10, fonte do MSX);
-1.37.3 Z80 Debugger na TUI (comando `dbgui`);
-1.37.4 `type`/`--keys` seguem o teclado da BIOS (japones x internacional);
-1.37.5 TUI mais leve (redesenha so' quando muda);
-1.37.6 TUI sem sujeira (saida dos comandos sem codigos ANSI);
-1.37.7 `type` com teclas: `type "key off" {enter}`, `{ctrl}+{c}`;
-1.37.8 `--keys` aceita a mesma sintaxe;
-1.38.0 `help` organizado, `help <comando>` e `man <topico>` (manual + referencia do MSX: BIOS, variaveis, ganchos, cores...);
-1.38.1 manual completo do MSX-BASIC no `man` (172 palavras com exemplos + apendices);
-1.38.2 rotinas/variaveis da BIOS e BDOS (554) e hardware (33) no `man`; `man -l` e `man -k`;
-1.38.3 The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`;
-1.38.4 MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`;
-1.38.5 manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`;
-**1.43.25 maquina OCM (1chipMSX / MSX++) como quarta maquina: `--ocm`, MSX2+ com mapper de 4 MB, Kanji, portas comutadas e MegaSD + Nextor; colisao de sprites por linha**
-**1.43.24 cartao SD pelo MegaSD (`--sd`, comando `sd`): Nextor 2.1.4 + driver MegaSDHC do OCM sobre imagens SDSC/SDHC; ROMs do pacote do KdL em `dist/roms/ocm`**
-**1.43.23 disco rigido: Sunrise IDE + Nextor (`--ide`, comando `ide`), imagens de HD/SD de ate' 4 GB criadas por `--hdnew`/`newhd`/janela/TUI; portas sem dispositivo leem FFh**
-**1.43.22 RAM mapeada de 64 a 4096 KB (`--ram`) e dois mappers ao mesmo tempo, interno e externo (`--ram2`); comando `mapper`**
-**1.43.21 MSX-DOS 2 de verdade: o kernel (`msxdos22.rom`, achado pelo banco de ROMs) como cartucho no slot 1 + disco; comando `dos2`, `--dos2`, e `dos: 2` no Obifile roda com ele (`obirun`)**
-**1.43.20 downloads sem janela de console e com barra de progresso; `romdb sig download`/`identify` reconhecem as ROMs de sistema pelas assinaturas do openMSX (nome oficial, papel, hardware, categoria)**
-**1.43.19 comandos `vdp` (registradores, status, paleta; grava como o OUT), `vdpbios` (com o espelho do BIOS) e `screen info` (modo e enderecos das tabelas); `msx.vdp`/`msx.screen` no Lua**
-**1.43.18 F5 num .dmx vigia a tela do MSX: se o BASIC parar com erro ("Syntax error in 130"), o editor volta com o cursor na linha do .dmx; comando `screen` (texto da tela)**
-**1.43.17 janela Downloads (ROMs > Downloads): navega e procura no File Hunter pelo indice do site e baixa item por item; utilitarios do Konamiman (NestorBASIC, SEE, NPLAYER); `fwmsx --download`**
-**1.43.16 scripts em Lua no console: `lua`, `source` e a tabela `msx` (peek/poke, registradores, `msx.wait`, ganchos por quadro, por byte e por parada)**
-**1.43.15 preview do Markdown colorido na propria janela (F7) e arquivos maiores que a memoria (Load more / Write to cursor / Top of file); fecha a E7**
-**1.43.14 o editor tem Outline (titulos, REMs, rotulos) e preview de Markdown (`F7`)**
-**1.43.13 o editor formata paragrafos e o documento (Edit > Paragraph format / Document format); o pacote leva a pasta `emulator/`**
-**1.43.12 pasta `emulator/` com os discos de sistema do MSX-DOS 1 e 2; `dos: 1|2` no `Obifile`**
-**1.43.11 o `obi`: um `Obifile` junta o `.dmx`, o `.asm` e os dados num `.dsk` pronto para rodar (`obi build`, `obirun`, Run > Build disk, F6)**
-**1.43.10 o editor imprime em PDF (File > Print / Print Block, com as margens do Print setup)**
-**1.43.9 o completar do editor oferece os rotulos e constantes dos outros arquivos do projeto; `man editor`**
-**1.43.8 os menus do editor foram concentrados em oito (File Edit Search View Project Run Tools + Help), como nas IDEs atuais; as teclas do Norton continuam**
-**1.43.7 com um projeto aberto, o Build (montador e Basic Dignified) le os arquivos incluidos do proprio projeto, nao da copia da pasta**
-**1.43.5 o projeto guarda as versoes anteriores de cada arquivo (restaurar) e a remocao de um arquivo viaja para os outros PCs (pergunta antes de apagar a copia)**
-**1.43.4 a arvore do projeto tem menu de contexto (abrir, atualizar, restaurar, renomear, adicionar, tirar)**
-**1.43.3 Project > Files... virou arvore (pastas recolhiveis) no TUI**
-**1.43.2 o editor lembra o ultimo projeto, mostra o nome na barra de status e (na janela) a arvore de arquivos do projeto**
-**1.43.1 o editor ganhou o menu Project: salvar leva o arquivo ao .msxproject, Sync mostra as diferencas e conflito pergunta**
-**1.43.0 o projeto .msxproject: UM arquivo SQLite com tudo + copias soltas sincronizadas (comando `project`, GitHub pela pasta)**
-**1.42.2 erro de execucao do BASIC (Syntax error in 130) volta a' linha do .dmx: Montar > BASIC line...**
-**1.42.1 o Basic Dignified roda programas reais: biblioteca do NestorBASIC (include "nbasic.dmx") e arquivos de apoio no disco de execucao (##BB:disk_files=)**
-**1.42.0 o Basic Dignified Suite e' nosso: `fwmsx --badig prog.dmx` gera o `.amx` e o BASIC tokenizado `.bmx` (igual ao badig.py original), F9/F5 no editor convertem e rodam no emulador, e ha' a tela de configuracao**
-**1.41.9 o editor tem o menu Build: F9 monta o fonte Z80 do buffer e leva o cursor ao erro, F5 executa no MSX, Ctrl-F1 abre o manual da palavra**
-**1.41.8 o editor completa palavras (Alt-/) e expande snippets (Tab), e mostra numeros de linha na TUI e na janela**
-**1.41.7 o destaque conhece o MSX-BASIC KUN de verdade: blocos `_TURBO ON/OFF`, remtags `'#I` `'#C` `'#N` e os comandos que o compilador recusa em vermelho**
-**1.41.6 destaque de sintaxe no editor (TUI e janela): MSX-BASIC, Basic Dignified, MSXBAS2ROM, NestorBASIC, Turbo Basic, Assembly Z80 (com a BIOS), Pascal, Batch e Markdown**
-**1.41.5 autosave do editor (a cada N minutos; so' a sessao de recuperacao ou tambem os arquivos com nome) e abas sem nome noname01, noname02...**
-**1.41.4 o editor do emulador so' esconde ao fechar e guarda as anotacoes (inclusive entre execucoes); corrigido o travamento ao reabrir**
-**1.41.3 o editor de textos GRAFICO (fase E3 refeita): menu "Editor" no fwMSX (janela flutuante) e `fwMSX.exe --edit`, com menus, abas, divisao em 2 paineis, mouse e dialogos de verdade, no visual do fwMSX e com os atalhos do Norton Editor 2**
-**1.41.2 o editor de textos em janela (fase E3): `fwMSX.exe --edit arquivo`, o mesmo editor da TUI com o teclado completo do Norton Editor 2 (Ctrl-Enter, Ctrl-PgUp, Alt sozinho abre o menu)**
-**1.41.1 o editor de textos na TUI (fase E2): `fwMSXc --edit arquivo` / `--view arquivo` com a tela, os menus, os dialogos, as duas janelas e o mouse do Norton Editor 2**
-**1.41.0 o editor de textos, fase E1: o nucleo do editor estilo Norton Editor 2 (teclas e menus do NE 2, blocos, busca, desfazer, modo somente leitura `view`), ainda sem tela (TUI na proxima fase)**
-**1.40.5 o montador na TUI: `asmrun` monta e CARREGA (ROM, fita ou disco), simbolos e linhas do fonte no depurador (`break loop`, `break jogo.asm:42`, `sym`, `src`), marcadores `.break`/`.debug` funcionando no Z80, BOM/UTF-8 no fwasm**
-**1.40.4 Mamute: fita cassete em todos os pontos -- `.cas`, `.tsx` e `.wav` (ler e gravar) no emulador (`tape new/list/seek/save/put/load`), no depurador (`break tapin`), no Mamute (`TAPE`, `R`, `TLOAD`, `TSAVE`, `A OT>jogo.cas`) e no fwasm (`.TSX`)**
-**1.40.3 Mamute: os comandos do SUPER-X (prefixo X) -- `XD XA XI XH XM`, `XBT XRT XFL XCM XFD`, `XRG XGO XTR`, portas, disco (`XDK XFS XTP XL% XS%`...) e notas, com alvos `#slot-sub`/`#V`; `man mamute-superx`**
-**1.40.2 Mamute: as telas -- `DM`, `M`, `S`, `ZAP` (setores de disco) e `SCR` (memoria como pixels) como paineis interativos na TUI, e listagens em PDF**
-**1.40.1 Mamute: `EDIT` (editor de fonte de linhas numeradas) e `A` (montar pelo fwasm, com listagem, referencia cruzada e gravacao na memoria/maquina)**
-**1.40.0 Mamute: o monitor Z80 do fwMSX (`mon`, `fwmsx --mon`), online na maquina emulada ou offline com memoria propria; `man mamute`**
-1.39.2 fwasm monta o jogo Amazonia (cartucho de 48 KB) igual ao asMSX;
-1.39.1 fwasm testado com um replayer de musica PT3 real (monta igual ao asMSX e toca no emulador);
-**1.39.0 fwasm completo: gera ROM, MegaROM, BASIC (.bin), MSX-DOS (.com), fita (.cas/.wav) e .tap (ZX Spectrum)**. Detalhes em
-[CHANGELOG.md](doc/CHANGELOG.md).
+## Historico das versoes
+
+Uma linha por versao, da mais nova para a mais antiga (o resumo de cada uma esta em [CHANGELOG.md](doc/CHANGELOG.md) e o detalhe em [RELEASE.md](doc/RELEASE.md)).
+
+### 1.43 a 1.40
+
+- **1.43.26** -- documentacao renovada: o splash no topo do README, o historico das versoes em lista (uma linha por versao), screenshots novas (OCM, MSX-DOS 2, Nextor com IDE e SD, jogos), secao nova no MANUAL e `man ocm`
+- **1.43.25** -- maquina OCM (1chipMSX / MSX++) como quarta maquina: `--ocm`, MSX2+ com mapper de 4 MB, Kanji, portas comutadas e MegaSD + Nextor; colisao de sprites por linha
+- **1.43.24** -- cartao SD pelo MegaSD (`--sd`, comando `sd`): Nextor 2.1.4 + driver MegaSDHC do OCM sobre imagens SDSC/SDHC; ROMs do pacote do KdL em `dist/roms/ocm`
+- **1.43.23** -- disco rigido: Sunrise IDE + Nextor (`--ide`, comando `ide`), imagens de HD/SD de ate' 4 GB criadas por `--hdnew`/`newhd`/janela/TUI; portas sem dispositivo leem FFh
+- **1.43.22** -- RAM mapeada de 64 a 4096 KB (`--ram`) e dois mappers ao mesmo tempo, interno e externo (`--ram2`); comando `mapper`
+- **1.43.21** -- MSX-DOS 2 de verdade: o kernel (`msxdos22.rom`, achado pelo banco de ROMs) como cartucho no slot 1 + disco; comando `dos2`, `--dos2`, e `dos: 2` no Obifile roda com ele (`obirun`)
+- **1.43.20** -- downloads sem janela de console e com barra de progresso; `romdb sig download`/`identify` reconhecem as ROMs de sistema pelas assinaturas do openMSX (nome oficial, papel, hardware, categoria)
+- **1.43.19** -- comandos `vdp` (registradores, status, paleta; grava como o OUT), `vdpbios` (com o espelho do BIOS) e `screen info` (modo e enderecos das tabelas); `msx.vdp`/`msx.screen` no Lua
+- **1.43.18** -- F5 num .dmx vigia a tela do MSX: se o BASIC parar com erro ("Syntax error in 130"), o editor volta com o cursor na linha do .dmx; comando `screen` (texto da tela)
+- **1.43.17** -- janela Downloads (ROMs > Downloads): navega e procura no File Hunter pelo indice do site e baixa item por item; utilitarios do Konamiman (NestorBASIC, SEE, NPLAYER); `fwmsx --download`
+- **1.43.16** -- scripts em Lua no console: `lua`, `source` e a tabela `msx` (peek/poke, registradores, `msx.wait`, ganchos por quadro, por byte e por parada)
+- **1.43.15** -- preview do Markdown colorido na propria janela (F7) e arquivos maiores que a memoria (Load more / Write to cursor / Top of file); fecha a E7
+- **1.43.14** -- o editor tem Outline (titulos, REMs, rotulos) e preview de Markdown (`F7`)
+- **1.43.13** -- o editor formata paragrafos e o documento (Edit > Paragraph format / Document format); o pacote leva a pasta `emulator/`
+- **1.43.12** -- pasta `emulator/` com os discos de sistema do MSX-DOS 1 e 2; `dos: 1|2` no `Obifile`
+- **1.43.11** -- o `obi`: um `Obifile` junta o `.dmx`, o `.asm` e os dados num `.dsk` pronto para rodar (`obi build`, `obirun`, Run > Build disk, F6)
+- **1.43.10** -- o editor imprime em PDF (File > Print / Print Block, com as margens do Print setup)
+- **1.43.9** -- o completar do editor oferece os rotulos e constantes dos outros arquivos do projeto; `man editor`
+- **1.43.8** -- os menus do editor foram concentrados em oito (File Edit Search View Project Run Tools + Help), como nas IDEs atuais; as teclas do Norton continuam
+- **1.43.7** -- com um projeto aberto, o Build (montador e Basic Dignified) le os arquivos incluidos do proprio projeto, nao da copia da pasta
+- **1.43.5** -- o projeto guarda as versoes anteriores de cada arquivo (restaurar) e a remocao de um arquivo viaja para os outros PCs (pergunta antes de apagar a copia)
+- **1.43.4** -- a arvore do projeto tem menu de contexto (abrir, atualizar, restaurar, renomear, adicionar, tirar)
+- **1.43.3** -- Project > Files... virou arvore (pastas recolhiveis) no TUI
+- **1.43.2** -- o editor lembra o ultimo projeto, mostra o nome na barra de status e (na janela) a arvore de arquivos do projeto
+- **1.43.1** -- o editor ganhou o menu Project: salvar leva o arquivo ao .msxproject, Sync mostra as diferencas e conflito pergunta
+- **1.43.0** -- o projeto .msxproject: UM arquivo SQLite com tudo + copias soltas sincronizadas (comando `project`, GitHub pela pasta)
+- **1.42.2** -- erro de execucao do BASIC (Syntax error in 130) volta a' linha do .dmx: Montar > BASIC line..
+- **1.42.1** -- o Basic Dignified roda programas reais: biblioteca do NestorBASIC (include "nbasic.dmx") e arquivos de apoio no disco de execucao (##BB:disk_files=)
+- **1.42.0** -- o Basic Dignified Suite e' nosso: `fwmsx --badig prog.dmx` gera o `.amx` e o BASIC tokenizado `.bmx` (igual ao badig.py original), F9/F5 no editor convertem e rodam no emulador, e ha' a tela de configuracao
+- **1.41.9** -- o editor tem o menu Build: F9 monta o fonte Z80 do buffer e leva o cursor ao erro, F5 executa no MSX, Ctrl-F1 abre o manual da palavra
+- **1.41.8** -- o editor completa palavras (Alt-/) e expande snippets (Tab), e mostra numeros de linha na TUI e na janela
+- **1.41.7** -- o destaque conhece o MSX-BASIC KUN de verdade: blocos `_TURBO ON/OFF`, remtags `'#I` `'#C` `'#N` e os comandos que o compilador recusa em vermelho
+- **1.41.6** -- destaque de sintaxe no editor (TUI e janela): MSX-BASIC, Basic Dignified, MSXBAS2ROM, NestorBASIC, Turbo Basic, Assembly Z80 (com a BIOS), Pascal, Batch e Markdown
+- **1.41.5** -- autosave do editor (a cada N minutos; so' a sessao de recuperacao ou tambem os arquivos com nome) e abas sem nome noname01, noname02..
+- **1.41.4** -- o editor do emulador so' esconde ao fechar e guarda as anotacoes (inclusive entre execucoes); corrigido o travamento ao reabrir
+- **1.41.3** -- o editor de textos GRAFICO (fase E3 refeita): menu "Editor" no fwMSX (janela flutuante) e `fwMSX.exe --edit`, com menus, abas, divisao em 2 paineis, mouse e dialogos de verdade, no visual do fwMSX e com os atalhos do Norton Editor 2
+- **1.41.2** -- o editor de textos em janela (fase E3): `fwMSX.exe --edit arquivo`, o mesmo editor da TUI com o teclado completo do Norton Editor 2 (Ctrl-Enter, Ctrl-PgUp, Alt sozinho abre o menu)
+- **1.41.1** -- o editor de textos na TUI (fase E2): `fwMSXc --edit arquivo` / `--view arquivo` com a tela, os menus, os dialogos, as duas janelas e o mouse do Norton Editor 2
+- **1.41.0** -- o editor de textos, fase E1: o nucleo do editor estilo Norton Editor 2 (teclas e menus do NE 2, blocos, busca, desfazer, modo somente leitura `view`), ainda sem tela (TUI na proxima fase)
+- **1.40.5** -- o montador na TUI: `asmrun` monta e CARREGA (ROM, fita ou disco), simbolos e linhas do fonte no depurador (`break loop`, `break jogo.asm:42`, `sym`, `src`), marcadores `.break`/`.debug` funcionando no Z80, BOM/UTF-8 no fwasm
+- **1.40.4** -- Mamute: fita cassete em todos os pontos -- `.cas`, `.tsx` e `.wav` (ler e gravar) no emulador (`tape new/list/seek/save/put/load`), no depurador (`break tapin`), no Mamute (`TAPE`, `R`, `TLOAD`, `TSAVE`, `A OT>jogo.cas`) e no fwasm (`.TSX`)
+- **1.40.3** -- Mamute: os comandos do SUPER-X (prefixo X) -- `XD XA XI XH XM`, `XBT XRT XFL XCM XFD`, `XRG XGO XTR`, portas, disco (`XDK XFS XTP XL% XS%`...) e notas, com alvos `#slot-sub`/`#V`; `man mamute-superx`
+- **1.40.2** -- Mamute: as telas -- `DM`, `M`, `S`, `ZAP` (setores de disco) e `SCR` (memoria como pixels) como paineis interativos na TUI, e listagens em PDF
+- **1.40.1** -- Mamute: `EDIT` (editor de fonte de linhas numeradas) e `A` (montar pelo fwasm, com listagem, referencia cruzada e gravacao na memoria/maquina)
+- **1.40.0** -- Mamute: o monitor Z80 do fwMSX (`mon`, `fwmsx --mon`), online na maquina emulada ou offline com memoria propria; `man mamute`
+
+<details>
+<summary><strong>1.39 e anteriores</strong> (46 versoes)</summary>
+
+- **1.39.2** -- fwasm monta o jogo Amazonia (cartucho de 48 KB) igual ao asMSX
+- **1.39.1** -- fwasm testado com um replayer de musica PT3 real (monta igual ao asMSX e toca no emulador)
+- **1.39.0** -- fwasm completo: gera ROM, MegaROM, BASIC (.bin), MSX-DOS (.com), fita (.cas/.wav) e .tap (ZX Spectrum)
+- **1.38.5** -- manual do montador fwasm (`man fwasm`), NestorBASIC, SEE Tracker e MSXBAS2ROM no `man`
+- **1.38.4** -- MSX-DOS 2 (por comando e por chamada), MSX-DOS 1, CP/M, Z80, R800, FM-PAC e extensoes CALL no `man`
+- **1.38.3** -- The MSX Red Book, MSX2 Technical Handbook e ajuda do Basic Dignified no `man`
+- **1.38.2** -- rotinas/variaveis da BIOS e BDOS (554) e hardware (33) no `man`; `man -l` e `man -k`
+- **1.38.1** -- manual completo do MSX-BASIC no `man` (172 palavras com exemplos + apendices)
+- **1.38.0** -- `help` organizado, `help <comando>` e `man <topico>` (manual + referencia do MSX: BIOS, variaveis, ganchos, cores...)
+- **1.37.8** -- `--keys` aceita a mesma sintaxe
+- **1.37.7** -- `type` com teclas: `type "key off" {enter}`, `{ctrl}+{c}`
+- **1.37.6** -- TUI sem sujeira (saida dos comandos sem codigos ANSI)
+- **1.37.5** -- TUI mais leve (redesenha so' quando muda)
+- **1.37.4** -- `type`/`--keys` seguem o teclado da BIOS (japones x internacional)
+- **1.37.3** -- Z80 Debugger na TUI (comando `dbgui`)
+- **1.37.2** -- Z80 Debugger na janela (F10, fonte do MSX)
+- **1.37.1** -- splash de abertura, icone do aplicativo e configuracoes salvas
+- **1.37.0** -- depurador basico + eventos assincronos (console, TUI, ponte, parametros)
+- **1.36.2** -- MegaROM com AB no fim (R-Type)
+- **1.36.1** -- texto de SCREEN 0 como no fMSX (comparacao pixel a pixel com o fMSX original)
+- **1.36.0** -- montador Z80 `fwmsx --asm` (compativel com o asMSX 1.2.0)
+- **1.35.0** -- TUI de menus `fwMSXc.exe --tui` (menus que controlam o emulador em janela)
+- **1.34.0** -- modo terminal `fwMSXc.exe --term` (a maquina rodando dentro do terminal)
+- **1.33.0** -- console `fwMSXc.exe --cli` (inicia o emulador e manda comandos a ele)
+- **1.32.0** -- ponte de controle externa (comandos de texto por TCP em localhost)
+- **1.31.0** -- disco novo em branco/formatado (180/360/720 KB) e `CALL FORMAT`
+- **1.30.1** -- atalhos de save-state (9 slots), captura de tela (F12) e janela sem console
+- **1.30.0** -- menus reorganizados + mapper do cartucho na janela
+- **1.29.0** -- save-state
+- **1.28.0** -- MSX-DOS 2 (cartucho generico)
+- **1.27.0** -- efeitos de rastreio no meio do quadro
+- **1.26.0** -- Vampier com Platform/CRC32/tamanho
+- **1.25.0** -- banco de ROMs com `verify` e auto-mapper pelo SHA-1
+- **1.24.0** -- banco de fitas com metadados (`--fitadb`, sem download)
+- **1.23.0** -- navegacao de blocos de controle do TZX
+- **1.22.0** -- ripper de `.WAV` (`--cas rip`)
+- **1.21.0** -- empacotador `.BIN`/`.BAS` -> `.TSX` (`--cas pack`)
+- **1.20.x** -- fita (gravacao)
+- **1.19.x** -- fita (leitura)
+- **1.18.0** -- banco de ROMs e disco por portas
+- **1.17.0** -- FM com BASIC, layout de slots e SRAM do FM-PAC
+- **1.16.0** -- janela com menus e filtros
+- **1.15.0** -- MSX2+ (V9958)
+- **1.14.0** -- CPIR/CPDR em Assembly
+- **1.13.0** -- SCC
+- **1.12.0** -- abre a maquina sem argumentos
+
+</details>
+
 
 Veja [doc/SPEC.md](doc/SPEC.md) para a especificacao completa e o historico de fases (documento vivo).
 
@@ -235,6 +309,15 @@ fwMSX/
 │   │               -- ver doc/tape-spec.md, secao 11)
 │   ├── audio/      saida de audio ao vivo (miniaudio -- ver
 │   │               doc/audio-spec.md)
+│   ├── hd/         disco rigido e cartao SD: formato MBR/FAT16 (C), conta da FAT (Fortran), ATA + Sunrise IDE + MegaSD + cartao SPI (C++),
+│   │               preenchimento (Assembly), `--hdnew` (ver doc/hd-spec.md)
+│   ├── ocm/        maquina OCM (1chipMSX / MSX++): ROM de Kanji (C), portas comutadas (Fortran), montagem das ROMs (Assembly),
+│   │               dispositivos (C++) (ver doc/ocm-spec.md)
+│   ├── control/    ponte de controle (comandos de texto sobre TCP) e o despachante de comandos (ver doc/control-spec.md)
+│   ├── repl/ tui/ term/   console `--cli`, TUI de menus `--tui` e modo terminal `--term`
+│   ├── editor/ project/ obi/ badig/ asm/ mamute/ script/   editor de textos, projeto .msxproject, `Obifile`, Basic Dignified,
+│   │               montador fwasm, monitor Mamute e scripts em Lua
+│   ├── download/ splash/ man/   janela Downloads, splash e o manual embutido (`man`)
 │   └── machine/    maquina MSX1 completa + janela (`--msx` -- ver
 │                   doc/machine-spec.md)
 ├── tools/msxdisk/  ponto de entrada do executavel msxdisk standalone
@@ -256,6 +339,9 @@ fwMSX/
 │   ├── tape-spec.md     fita: .CAS/.TSX/.TZX, gravacao, `--cas` (pack/rip/list), navegacao do TZX
 │   ├── romdb-spec.md    banco de ROMs (SQLite, downloads, CLI)
 │   ├── slots-spec.md    layout de slots e configuracao da maquina
+│   ├── hd-spec.md       disco rigido IDE + Nextor, cartao SD (MegaSD), imagens de HD
+│   ├── ocm-spec.md      a maquina OCM (1chipMSX / MSX++)
+│   ├── control-spec.md  ponte de controle e todos os comandos do console
 │   ├── sram-spec.md     SRAM de cartucho e FM-PAC (arquivos .sav)
 │   ├── machine-spec.md  maquina completa + janela com teclado do host
 │   ├── audio-spec.md    audio ao vivo
@@ -266,6 +352,7 @@ fwMSX/
 │   └── RELEASE.md       detalhes de cada release
 ├── images/         imagens usadas nesta documentacao
 ├── dist/           pacote pronto para execucao (.exe + .zip)
+├── third-party/    material de terceiros (ROMs, utilitarios, fontes) usado como referencia/estudo; `resource/` guarda o que sobrou da limpeza
 ├── resource/       codigo-fonte de terceiros usado como referencia/estudo
 ├── CMakeLists.txt  build raiz (CMake + Ninja)
 ├── build.ps1       script de build (PowerShell/Windows)

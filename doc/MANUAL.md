@@ -10,7 +10,7 @@
 2. [Atalhos de teclado e como operar sem o mouse](#atalhos-de-teclado-e-como-operar-sem-o-mouse)
 3. [Pre-requisitos](#pre-requisitos) e [Compilar](#compilar)
 4. [Emulador MSX](#emulador-msx---msx) (opcoes, janela, slots, FM, SRAM)
-5. [Disco novo e FORMAT](#disco-novo-em-branco-e-format)
+5. [MSX-DOS 2, RAM mapeada, disco rigido, cartao SD e OCM](#msx-dos-2-ram-mapeada-disco-rigido-cartao-sd-e-ocm) e [Disco novo e FORMAT](#disco-novo-em-branco-e-format)
 6. [Save-state e captura de tela](#save-state-e-captura-de-tela)
 7. [Console (`--cli`)](#console-interativo---cli) e [Ponte de controle](#ponte-de-controle-externa---ctl-port)
 8. [Banco de ROMs](#banco-de-roms---romdb), [Fita](#fita-por-linha-de-comando-fwmsx---cas) e [Banco de fitas](#banco-de-fitas-fwmsx---fitadb)
@@ -491,6 +491,12 @@ Sem argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela (a BIOS real, com o 
 | `--diskrom <arquivo>` | `DISK.ROM` (padrao: ao lado da BIOS) |
 | `--fmpac [arquivo]` | FM-PAC no slot 2:0 (padrao: `resource/fMSX/FMPAC.ROM`) |
 | `--no-fmpac` | sem FM-PAC (o padrao o liga quando o `FMPAC.ROM` existe) |
+| `--ram <KB>` / `--ram2 <KB>` / `--ram2-slot P:S` | RAM mapeada da MSX2/2+ (e OCM): `--ram` = o mapper interno (3:2), `--ram2` = um segundo mapper "externo" (padrao no slot 3:3; `0` = sem); 64, 128, 256, 512, 1024, 2048 ou 4096 KB (o registrador do mapper tem 8 bits). Ver a secao "MSX-DOS 2, RAM mapeada, disco rigido, cartao SD e OCM" |
+| `--slot P:S=tipo[:arg]` | monta uma celula do layout de slots (`empty`, `rom`, `sub`, `ram`, `mapper`, `disk`, `fmpac`); pode repetir |
+| `--dos2 [rom]` | o kernel do MSX-DOS 2 (64 KB) como cartucho no slot 1 + interface de disquete; sem arquivo usa o `msxdos22.rom` do banco de ROMs |
+| `--ide <img>` / `--ide-slave <img>` / `--nextor <rom>` / `--ide-slot P:S` | disco rigido IDE (Sunrise + Nextor): imagens de mestre e escravo, a ROM do Nextor (padrao: a do banco de ROMs) e o slot (padrao 3:0) |
+| `--sd <img>` / `--megasd-rom <rom>` / `--megasd-slot P:S` | cartao SD pelo MegaSD (Nextor + driver MegaSDHC, padrao `roms/ocm/roms/nextsd15.rom`) no slot 3:3 por padrao |
+| `--ocm` / `--ocm-main <rom>` / `--ocm-logo <rom>` | a maquina OCM (1chipMSX / MSX++) com as ROMs de `roms/ocm/roms`; `--ocm-main a1wsxyen.rom` troca o teclado da BIOS, `--ocm-logo knsonyv2.rom` o Kanji BASIC / logo |
 | `--keys "texto"` | digita o texto no teclado do MSX; `|` = Enter (`\"` para aspas; `(`, `)`, `*` e `@` ja' saem certos). Aceita a sintaxe de teclas do `type`: `{enter}`, `{esc}`, `{f1}`, `{stop}`, `{ctrl}+{c}` (juntas), `{ctrl}{c}` (em sequencia), `{enter*3}`. Aspas e espacos aqui sao texto comum |
 | `--wait N` | quadros de espera depois de `--keys` (padrao 60) |
 | `--shot <arquivo.ppm>` | salva a tela em PPM |
@@ -613,7 +619,8 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
 
 **Funciona:**
 
-- MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0).
+- MSX1, MSX2 e MSX2+ ate o prompt do BASIC (1.0, 2.1 e 3.0) e a maquina **OCM / MSX++** (MSX BASIC 3.0 + Nextor).
+- **MSX-DOS 2** (kernel 2.20 em cartucho), **RAM mapeada de ate' 4 MB com dois mappers**, **disco rigido IDE + Nextor** e **cartao SD (MegaSD)**: ver a secao propria acima.
 - MSX-DOS 1.8 a partir de `msxdos1.dsk` (leitura e gravacao; use `--disk-ro` para proteger), pela
   memoria (DISK.ROM) ou pelas portas (DDX 3.0/CDX-2, estilo Microsol).
 - Cartuchos ROM plana, MegaROM (Konami, ASCII, Gen8, Gen16), SCC (F1 Spirit toca a trilha de 5 canais)
@@ -649,6 +656,7 @@ importantes.** O formato e' o mesmo do fMSX (8 KB, ou 2 KB para ASCII16).
   verdade numa ferramenta batch). Ver [tape-spec.md](tape-spec.md), secoes 5, 9, 10 e 11.
 - **Banco de ROMs**: montar a maquina pelo banco (layout por nome) ainda nao existe; o JSON do
   Vampier nao e' usado (so' o SQL, que ja' cobre jogo/empresa/ano/SHA-1).
+- **SCSI** (MEGA-SCSI): sem driver (o pacote do OCM tambem nao tem). **OCM**: sem a velocidade da CPU, os DIP-SW virtuais e o ESE-SCC. O save-state nao guarda a IDE, o MegaSD nem o OCM.
 - **Sem**: GameMaster2, cartucho MSX-MUSIC com BIOS propria, e `CALL VOICECOPY`. O save-state avisa
   se a BIOS ou o cartucho mudaram desde o save, mas nao confere disco nem fita.
 - **Outras BIOS** (ex.: Gradiente Expert 1.1): sobem ate o BASIC. O texto da Expert com espacos entre
@@ -664,7 +672,7 @@ Lista completa e atualizada: [RELEASE.md](RELEASE.md) (secao da versao) e [SPEC.
 [tape-spec.md](tape-spec.md) (fita), [romdb-spec.md](romdb-spec.md) (banco de ROMs),
 [fm-spec.md](fm-spec.md) (FM, MSX-MUSIC e FM-PAC), [sram-spec.md](sram-spec.md) (SRAM e `.sav`),
 [audio-spec.md](audio-spec.md) (audio), [fdc-spec.md](fdc-spec.md) (disco), [msx2-spec.md](msx2-spec.md) e
-[msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
+[msx2p-spec.md](msx2p-spec.md) (MSX2 e MSX2+), [hd-spec.md](hd-spec.md) (disco rigido, SD) e [ocm-spec.md](ocm-spec.md) (OCM), [scc-spec.md](scc-spec.md) (SCC), [memory-map-spec.md](memory-map-spec.md) (mapa de memoria).
 
 ## TUI de menus (`--tui`)
 
@@ -684,6 +692,71 @@ verdade em SCREEN 0/1 (prompt do BASIC, MSX-DOS); graficos em meios blocos reduz
 terminal, na proporcao 4:3 (o menu alterna para pixels originais). **F10** abre o menu (as mesmas acoes da janela), **F11** a linha de comando (todos os comandos
 da ponte de controle mais `newdisk`), e F6/F7/F8/F9/F12 como na janela. Um terminal nao avisa quando uma
 tecla e' solta: cada tecla vale como segura por uma fracao de segundo, e segurar repete. Ver [term-spec.md](term-spec.md).
+
+## MSX-DOS 2, RAM mapeada, disco rigido, cartao SD e OCM
+
+Tudo desta secao vale tambem no console (`dos2`, `mapper`, `ide`, `sd`, `newhd`), nos menus da janela e do TUI. As ROMs **nao** vem com o emulador: o kernel do
+MSX-DOS 2 e os Nextor para o IDE vem do *Full Set System ROMs* (janela *ROMs > Downloads*), e o Nextor do cartao SD e a maquina OCM usam as ROMs do pacote **SDBIOS /
+OCM-PLD do KdL** que voce baixa do site dele e copia para `roms/ocm/roms`, ao lado do executavel (`dist/roms/ocm/roms` no repositorio; `man ocm`).
+
+### MSX-DOS 2 (kernel em cartucho)
+
+O kernel do MSX-DOS 2 e' uma ROM de 64 KB que entra como cartucho generico (mapper `msxdos2`) no slot 1; o disco leva so' o `MSXDOS2.SYS` e o `COMMAND2.COM`
+(o `emulator/msxdos2.dsk` do pacote, ou o disco que o `Obifile` com `dos: 2` monta).
+
+- `dos2 [rom.rom] [disco.dsk]` liga tudo e reinicia (`dos2 off` desliga). Sem a ROM, usa a do banco de ROMs.
+- Linha de comando: `fwmsx --msx --msx2 --dos2 --disk emulator/msxdos2.dsk`. Menu: *Midia > Cartucho > Iniciar MSX-DOS 2 (ROM do banco)*.
+- Use uma MSX2 (tem relogio); numa MSX1 o COMMAND2 pergunta a data.
+- No `Obifile`, `dos: 2` monta o disco do sistema (F6) e o comando `obirun` liga o MSX-DOS 2 e roda o disco.
+
+### RAM mapeada (mapper)
+
+A MSX2/2+ vem com um mapper de 128 KB.
+
+- `--ram <KB>` muda o mapper **interno** (slot 3:2): 64, 128, 256, 512, 1024, 2048 ou 4096 KB (o maximo do hardware: o registrador das portas FCh-FFh tem 8 bits =
+  256 segmentos de 16 KB).
+- `--ram2 <KB>` liga um segundo mapper, **externo** (padrao no slot 3:3; `--ram2-slot P:S` muda). As portas FCh-FFh escrevem nos dois e cada um mascara o valor pelo
+  proprio tamanho, como no hardware: serve para depurar programas que so' reconhecem o mapper interno, ou so' o maior.
+- O comando `mapper` mostra, para cada mapper, o slot, o tamanho e o segmento que cada pagina enxerga agora.
+- Menu: *Maquina > RAM mapeada (mapper)* (reinicia a maquina). Qualquer arranjo: `--slot 3:2=mapper:512` ou *Maquina > Configuracao de slots*.
+
+### Disco rigido (IDE + Nextor) e imagens de HD/SD
+
+A interface **Sunrise ATA-IDE** com o **Nextor** (o MSX-DOS 2 novo do Konamiman). O disco e' um arquivo de imagem com tabela de particoes (MBR) e particoes FAT16 de
+**8 MB a 2 GB** (o limite do Nextor), ate' 4 particoes e **4 GB ao todo**.
+
+1. **Criar a imagem**: `fwmsx --hdnew sd.hdd 2G 2G` (4 GB em 2 particoes; tamanhos `512`, `512M`, `2G`), `--hdnew --split 4G 2 sd.hdd` ou `--hdnew --info sd.hdd`.
+   Tambem: o comando `newhd` (console/TUI) e a janela *Midia > Disco rigido (IDE) > Novo disco rigido / cartao SD...* (1 a 4 particoes, total ate' 4 GB).
+2. **Ligar**: `fwmsx --msx --msx2 --ide sd.hdd` (`--ide-slave` liga um segundo disco; `--nextor <rom>` escolhe a ROM; `--ide-slot P:S` o slot, padrao **3:0**), o comando
+   `ide sd.hdd` ou o menu *Midia > Disco rigido (IDE)*. `ide` sem argumentos mostra o estado (banco da ROM, discos, setores lidos e gravados); `ide off` desliga.
+3. **Usar**: o Nextor numera os drives na ordem em que acha os dispositivos: com o HD ligado a 1a particao vira **A:** e os disquetes passam a B:. O MSX-DOS so' inicia sozinho
+   se houver `COMMAND2.COM` em A:; senao o Nextor cai no BASIC ("Nextor BASIC version 2.10"), onde `FILES`, `OPEN`, `COPY "B:..." TO "A:..."` funcionam e **as gravacoes vao
+   direto para o arquivo da imagem**. So' a 1a particao de cada disco ganha letra sozinha (as outras pedem o `MAPDRV` do Nextor, nao testado aqui).
+
+### Cartao SD (MegaSD)
+
+O **MegaSD** do OCM/ESE (um mapper ESE-RAM de 1 MB com o cartao SD em SPI mapeado em memoria) com o **Nextor 2.1.4 e o driver MegaSDHC** do pacote do KdL. O cartao e' emulado em
+modo SPI (SDSC ate' 2 GB, SDHC acima) sobre a **mesma imagem** do `--hdnew`.
+
+- `fwmsx --msx --msx2p --sd cartao.hdd` (`--megasd-rom <rom>`, `--megasd-slot P:S`; padrao no slot **3:3**), o comando `sd cartao.hdd` (`sd off`), ou *Midia > Cartao SD (MegaSD)*.
+- Vale em qualquer modelo; a ROM padrao e' `roms/ocm/roms/nextsd15.rom`. `sd` sem argumentos mostra o estado (cartao, tipo SDSC/SDHC, setores).
+
+### A maquina OCM (1chipMSX / MSX++)
+
+A quarta maquina, ao lado de MSX1, MSX2 e MSX2+: uma **MSX2+** com o mapa de slots do OCM-PLD.
+
+| Slot | Conteudo |
+|---|---|
+| 0-0 | BIOS MSX2+ de 32 KB (`a1wsxbsl.rom`, teclado brasileiro; `--ocm-main` troca) |
+| 0-2 | MSX-Music (`msx2pmus.rom`) |
+| 3-0 | mapper interno de 4096 KB |
+| 3-1 | sub-ROM + Kanji BASIC / logo (`knmsxppl.rom`; `--ocm-logo` troca) |
+| 3-2 | MegaSD + Nextor (`nextsd15.rom`); o cartao e' o `--sd` |
+| 3-3 | XBASIC |
+
+E ainda a **ROM de Kanji** (portas D8h-DBh, JIS nivel 1 e 2) e as **portas comutadas** (40h-4Fh; o ID D4h identifica o MSX++). Uso: `fwmsx --msx --ocm [--sd cartao.hdd]` ou *Maquina > Modelo >
+OCM / MSX++*. A inicializacao leva uns 10 segundos de tempo emulado por causa da animacao do logo MSX++. Falta: a velocidade da CPU, os DIP-SW virtuais e o ESE-SCC de 2 MB nos slots
+1 e 2. Ver [ocm-spec.md](ocm-spec.md) e [hd-spec.md](hd-spec.md).
 
 ## Disco novo em branco e FORMAT
 
@@ -1292,11 +1365,6 @@ O editor de textos tambem existe como **interface grafica**, no visual do fwMSX 
 - **Basic Dignified: erro de execucao -> linha do fonte**: depois de F5, se o BASIC parar com `Syntax error in 130`, use *Montar > BASIC line...*, digite a mensagem (ou so' `130`) e o cursor vai para a linha do `.dmx` (ou do `.include`) que gerou essa linha. Vale para a ultima conversao (F9/F5) feita no editor.
 - **Basic Dignified: arquivos de apoio e NestorBASIC**: o disquete que o F5/`badigrun` monta leva, alem do `.bmx` e do `AUTOEXEC.BAS`, os arquivos que o programa precisa: `##BB:disk_files=dados.txt *.bin` no fonte (nomes ou mascaras da pasta do fonte; nomes 8.3), a opcao `disk_files` do `badig.cfg` ou *Montar > Dignified setup* (pagina 2). Para o **NestorBASIC**: `include "nbasic.dmx"` (a biblioteca fica em `badig/` ao lado do executavel; so' as funcoes `.NB_*` que voce chama entram no programa) e o `NBASIC.BIN` vai sozinho para o disco; ponha o `include` DEPOIS do `END` (as funcoes sao alvos de `GOSUB`). O snippet `nbload` (Tab) escreve o carregador completo.
 - **Basic Dignified** (`.dmx`): o editor reconhece o dialeto (destaque, completar, snippets) e o menu **Build** o converte: **F9** (Assemble / Convert) transforma o texto da aba no BASIC ASCII (`.amx`) e no **BASIC tokenizado do MSX (`.bmx`)**, gravados ao lado do `.dmx`, e leva o cursor ao primeiro erro; **F5 (Run on MSX)** converte e executa no emulador (monta um disquete com o `.bmx` e um `AUTOEXEC.BAS`; precisa de uma maquina com interface de disquete, `--disk`). **Montar > Dignified setup...** abre a configuracao em duas paginas (linha inicial e passo, cabecalho REM, tirar espacos, maiusculas, traducao Unicode, PRINT x `?`, THEN/GOTO, tokenizar, `.lmx`, relatorios); fica no `badig.cfg` ao lado do executavel, e as remtags `##BB:arguments=-ss -ca` do proprio fonte mandam por arquivo. No terminal: `fwmsx --badig [opcoes] prog.dmx` ou, no console, `badig prog.dmx` e `badigrun prog.dmx`; `man badig` lista as opcoes (as do badig.py: `-ls -lp -rh -ss -ca -tr -cp -tg -lbr -lnr -var ...`). A conversao e' igual a do Basic Dignified Suite original (v2.2.1).
-- **Maquina OCM (1.43.25)**: o 1chipMSX / MSX++ como quarta maquina (MSX1, MSX2, MSX2+ e OCM). Precisa das ROMs do pacote SDBIOS do KdL em `roms/ocm/roms` (a1wsxbsl.rom, 2pextrtc.rom, msx2pmus.rom, xbasic21.rom, a1xxjis1.rom, knmsxppl.rom, nextsd15.rom...). `fwmsx --msx --ocm [--sd cartao.hdd]` ou o menu *Maquina > Modelo > OCM / MSX++*. E' uma MSX2+ com mapper de 4096 KB, a ROM de Kanji (portas D8h-DBh), as portas comutadas (40h-4Fh; o ID D4h identifica o MSX++) e o MegaSD com o Nextor no slot 3-2: o cartao SD e' a imagem dada em `--sd`. `--ocm-main a1wsxyen.rom` troca o teclado da BIOS (o padrao e' o brasileiro). A inicializacao leva uns 10 segundos por causa da animacao do logo. Veja `doc/ocm-spec.md`.
-- **Cartao SD (1.43.24)**: o MegaSD do OCM com o Nextor. Precisa das ROMs do pacote SDBIOS do KdL em `roms/ocm/roms` (a `nextsd15.rom`). Crie a imagem como a do disco rigido (`fwmsx --hdnew cartao.hdd 2G 2G`) e ligue com `fwmsx --msx --msx2p --sd cartao.hdd`, o comando `sd cartao.hdd` ou o menu *Midia > Cartao SD (MegaSD)*. Imagens acima de 2 GB viram SDHC. Slot 3:3 (`--megasd-slot P:S`). `man sd`.
-- **Disco rigido (1.43.23)**: a interface Sunrise ATA-IDE com o **Nextor** (o MSX-DOS 2 novo). 1) Crie a imagem: `fwmsx --hdnew sd.hdd 2G 2G` (4 GB em 2 particoes FAT16; cada particao de 8 MB a 2 GB, ate' 4 particoes e 4 GB ao todo; um cartao SD e' so' outra imagem), ou o menu *Midia > Disco rigido (IDE) > Novo disco rigido / cartao SD...*, ou `newhd` no console/TUI. 2) Ligue: `fwmsx --msx --msx2 --ide sd.hdd` (a ROM do Nextor vem do banco de ROMs; `--nextor <rom>` escolhe outra; `--ide-slave` liga um segundo disco), ou `ide sd.hdd` no console, ou o menu. A interface fica no slot 3:0. Com o HD ligado a 1a particao vira **A:** (os disquetes passam a B:); o MSX-DOS so' inicia sozinho se houver COMMAND2.COM em A:, senao o Nextor cai no BASIC (copie os arquivos do sistema para o HD com `copy`). `ide` mostra o estado; `ide off` desliga. Veja `man ide`, `man newhd` e `doc/hd-spec.md`.
-- **RAM mapeada (1.43.22)**: a MSX2/2+ vem com um mapper de 128 KB. `--ram 512` (ou *Maquina > RAM mapeada (mapper)*) escolhe 64, 128, 256, 512, 1024, 2048 ou 4096 KB (4096 KB e' o maximo do hardware: o registrador das portas FCh-FFh tem 8 bits). `--ram2 1024` liga um segundo mapper, "externo" (slot 3:3; `--ram2-slot P:S` muda), ao lado do interno: as portas escrevem nos dois e cada um mascara pelo proprio tamanho. O comando `mapper` mostra o tamanho e o segmento de cada pagina. Serve para depurar programas que so' reconhecem o mapper interno ou so' o maior.
-- **MSX-DOS 2 (1.43.21)**: o kernel do MSX-DOS 2 e' uma ROM de 64 KB que entra como cartucho no slot 1; o disco leva so' `MSXDOS2.SYS` e `COMMAND2.COM`. Baixe o *Full Set System ROMs* (janela Downloads) e rode `dos2` no console, ou o menu *Midia > Cartucho > Iniciar MSX-DOS 2 (ROM do banco)*, ou `fwmsx --msx --msx2 --dos2 --disk sistema.dsk`. `dos2 <disco.dsk>` ja' poe o disco em A:; `dos2 off` desliga. Use uma MSX2 (tem relogio e RAM mapeada; na MSX1 o COMMAND2 pergunta a data). No `Obifile`, `dos: 2` monta o disco do sistema (F6) e o comando `obirun` liga o MSX-DOS 2 e roda o disco. Veja `man dos2`.
 - **Download com barra e identificacao das ROMs (1.43.20)**: os downloads (System ROMs, Downloads, assinaturas) rodam sem abrir janela de console e mostram uma barra com o nome do arquivo, MB baixados / total e a porcentagem (em `fwmsx --romdb` e' uma linha que se reescreve). O menu **ROMs > Baixar assinaturas do openMSX** (ou `fwmsx --romdb sig download`) traz os XML de maquinas e extensoes do openMSX e guarda no `roms.db` o SHA-1 oficial de cada ROM de sistema; o botao **Identificar (openMSX + Vampier)** do *Banco de ROMs* (ou `romdb identify`) marca as ROMs que voce tem: coluna **Papel** (ex.: "MSX-DOS 2", "MSX Sub ROM"), nome oficial do arquivo (`msxdos22.rom`), familia, as maquinas que usam aquela ROM e a categoria. Depois do download do Full Set System ROMs isso acontece sozinho. A busca acha por qualquer desses nomes e pelo SHA-1.
 - **Comandos do VDP (1.43.19)**: no console, `vdp` mostra os registradores do VDP em hexa com os bits decodificados (tela ligada, interrupcoes, tamanho dos sprites, 192/212 linhas, NTSC/PAL) e o status; `vdp pal` mostra a paleta (MSX2); `vdp 7` le o registrador 7 e `vdp 7 0x1F` grava como um `OUT` do Z80 faria. O BIOS guarda copias dos registradores e pode desfazer a mudanca: `vdpbios 7 0x1F` grava tambem a copia dele. `screen info` mostra o modo de tela e os enderecos, na VRAM, das tabelas de nomes, cores, padroes, atributos de sprite, cores de sprite e padroes de sprite. Nos scripts: `msx.vdp(n [, valor])` e `msx.screen()`. Detalhes em `man vdp`.
 - **Erro do BASIC volta ao fonte (1.43.18)**: depois do **F5** num `.dmx` o editor fica de olho na tela do MSX. Se o programa parar com uma mensagem de erro (`Syntax error in 130`, `Type mismatch in 40`, `Break in 20`...) e o prompt `Ok`, a janela do editor volta para a frente com o cursor na linha do `.dmx` (ou do `.include`) que gerou a linha BASIC do erro. Vale so' para tela de texto (SCREEN 0/1) e dura 3 minutos depois do F5; o *Run > BASIC line...* continua servindo para digitar o numero a mao. No console, `screen` mostra o texto da tela do MSX.

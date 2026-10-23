@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.26] - 2026-10-24 - "Yie Ar Kung-Fu: Documentacao" (Konami)
+
+### Documentacao
+- **README.md**: o splash do fwMSX no topo como cartao de visita; o **Historico das versoes** agora e' uma lista de uma linha por versao (antes saia como um bloco de texto corrido), as mais novas visiveis e as antigas recolhidas; recursos atuais (MSX-DOS 2, mappers, disco rigido, cartao SD, OCM), estrutura do projeto com os modulos novos, limites atualizados.
+- **Screenshots renovadas** (`tools/assets/make_screenshots.py`, geradas pelo proprio emulador): as cinco de antes refeitas e **nove novas** - o OCM no prompt e o logo MSX++, o MSX-DOS 2, o Nextor com o disco rigido IDE e com o cartao SD, e Yie Ar Kung-Fu, Penguin Adventure, Space Manbow e Aleste.
+- **MANUAL.md**: secao nova "MSX-DOS 2, RAM mapeada, disco rigido, cartao SD e OCM" (antes eram itens soltos de uma lista), as opcoes de linha de comando novas na tabela (`--ram`, `--ram2`, `--slot`, `--dos2`, `--ide`, `--sd`, `--ocm`...), "o que funciona / nao funciona" e o indice.
+- **Manual embutido**: `man ocm`.
+
 ## [1.43.25] - 2026-10-24 - "Yie Ar Kung-Fu: Maquina OCM" (Konami)
 
 ### Adicionado -- a maquina OCM (1chipMSX / MSX++)

@@ -17,6 +17,14 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.26 -- "Yie Ar Kung-Fu: Documentacao" (Konami) (2026-10-24)
+
+**Pedido do usuario**: "ajuste a documentacao agora, atualize tudo e manuais, gere o release e mande para o GitHub": no README, o *Historico das Versoes* nao saia linha a linha (saia um bolo de texto sem salto de linha); renovar as screenshots, colocar mais algumas e o **splash bem no topo** como cartao de visita.
+- **Causa do bolo de texto**: o historico era um paragrafo Markdown (linhas seguidas viram uma so') misturado com itens em negrito. Agora e' uma lista (`- **1.43.25** -- ...`), da mais nova para a mais antiga; as de 1.43 a 1.40 ficam abertas e as anteriores dentro de `<details>`.
+- **Screenshots**: o script `tools/assets/make_screenshots.py` ganhou `extra_shots()` (e o argumento `extra` para refazer so' as novas): 09 OCM no prompt, 10 logo MSX++, 11 MSX-DOS 2, 12 Nextor + IDE, 13 Nextor + SD, 14 a 17 jogos. Conferidas uma a uma; a captura do Metal Gear 2 mostrou um quadro mal desenhado na abertura (nao entrou; anotado em `OUTLINE.md`).
+- **Docs**: README, MANUAL (secao nova), man `ocm`, CHANGELOG, RELEASE, SPEC 5.0, OUTLINE, `machine-spec.md` e `LICENSE-THIRD-PARTY.md` (o pacote do KdL: uso local, nao redistribuido).
+- Sem mudanca de comportamento do emulador. Validado: Windows e Linux, `ctest` 100% (35).
+
 ## v1.43.25 -- "Yie Ar Kung-Fu: Maquina OCM" (Konami) (2026-10-24)
 
 **Pedido do usuario**: "sim, vamos para o OCM" (depois da analise do pacote do KdL: o OCM como maquina e' viavel). **Achados**: (1) o mapa de slots completo esta' nos comentarios do `emsx_top.vhd`; (2) as ROMs do pacote bastam (BIOS A1WSX, sub-ROM, MSX-Music, XBASIC, Kanji JIS1/JIS2, Kanji BASIC); (3) **o Kanji BASIC anima o logo esperando a colisao de sprites linha a linha** - o VDP so' a avaliava no fim do quadro, e a inicializacao levava ~70 s; com a colisao por linha leva ~10 s; (4) o teclado do `a1wsxbsl` e' o brasileiro.

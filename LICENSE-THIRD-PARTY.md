@@ -300,6 +300,17 @@ os pacotes de release nao levam. A frase acima ("nada disso e' distribuido como 
 o **repositorio** publica (ROMs de jogos em `tests/media/`, o banco `dist/roms/`, discos e ROMs dentro de `resource/`, pacotes antigos em `dist/`...)
 e as opcoes de tratamento estao em [doc/media-review.md](doc/media-review.md). **Aplicado em 2026-10-22**: `tests/media/`, `dist/roms/`, os pacotes antigos de `dist/`, `*.sst` e as capturas soltas deixaram de ser rastreados e estao no `.gitignore` (continuam no disco do autor); o historico nao foi reescrito, e `resource/` segue como estava, a decidir.
 
+## Pacote OCM-PLD / SDBIOS do KdL (`third-party/ocm/` e `dist/roms/ocm/`, 2026-10-24)
+
+O usuario baixou o pacote **OCM-PLD v3.9.2 e SDBIOS** (KdL; o link do SDBIOS e' enviado por e-mail pelo autor) para `third-party/ocm/` (788 MB; **no `.gitignore`**) e copiou o que o
+emulador usa (ROMs, utilitarios, `msxtools`, o fonte do driver do Nextor) para `dist/roms/ocm/` (tambem ignorado: `dist/roms/` nao entra no git). **Nada disso e' redistribuido** com o
+fwMSX nem publicado neste repositorio.
+- As **ROMs** (BIOS A1WSX, sub-ROM, MSX-Music, Kanji, XBASIC, Nextor + driver MegaSDHC...) sao material de terceiros (a base e' do Panasonic FS-A1WSX, modificada pelo KdL; o Nextor e' do
+  Konamiman): uso pessoal/local.
+- O **VHDL/Verilog** do OCM-PLD (`emsx_top.vhd`, `megasd.v`, `swioports.vhd`...) tem licenca que proibe uso comercial e exige manter o aviso; foi lido **so' como referencia** para
+  o mapa de slots e as portas, e o codigo do fwMSX (`src/hd`, `src/ocm`) e' **original** (BSD-3-Clause).
+- A documentacao de como o usuario baixa o pacote e a opcao de download (modo INTERNAL) ainda serao escritas.
+
 ## Arte propria
 
 `fwMSX-splash.png` (a imagem de abertura) e o icone do programa sao **arte do proprio projeto** (informacao do autor, 2026-10-22), sob o BSD-3-Clause
