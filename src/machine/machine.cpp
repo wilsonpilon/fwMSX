@@ -297,6 +297,19 @@ void SetCartridge(MachineConfig &config, const std::string &path, MemMapMapperTy
     config.layout_set = true;
 }
 
+void EnableDiskInterface(MachineConfig &config) {
+    config.disk_interface = true;
+    if (!config.layout_set) return;
+    for (int p = 0; p < 4; ++p)
+        for (int s = 0; s < 4; ++s)
+            if (config.layout.cell[p][s].kind == SlotKind::Disk) return;
+    MachineConfig probe = config;
+    probe.layout_set = false;
+    const SlotLayout def = DefaultLayout(probe);
+    SlotItem &cell = config.layout.cell[3][1];
+    if (cell.kind == SlotKind::Empty || cell.kind == SlotKind::SubRom) cell = def.cell[3][1];
+}
+
 void SetFmPac(MachineConfig &config, const std::string &path) {
     SlotLayout layout = EffectiveLayout(config);
     layout.cell[2][0] = SlotItem{};

@@ -44,6 +44,11 @@ bool DownloadFileHunterFullSet(const RomPaths &paths, RomDb &db, const std::stri
 bool DownloadFileHunterEntry(const RomPaths &paths, RomDb &db, const std::string &entry_url, const Log &log,
                              int64_t &added, std::string &error);
 
+// A ROM do kernel do MSX-DOS 2 (cartucho de 64KB, mapper msxdos2) que o banco ja' tem no disco: o msxdos22.rom do openMSX (pelo SHA-1, mesmo antes do
+// `identify`), depois qualquer ROM de 64KB com o papel "MSX-DOS 2", depois as variantes conhecidas. Devolve o caminho completo ou "" (e `error` diz
+// o que fazer). Nao baixa nada.
+std::string FindMsxDos2Rom(const RomPaths &paths, std::string &error);
+
 // Assinaturas das ROMs de sistema do openMSX (nome oficial, papel, hardware): baixa os XML de share/machines e share/extensions do GitHub (um unico curl,
 // ~350 arquivos pequenos), le, grava na tabela `signatures` e identifica as ROMs do banco. `sigs` = quantas ROMs distintas o openMSX reconhece.
 bool DownloadOpenmsxSignatures(const RomPaths &paths, RomDb &db, const Log &log, int64_t &identified, std::string &error);

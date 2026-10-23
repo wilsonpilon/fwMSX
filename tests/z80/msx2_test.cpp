@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <string>
@@ -317,6 +318,40 @@ int main() {
             check(VramHas(*dm, "COMMAND  COM") && VramHas(*dm, "MSXDOS   SYS") && VramHas(*dm, "2 files"), "MSX2: dir lista os dois arquivos do disco");
         }
         std::remove(dos_tmp.c_str());
+    }
+
+    // --- 8b. MSX-DOS 2: o kernel de 64KB no slot 1 (mapper msxdos2) + a interface de disquete + um disco de sistema do MSX-DOS 2 ------------------
+    // A ROM vem do Full Set System ROMs (nao fica no repositorio) e o disco de sistema e' o de emulator/ (gerado na build); sem eles o bloco e' pulado.
+    {
+        namespace fsys = std::filesystem;
+        const fsys::path rom = fsys::path(FWMSX_SOURCE_DIR) / "dist/roms/filehunter/15-08-2026/extensions/msxdos22.rom";
+        const fsys::path dsk = fsys::path(FWMSX_SOURCE_DIR) / "dist/emulator/msxdos2.dsk";
+        std::error_code ec;
+        if (!fsys::is_regular_file(rom, ec) || !fsys::is_regular_file(dsk, ec)) {
+            std::printf("[SKIP] MSX-DOS 2: msxdos22.rom ou emulator/msxdos2.dsk nao encontrados\n");
+        } else {
+            const fsys::path tmp = fsys::temp_directory_path() / "fwmsx_msx2_dos2.dsk";
+            fsys::copy_file(dsk, tmp, fsys::copy_options::overwrite_existing, ec);
+            machine::MachineConfig dc = config;
+            machine::EnableDiskInterface(dc);
+            machine::SetCartridge(dc, rom.string(), MEMMAP_MAPPER_MSXDOS2);
+            dc.disk_a = tmp.string();
+            std::unique_ptr<machine::Machine> dm = machine::Machine::Create(dc, error);
+            check(dm != nullptr, "MSX-DOS 2: Create() com o cartucho msxdos2 e o disco (" + error + ")");
+            if (dm) {
+                Frames(*dm, 900);
+                check(VramHas(*dm, "A:\\>"), "MSX-DOS 2: o prompt e' o do DOS 2 (A:\\>), com o relogio da MSX2 (sem perguntar a data)");
+                Type(*dm, "ver|");
+                Frames(*dm, 200);
+                check(VramHas(*dm, "MSX-DOS kernel version 2.") && VramHas(*dm, "COMMAND2.COM version 2."), "ver: kernel 2.xx do cartucho e COMMAND2.COM do disco");
+                Type(*dm, "mkdir sub|");
+                Frames(*dm, 400);
+                Type(*dm, "dir|");
+                Frames(*dm, 300);
+                check(VramHas(*dm, "SUB") && VramHas(*dm, "<dir>"), "mkdir/dir: subdiretorios (so' o MSX-DOS 2 tem) gravados e listados");
+            }
+            fsys::remove(tmp, ec);
+        }
     }
 
     // --- 9. MSX1 continua igual ----------------------------------------------------------------

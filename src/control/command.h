@@ -63,6 +63,19 @@ public:
     virtual void quit() = 0;
     // Troca o cartucho (reinicia a maquina). `path` vazio = retira. `mapper` "" = automatico.
     virtual bool LoadCartridge(const std::string &path, const std::string &mapper, std::string &error) = 0;
+    // O caminho da ROM do kernel do MSX-DOS 2 (a do banco de ROMs); "" = nao achou (e `error` diz o que fazer).
+    virtual std::string FindDos2Rom(std::string &error) {
+        error = "o MSX-DOS 2 nao esta' disponivel neste modo";
+        return "";
+    }
+    // Reinicia a maquina como um MSX-DOS 2: `rom` no slot 1 (mapper msxdos2), interface de disquete ligada e, se `disk` nao e' vazio, ele em A:.
+    // Mantem o resto da configuracao (discos, fita). `rom` vazio = so' desliga o cartucho (a maquina volta ao que era).
+    virtual bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) {
+        (void)rom;
+        (void)disk;
+        error = "o MSX-DOS 2 nao esta' disponivel neste modo";
+        return false;
+    }
     // Grava a tela em `path` (PNG na janela; o formato e' do host).
     virtual bool SaveScreenshot(const std::string &path, std::string &error) = 0;
 };

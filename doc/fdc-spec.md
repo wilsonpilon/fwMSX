@@ -108,6 +108,7 @@ por `FdcDisk`. O endereco de um setor e' `((trilha x lados + lado) x setores/tri
   MSX-DOS 1), mas o cartucho generico de MSX-DOS 2 FUNCIONA via
   `--cart MSXDOS2.ROM msxdos2` (`MEMMAP_MAPPER_MSXDOS2`) -- nao precisa de mapper de
   RAM, so' da interface de disco de sempre. Ver `doc/memory-map-spec.md`, secao 6.
+  **Testado com a ROM real desde a 1.43.21** (`msxdos22.rom`, kernel 2.20): boot, `ver`, `mkdir`, gravacao em subdiretorio. Atalho: `dos2` / `--dos2` (`man dos2`).
 - **Troca de disco "a quente":** funciona (o menu insere/ejeta), mas o
   MSX-DOS 1 so' percebe a troca na proxima leitura do disco; nao ha' o sinal
   de "disk changed" do hardware real alem do que a ROM ja' faz.

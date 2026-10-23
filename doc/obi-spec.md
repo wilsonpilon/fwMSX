@@ -40,6 +40,7 @@ No console do emulador: `obi build [Obifile]`, `obi check [Obifile]` e `obirun [
 | `files:` | a lista de arquivos (`- caminho` ou `- source: caminho` + `name:`). Obrigatoria. Caminhos relativos a pasta do Obifile. |
 | `boot:` | o arquivo, **pelo nome no disco**, que inicia sozinho. Vazio = o primeiro `.BMX`; sem `.BMX`, o disco nao inicia nada. |
 | `dos:` | `1` ou `2` = o disco leva o **MSX-DOS 1 ou 2**, montado a partir dos arquivos da pasta `emulator/msxdos1` ou `emulator/msxdos2` (secao 5b). `true` (forma antiga) = parte de um disco de sistema pronto, dado por `dos_disk`. |
+| `dos: 2` e o emulador | (1.43.21) o comando `obirun` liga o cartucho do MSX-DOS 2 (a ROM do banco de ROMs, `romdb::FindMsxDos2Rom`) e poe o disco em A:; `BuildResult::dos_version` diz qual DOS a receita pediu. |
 | `dos_tools:` | `true` (so' com `dos: 2`) = leva tambem `UTILS\`, `HELP\`, `AUTOEXEC.BAT` e o resto da pasta do MSX-DOS 2 (cabe: sobram uns 300 KiB). |
 | `dos_disk:` | com `dos: true`: o disco de sistema pronto. Vazio = procura `msxdos1.dsk` (na pasta do Obifile, em `dos/` e em `disks/`). |
 

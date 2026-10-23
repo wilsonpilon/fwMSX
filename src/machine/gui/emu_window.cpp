@@ -32,6 +32,7 @@
 #include "../../msxdisk/gui/style.h"
 #include "video_filters.h"
 #include "rom_manager.h"
+#include "../../romdb/service.h"
 #include "../../editor/gui/editor_panel.h"
 #include "../../psg/cpp/psg_device.h"
 #include "../../psg/core/psg_state.h"
@@ -144,6 +145,8 @@ struct WindowControlHost : control::Host {
     std::function<void()> do_quit;
     std::function<bool(const std::string &, const std::string &, std::string &)> do_cart;
     std::function<bool(const std::string &, std::string &)> do_shot;
+    std::function<std::string(std::string &)> find_dos2;
+    std::function<bool(const std::string &, const std::string &, std::string &)> do_dos2;
 
     Machine &machine() override { return get_machine(); }
     bool paused() const override { return get_paused(); }
@@ -153,6 +156,8 @@ struct WindowControlHost : control::Host {
         return do_cart(path, mapper, error);
     }
     bool SaveScreenshot(const std::string &path, std::string &error) override { return do_shot(path, error); }
+    std::string FindDos2Rom(std::string &error) override { return find_dos2(error); }
+    bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) override { return do_dos2(rom, disk, error); }
 };
 
 // Estado compartilhado com os callbacks do GLFW (que nao carregam ponteiro
@@ -570,6 +575,23 @@ int RunEmulatorWindow(const WindowOptions &options) {
             return false;
         }
         cart_mapper_choice = mapper_kind;
+        return true;
+    };
+    ctl_host.find_dos2 = [&](std::string &error) { return romdb::FindMsxDos2Rom(romdb::RomPaths{options.rom_root}, error); };
+    ctl_host.do_dos2 = [&](const std::string &rom, const std::string &disk, std::string &error) {
+        MachineConfig next = snapshot();
+        if (rom.empty()) {
+            SetCartridge(next, std::string(), MEMMAP_MAPPER_NONE);
+        } else {
+            EnableDiskInterface(next);
+            SetCartridge(next, rom, MEMMAP_MAPPER_MSXDOS2);
+            if (!disk.empty()) next.disk_a = disk;
+        }
+        if (!reboot(next)) {
+            error = disk_message;
+            return false;
+        }
+        cart_mapper_choice = rom.empty() ? MEMMAP_MAPPER_NONE : MEMMAP_MAPPER_MSXDOS2;
         return true;
     };
     ctl_host.do_shot = [&](const std::string &path, std::string &error) {
@@ -1217,6 +1239,17 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     if (!machine->cart_info().empty()) ImGui::TextDisabled("%s", machine->cart_info().c_str());
                     ImGui::Separator();
                     if (ImGui::MenuItem("Inserir cartucho...")) LoadCartridgeFromDialog();
+                    if (ImGui::MenuItem("Iniciar MSX-DOS 2 (ROM do banco)")) {
+                        std::string dos2_error;
+                        const std::string rom = romdb::FindMsxDos2Rom(romdb::RomPaths{options.rom_root}, dos2_error);
+                        if (rom.empty()) {
+                            disk_message = dos2_error;
+                        } else {
+                            std::string boot_error;
+                            if (!ctl_host.BootDos2(rom, std::string(), boot_error)) disk_message = boot_error;
+                        }
+                    }
+                    if (ImGui::IsItemHovered()) ImGui::SetTooltip("O kernel do MSX-DOS 2 (msxdos22.rom) no slot 1, com a interface de disquete.\nPrecisa do Full Set System ROMs baixado. Insira um disco do MSX-DOS 2 em A:.");
                     if (ImGui::MenuItem("Retirar cartucho", nullptr, false, !cart.empty())) {
                         MachineConfig next = snapshot();
                         SetCartridge(next, "");

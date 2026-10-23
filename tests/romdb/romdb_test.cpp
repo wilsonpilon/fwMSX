@@ -337,6 +337,36 @@ int main() {
                   got.hardware == "Maquina 0, Maquina 1, Maquina 2, Maquina 3, Maquina 4, Maquina 5 (+2)" && got.category == "bios",
               "hardware: no maximo 6 nomes e o resto contado");
 
+        // FindMsxDos2Rom: a ROM de 64KB com o papel "MSX-DOS 2" (identificada pelas assinaturas) e que existe no disco
+        {
+            const fs::path droot = sdir / "dos2";
+            fs::create_directories(droot / "ext");
+            romdb::RomPaths dpaths;
+            dpaths.root = droot.string();
+            std::string derr;
+            check(romdb::FindMsxDos2Rom(dpaths, derr).empty() && !derr.empty(), "FindMsxDos2Rom: banco vazio = erro que diz o que fazer");
+            const std::vector<uint8_t> rom64(65536, 0x55);
+            {
+                std::ofstream f(droot / "ext" / "dos.rom", std::ios::binary);
+                f.write(reinterpret_cast<const char *>(rom64.data()), static_cast<std::streamsize>(rom64.size()));
+            }
+            romdb::RomDb ddb;
+            romdb::RomRecord drec;
+            check(ddb.Open(dpaths.db_file(), derr) && ddb.ScanFile((droot / "ext" / "dos.rom").string(), droot.string(), "scan", drec, derr), "FindMsxDos2Rom: ROM de 64KB cadastrada");
+            romdb::SigRow sig;
+            sig.sha1 = drec.sha1;
+            sig.filename = "dos.rom";
+            sig.role = "MSX-DOS 2";
+            sig.family = "OS ROM";
+            sig.hardware = "MSX-DOS 2";
+            sig.source = "extension";
+            check(ddb.ReplaceSignatures({sig}, derr) && ddb.IdentifyWithOpenmsx(derr) == 1, "FindMsxDos2Rom: identificada como MSX-DOS 2");
+            const std::string found = romdb::FindMsxDos2Rom(dpaths, derr);
+            check(!found.empty() && fs::path(found).filename() == "dos.rom", "FindMsxDos2Rom acha a ROM pelo papel (" + found + ")");
+            fs::remove(droot / "ext" / "dos.rom");
+            check(romdb::FindMsxDos2Rom(dpaths, derr).empty(), "FindMsxDos2Rom: o arquivo sumiu do disco = nao acha");
+        }
+
         // banco antigo (sem as colunas da identificacao): Open() acrescenta so' o que falta
         const fs::path old_db = sdir / "antigo.db";
         {

@@ -41,6 +41,7 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `peek <end> [n]` | le n bytes (1-4096) como o Z80 enxerga agora; `ok 41 42 ...` |
 | `poke <end> <v>...` | grava bytes (ROM nao e' alterada) |
 | `regs` | registradores do Z80 |
+| `dos2 [rom.rom] [disco.dsk]` \| `dos2 off` | liga o MSX-DOS 2: o kernel (64 KB, mapper msxdos2; sem `rom.rom`, o do banco de ROMs) no slot 1, interface de disquete, `disco.dsk` em A:; reinicia. `off` tira o cartucho |
 | `cart <arq\|-> [mapper]` | troca o cartucho (reinicia); `-` retira; mapper: auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2 |
 | `disk <A\|B> <arq>` / `eject <A\|B>` | insere / ejeta disco |
 | `asmrun [-z] [-n] [--dos-disk <arq>] <fonte.asm>` | monta, grava as saidas e carrega na maquina (cartucho, fita ou disco); entrega simbolos e linhas ao depurador (debug-spec.md, secao 8) |

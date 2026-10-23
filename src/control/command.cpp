@@ -53,7 +53,7 @@ int DriveIndex(const std::string &s) {
 
 const char *kHelp =
     "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] screen [info] (texto da tela / modo e tabelas) vdp [pal|n [v]] vdpbios n v (registradores do VDP) "
-    "poke <end> <v>... regs cart <arq|-> [mapper] disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
+    "poke <end> <v>... regs cart <arq|-> [mapper] dos2 [rom] [disco]|off (MSX-DOS 2) disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
@@ -685,6 +685,28 @@ Result Commander::Execute(const std::string &line) {
         const Z80State &s = m.cpu().state();
         return Ok("AF=" + Hex(s.af.w, 4) + " BC=" + Hex(s.bc.w, 4) + " DE=" + Hex(s.de.w, 4) + " HL=" + Hex(s.hl.w, 4) +
                   " IX=" + Hex(s.ix.w, 4) + " IY=" + Hex(s.iy.w, 4) + " SP=" + Hex(s.sp.w, 4) + " PC=" + Hex(s.pc.w, 4));
+    }
+
+    if (cmd == "dos2") {
+        // dos2 [rom.rom] [disco.dsk] | dos2 off: o kernel do MSX-DOS 2 como cartucho no slot 1, a interface de disquete e o disco em A:
+        std::string rom, disk;
+        for (size_t i = 1; i < t.size(); ++i) {
+            std::string ext = std::filesystem::path(t[i]).extension().string();
+            for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (t[i] == "off" && t.size() == 2) {
+                std::string error;
+                if (!host_.BootDos2(std::string(), std::string(), error)) return Err("dos2: " + error);
+                return Ok("MSX-DOS 2 desligado; maquina reiniciada");
+            }
+            if (ext == ".rom" || ext == ".bin") rom = t[i];
+            else if (disk.empty()) disk = t[i];
+            else return Err("dos2: use dos2 [rom.rom] [disco.dsk] | dos2 off");
+        }
+        std::string error;
+        if (rom.empty()) rom = host_.FindDos2Rom(error);
+        if (rom.empty()) return Err("dos2: " + error);
+        if (!host_.BootDos2(rom, disk, error)) return Err("dos2: " + error);
+        return Ok("MSX-DOS 2: " + rom + " no slot 1" + (disk.empty() ? std::string() : "; A: " + disk) + "; maquina reiniciada");
     }
 
     if (cmd == "cart") {
@@ -1376,9 +1398,15 @@ Result Commander::ObiCmd(const std::vector<std::string> &t, bool run) {
     out += (o.write ? r.dsk : std::string("(nada gravado)")) + ": " + std::to_string(r.files.size()) + " arquivos, " + std::to_string(r.free_bytes / 1024) + " KiB livres";
     if (!run) return Ok(out);
 
+    std::string error;
+    if (r.dos_version == 2) { // `dos: 2`: o disco so' tem os arquivos do sistema; o kernel vem do cartucho no slot 1 (como no MSX real com o MSX-DOS 2)
+        const std::string rom = host_.FindDos2Rom(error);
+        if (rom.empty()) return Err(name + ": " + error + "\n" + out);
+        if (!host_.BootDos2(rom, r.dsk, error)) return Err(name + ": " + error + "\n" + out);
+        return Ok(out + "\nMSX-DOS 2 (" + rom + ") no slot 1; disco em A:; maquina reiniciada");
+    }
     machine::Machine &mm = host_.machine();
     if (!mm.has_disk_interface()) return Err(name + ": a maquina nao tem interface de disquete (inicie o emulador com --disk); o disco foi gerado: " + r.dsk + "\n" + out);
-    std::string error;
     if (!mm.InsertDisk(0, r.dsk, error)) return Err(name + ": " + error);
     mm.Reset();
     return Ok(out + "\ndisco em A:; maquina reiniciada");

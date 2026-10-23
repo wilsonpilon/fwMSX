@@ -42,6 +42,29 @@ bool OpenRomDb(const RomPaths &paths, RomDb &db, std::string &error) {
     return db.Open(paths.db_file(), error);
 }
 
+std::string FindMsxDos2Rom(const RomPaths &paths, std::string &error) {
+    RomDb db;
+    if (!OpenRomDb(paths, db, error)) return "";
+    // msxdos22.rom (a ROM generica do MSX-DOS 2.20), as variantes ASCII e a do MK DOS 2.20; o papel cobre as que o openMSX conhece e a gente nao listou
+    static const char *const kKnown[] = {"c36c9e0f96738a340381e23b4f97245388801a46", "42f4e3360eb134857b0efa82c1abedf342680124",
+                                         "0e253ee076eff37f7ee450c0b10c71763fac990b"};
+    std::vector<RomRecord> found;
+    for (const char *sha : kKnown) {
+        RomRecord r;
+        if (db.FindBySha1(sha, r)) found.push_back(r);
+    }
+    for (const RomRecord &r : db.Search("MSX-DOS 2", "")) {
+        if (r.role == "MSX-DOS 2" && r.size == 65536) found.push_back(r);
+    }
+    for (const RomRecord &r : found) {
+        const fs::path p = fs::path(r.path).is_absolute() ? fs::path(r.path) : fs::path(paths.root) / r.path;
+        std::error_code ec;
+        if (fs::is_regular_file(p, ec)) return p.string();
+    }
+    error = "nao achei a ROM do MSX-DOS 2 no banco de ROMs: baixe o Full Set System ROMs (janela Downloads ou `romdb filehunter-full`) ou use `dos2 <arquivo.rom>`";
+    return "";
+}
+
 namespace {
 
 // Copia para a pasta do tipo e registra no banco.

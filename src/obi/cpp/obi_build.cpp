@@ -507,6 +507,7 @@ BuildResult Build(const BuildOptions &o) {
     res.free_bytes = static_cast<long>(free_bytes);
 
     res.dsk = JoinPath(dir, rc.target);
+    res.dos_version = rc.dos_version;
     if (o.write) {
         std::error_code ec;
         const fs::path parent = fs::path(res.dsk).parent_path();

@@ -7,6 +7,14 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.21] - 2026-10-23 - "Yie Ar Kung-Fu: MSX-DOS 2" (Konami)
+
+### Adicionado -- MSX-DOS 2
+- O kernel do MSX-DOS 2 (`msxdos22.rom`, 64 KB, o que o `identify` marcou como "MSX-DOS 2") **sobe de verdade**: cartucho `msxdos2` no slot 1 + interface de disquete + um disco com `MSXDOS2.SYS` e `COMMAND2.COM` -> `A:\>`, `ver` (kernel 2.20, COMMAND2 2.44), subdiretorios (`mkdir`, `dir sub`), gravacao.
+- Comando **`dos2 [rom.rom] [disco.dsk]`** (e `dos2 off`): liga o MSX-DOS 2 numa linha so'. Sem a ROM, usa a do banco de ROMs (`romdb::FindMsxDos2Rom`: o `msxdos22.rom` pelo SHA-1, mesmo antes do `identify`; depois qualquer ROM de 64 KB com o papel "MSX-DOS 2"). Linha de comando: `--dos2 [rom]`. Menu *Midia > Cartucho > Iniciar MSX-DOS 2 (ROM do banco)*.
+- **`Obifile` com `dos: 2`**: o `obirun` liga o cartucho do MSX-DOS 2 sozinho e poe o disco em A: (antes so' montava o disco com o sistema).
+- `man dos2`; `control::Host` ganha `FindDos2Rom` e `BootDos2` (janela e terminal implementam).
+
 ## [1.43.20] - 2026-10-23 - "Yie Ar Kung-Fu: Download e identificacao" (Konami)
 
 ### Alterado -- download sem janela de console e com barra de progresso

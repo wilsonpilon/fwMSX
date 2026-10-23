@@ -276,6 +276,28 @@ EXEMPLOS
 VER TAMBEM
   romdb, reset)MAN");
 
+    add("dos2", "", "Midia e estado", "dos2 [rom.rom] [disco.dsk] | dos2 off", "liga o MSX-DOS 2: o kernel no slot 1 e o disco em A:",
+        R"MAN(DESCRICAO
+  O MSX-DOS 2 tem o kernel numa ROM de 64 KB (cartucho generico, mapper msxdos2) e no disco so' os
+  arquivos MSXDOS2.SYS e COMMAND2.COM. "dos2" poe essa ROM no slot 1, liga a interface de disquete,
+  coloca o disco em A: (se vier) e reinicia. Sem "rom.rom" usa a do banco de ROMs: o msxdos22.rom do
+  Full Set System ROMs (janela Downloads; depois "romdb identify" marca como "MSX-DOS 2"). "dos2 off"
+  tira o cartucho e reinicia.
+
+  O disco de sistema vem de "Obifile: dos: 2" (F6 no editor, ou "obi build") ou de dist/emulator/
+  msxdos2.dsk. Com "dos: 2" no Obifile, o comando "obirun" liga o MSX-DOS 2 sozinho.
+  Prefira uma MSX2 (--msx2): ela tem relogio e RAM mapeada, e o MSX-DOS 2 nao pergunta a data.
+
+  Na linha de comando: fwmsx --msx --msx2 --dos2 [rom.rom] --disk sistema.dsk
+
+EXEMPLOS
+  dos2 msxdos2.dsk
+  dos2 C:\roms\msxdos22.rom jogo.dsk
+  dos2 off
+
+VER TAMBEM
+  cart, disk, obi, romdb)MAN");
+
     add("disk", "", "Midia e estado", "disk <A|B> <arq>", "insere um disquete (.dsk) na unidade",
         R"MAN(DESCRICAO
   Insere a imagem .dsk (crua) na unidade A: ou B:. Precisa de interface de

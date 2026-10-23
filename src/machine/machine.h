@@ -162,6 +162,8 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error);
 // heuristica de tamanho/conteudo nao identifica sozinha (ex.: MSX-DOS 2, ver
 // doc/memory-map-spec.md, secao 6). Ignorado quando `path` esta vazio.
 void SetCartridge(MachineConfig &config, const std::string &path, MemMapMapperType mapper = MEMMAP_MAPPER_NONE);
+// Liga a interface de disquete mesmo que o layout ja' tenha sido fixado sem ela (a celula 3:1 passa a ter o DISK.ROM, e a sub-ROM da MSX2 na pagina 0).
+void EnableDiskInterface(MachineConfig &config);
 void SetFmPac(MachineConfig &config, const std::string &path);
 // Caminhos atuais no layout (vazio = nenhum).
 std::string CartridgePath(const MachineConfig &config);

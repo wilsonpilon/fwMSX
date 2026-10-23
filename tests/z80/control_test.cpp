@@ -86,6 +86,17 @@ public:
         config_ = next;
         return true;
     }
+    std::string FindDos2Rom(std::string &error) override {
+        if (dos2_found_.empty()) error = "sem ROM do MSX-DOS 2 (teste)";
+        return dos2_found_;
+    }
+    bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) override {
+        (void)error;
+        dos2_rom_ = rom;
+        dos2_disk_ = disk;
+        ++dos2_calls_;
+        return true;
+    }
     bool SaveScreenshot(const std::string &path, std::string &error) override {
         std::ofstream f(path, std::ios::binary);
         if (!f) {
@@ -98,6 +109,8 @@ public:
 
     bool ok() const { return machine_ != nullptr; }
     bool quit_ = false;
+    std::string dos2_found_, dos2_rom_, dos2_disk_;
+    int dos2_calls_ = 0;
 
 private:
     machine::MachineConfig config_;
@@ -253,6 +266,16 @@ void TestCommander(const std::string &bios) {
     }
     check(!cmd.Execute("cart /nao/existe.rom").ok, "cart inexistente = err");
     check(!cmd.Execute("cart x.rom naoexiste").ok, "cart com mapper desconhecido = err");
+
+    // dos2: o kernel do MSX-DOS 2 como cartucho (a ROM vem do host; a janela busca no banco de ROMs)
+    check(!cmd.Execute("dos2").ok && host.dos2_calls_ == 0, "dos2 sem ROM no banco = err, nada reiniciado");
+    host.dos2_found_ = "banco/msxdos22.rom";
+    const control::Result d2 = cmd.Execute("dos2 sistema.dsk");
+    check(d2.ok && host.dos2_calls_ == 1 && host.dos2_rom_ == "banco/msxdos22.rom" && host.dos2_disk_ == "sistema.dsk" && Contains(d2.text, "slot 1"),
+          "dos2 <disco>: ROM do banco no slot 1 e o disco em A: (" + d2.text + ")");
+    check(cmd.Execute("dos2 minha.rom").ok && host.dos2_rom_ == "minha.rom" && host.dos2_disk_.empty(), "dos2 <rom.rom>: usa a ROM dada, sem disco");
+    check(cmd.Execute("dos2 off").ok && host.dos2_rom_.empty() && host.dos2_calls_ == 3, "dos2 off: pede para tirar o cartucho");
+    check(!cmd.Execute("dos2 a.dsk b.dsk").ok, "dos2 com dois discos = err");
 
     // captura de tela (o formato e' do host)
     const std::string shot = TempPath("fwmsx_control_test.shot");

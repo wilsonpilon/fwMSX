@@ -29,6 +29,7 @@
 #include "../diskfmt/cpp/disk_creator.h"
 #include "../machine/screenshot.h"
 #include "../psg/core/psg_state.h"
+#include "../romdb/service.h"
 #include "../psg/cpp/psg_device.h"
 #include "../vdp/core/vdp_state.h"
 
@@ -181,6 +182,29 @@ public:
     }
     bool SaveScreenshot(const std::string &path, std::string &error) override {
         return !machine::SaveScreenshotPng(*machine_, error, path).empty();
+    }
+    std::string FindDos2Rom(std::string &error) override {
+        return romdb::FindMsxDos2Rom(romdb::DefaultRomPaths((std::filesystem::path(opts_.exe_dir) / "fwMSX").string()), error);
+    }
+    bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) override {
+        MachineConfig next = config_;
+        next.disk_a = machine_->disk(0).loaded() ? machine_->disk(0).path() : std::string();
+        next.disk_b = machine_->disk(1).loaded() ? machine_->disk(1).path() : std::string();
+        if (rom.empty()) {
+            machine::SetCartridge(next, std::string(), MEMMAP_MAPPER_NONE);
+        } else {
+            machine::EnableDiskInterface(next);
+            machine::SetCartridge(next, rom, MEMMAP_MAPPER_MSXDOS2);
+            if (!disk.empty()) next.disk_a = disk;
+        }
+        std::string sram_error;
+        machine_->SaveSram(sram_error);
+        std::unique_ptr<Machine> fresh = Machine::Create(next, error);
+        if (!fresh) return false;
+        machine_ = std::move(fresh);
+        config_ = next;
+        machine_->EnableLiveAudio(audio_ok_);
+        return true;
     }
 
 private:

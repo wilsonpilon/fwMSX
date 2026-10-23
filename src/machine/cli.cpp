@@ -178,6 +178,8 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
     bool dump_text = false;
     bool fm_stat = false;
     bool fmpac_explicit = false;
+    bool use_dos2 = false;
+    std::string dos2_rom;
     bool cart_mapper_explicit = false; // true so' quando o usuario ESCOLHEU um mapper (nao "auto"/omitido)
     std::vector<std::string> slot_specs;
     std::string wav_path;
@@ -272,6 +274,10 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
                     ++i;
                 }
             }
+        } else if (a == "--dos2") {
+            // MSX-DOS 2: o kernel (cartucho de 64KB, mapper msxdos2) no slot 1 + interface de disquete. Sem arquivo, usa o do banco de ROMs.
+            use_dos2 = true;
+            if (i + 1 < args.size() && args[i + 1].rfind("--", 0) != 0) dos2_rom = args[++i];
         } else if (a == "--term") {
             use_term = true; // maquina dentro do terminal (FTXUI) -- doc/term-spec.md
         } else if (a == "--ctl-port") {
@@ -390,6 +396,21 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
             std::cerr << "fwmsx --msx: argumento desconhecido: '" << a << "'" << std::endl;
             return 2;
         }
+    }
+
+    if (use_dos2) {
+        if (dos2_rom.empty()) {
+            std::string dos2_error;
+            dos2_rom = romdb::FindMsxDos2Rom(romdb::DefaultRomPaths(argv0), dos2_error);
+            if (dos2_rom.empty()) {
+                std::cerr << "fwmsx --msx: --dos2: " << dos2_error << std::endl;
+                return 2;
+            }
+        }
+        config.cart_path = dos2_rom;
+        config.cart_mapper = MEMMAP_MAPPER_MSXDOS2;
+        cart_mapper_explicit = true;
+        config.disk_interface = true;
     }
 
     if (!config.cart_path.empty() && config.cart_mapper == MEMMAP_MAPPER_NONE && !cart_mapper_explicit) {

@@ -17,6 +17,15 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.21 -- "Yie Ar Kung-Fu: MSX-DOS 2" (Konami) (2026-10-23)
+
+**Pedido do usuario**: com a ROM do MSX-DOS 2 identificada (1.43.20), seguir na implementacao do MSX-DOS 2. Respostas do usuario: o MSX-DOS 2 e' um **cartucho no slot 1** e o `dos: 2` do Obifile deve passar a iniciar o disco com ele; o alvo dele e' MSX2/2+ com 512 KB de RAM ou mais e MSX-DOS 2 (ate' com HD); o MSX1/MSX-DOS 1 fica para projetos esporadicos.
+- **Achado na pesquisa (regra do CLAUDE.md)**: o suporte que faltava **ja' existia**. O mapper `msxdos2` (`MEMMAP_MAPPER_MSXDOS2`, adaptado do `RomMSXDOS2` do openMSX) e a interface de disquete bastavam; nunca tinha sido testado com a ROM de verdade porque o repositorio nao a tem. Com o `msxdos22.rom` do Full Set + `emulator/msxdos2.dsk` o boot foi direto: `ver` -> kernel 2.20, `MSXDOS2.SYS` 2.32, `COMMAND2.COM` 2.44; `mkdir sub`, `echo ola > sub\x.txt`, `dir sub`, `type`, `date`. Em MSX1 (sem relogio) o COMMAND2 pergunta a data; na MSX2 nao.
+- **O que esta' na release** (so' integracao): `romdb::FindMsxDos2Rom`; comando `dos2`; `--dos2`; item de menu; `BuildResult::dos_version` e o `obirun` com `dos: 2`; `Host::FindDos2Rom/BootDos2`.
+- **Testes**: `controltest` (dos2 com host de teste), `romdbtest` (FindMsxDos2Rom), `msx2test` (boot do MSX-DOS 2 com a ROM e o disco reais; pulado se nao existirem).
+- **Nao feito**: HD (IDE/SCSI; o alvo do usuario), mapper de RAM maior que 128 KB na MSX2, `asmrun`/F5 de `.com` com o DOS 2 (continua usando `msxdos1.dsk`), disco de sistema do DOS 2 gerado pelo F6 sem o `obirun`.
+- Validado: Windows e Linux, `ctest` 100% (34).
+
 ## v1.43.20 -- "Yie Ar Kung-Fu: Download e identificacao" (Konami) (2026-10-23)
 
 **Pedido do usuario** (testando o Download de System ROMs): abre uma janela de console e o download roda em segundo plano ate terminar -- queria um indicador/barra de progresso na GUI e no TUI; depois do ZIP descompactado em `dist/roms/*`, aproveitar as **assinaturas do openMSX** para classificar as ROMs no SQLite (ex.: `MSXDOS22.ROM` = MSX-DOS 2), identificando pelo nome ou pelo nome/SHA-1 oficial; e, com essa ROM, seguir para o MSX-DOS 2 (proxima release). Respostas do usuario: assinaturas **baixadas pela janela Downloads/CLI** (nada embutido); o banco ganha nome oficial + papel, hardware, reclassificacao por categoria e um comando/botao Identificar.

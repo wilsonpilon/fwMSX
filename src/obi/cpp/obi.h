@@ -59,6 +59,7 @@ struct BuildResult {
     std::string dsk;              // o .dsk gravado
     std::vector<BuiltFile> files;
     long free_bytes = 0;          // o que sobrou no disco
+    int dos_version = 0;          // 1 ou 2 quando o Obifile pede `dos: 1|2`: quem roda o disco liga o cartucho do MSX-DOS 2 no 2
 };
 
 struct BuildOptions {
