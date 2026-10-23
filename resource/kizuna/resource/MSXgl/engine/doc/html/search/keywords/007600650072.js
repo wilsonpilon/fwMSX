@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("ver",["Macro"],[["VERSION",,[[,,,,0,"File:core.h:VERSION"]]]]);

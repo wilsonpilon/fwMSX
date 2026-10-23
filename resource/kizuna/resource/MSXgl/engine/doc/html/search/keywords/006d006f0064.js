@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("mod",["Macro"],[["ModuloPow2",,[[,,,,0,"File:math.h:ModuloPow2"]]]]);

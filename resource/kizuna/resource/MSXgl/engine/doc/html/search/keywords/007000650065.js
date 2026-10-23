@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("pee",["Function"],[["Peek",,[[,,,,0,"File:system.h:Peek"]]],["Peek16",,[[,,,,0,"File:system.h:Peek16"]]]]);

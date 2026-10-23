@@ -1,1 +1,0 @@
-g++ main.cc -Wall -g -static -o ..\msxtar.exe

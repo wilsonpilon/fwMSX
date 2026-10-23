@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("scr",["Function"],[["Scroll_HBlankAdjust",,[[,,,,0,"File:scroll.h:Scroll_HBlankAdjust"]]],["Scroll_Initialize",,[[,,,,0,"File:scroll.h:Scroll_Initialize"]]],["Scroll_SetOffsetH",,[[,,,,0,"File:scroll.h:Scroll_SetOffsetH"]]],["Scroll_SetOffsetV",,[[,,,,0,"File:scroll.h:Scroll_SetOffsetV"]]],["Scroll_Update",,[[,,,,0,"File:scroll.h:Scroll_Update"]]]]);

@@ -1,3 +1,0 @@
-cls
-basic comprom.bas
-

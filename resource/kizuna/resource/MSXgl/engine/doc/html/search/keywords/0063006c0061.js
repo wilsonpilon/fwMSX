@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("cla",["Macro"],[["Clamp",,[[,,,,0,"File:math.h:Clamp"]]],["Clamp16",,[[,,,,0,"File:math.h:Clamp16"]]],["Clamp8",,[[,,,,0,"File:math.h:Clamp8"]]]]);

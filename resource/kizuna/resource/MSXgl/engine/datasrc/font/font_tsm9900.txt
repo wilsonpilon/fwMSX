@@ -1,2 +1,0 @@
-Author: Texas Isntruments (from the TMS9900 VDP documentation)
-License: Unknown (assume All right reserved)

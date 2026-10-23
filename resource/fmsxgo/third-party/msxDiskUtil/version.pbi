@@ -1,2 +1,0 @@
-#VERSION$ = "1.8b"
-#BUILD$ = "6A5656C6"

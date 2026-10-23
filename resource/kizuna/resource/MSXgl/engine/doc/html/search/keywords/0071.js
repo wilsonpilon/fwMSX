@@ -1,1 +1,0 @@
-﻿NDSearch.OnPrefixDataLoaded("q",["Macro"],[["Q",,[[,,,,0,"File:fixed_point.h:Q"]]]]);

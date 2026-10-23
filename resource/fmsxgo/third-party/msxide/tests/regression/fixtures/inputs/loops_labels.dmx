@@ -1,9 +1,0 @@
-define [msg][PRINT [OK]]
-{start}
-[msg]("HELLO")
-loop{
-A$=INKEY$
-IF A$="X" THEN EXIT
-IF A$="R" THEN GOTO {start}
-}
-END
