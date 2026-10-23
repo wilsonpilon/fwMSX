@@ -12,6 +12,10 @@
 #include "romdb/cli.h"
 #include "romdb/core/hash.h"
 #include "romdb/net/listing.h"
+#include "romdb/service.h"
+#include "romdb/sig/sig.h"
+#include "romdb/store/classify.h"
+#include "sqlite3.h"
 #include "romdb/net/web.h"
 #include "romdb/store/classify.h"
 #include "romdb/store/romdb.h"
@@ -241,6 +245,114 @@ int main() {
         WriteText(vtmp / "cartuchos" / "alterado.rom", content_original);
         check(romdb::RunRomDbCommand({"verify", "--roms", vtmp.string()}, "fwmsx") == 0,
               "verify: codigo 0 de novo depois de restaurar os arquivos");
+    }
+
+    // --- assinaturas do openMSX (src/romdb/sig) ------------------------------------------------------------------
+    {
+        const std::string machine_xml =
+            "<?xml version=\"1.0\" ?>\n<!DOCTYPE msxconfig SYSTEM 'msxconfig2.dtd'>\n<msxconfig>\n"
+            "  <info><manufacturer>Philips</manufacturer><code>NMS 8250</code><type>MSX2</type></info>\n"
+            "  <devices><primary slot=\"0\">\n"
+            "    <ROM id=\"MSX BIOS with BASIC ROM\"><mem base=\"0x0000\" size=\"0x8000\"/>\n"
+            "      <rom><sha1>6103B39F1E38D1AA2D84B1C3219C44F1ABB5436E</sha1><filename>nms8250_basic-bios2.rom</filename></rom></ROM>\n"
+            "    <ROM id=\"MSX Sub ROM\"><rom><sha1>5c1f9c7fb655e43d38e5dd1fcc6b942b2ff68b02</sha1> <!-- verificada --> <filename>nms8250_msx2sub.rom</filename></rom></ROM>\n"
+            "    <PSG id=\"PSG\"><type>YM2149</type></PSG>\n"
+            "  </primary></devices></msxconfig>\n";
+        // "abc" tem o SHA-1 a9993e36...: e' a ROM "que existe no disco" nos testes abaixo
+        const std::string ext_xml =
+            "<msxconfig><info><name>MSX-DOS 2</name><manufacturer>ASCII</manufacturer><code/><type>OS ROM</type></info>\n"
+            "<devices><primary slot=\"any\"><secondary slot=\"any\"><ROM id=\"MSXDOS2 cart\"><mem base=\"0x4000\" size=\"0x04000\"/>\n"
+            "  <rom><sha1>c36c9e0f96738a340381e23b4f97245388801a46</sha1><sha1>a9993e364706816aba3e25717850c26c9cd0d89d</sha1>"
+            "<filename>msxdos22.rom</filename></rom><mappertype>MSXDOS2</mappertype></ROM></secondary></primary></devices></msxconfig>\n";
+        std::vector<romdb::SigRow> rows;
+        romdb::ParseOpenmsxXml(machine_xml, "Philips_NMS_8250", false, rows);
+        check(rows.size() == 2 && rows[0].sha1 == "6103b39f1e38d1aa2d84b1c3219c44f1abb5436e" && rows[0].filename == "nms8250_basic-bios2.rom" &&
+                  rows[0].role == "MSX BIOS with BASIC ROM" && rows[0].family == "MSX2" && rows[0].hardware == "Philips NMS 8250" && rows[0].source == "machine",
+              "openMSX XML de maquina: SHA-1 (minusculo), arquivo, papel (id da ROM), familia e hardware (fabricante + codigo)");
+        check(rows[1].role == "MSX Sub ROM" && rows[1].filename == "nms8250_msx2sub.rom", "o comentario entre as tags nao atrapalha; segunda ROM");
+        std::vector<romdb::SigRow> ext;
+        romdb::ParseOpenmsxXml(ext_xml, "msxdos2", true, ext);
+        check(ext.size() == 2 && ext[0].role == "MSX-DOS 2" && ext[0].hardware == "MSX-DOS 2" && ext[0].family == "OS ROM" && ext[0].source == "extension" &&
+                  ext[0].filename == "msxdos22.rom" && ext[1].filename == "msxdos22.rom",
+              "openMSX XML de extensao: o papel e' o nome da extensao; um <rom> com 2 SHA-1 vira 2 linhas; tag vazia <code/> tratada");
+
+        check(romdb::CategoryForSignature("MSX BIOS with BASIC ROM", "MSX2", "machine", "") == "bios" &&
+                  romdb::CategoryForSignature("Memory Mapped FDC", "MSX2", "machine", "") == "interface" &&
+                  romdb::CategoryForSignature("MSX-DOS 2", "OS ROM", "extension", "") == "interface" &&
+                  romdb::CategoryForSignature("x", "debug tool", "extension", "") == "outro",
+              "categoria sugerida pela assinatura");
+
+        const std::string tree = "{\"tree\":[{\"path\": \"share/machines/A.xml\"},{\"path\": \"share/extensions/B C.xml\"},{\"path\": \"src/x.xml\"},"
+                                 "{\"path\": \"share/machines/note.txt\"},{\"path\": \"share/machines/../evil.xml\"}]}";
+        const std::vector<std::string> paths = romdb::OpenmsxPathsFromTree(tree);
+        check(paths.size() == 2 && paths[0] == "share/machines/A.xml" && paths[1] == "share/extensions/B C.xml", "arvore do GitHub: so' os XML de machines/extensions, sem '..'");
+
+        // banco: identificacao pelo SHA-1
+        const fs::path sdir = tmp / "sig";
+        fs::create_directories(sdir / "share" / "machines");
+        fs::create_directories(sdir / "share" / "extensions");
+        WriteText(sdir / "share" / "machines" / "Philips_NMS_8250.xml", machine_xml);
+        WriteText(sdir / "share" / "extensions" / "msxdos2.xml", ext_xml);
+        WriteText(sdir / "roms" / "algo.rom", "abc");
+        WriteText(sdir / "roms" / "outra.rom", "xyz");
+        romdb::RomDb sdb;
+        std::string serr;
+        check(sdb.Open((sdir / "roms.db").string(), serr), "assinaturas: banco aberto");
+        romdb::RomRecord rec;
+        check(sdb.ScanFile((sdir / "roms" / "algo.rom").string(), (sdir / "roms").string(), "scan", rec, serr) &&
+                  sdb.ScanFile((sdir / "roms" / "outra.rom").string(), (sdir / "roms").string(), "scan", rec, serr),
+              "assinaturas: duas ROMs cadastradas");
+        check(sdb.IdentifyWithOpenmsx(serr) == 0 && !serr.empty(), "identificar sem assinaturas importadas: erro explicando o que fazer");
+        serr.clear();
+        std::vector<romdb::SigRow> all;
+        int nfiles = 0;
+        check(romdb::ReadOpenmsxShare((sdir / "share").string(), all, nfiles, serr) && nfiles == 2 && all.size() == 4, "ReadOpenmsxShare le machines e extensions");
+        check(!romdb::ReadOpenmsxShare((sdir / "nada").string(), all, nfiles, serr), "pasta que nao e' share = erro");
+        std::vector<romdb::SigRow> all2;
+        serr.clear();
+        romdb::ReadOpenmsxShare((sdir / "share").string(), all2, nfiles, serr);
+        check(sdb.ReplaceSignatures(all2, serr) && sdb.SignatureCount() == 4, "ReplaceSignatures: 4 SHA-1 distintos");
+        check(sdb.IdentifyWithOpenmsx(serr) == 1 && serr.empty(), "so' a ROM que o openMSX conhece e' marcada");
+        romdb::RomRecord got;
+        check(sdb.FindBySha1("a9993e364706816aba3e25717850c26c9cd0d89d", got) && got.official == "msxdos22.rom" && got.role == "MSX-DOS 2" && got.family == "OS ROM" &&
+                  got.hardware == "MSX-DOS 2" && got.category == "interface",
+              "ROM identificada: nome oficial, papel, familia, hardware e categoria");
+        romdb::RomRecord other;
+        check(sdb.FindBySha1("66b27417d37e024c46526c2f6d358a754fc552f3", other) && other.official.empty() && other.role.empty(), "a ROM desconhecida fica como estava");
+        check(sdb.Search("MSX-DOS 2", "").size() == 1 && sdb.Search("msxdos22", "").size() == 1 && sdb.Search("OS ROM", "").size() == 1, "a busca acha pelo papel, pelo nome oficial e pela familia");
+        check(sdb.SignatureHits("A9993E364706816ABA3E25717850C26C9CD0D89D").size() == 1, "SignatureHits aceita SHA-1 maiusculo");
+        // se uma ROM e' usada por 8 maquinas o hardware lista 6 e conta o resto
+        std::vector<romdb::SigRow> many;
+        for (int i = 0; i < 8; ++i) {
+            romdb::SigRow r;
+            r.sha1 = "a9993e364706816aba3e25717850c26c9cd0d89d";
+            r.filename = "generic.rom";
+            r.role = "MSX BIOS with BASIC ROM";
+            r.family = "MSX";
+            r.hardware = "Maquina " + std::to_string(i);
+            r.source = "machine";
+            many.push_back(r);
+        }
+        check(sdb.ReplaceSignatures(many, serr) && sdb.IdentifyWithOpenmsx(serr) == 1 && sdb.FindBySha1("a9993e364706816aba3e25717850c26c9cd0d89d", got) &&
+                  got.hardware == "Maquina 0, Maquina 1, Maquina 2, Maquina 3, Maquina 4, Maquina 5 (+2)" && got.category == "bios",
+              "hardware: no maximo 6 nomes e o resto contado");
+
+        // banco antigo (sem as colunas da identificacao): Open() acrescenta so' o que falta
+        const fs::path old_db = sdir / "antigo.db";
+        {
+            sqlite3 *raw = nullptr;
+            sqlite3_open(old_db.string().c_str(), &raw);
+            sqlite3_exec(raw,
+                         "CREATE TABLE roms (id INTEGER PRIMARY KEY AUTOINCREMENT, sha1 TEXT NOT NULL UNIQUE, crc32 TEXT NOT NULL DEFAULT '', size INTEGER NOT NULL DEFAULT 0,"
+                         " name TEXT NOT NULL DEFAULT '', category TEXT NOT NULL DEFAULT 'outro', hardware TEXT NOT NULL DEFAULT '', mapper INTEGER NOT NULL DEFAULT -1,"
+                         " path TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT 'manual', notes TEXT NOT NULL DEFAULT '', updated TEXT NOT NULL DEFAULT '');"
+                         "INSERT INTO roms (sha1, name) VALUES ('0000000000000000000000000000000000000001', 'Jogo antigo');",
+                         nullptr, nullptr, nullptr);
+            sqlite3_close(raw);
+        }
+        romdb::RomDb odb;
+        check(odb.Open(old_db.string(), serr) && odb.Search("antigo", "").size() == 1 && odb.Search("antigo", "")[0].role.empty(), "banco antigo: abre e ganha as colunas novas");
+        check(odb.Open(old_db.string(), serr), "reabrir o banco ja' migrado nao falha");
     }
 
     fs::remove_all(tmp, ec);

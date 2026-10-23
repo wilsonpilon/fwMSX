@@ -44,12 +44,22 @@ bool DownloadFileHunterFullSet(const RomPaths &paths, RomDb &db, const std::stri
 bool DownloadFileHunterEntry(const RomPaths &paths, RomDb &db, const std::string &entry_url, const Log &log,
                              int64_t &added, std::string &error);
 
+// Assinaturas das ROMs de sistema do openMSX (nome oficial, papel, hardware): baixa os XML de share/machines e share/extensions do GitHub (um unico curl,
+// ~350 arquivos pequenos), le, grava na tabela `signatures` e identifica as ROMs do banco. `sigs` = quantas ROMs distintas o openMSX reconhece.
+bool DownloadOpenmsxSignatures(const RomPaths &paths, RomDb &db, const Log &log, int64_t &identified, std::string &error);
+// Os caminhos share/machines/*.xml e share/extensions/*.xml do JSON da arvore do GitHub (exposto para o teste).
+std::vector<std::string> OpenmsxPathsFromTree(const std::string &json);
+// O mesmo a partir de uma pasta share do openMSX que o usuario ja' tem (sem rede).
+bool ImportOpenmsxShare(RomDb &db, const std::string &share_dir, const Log &log, int64_t &identified, std::string &error);
+
 // Baixa o pacote SQL do banco do Vampier (msxromdb), extrai e importa.
 bool ImportVampier(const RomPaths &paths, RomDb &db, const Log &log, int64_t &rows, std::string &error);
 
 // URLs usadas pelos downloads (publicas, sem login).
 extern const char *const kFmsxDownloadsUrl;      // https://fms.komkon.org/fMSX/
 extern const char *const kFileHunterSystemRoms;  // https://download.file-hunter.com/System%20ROMs/
+extern const char *const kOpenmsxTreeUrl;    // a arvore do openMSX no GitHub (API), para achar os XML de share/
+extern const char *const kOpenmsxRawBase;    // https://raw.githubusercontent.com/openMSX/openMSX/master/
 extern const char *const kVampierSqlUrl;         // https://romdb.vampier.net/Archive/sql-msxromdb.zip
 
 } // namespace romdb

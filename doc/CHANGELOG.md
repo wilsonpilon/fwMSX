@@ -7,6 +7,16 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.20] - 2026-10-23 - "Yie Ar Kung-Fu: Download e identificacao" (Konami)
+
+### Alterado -- download sem janela de console e com barra de progresso
+- O `curl` passa a rodar **escondido** (no Windows o `_popen` abria um `cmd.exe` visivel durante todo o download). O andamento aparece como **barra** (nome, MB baixados / total, %) na janela de tarefas do banco de ROMs e na janela Downloads, e como linha que se reescreve em `fwmsx --romdb`.
+
+### Adicionado -- identificar as ROMs de sistema pelas assinaturas do openMSX
+- **`romdb sig download`** (e *ROMs > Baixar assinaturas do openMSX*): baixa os XML de maquinas e extensoes do openMSX e grava as assinaturas (SHA-1 -> nome oficial, papel, familia, maquinas) no `roms.db`. `sig import <share>`, `sig show <sha1>`, `sig stats`.
+- **`identify`** / botao **Identificar (openMSX + Vampier)**: marca as ROMs do banco que o openMSX reconhece (ex.: `msxdos22.rom` = "MSX-DOS 2"), preenche hardware e categoria; roda sozinho no fim do download do Full Set System ROMs. A lista e a busca mostram e acham pelo papel e pelo nome oficial.
+- Banco: tabela `signatures` e colunas `official/role/family` (bancos antigos migram sozinhos). Leitor de XML em C (`src/romdb/sig/xml_scan.c`).
+
 ## [1.43.19] - 2026-10-23 - "Yie Ar Kung-Fu: Comandos do VDP" (Konami)
 
 ### Adicionado -- olhar e mexer no VDP pelo console (ideia do usuario, a partir do comando `screen`)

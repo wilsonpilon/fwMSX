@@ -17,6 +17,14 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.20 -- "Yie Ar Kung-Fu: Download e identificacao" (Konami) (2026-10-23)
+
+**Pedido do usuario** (testando o Download de System ROMs): abre uma janela de console e o download roda em segundo plano ate terminar -- queria um indicador/barra de progresso na GUI e no TUI; depois do ZIP descompactado em `dist/roms/*`, aproveitar as **assinaturas do openMSX** para classificar as ROMs no SQLite (ex.: `MSXDOS22.ROM` = MSX-DOS 2), identificando pelo nome ou pelo nome/SHA-1 oficial; e, com essa ROM, seguir para o MSX-DOS 2 (proxima release). Respostas do usuario: assinaturas **baixadas pela janela Downloads/CLI** (nada embutido); o banco ganha nome oficial + papel, hardware, reclassificacao por categoria e um comando/botao Identificar.
+- **Achados na pesquisa**: (1) a janela de console era o `_popen("curl ...")`; (2) a janela de status do banco de ROMs ja' existia mas so' mostrava linhas de texto; (3) o openMSX traz 434 SHA-1 distintos de ROMs de sistema em `share/machines` (238) e `share/extensions` (117), cada um com o nome oficial do arquivo e o papel (`<ROM id=...>` ou o nome da extensao); (4) o repositorio do openMSX pesa ~115 MB, entao baixar o ZIP inteiro estava fora: a arvore pela API do GitHub + um unico `curl -K` com ~350 XML.
+- **Desenho**: ver `doc/romdb-spec.md`, secao 7b. `CreateProcess` + `CREATE_NO_WINDOW`; andamento pelo tamanho do arquivo contra o `Content-Length`; tokenizador de XML em C; `signatures` + 3 colunas em `roms`.
+- **Nao verificado**: a barra e o menu na janela grafica (so' compilam); o download real das assinaturas e do Full Set na sessao grafica.
+- Validado: Windows e Linux, `ctest` 100% (34).
+
 ## v1.43.19 -- "Yie Ar Kung-Fu: Comandos do VDP" (Konami) (2026-10-23)
 
 **Pedido do usuario**: "alem do screen, voce poderia ter um comando VDP que mostre os valores dos registradores do VDP? talvez ate permitindo alterar? e quando dar screen, alem do estado, poderia mostrar quais os enderecos das tabelas? padroes, formacao, cores, sprites, atributos de sprite, etc?" Respostas do usuario as perguntas de desenho: `vdp` + `screen info`; **dois** comandos de gravacao (um igual ao OUT, outro com o espelho do BIOS); Lua (`msx.vdp`, `msx.screen`) e man/manual.

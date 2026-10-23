@@ -25,6 +25,20 @@ struct RomRecord {
     std::string path;      // caminho do arquivo no disco
     std::string source;    // de onde veio: fmsx, filehunter, vampier, scan, manual
     std::string notes;
+    // Da identificacao pelas assinaturas do openMSX (IdentifyWithOpenmsx): o nome oficial do arquivo, o papel da ROM e a familia.
+    std::string official;  // ex.: "msxdos22.rom"
+    std::string role;      // ex.: "MSX-DOS 2", "MSX BIOS with BASIC ROM", "MSX Sub ROM"
+    std::string family;    // ex.: "MSX2", "MSX2+", "MSXturboR", "OS ROM", "external disk drive"
+};
+
+// Uma assinatura do openMSX: um SHA-1 que o openMSX reconhece como a ROM `filename`, usada na maquina/extensao `hardware`.
+struct SigRow {
+    std::string sha1;      // minusculo
+    std::string filename;  // o nome oficial do arquivo
+    std::string role;      // o id do dispositivo ROM ("MSX Sub ROM") ou o nome da extensao ("MSX-DOS 2")
+    std::string family;    // <type> do XML: MSX, MSX2, MSX2+, MSXturboR, OS ROM, external disk drive...
+    std::string hardware;  // "Philips NMS 8250", "MSX-DOS 2"...
+    std::string source;    // machine ou extension
 };
 
 // Uma linha do banco do Vampier (jogo + ROM).
@@ -76,6 +90,13 @@ public:
     // Preenche o nome das ROMs sem nome que o Vampier conhece (pelo SHA-1). Devolve quantas.
     int64_t IdentifyWithVampier(std::string &error);
 
+    // Assinaturas do openMSX (tabela `signatures`): ReplaceSignatures troca todas de uma vez; IdentifyWithOpenmsx marca as ROMs do banco que batem
+    // (nome oficial, papel, familia, hardware, categoria) e devolve quantas. Nao move arquivos. SignatureHits lista as linhas de um SHA-1.
+    bool ReplaceSignatures(const std::vector<SigRow> &rows, std::string &error);
+    int64_t SignatureCount() const;
+    std::vector<SigRow> SignatureHits(const std::string &sha1) const;
+    int64_t IdentifyWithOpenmsx(std::string &error);
+
     // Le um arquivo, calcula SHA-1/CRC32 e grava (Add). `root` e' a pasta de ROMs: o
     // caminho guardado fica relativo a ela quando o arquivo esta dentro.
     bool ScanFile(const std::string &file, const std::string &root, const std::string &source, RomRecord &out,
@@ -86,6 +107,7 @@ public:
 
 private:
     bool Exec(const char *sql, std::string &error);
+    bool AddIdentityColumns(std::string &error);
 
     sqlite3 *db_ = nullptr;
 };

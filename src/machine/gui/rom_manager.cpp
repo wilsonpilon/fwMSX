@@ -15,8 +15,27 @@ const char *kCategories[] = {"todas", "bios", "interface", "cartucho", "disco", 
 // Nome para mostrar: o nome do jogo, ou o do arquivo.
 std::string Shown(const romdb::RomRecord &r) {
     if (!r.name.empty()) return r.name;
+    if (!r.role.empty()) return r.role + (r.official.empty() ? std::string() : " (" + r.official + ")");
     const size_t slash = r.path.find_last_of("/\\");
     return slash == std::string::npos ? r.path : r.path.substr(slash + 1);
+}
+
+// A tarefa "Identificar": marca as ROMs que o openMSX conhece (baixando as assinaturas se ainda nao estao no banco) e da' nome as que o Vampier conhece.
+bool IdentifyTask(const romdb::RomPaths &p, romdb::RomDb &d, const romdb::Log &l, std::string &e) {
+    int64_t known = 0;
+    if (d.SignatureCount() == 0) {
+        if (!romdb::DownloadOpenmsxSignatures(p, d, l, known, e)) return false;
+    } else {
+        known = d.IdentifyWithOpenmsx(e);
+        if (!e.empty()) return false;
+        l(std::to_string(known) + " ROM(s) identificadas pelo openMSX.");
+    }
+    if (d.HasVampier()) {
+        const int64_t named = d.IdentifyWithVampier(e);
+        if (!e.empty()) return false;
+        l(std::to_string(named) + " ROM(s) receberam nome pelo Vampier.");
+    }
+    return true;
 }
 
 void CopyText(char *dst, size_t size, const std::string &src) {
@@ -117,12 +136,11 @@ void RomManager::DrawMenu(GLFWwindow *window) {
             return d.ScanDirectory(p.root, p.root, "scan", added, updated, e);
         });
     }
-    if (ImGui::MenuItem("Identificar ROMs pelo Vampier", nullptr, false, !busy)) {
-        StartTask("Identificar", [](const romdb::RomPaths &, romdb::RomDb &d, const romdb::Log &l, std::string &e) {
-            const int64_t named = d.IdentifyWithVampier(e);
-            if (!e.empty()) return false;
-            l(std::to_string(named) + " ROM(s) receberam nome.");
-            return true;
+    if (ImGui::MenuItem("Identificar ROMs (openMSX e Vampier)", nullptr, false, !busy)) StartTask("Identificar", IdentifyTask);
+    if (ImGui::MenuItem("Baixar assinaturas do openMSX", nullptr, false, !busy)) {
+        StartTask("Assinaturas do openMSX", [](const romdb::RomPaths &p, romdb::RomDb &d, const romdb::Log &l, std::string &e) {
+            int64_t known = 0;
+            return romdb::DownloadOpenmsxSignatures(p, d, l, known, e);
         });
     }
     ImGui::Separator();
@@ -138,6 +156,7 @@ void RomManager::DrawStatus() {
         ImGui::Text("%s", task_title_.c_str());
         if (running_) {
             ImGui::TextDisabled("em andamento... (a maquina continua rodando)");
+            DrawDownloadProgress();
         }
         const size_t from = task_log_.size() > 8 ? task_log_.size() - 8 : 0;
         for (size_t i = from; i < task_log_.size(); ++i) ImGui::TextWrapped("%s", task_log_[i].c_str());
@@ -192,24 +211,19 @@ void RomManager::DrawDatabase(GLFWwindow *window) {
         }
     }
     ImGui::SameLine();
-    if (ImGui::Button("Identificar (Vampier)")) {
-        StartTask("Identificar", [](const romdb::RomPaths &, romdb::RomDb &d, const romdb::Log &l, std::string &e) {
-            const int64_t named = d.IdentifyWithVampier(e);
-            if (!e.empty()) return false;
-            l(std::to_string(named) + " ROM(s) receberam nome.");
-            return true;
-        });
-    }
+    if (ImGui::Button("Identificar (openMSX + Vampier)")) StartTask("Identificar", IdentifyTask);
+    if (ImGui::IsItemHovered()) ImGui::SetTooltip("Marca as ROMs de sistema que o openMSX reconhece (nome oficial, papel, hardware, categoria).\nBaixa as assinaturas na primeira vez.");
     ImGui::SameLine();
     ImGui::TextDisabled("%lld ROM(s) no banco", static_cast<long long>(db_.Count()));
 
     if (results_dirty_) Refresh();
 
     // Lista (esquerda) e edicao (direita).
-    ImGui::BeginChild("##lista", ImVec2(560, 0), true);
-    if (ImGui::BeginTable("##roms", 4, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
+    ImGui::BeginChild("##lista", ImVec2(720, 0), true);
+    if (ImGui::BeginTable("##roms", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_ScrollY |
                                           ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Nome");
+        ImGui::TableSetupColumn("Papel (openMSX)", ImGuiTableColumnFlags_WidthFixed, 130.0f);
         ImGui::TableSetupColumn("Categoria", ImGuiTableColumnFlags_WidthFixed, 80.0f);
         ImGui::TableSetupColumn("Hardware", ImGuiTableColumnFlags_WidthFixed, 130.0f);
         ImGui::TableSetupColumn("Arquivo");
@@ -228,10 +242,12 @@ void RomManager::DrawDatabase(GLFWwindow *window) {
             }
             ImGui::PopID();
             ImGui::TableSetColumnIndex(1);
-            ImGui::TextUnformatted(r.category.c_str());
+            ImGui::TextUnformatted(r.role.c_str());
             ImGui::TableSetColumnIndex(2);
-            ImGui::TextUnformatted(r.hardware.c_str());
+            ImGui::TextUnformatted(r.category.c_str());
             ImGui::TableSetColumnIndex(3);
+            ImGui::TextUnformatted(r.hardware.c_str());
+            ImGui::TableSetColumnIndex(4);
             ImGui::TextUnformatted(r.path.c_str());
         }
         ImGui::EndTable();
@@ -254,6 +270,9 @@ void RomManager::DrawDatabase(GLFWwindow *window) {
         ImGui::TextDisabled("crc32 %s  -  %lld bytes  -  origem %s", edit_.crc32.c_str(),
                             static_cast<long long>(edit_.size), edit_.source.c_str());
         ImGui::TextDisabled("%s", edit_.path.c_str());
+        if (!edit_.official.empty() || !edit_.role.empty()) {
+            ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "openMSX: %s  |  %s  |  %s", edit_.official.c_str(), edit_.role.c_str(), edit_.family.c_str());
+        }
         ImGui::Separator();
         char name[256], hw[256], notes[512];
         CopyText(name, sizeof name, edit_.name);

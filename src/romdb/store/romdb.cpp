@@ -67,10 +67,13 @@ RomRecord RowToRom(sqlite3_stmt *s) {
     r.path = Text(s, 8);
     r.source = Text(s, 9);
     r.notes = Text(s, 10);
+    r.official = Text(s, 11);
+    r.role = Text(s, 12);
+    r.family = Text(s, 13);
     return r;
 }
 
-const char *kRomColumns = "id, sha1, crc32, size, name, category, hardware, mapper, path, source, notes";
+const char *kRomColumns = "id, sha1, crc32, size, name, category, hardware, mapper, path, source, notes, official, role, family";
 
 // Caminho relativo a `root` quando o arquivo esta dentro dela; senao o caminho inteiro.
 std::string RelativeTo(const std::string &file, const std::string &root) {
@@ -100,7 +103,7 @@ RomDb::~RomDb() {
 bool RomDb::Exec(const char *sql, std::string &error) {
     char *msg = nullptr;
     if (sqlite3_exec(db_, sql, nullptr, nullptr, &msg) != SQLITE_OK) {
-        error = msg ? msg : "erro SQL";
+        error = msg ? msg : (std::string("erro SQL ") + std::to_string(sqlite3_errcode(db_)) + " (" + std::string(sql).substr(0, 30) + "): " + sqlite3_errmsg(db_));
         sqlite3_free(msg);
         return false;
     }
@@ -134,8 +137,31 @@ bool RomDb::Open(const std::string &path, std::string &error) {
         " updated TEXT NOT NULL DEFAULT (datetime('now')));"
         "CREATE INDEX IF NOT EXISTS roms_category ON roms(category);"
         "CREATE TABLE IF NOT EXISTS cart_mappers (sha1 TEXT PRIMARY KEY, mapper INTEGER NOT NULL);"
-        "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);",
-        error);
+        "CREATE TABLE IF NOT EXISTS meta (key TEXT PRIMARY KEY, value TEXT);"
+        "CREATE TABLE IF NOT EXISTS signatures ("
+        " sha1 TEXT NOT NULL, hardware TEXT NOT NULL, filename TEXT NOT NULL DEFAULT '', role TEXT NOT NULL DEFAULT '',"
+        " family TEXT NOT NULL DEFAULT '', source TEXT NOT NULL DEFAULT '', PRIMARY KEY (sha1, hardware, role));"
+        "CREATE INDEX IF NOT EXISTS signatures_sha1 ON signatures(sha1);",
+        error) && AddIdentityColumns(error);
+}
+
+// Bancos criados antes da 1.43.20 nao tem as colunas da identificacao: acrescenta so' as que faltam.
+bool RomDb::AddIdentityColumns(std::string &error) {
+    bool have[3] = {false, false, false};
+    const char *names[3] = {"official", "role", "family"};
+    {
+        Stmt st;
+        if (!Prepare(db_, "PRAGMA table_info(roms)", st, error)) return false;
+        while (sqlite3_step(st.s) == SQLITE_ROW) {
+            const std::string col = Text(st.s, 1);
+            for (int i = 0; i < 3; ++i) have[i] = have[i] || col == names[i];
+        }
+    }
+    for (int i = 0; i < 3; ++i) {
+        if (have[i]) continue;
+        if (!Exec((std::string("ALTER TABLE roms ADD COLUMN ") + names[i] + " TEXT NOT NULL DEFAULT ''").c_str(), error)) return false;
+    }
+    return true;
 }
 
 bool RomDb::Add(RomRecord &rec, std::string &error) {
@@ -244,7 +270,7 @@ std::vector<RomRecord> RomDb::Search(const std::string &text, const std::string 
     std::string error;
     const std::string sql = std::string("SELECT ") + kRomColumns +
                             " FROM roms WHERE (?1 = '' OR name LIKE ?1 OR sha1 LIKE ?1 OR hardware LIKE ?1"
-                            " OR notes LIKE ?1 OR path LIKE ?1) AND (?2 = '' OR category = ?2)"
+                            " OR official LIKE ?1 OR role LIKE ?1 OR family LIKE ?1 OR notes LIKE ?1 OR path LIKE ?1) AND (?2 = '' OR category = ?2)"
                             " ORDER BY category, name, sha1 LIMIT 5000";
     if (!Prepare(db_, sql.c_str(), st, error)) return out;
     BindText(st.s, 1, text.empty() ? std::string() : "%" + text + "%");
@@ -372,6 +398,108 @@ int64_t RomDb::IdentifyWithVampier(std::string &error) {
         return 0;
     }
     return sqlite3_changes(db_);
+}
+
+bool RomDb::ReplaceSignatures(const std::vector<SigRow> &rows, std::string &error) {
+    if (!Exec("BEGIN", error)) return false;
+    if (!Exec("DELETE FROM signatures", error)) {
+        Exec("ROLLBACK", error);
+        return false;
+    }
+    {
+        Stmt st;
+        if (!Prepare(db_, "INSERT OR IGNORE INTO signatures (sha1, hardware, filename, role, family, source) VALUES (?1,?2,?3,?4,?5,?6)", st, error)) {
+            Exec("ROLLBACK", error);
+            return false;
+        }
+        for (const SigRow &r : rows) {
+            sqlite3_reset(st.s);
+            BindText(st.s, 1, Lower(r.sha1));
+            BindText(st.s, 2, r.hardware);
+            BindText(st.s, 3, r.filename);
+            BindText(st.s, 4, r.role);
+            BindText(st.s, 5, r.family);
+            BindText(st.s, 6, r.source);
+            sqlite3_step(st.s);
+        }
+    }
+    return Exec("COMMIT", error);
+}
+
+int64_t RomDb::SignatureCount() const {
+    Stmt st;
+    std::string error;
+    if (!Prepare(db_, "SELECT COUNT(DISTINCT sha1) FROM signatures", st, error)) return 0;
+    return sqlite3_step(st.s) == SQLITE_ROW ? sqlite3_column_int64(st.s, 0) : 0;
+}
+
+std::vector<SigRow> RomDb::SignatureHits(const std::string &sha1) const {
+    std::vector<SigRow> out;
+    Stmt st;
+    std::string error;
+    if (!Prepare(db_, "SELECT sha1, hardware, filename, role, family, source FROM signatures WHERE sha1=?1 ORDER BY source ASC, hardware", st, error)) return out;
+    BindText(st.s, 1, Lower(sha1));
+    while (sqlite3_step(st.s) == SQLITE_ROW) {
+        SigRow r;
+        r.sha1 = Text(st.s, 0);
+        r.hardware = Text(st.s, 1);
+        r.filename = Text(st.s, 2);
+        r.role = Text(st.s, 3);
+        r.family = Text(st.s, 4);
+        r.source = Text(st.s, 5);
+        out.push_back(r);
+    }
+    return out;
+}
+
+int64_t RomDb::IdentifyWithOpenmsx(std::string &error) {
+    if (SignatureCount() == 0) {
+        error = "assinaturas do openMSX nao importadas (fwmsx --romdb sig download | sig import <share>)";
+        return 0;
+    }
+    std::vector<std::pair<int64_t, std::string>> todo; // id, sha1 das ROMs que o openMSX conhece
+    {
+        Stmt st;
+        if (!Prepare(db_, "SELECT id, sha1 FROM roms WHERE sha1 IN (SELECT sha1 FROM signatures)", st, error)) return 0;
+        while (sqlite3_step(st.s) == SQLITE_ROW) todo.emplace_back(sqlite3_column_int64(st.s, 0), Text(st.s, 1));
+    }
+    if (!Exec("BEGIN", error)) return 0;
+    Stmt up;
+    if (!Prepare(db_, "UPDATE roms SET official=?2, role=?3, family=?4, hardware=?5, category=?6, updated=datetime('now') WHERE id=?1", up, error)) {
+        Exec("ROLLBACK", error);
+        return 0;
+    }
+    int64_t n = 0;
+    for (const auto &item : todo) {
+        const std::vector<SigRow> hits = SignatureHits(item.second);
+        if (hits.empty()) continue;
+        // O papel e a familia vem da primeira linha (extensoes antes das maquinas: "MSX-DOS 2" diz mais que o id generico);
+        // o hardware junta as maquinas/extensoes distintas, no maximo 6 nomes.
+        const SigRow &first = hits.front();
+        std::string hw;
+        int shown = 0, total = 0;
+        std::string seen = "|";
+        for (const SigRow &h : hits) {
+            if (seen.find("|" + h.hardware + "|") != std::string::npos) continue;
+            seen += h.hardware + "|";
+            ++total;
+            if (shown < 6) {
+                hw += (hw.empty() ? "" : ", ") + h.hardware;
+                ++shown;
+            }
+        }
+        if (total > shown) hw += " (+" + std::to_string(total - shown) + ")";
+        sqlite3_reset(up.s);
+        sqlite3_bind_int64(up.s, 1, item.first);
+        BindText(up.s, 2, first.filename);
+        BindText(up.s, 3, first.role);
+        BindText(up.s, 4, first.family);
+        BindText(up.s, 5, hw);
+        BindText(up.s, 6, CategoryForSignature(first.role, first.family, first.source, first.filename));
+        if (sqlite3_step(up.s) == SQLITE_DONE) ++n;
+    }
+    if (!Exec("COMMIT", error)) return 0;
+    return n;
 }
 
 bool RomDb::ScanFile(const std::string &file, const std::string &root, const std::string &source, RomRecord &out,

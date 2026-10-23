@@ -380,6 +380,13 @@ DOWNLOADS
                              baixa o Full Set System ROMs
   filehunter-get <url>       baixa um arquivo ou ZIP do file-hunter
   vampier                    baixa e importa o banco do Vampier (msxromdb)
+  sig download               baixa os XML de maquinas e extensoes do openMSX (GitHub) e identifica as ROMs
+  sig import <pasta share>   o mesmo, a partir de uma pasta share do openMSX que voce ja' tem
+  sig show <sha1>            as maquinas/extensoes do openMSX que usam essa ROM
+  sig stats                  quantas ROMs distintas o openMSX conhece
+
+  O download mostra o andamento (MB baixados / total, ou arquivos) na linha de comando; na janela
+  grafica ha' uma barra. O curl roda escondido, sem abrir janela de console.
 
 BANCO
   scan <pasta> [--origem x]  le e cadastra as ROMs de uma pasta
@@ -391,7 +398,8 @@ BANCO
   edit <id> [--cat c] [--hw h] [--nome n] [--mapper n] [--notas t]
   del <id>                   remove do banco (o arquivo fica)
   vsearch <texto>            busca no banco do Vampier
-  identify                   preenche os nomes que o Vampier conhece
+  identify                   marca as ROMs que o openMSX reconhece (nome oficial, papel, familia, hardware e
+                             categoria; ex.: msxdos22.rom = "MSX-DOS 2") e da' nome as que o Vampier conhece
   verify [--cat c]           recalcula o SHA-1 (faltando/alterada: saida 1)
   stats                      contagem por categoria
 
@@ -401,6 +409,7 @@ EXEMPLOS
   romdb scan D:\msx\roms
   romdb search nemesis
   romdb stats
+  romdb sig download         (uma vez) e depois: romdb search "MSX-DOS 2"
 
 VER TAMBEM
   cart)MAN");

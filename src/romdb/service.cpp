@@ -8,6 +8,7 @@
 #include "archive/unzip.h"
 #include "core/hash.h"
 #include "net/web.h"
+#include "sig/sig.h"
 #include "store/classify.h"
 
 namespace fs = std::filesystem;
@@ -16,6 +17,8 @@ namespace romdb {
 
 const char *const kFmsxDownloadsUrl = "https://fms.komkon.org/fMSX/";
 const char *const kFileHunterSystemRoms = "https://download.file-hunter.com/System%20ROMs/";
+const char *const kOpenmsxTreeUrl = "https://api.github.com/repos/openMSX/openMSX/git/trees/master?recursive=1";
+const char *const kOpenmsxRawBase = "https://raw.githubusercontent.com/openMSX/openMSX/master/";
 const char *const kVampierSqlUrl = "https://romdb.vampier.net/Archive/sql-msxromdb.zip";
 
 std::string RomPaths::db_file() const { return (fs::path(root) / "roms.db").string(); }
@@ -120,6 +123,9 @@ bool ListFileHunter(const std::string &url, std::vector<ListingEntry> &entries, 
     return true;
 }
 
+// Depois de trazer ROMs de sistema: se as assinaturas do openMSX ainda nao estao no banco, baixa; depois identifica. Uma falha aqui nao desfaz o download.
+void IdentifyAfterDownload(const RomPaths &paths, RomDb &db, const Log &log);
+
 bool DownloadFileHunterFullSet(const RomPaths &paths, RomDb &db, const std::string &date, const Log &log,
                                int64_t &added, std::string &error) {
     added = 0;
@@ -168,6 +174,7 @@ bool DownloadFileHunterFullSet(const RomPaths &paths, RomDb &db, const std::stri
     int64_t updated = 0;
     if (!db.ScanDirectory(target.string(), paths.root, "filehunter", added, updated, error)) return false;
     added += updated;
+    IdentifyAfterDownload(paths, db, log);
     return true;
 }
 
@@ -191,12 +198,99 @@ bool DownloadFileHunterEntry(const RomPaths &paths, RomDb &db, const std::string
         int64_t updated = 0;
         if (!db.ScanDirectory(out.string(), paths.root, "filehunter", added, updated, error)) return false;
         added += updated;
+        IdentifyAfterDownload(paths, db, log);
         return true;
     }
     RomRecord rec;
     if (!db.ScanFile(dest.string(), paths.root, "filehunter", rec, error)) return false;
     added = 1;
+    IdentifyAfterDownload(paths, db, log);
     return true;
+}
+
+// Os caminhos "share/machines/X.xml" e "share/extensions/X.xml" do JSON da arvore do GitHub ("path": "..."), sem biblioteca de JSON: os nomes nao tem aspas nem barras.
+std::vector<std::string> OpenmsxPathsFromTree(const std::string &json) {
+    std::vector<std::string> out;
+    const std::string key = "\"path\"";
+    size_t pos = 0;
+    while ((pos = json.find(key, pos)) != std::string::npos) {
+        pos += key.size();
+        const size_t q1 = json.find('"', json.find(':', pos));
+        if (q1 == std::string::npos) break;
+        const size_t q2 = json.find('"', q1 + 1);
+        if (q2 == std::string::npos) break;
+        const std::string path = json.substr(q1 + 1, q2 - q1 - 1);
+        pos = q2 + 1;
+        const bool xml = path.size() > 4 && path.compare(path.size() - 4, 4, ".xml") == 0;
+        if (!xml) continue;
+        const bool wanted = path.rfind("share/machines/", 0) == 0 || path.rfind("share/extensions/", 0) == 0;
+        if (wanted && path.find("..") == std::string::npos && path.find('\\') == std::string::npos) out.push_back(path);
+    }
+    return out;
+}
+
+namespace {
+
+bool StoreSignatures(RomDb &db, const std::vector<SigRow> &rows, int files, const Log &log, int64_t &identified, std::string &error) {
+    log("Lidos " + std::to_string(files) + " arquivos, " + std::to_string(rows.size()) + " assinaturas.");
+    if (!db.ReplaceSignatures(rows, error)) return false;
+    identified = db.IdentifyWithOpenmsx(error);
+    if (!error.empty()) return false;
+    log(std::to_string(db.SignatureCount()) + " ROMs distintas conhecidas; " + std::to_string(identified) + " do banco identificadas.");
+    return true;
+}
+
+}  // namespace
+
+bool ImportOpenmsxShare(RomDb &db, const std::string &share_dir, const Log &log, int64_t &identified, std::string &error) {
+    identified = 0;
+    std::vector<SigRow> rows;
+    int files = 0;
+    if (!ReadOpenmsxShare(share_dir, rows, files, error)) return false;
+    return StoreSignatures(db, rows, files, log, identified, error);
+}
+
+bool DownloadOpenmsxSignatures(const RomPaths &paths, RomDb &db, const Log &log, int64_t &identified, std::string &error) {
+    identified = 0;
+    log("Procurando os XML de maquinas e extensoes no GitHub do openMSX ...");
+    std::string json;
+    if (!HttpGetText(kOpenmsxTreeUrl, json, error)) return false;
+    const std::vector<std::string> wanted = OpenmsxPathsFromTree(json);
+    if (wanted.empty()) {
+        error = "a arvore do openMSX nao trouxe share/machines nem share/extensions (limite da API do GitHub? tente de novo mais tarde)";
+        return false;
+    }
+    const fs::path share = fs::path(paths.tmp_dir()) / "openmsx" / "share";
+    std::error_code ec;
+    fs::remove_all(share, ec);
+    fs::create_directories(share / "machines", ec);
+    fs::create_directories(share / "extensions", ec);
+    std::vector<std::pair<std::string, std::string>> jobs;
+    for (const std::string &w : wanted) {
+        jobs.emplace_back(std::string(kOpenmsxRawBase) + UrlEncodePath(w), (fs::path(paths.tmp_dir()) / "openmsx" / w).string());
+    }
+    log("Baixando " + std::to_string(jobs.size()) + " arquivos XML ...");
+    if (!HttpDownloadMany(jobs, "XML do openMSX", error)) {
+        fs::remove_all(fs::path(paths.tmp_dir()) / "openmsx", ec);
+        return false;
+    }
+    const bool ok = ImportOpenmsxShare(db, share.string(), log, identified, error);
+    fs::remove_all(fs::path(paths.tmp_dir()) / "openmsx", ec);
+    CleanTmp(paths);
+    return ok;
+}
+
+void IdentifyAfterDownload(const RomPaths &paths, RomDb &db, const Log &log) {
+    std::string error;
+    int64_t identified = 0;
+    if (db.SignatureCount() == 0) {
+        log("Assinaturas do openMSX ainda nao baixadas: baixando para identificar as ROMs ...");
+        if (!DownloadOpenmsxSignatures(paths, db, log, identified, error)) log("Identificacao pulada: " + error);
+        return;
+    }
+    identified = db.IdentifyWithOpenmsx(error);
+    if (error.empty()) log(std::to_string(identified) + " ROMs identificadas pelo openMSX.");
+    else log("Identificacao pulada: " + error);
 }
 
 bool ImportVampier(const RomPaths &paths, RomDb &db, const Log &log, int64_t &rows, std::string &error) {

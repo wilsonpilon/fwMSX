@@ -1,11 +1,13 @@
 // fwMSX -- linha de comando do banco de ROMs. Codigo ORIGINAL do fwMSX (BSD-3-Clause).
 #include "cli.h"
 
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <iostream>
 
 #include "core/hash.h"
+#include "net/web.h"
 #include "service.h"
 #include "store/romdb.h"
 
@@ -83,6 +85,10 @@ void PrintHelp() {
                  "  filehunter-full [--data DD-MM-AAAA]   baixa o Full Set System ROMs (o mais recente se omitido)\n"
                  "  filehunter-get <url>        baixa um arquivo ou ZIP do file-hunter (URL da listagem)\n"
                  "  vampier                     baixa e importa o banco do Vampier (msxromdb)\n"
+                 "  sig download                baixa os XML de maquinas/extensoes do openMSX (GitHub) e identifica as ROMs do banco\n"
+                 "  sig import <pasta share>    o mesmo a partir de uma pasta share do openMSX que voce ja' tem\n"
+                 "  sig show <sha1>             as maquinas/extensoes do openMSX que usam essa ROM\n"
+                 "  sig stats                   quantas ROMs distintas o openMSX conhece\n"
                  "\n"
                  "Banco:\n"
                  "  scan <pasta> [--origem x]   le e cadastra as ROMs de uma pasta (pelo SHA-1)\n"
@@ -94,7 +100,8 @@ void PrintHelp() {
                  "  edit <id> [--cat c] [--hw h] [--nome n] [--mapper n] [--notas t]\n"
                  "  del <id>                    remove a ROM do banco (o arquivo nao e' apagado)\n"
                  "  vsearch <texto>             busca no banco do Vampier (jogo, ROM, SHA-1)\n"
-                 "  identify                    preenche os nomes que o Vampier conhece\n"
+                 "  identify                    marca as ROMs conhecidas do openMSX (nome oficial, papel, hardware, categoria) e\n"
+                 "                              preenche os nomes que o Vampier conhece\n"
                  "  verify [--cat c]            recalcula o SHA-1 de cada ROM e confere contra o banco\n"
                  "                              (achou faltando/alterada: codigo de saida 1)\n"
                  "  stats                       contagem por categoria e estado dos bancos\n"
@@ -122,6 +129,22 @@ int RunRomDbCommand(const std::vector<std::string> &args_in, const std::string &
     }
 
     const std::string cmd = args[0];
+    // O andamento do download na linha de comando: uma linha que se reescreve (o curl roda escondido).
+    SetProgressHook([](const DownloadProgress &p) {
+        static bool open_line = false;
+        if (p.active) {
+            const double mb = 1048576.0;
+            char text[120];
+            if (p.items) std::snprintf(text, sizeof(text), "\r  %s: %d / %d arquivos   ", p.name.c_str(), static_cast<int>(p.done), static_cast<int>(p.total));
+            else if (p.total > 0) std::snprintf(text, sizeof(text), "\r  %s: %.1f / %.1f MB (%d%%)   ", p.name.c_str(), static_cast<double>(p.done) / mb, static_cast<double>(p.total) / mb, static_cast<int>(p.done * 100 / p.total));
+            else std::snprintf(text, sizeof(text), "\r  %s: %.1f MB   ", p.name.c_str(), static_cast<double>(p.done) / mb);
+            std::cout << text << std::flush;
+            open_line = true;
+        } else if (open_line) {
+            std::cout << std::endl;
+            open_line = false;
+        }
+    });
     RomDb db;
     std::string error;
     auto log = [](const std::string &m) { std::cout << m << std::endl; };
@@ -130,7 +153,7 @@ int RunRomDbCommand(const std::vector<std::string> &args_in, const std::string &
     if (cmd == "fmsx" || cmd == "filehunter" || cmd == "filehunter-full" || cmd == "filehunter-get" ||
         cmd == "vampier" || cmd == "scan" || cmd == "cartsha" || cmd == "add" || cmd == "list" || cmd == "search" ||
         cmd == "show" || cmd == "edit" || cmd == "del" || cmd == "vsearch" || cmd == "identify" || cmd == "stats" ||
-        cmd == "verify") {
+        cmd == "verify" || cmd == "sig") {
         if (!OpenRomDb(paths, db, error)) return Fail(error);
     }
 
@@ -278,10 +301,54 @@ int RunRomDbCommand(const std::vector<std::string> &args_in, const std::string &
     }
 
     if (cmd == "identify") {
-        const int64_t named = db.IdentifyWithVampier(error);
-        if (!error.empty()) return Fail(error);
-        std::cout << named << " ROM(s) receberam nome pelo banco do Vampier." << std::endl;
+        bool did = false;
+        if (db.SignatureCount() > 0) {
+            const int64_t known = db.IdentifyWithOpenmsx(error);
+            if (!error.empty()) return Fail(error);
+            std::cout << known << " ROM(s) identificadas pelas assinaturas do openMSX." << std::endl;
+            did = true;
+        }
+        if (db.HasVampier()) {
+            const int64_t named = db.IdentifyWithVampier(error);
+            if (!error.empty()) return Fail(error);
+            std::cout << named << " ROM(s) receberam nome pelo banco do Vampier." << std::endl;
+            did = true;
+        }
+        if (!did) return Fail("nenhuma fonte importada: use `sig download` (openMSX) e/ou `vampier`");
         return 0;
+    }
+
+    if (cmd == "sig") {
+        const std::string sub = Positional(args, 1);
+        int64_t identified = 0;
+        if (sub == "download") {
+            if (!DownloadOpenmsxSignatures(paths, db, log, identified, error)) return Fail(error);
+            return 0;
+        }
+        if (sub == "import") {
+            const std::string share = Positional(args, 2);
+            if (share.empty()) return Fail("informe a pasta share do openMSX");
+            if (!ImportOpenmsxShare(db, share, log, identified, error)) return Fail(error);
+            return 0;
+        }
+        if (sub == "show") {
+            const std::string sha = Positional(args, 2);
+            if (sha.empty()) return Fail("informe o SHA-1");
+            const std::vector<SigRow> hits = db.SignatureHits(sha);
+            if (hits.empty()) {
+                std::cout << "o openMSX nao conhece esse SHA-1" << std::endl;
+                return 1;
+            }
+            for (const SigRow &h : hits) {
+                std::cout << h.filename << " | " << h.role << " | " << h.family << " | " << h.hardware << " (" << h.source << ")\n";
+            }
+            return 0;
+        }
+        if (sub == "stats") {
+            std::cout << "ROMs distintas conhecidas pelo openMSX: " << db.SignatureCount() << std::endl;
+            return 0;
+        }
+        return Fail("use sig download | sig import <pasta share> | sig show <sha1> | sig stats");
     }
 
     if (cmd == "stats") {

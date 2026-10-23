@@ -2,13 +2,29 @@
 #include "download_window.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <filesystem>
 
 #include <imgui.h>
 
+#include "../../romdb/net/web.h"
+
 namespace machine::gui {
 
 namespace fs = std::filesystem;
+
+void DrawDownloadProgress() {
+    const romdb::DownloadProgress p = romdb::CurrentProgress();
+    if (!p.active) return;
+    char text[96];
+    const double mb = 1048576.0;
+    if (p.items) std::snprintf(text, sizeof(text), "%d / %d arquivos", static_cast<int>(p.done), static_cast<int>(p.total));
+    else if (p.total > 0) std::snprintf(text, sizeof(text), "%.1f / %.1f MB (%d%%)", static_cast<double>(p.done) / mb, static_cast<double>(p.total) / mb, static_cast<int>(p.done * 100 / p.total));
+    else std::snprintf(text, sizeof(text), "%.1f MB", static_cast<double>(p.done) / mb);
+    ImGui::TextUnformatted(p.name.c_str());
+    // sem tamanho anunciado a barra anda de um lado a outro (fracao negativa = indeterminada no ImGui)
+    ImGui::ProgressBar(p.total > 0 ? static_cast<float>(p.done) / static_cast<float>(p.total) : -1.0f * static_cast<float>(ImGui::GetTime()), ImVec2(-1.0f, 0.0f), text);
+}
 
 DownloadWindow::DownloadWindow() { paths_.exe_dir = dl::ExeDir(); }
 
@@ -253,6 +269,7 @@ void DownloadWindow::Draw() {
         ImGui::EndTabBar();
     }
     ImGui::Separator();
+    if (busy_) DrawDownloadProgress();
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (!status_.empty()) ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.3f, 1.0f), "%s", status_.c_str());

@@ -20,6 +20,24 @@ bool Contains(const std::string &s, const char *part) { return s.find(part) != s
 
 } // namespace
 
+std::string CategoryForSignature(const std::string &role, const std::string &family, const std::string &source, const std::string &filename) {
+    (void)filename;
+    auto lower = [](std::string s) {
+        for (char &c : s) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+        return s;
+    };
+    const std::string r = lower(role), f = lower(family);
+    if (source == "extension") {
+        if (f.find("debug") != std::string::npos || f.find("word processor") != std::string::npos) return "outro";
+        return "interface";
+    }
+    if (r.find("fdc") != std::string::npos || r.find("diskrom") != std::string::npos || r.find("disk rom") != std::string::npos || r.find("ide") == 0 ||
+        r.find("sunrise") != std::string::npos || r.find("moonsound") != std::string::npos) {
+        return "interface";
+    }
+    return "bios";
+}
+
 std::string CategoryFor(const std::string &filename) {
     // Nome sem pasta, em maiusculas, para comparar.
     const size_t slash = filename.find_last_of("/\\");

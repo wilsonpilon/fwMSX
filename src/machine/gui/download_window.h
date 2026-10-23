@@ -12,6 +12,9 @@
 
 namespace machine::gui {
 
+// A barra do download em curso (nome, MB baixados / total, porcentagem); nao desenha nada fora de um download. Usada pela janela Downloads e pela de tarefas do banco de ROMs.
+void DrawDownloadProgress();
+
 class DownloadWindow {
 public:
     DownloadWindow();

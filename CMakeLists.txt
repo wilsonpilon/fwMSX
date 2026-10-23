@@ -986,6 +986,8 @@ set(ROMDB_LIB_SOURCES
         src/romdb/net/listing.cpp
         src/romdb/archive/unzip.cpp
         src/romdb/store/romdb.cpp
+        src/romdb/sig/sig.cpp
+        src/romdb/sig/xml_scan.c
         src/romdb/service.cpp
         src/romdb/cli.cpp
 )

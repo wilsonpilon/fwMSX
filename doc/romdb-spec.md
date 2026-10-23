@@ -108,6 +108,21 @@ banco -- codigo de saida 1 se achar arquivo faltando ou alterado, ver secao 8), 
 - **Janela**: menu ROMs, Banco de ROMs, Navegar file-hunter -- **confirmados na tela pelo usuario
   em 2026-10-07** (ver `doc/SPEC.md`, secao 5.0).
 
+### 7b. Assinaturas do openMSX e identificacao (1.43.20)
+
+Pedido do usuario: o openMSX conhece as ROMs de sistema pelo SHA-1; aproveitar isso para o usuario escolher pelo nome/SHA-1 oficial.
+- **Fonte**: os XML de `share/machines` (maquinas) e `share/extensions` (extensoes) do openMSX. Decisao do usuario: **baixar sob demanda** (GitHub: a arvore pela API,
+  depois os ~350 XML por um unico `curl -K`), nada embutido no fwMSX; `sig import <share>` faz o mesmo a partir de uma pasta que o usuario ja' tenha. Sao so' fatos (hashes e nomes).
+- **Leitura**: `src/romdb/sig/xml_scan.{h,c}` (C, tokenizador minimo de XML) e `sig.{h,cpp}` (`ParseOpenmsxXml`, `ReadOpenmsxShare`). De cada `<rom>` saem SHA-1 (um por `<sha1>`),
+  nome oficial do arquivo, papel (o `id` do dispositivo `<ROM id="MSX Sub ROM">`; numa extensao, o nome dela, p. ex. "MSX-DOS 2"), familia (`<type>`) e hardware (fabricante + codigo da maquina).
+- **Banco**: tabela `signatures (sha1, hardware, role, filename, family, source)`; colunas novas em `roms`: `official`, `role`, `family` (bancos antigos ganham as colunas ao abrir).
+  `IdentifyWithOpenmsx` preenche `official/role/family`, junta o `hardware` (ate 6 nomes e "(+N)") e **reclassifica a categoria** (`CategoryForSignature`: maquina = bios, menos disco/IDE = interface; extensao = interface); nao move arquivos. A busca e a lista da janela passam a achar/mostrar pelo papel.
+- **Quando roda**: no fim do `filehunter-full` e do download de entradas do File Hunter (baixa as assinaturas se ainda nao estao no banco); `identify` (CLI e botao "Identificar (openMSX + Vampier)"); `sig download`.
+- **Download sem janela de console e com andamento**: `HttpDownload`/`HttpGetText` passaram a usar `CreateProcess` com `CREATE_NO_WINDOW` no Windows (antes `_popen` abria um `cmd.exe`);
+  o andamento (`romdb::CurrentProgress`, `SetProgressHook`) sai do tamanho do arquivo no disco contra o `Content-Length` (HEAD); `HttpDownloadMany` conta arquivos. Barra no ImGui
+  (`DrawDownloadProgress`, nas janelas de tarefas do banco e Downloads) e linha que se reescreve na CLI.
+- **Testes**: `romdbtest` (XML de maquina e de extensao, categoria, arvore do GitHub, identificacao pelo SHA-1, limite de 6 nomes, migracao de banco antigo). Rede real nao esta' no `ctest`.
+
 ## 8. O que falta
 
 - **Janela**: barra de progresso; cancelar um download; continuar um download interrompido.
