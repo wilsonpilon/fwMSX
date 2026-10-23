@@ -217,6 +217,15 @@ SlotLayout DefaultLayout(const MachineConfig &config) {
         layout.cell[2][0].kind = SlotKind::FmPac;
         layout.cell[2][0].path = config.fmpac_rom_path;
     }
+    // A interface IDE (Sunrise + Nextor) por ultimo, como o mapper externo: se a celula esta' ocupada Create() acusa.
+    if ((!config.ide_master.empty() || !config.ide_slave.empty()) && config.ide_slot >= 0 && config.ide_slot < 16 &&
+        layout.cell[config.ide_slot / 4][config.ide_slot % 4].kind == SlotKind::Empty) {
+        SlotItem &cell = layout.cell[config.ide_slot / 4][config.ide_slot % 4];
+        cell.kind = SlotKind::Ide;
+        cell.path = config.nextor_rom;
+        cell.path2 = config.ide_master;
+        cell.path3 = config.ide_slave;
+    }
     // O mapper externo por ultimo: se a celula ja' tem outra coisa, fica de fora e Create() acusa (nao some em silencio).
     if (config.mapper2_kb > 0 && config.mapper2_slot >= 0 && config.mapper2_slot < 16 &&
         layout.cell[config.mapper2_slot / 4][config.mapper2_slot % 4].kind == SlotKind::Empty) {
@@ -236,7 +245,7 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
         error = "BIOS: falta a BIOS no slot 0:0 (o Z80 comeca la')";
         return false;
     }
-    int mappers = 0, disks = 0, fmpacs = 0;
+    int mappers = 0, disks = 0, fmpacs = 0, ides = 0;
     for (int p = 0; p < 4; ++p) {
         for (int s = 0; s < 4; ++s) {
             const SlotItem &item = layout.cell[p][s];
@@ -275,6 +284,16 @@ bool ValidateLayout(const SlotLayout &layout, std::string &error) {
                 break;
             case SlotKind::Disk: ++disks; break;
             case SlotKind::FmPac: ++fmpacs; break;
+            case SlotKind::Ide:
+                if (++ides > 1) {
+                    error = where + "so' uma interface IDE por maquina";
+                    return false;
+                }
+                if (item.path.empty()) {
+                    error = where + "a interface IDE precisa da ROM do Nextor (--nextor <arquivo>)";
+                    return false;
+                }
+                break;
             default: break;
             }
         }
@@ -319,6 +338,58 @@ void EnableDiskInterface(MachineConfig &config) {
 namespace {
 bool MapperKbOk(int kb) { return kb >= 64 && kb <= 4096 && (kb & (kb - 1)) == 0; }
 } // namespace
+
+bool SetIde(MachineConfig &config, const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) {
+    const bool on = !master.empty() || !slave.empty();
+    if (!config.layout_set) {
+        if (!nextor.empty()) config.nextor_rom = nextor;
+        config.ide_master = master;
+        config.ide_slave = slave;
+        return true;
+    }
+    SlotLayout layout = config.layout;
+    int cell = -1;
+    for (int i = 0; i < 16; ++i)
+        if (layout.cell[i / 4][i % 4].kind == SlotKind::Ide) cell = i;
+    if (!on) {
+        if (cell >= 0) layout.cell[cell / 4][cell % 4] = SlotItem{};
+        config.layout = layout;
+        config.ide_master.clear();
+        config.ide_slave.clear();
+        return true;
+    }
+    const std::string rom = !nextor.empty() ? nextor : (cell >= 0 ? layout.cell[cell / 4][cell % 4].path : config.nextor_rom);
+    if (cell < 0) cell = config.ide_slot;
+    if (cell < 0 || cell > 15 || (layout.cell[cell / 4][cell % 4].kind != SlotKind::Empty && layout.cell[cell / 4][cell % 4].kind != SlotKind::Ide)) {
+        error = "o slot " + std::to_string(cell / 4) + ":" + std::to_string(cell % 4) + " ja' tem outra coisa (escolha outro slot para o IDE)";
+        return false;
+    }
+    SlotItem &item = layout.cell[cell / 4][cell % 4];
+    item = SlotItem{};
+    item.kind = SlotKind::Ide;
+    item.path = rom;
+    item.path2 = master;
+    item.path3 = slave;
+    config.layout = layout;
+    config.nextor_rom = rom;
+    config.ide_master = master;
+    config.ide_slave = slave;
+    return true;
+}
+
+std::string IdeRomPath(const MachineConfig &config) {
+    const SlotLayout layout = EffectiveLayout(config);
+    for (int i = 0; i < 16; ++i)
+        if (layout.cell[i / 4][i % 4].kind == SlotKind::Ide) return layout.cell[i / 4][i % 4].path;
+    return std::string();
+}
+
+std::string IdeImagePath(const MachineConfig &config, int unit) {
+    const SlotLayout layout = EffectiveLayout(config);
+    for (int i = 0; i < 16; ++i)
+        if (layout.cell[i / 4][i % 4].kind == SlotKind::Ide) return unit ? layout.cell[i / 4][i % 4].path3 : layout.cell[i / 4][i % 4].path2;
+    return std::string();
+}
 
 bool SetMapperRam(MachineConfig &config, int internal_kb, int external_kb, std::string &error) {
     if (!MapperKbOk(internal_kb) || (external_kb != 0 && !MapperKbOk(external_kb))) {
@@ -434,6 +505,12 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                 ", que ja' tem outra coisa (escolha outro slot)";
         return nullptr;
     }
+    if (!config.layout_set && (!config.ide_master.empty() || !config.ide_slave.empty()) &&
+        (config.ide_slot < 0 || config.ide_slot > 15 || layout.cell[config.ide_slot / 4][config.ide_slot % 4].kind != SlotKind::Ide)) {
+        error = "a interface IDE cai no slot " + std::to_string(config.ide_slot / 4) + ":" + std::to_string(config.ide_slot % 4) +
+                ", que ja' tem outra coisa (escolha outro slot)";
+        return nullptr;
+    }
     if (!ValidateLayout(layout, error)) return nullptr;
 
     std::unique_ptr<Machine> m(new Machine());
@@ -520,6 +597,35 @@ std::unique_ptr<Machine> Machine::Create(const MachineConfig &config, std::strin
                 mem.AllocateMapperRam(p, s, item.size_kb / 16);
                 m->mappers_.push_back(std::make_unique<memmap::RamMapperDevice>(mem, p, s));
                 break;
+            case SlotKind::Ide: {
+                // Sunrise ATA-IDE: a ROM do Nextor (ate' 128 KB, bancos de 16 KB) e os discos. A celula guarda o 1o banco (para a BIOS achar o
+                // cartucho); o dispositivo (AttachCart) responde por 4000h-7FFFh, trocando de banco, e pelos registradores do ATA.
+                std::vector<uint8_t> rom;
+                if (!ReadFile(item.path, rom, error)) {
+                    error = "Nextor: " + error;
+                    return nullptr;
+                }
+                if (rom.size() < 0x4000 || rom.size() > 0x20000 || rom.size() % 0x4000) {
+                    error = "Nextor: tamanho invalido (" + std::to_string(rom.size()) + " bytes; esperava um multiplo de 16 KB ate' 128 KB)";
+                    return nullptr;
+                }
+                const std::string *imgs[2] = {&item.path2, &item.path3};
+                for (int u = 0; u < 2; ++u) {
+                    if (imgs[u]->empty()) continue;
+                    m->ide_images_[u] = std::make_unique<hd::HdImage>();
+                    if (!m->ide_images_[u]->Open(*imgs[u], config.disk_read_only, error)) return nullptr;
+                }
+                std::string load_error;
+                std::vector<uint8_t> first(rom.begin(), rom.begin() + 0x4000);
+                if (!mem.LoadRom(p, s, first.data(), first.size(), &load_error)) {
+                    error = "slot " + std::to_string(p) + ":" + std::to_string(s) + " (Nextor): " + load_error;
+                    return nullptr;
+                }
+                m->ide_ = std::make_unique<hd::SunriseIde>(std::move(rom), m->ide_images_[0].get(), m->ide_images_[1].get());
+                m->startup_.slot_bus->AttachCart(p, s, m->ide_.get());
+                if (cart_info.empty()) cart_info = "IDE Sunrise + Nextor em " + std::to_string(p) + ":" + std::to_string(s);
+                break;
+            }
             case SlotKind::Disk: {
                 // DISK.ROM (ou o driver de porta, DDX 3.0 / CDX-2) na pagina 1 (4000h-7FFFh); a sub-ROM do MSX2, se houver, na pagina 0.
                 std::vector<uint8_t> rom;
@@ -1147,9 +1253,29 @@ void Machine::EjectDisk(int drive) {
     if (fdc_engine_) fdc_attach(fdc_engine_, drive, disks_[drive].disk());
 }
 
+std::string Machine::IdeInfo() {
+    if (!ide_) return std::string();
+    std::string out = "Sunrise IDE: banco " + std::to_string(ide_->bank()) + " da ROM, registradores IDE " + (ide_->regs_enabled() ? "ligados" : "desligados") +
+                      "  (leituras da ROM " + std::to_string(ide_->rom_reads()) + ", escritas no controle " + std::to_string(ide_->control_writes()) + ", acessos ao ATA " +
+                      std::to_string(ide_->reg_accesses()) + ")";
+    for (int u = 0; u < 2; ++u) {
+        out += std::string("\n  ") + (u ? "escravo: " : "mestre:  ");
+        if (!ide_images_[u]) {
+            out += "(sem disco)";
+            continue;
+        }
+        const hd::HdImage &img = *ide_images_[u];
+        out += img.path() + "  " + std::to_string(static_cast<uint64_t>(img.sectors()) / 2048) + " MB" + (img.read_only() ? " (somente leitura)" : "") +
+               "  lidos " + std::to_string(ide_->disk(u).sectors_read()) + " / gravados " + std::to_string(ide_->disk(u).sectors_written()) + " setores";
+        if (ide_->disk(u).last_unsupported()) out += "  (comando ATA " + std::to_string(ide_->disk(u).last_unsupported()) + " nao suportado)";
+    }
+    return out;
+}
+
 void Machine::Reset() {
     if (fdc_engine_) fdc_reset(fdc_engine_);
     for (auto &d : mappers_) d->Reset();
+    if (ide_) ide_->Reset();
     cpu_->reset();
     startup_.vdp_device->Reset();
     startup_.ppi_device->Reset();

@@ -19,6 +19,8 @@
 #include "../fdc/cpp/disk_format.h"
 #include "../fdc/cpp/fdc_device.h"
 #include "../fdc/cpp/fdc_port.h"
+#include "../hd/cpp/hd_image.h"
+#include "../hd/cpp/sunrise_ide.h"
 #include "../memmap/core/slot_state.h"
 #include "../memmap/cpp/ram_mapper.h"
 #include "../rtc/rtc_device.h"
@@ -58,6 +60,7 @@ enum class SlotKind {
     Mapper,  // RAM mapeada (memory mapper, portas FCh-FFh): 64 a 1024 KB
     Disk,    // interface de disquete: DISK.ROM na pagina 1 + controladora WD2793
     FmPac,   // FM-PAC: ROM de 16KB e SRAM de 8KB, com o OPLL
+    Ide,     // Sunrise ATA-IDE com o Nextor: a ROM (path), a imagem do disco mestre (path2) e a do escravo (path3)
 };
 
 struct SlotItem {
@@ -74,6 +77,8 @@ struct SlotItem {
     MemMapMapperType mapper = MEMMAP_MAPPER_NONE;
     // Ram: 16, 32 ou 64. Mapper: 64, 128, 256, 512 ou 1024.
     int size_kb = 64;
+    // Ide: a imagem do disco escravo (vazio = sem escravo).
+    std::string path3;
 };
 
 struct SlotLayout {
@@ -139,6 +144,14 @@ struct MachineConfig {
     int mapper2_kb = 0;
     int mapper2_slot = 15;
 
+    // Disco rigido IDE (Sunrise ATA-IDE com o Nextor, a ROM `nextor_rom` de 128 KB): `ide_master`/`ide_slave` sao imagens (MBR + FAT16, ver
+    // src/hd e `newhd`); com alguma delas a interface entra na celula `ide_slot` (primario * 4 + secundario; 12 = 3:0, o slot 3 e' o expandido da MSX2; os slots 1 e 2 sao de cartucho e a BIOS nao os enxerga expandidos). So' valem enquanto
+    // `layout_set` e' false; depois use SetIde().
+    std::string ide_master;
+    std::string ide_slave;
+    std::string nextor_rom;
+    int ide_slot = 12;
+
     // Layout de slots. Enquanto `layout_set` for false, o layout sai dos campos
     // acima (bios, cartucho, disco, sub-ROM, FM-PAC) pela regra padrao. Depois
     // de editado pelo menu, vale o `layout` e os campos acima sao ignorados.
@@ -177,6 +190,12 @@ void EnableDiskInterface(MachineConfig &config);
 bool SetMapperRam(MachineConfig &config, int internal_kb, int external_kb, std::string &error);
 // O tamanho do mapper interno (celula 3:2) e do primeiro externo (outra celula com mapper), em KB; 0 = nao tem.
 int MapperRamKb(const MachineConfig &config, bool external);
+// Liga (ou, com as duas imagens vazias, desliga) a interface IDE com o Nextor, valendo tambem para um layout ja' fixado. Qualquer das imagens
+// pode ser vazia; `nextor` vazio mantem a ROM que ja' estava (ou a que a janela/console achar no banco de ROMs).
+bool SetIde(MachineConfig &config, const std::string &nextor, const std::string &master, const std::string &slave, std::string &error);
+// A ROM, o disco mestre e o escravo da interface IDE do layout ("" = nao tem).
+std::string IdeRomPath(const MachineConfig &config);
+std::string IdeImagePath(const MachineConfig &config, int unit);
 void SetFmPac(MachineConfig &config, const std::string &path);
 // Caminhos atuais no layout (vazio = nenhum).
 std::string CartridgePath(const MachineConfig &config);
@@ -251,6 +270,10 @@ public:
     // Todos os mappers de RAM do layout, na ordem dos slots (a leitura das portas FCh-FFh vem do primeiro): para o comando `mapper` e para os testes.
     size_t mapper_count() const { return mappers_.size(); }
     memmap::RamMapperDevice *mapper_at(size_t i) { return i < mappers_.size() ? mappers_[i].get() : nullptr; }
+    // A interface IDE (Sunrise) do layout, ou nullptr.
+    hd::SunriseIde *ide() { return ide_.get(); }
+    // Uma linha por assunto sobre a interface IDE (banco da ROM, discos, setores lidos/gravados); vazio se nao ha' IDE.
+    std::string IdeInfo();
     memmap::RamMapperDevice *mapper() { return mappers_.empty() ? nullptr : mappers_.front().get(); }
     rtc::RtcDevice *rtc() { return rtc_.get(); }
 
@@ -379,6 +402,8 @@ private:
     ::Fdc *fdc_engine_ = nullptr;  // o WD2793 em uso (por memoria ou por portas)
     fdc::DiskFormat disk_format_ = fdc::DiskFormat::Auto;
     std::unique_ptr<scc::SccDevice> scc_;
+    std::unique_ptr<hd::HdImage> ide_images_[2];
+    std::unique_ptr<hd::SunriseIde> ide_;
     std::unique_ptr<fm::FmDevice> fm_;
     std::unique_ptr<tape::TapeEngine> tape_;
     bool tape_motor_prev_ = false; // ultimo estado visto do rele (porta C, bit 4)

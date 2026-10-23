@@ -43,12 +43,12 @@ public:
     // COMPLETO, nao mascarado, chega ao dispositivo -- cada dispositivo
     // ja mascara &0xFF internamente, exatamente como faria ligado
     // direto ao Z80Cpu sem o CompositeBus no meio). Sem dispositivo
-    // registrado: leitura devolve 0, escrita e' descartada -- mesma
+    // registrado: leitura devolve FFh (barramento flutuando), escrita e' descartada -- mesma
     // convencao de "porta inexistente" que os proprios dispositivos
     // usam para faixas que nao reconhecem.
     uint8_t in(uint16_t port) override {
         IBus *device = port_map_[port & 0xFF];
-        return device ? device->in(port) : 0;
+        return device ? device->in(port) : 0xFF; // barramento flutuando: FFh (o Nextor espera isso nas portas E6h/E7h do relogio do turbo R)
     }
     void out(uint16_t port, uint8_t value) override {
         IBus *device = port_map_[port & 0xFF];

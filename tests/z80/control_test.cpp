@@ -97,6 +97,18 @@ public:
         ++dos2_calls_;
         return true;
     }
+    std::string FindNextorRom(std::string &error) override {
+        if (nextor_found_.empty()) error = "sem Nextor (teste)";
+        return nextor_found_;
+    }
+    bool BootIde(const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) override {
+        (void)error;
+        ide_nextor_ = nextor;
+        ide_master_ = master;
+        ide_slave_ = slave;
+        ++ide_calls_;
+        return true;
+    }
     bool SaveScreenshot(const std::string &path, std::string &error) override {
         std::ofstream f(path, std::ios::binary);
         if (!f) {
@@ -111,6 +123,8 @@ public:
     bool quit_ = false;
     std::string dos2_found_, dos2_rom_, dos2_disk_;
     int dos2_calls_ = 0;
+    std::string nextor_found_, ide_nextor_, ide_master_, ide_slave_;
+    int ide_calls_ = 0;
 
 private:
     machine::MachineConfig config_;
@@ -276,6 +290,24 @@ void TestCommander(const std::string &bios) {
     check(cmd.Execute("dos2 minha.rom").ok && host.dos2_rom_ == "minha.rom" && host.dos2_disk_.empty(), "dos2 <rom.rom>: usa a ROM dada, sem disco");
     check(cmd.Execute("dos2 off").ok && host.dos2_rom_.empty() && host.dos2_calls_ == 3, "dos2 off: pede para tirar o cartucho");
     check(!cmd.Execute("dos2 a.dsk b.dsk").ok, "dos2 com dois discos = err");
+
+    // ide / newhd: o disco rigido (Sunrise IDE + Nextor)
+    check(cmd.Execute("ide").ok && Contains(cmd.Execute("ide").text, "sem interface IDE"), "ide sem argumentos: diz que nao ha' IDE");
+    check(!cmd.Execute("ide hd.hdd").ok && host.ide_calls_ == 0, "ide sem a ROM do Nextor no banco = err, nada reiniciado");
+    host.nextor_found_ = "banco/Nextor.ROM";
+    const control::Result i1 = cmd.Execute("ide hd.hdd");
+    check(i1.ok && host.ide_calls_ == 1 && host.ide_nextor_ == "banco/Nextor.ROM" && host.ide_master_ == "hd.hdd" && host.ide_slave_.empty(), "ide <img>: Nextor do banco e a imagem como mestre (" + i1.text + ")");
+    check(cmd.Execute("ide a.hdd b.hdd meu.rom").ok && host.ide_nextor_ == "meu.rom" && host.ide_master_ == "a.hdd" && host.ide_slave_ == "b.hdd", "ide <mestre> <escravo> <rom>: usa a ROM dada");
+    check(cmd.Execute("ide off").ok && host.ide_master_.empty() && host.ide_calls_ == 3, "ide off: tira a interface");
+    check(!cmd.Execute("ide a.hdd b.hdd c.hdd").ok && !cmd.Execute("ide meu.rom").ok, "ide com tres imagens, ou so' a ROM = err");
+    {
+        const std::string hdd = (std::filesystem::temp_directory_path() / "fwmsx_ctl_newhd.hdd").string();
+        std::remove(hdd.c_str());
+        const control::Result nh = cmd.Execute("newhd \"" + hdd + "\" 8M 16M");
+        check(nh.ok && std::filesystem::exists(hdd) && std::filesystem::file_size(hdd) == (1ull + 24) * 1024 * 1024, "newhd cria a imagem de 1 MiB + 24 MB (" + nh.text + ")");
+        check(!cmd.Execute("newhd x.hdd").ok && !cmd.Execute("newhd x.hdd 4M").ok && !cmd.Execute("newhd x.hdd 3G").ok, "newhd sem tamanho, com 4 MB ou com 3 GB (> 2 GB) = err");
+        std::remove(hdd.c_str());
+    }
 
     // captura de tela (o formato e' do host)
     const std::string shot = TempPath("fwmsx_control_test.shot");

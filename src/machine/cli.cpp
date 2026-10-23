@@ -292,6 +292,21 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
                 return 2;
             }
             config.mapper2_slot = p * 4 + sec;
+        } else if (a == "--ide" || a == "--ide-slave" || a == "--nextor") {
+            // Disco rigido: a Sunrise ATA-IDE com o Nextor (imagem do mestre, do escravo, e a ROM do Nextor; sem --nextor usa a do banco de ROMs).
+            const std::string *v = need(a == "--nextor" ? "a ROM do Nextor" : "uma imagem de disco rigido (crie com fwmsx --hdnew)");
+            if (!v) return 2;
+            (a == "--ide" ? config.ide_master : a == "--ide-slave" ? config.ide_slave : config.nextor_rom) = *v;
+        } else if (a == "--ide-slot") {
+            const std::string *v = need("P:S, ex.: 3:0");
+            if (!v) return 2;
+            const int p = v->size() >= 3 ? (*v)[0] - '0' : -1;
+            const int sec = v->size() >= 3 ? (*v)[2] - '0' : -1;
+            if (p < 0 || p > 3 || sec < 0 || sec > 3 || (*v)[1] != ':') {
+                std::cerr << "fwmsx --msx: --ide-slot use P:S (primario 0-3, secundario 0-3)" << std::endl;
+                return 2;
+            }
+            config.ide_slot = p * 4 + sec;
         } else if (a == "--dos2") {
             // MSX-DOS 2: o kernel (cartucho de 64KB, mapper msxdos2) no slot 1 + interface de disquete. Sem arquivo, usa o do banco de ROMs.
             use_dos2 = true;
@@ -412,6 +427,15 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
             keys = *v;
         } else {
             std::cerr << "fwmsx --msx: argumento desconhecido: '" << a << "'" << std::endl;
+            return 2;
+        }
+    }
+
+    if ((!config.ide_master.empty() || !config.ide_slave.empty()) && config.nextor_rom.empty()) {
+        std::string nextor_error;
+        config.nextor_rom = romdb::FindNextorRom(romdb::DefaultRomPaths(argv0), nextor_error);
+        if (config.nextor_rom.empty()) {
+            std::cerr << "fwmsx --msx: --ide: " << nextor_error << std::endl;
             return 2;
         }
     }
@@ -578,6 +602,13 @@ int RunMachineCommand(const std::vector<std::string> &raw_args, const std::strin
                 }
                 while (!line.empty() && line.back() == ' ') line.pop_back();
                 std::cout << line << std::endl;
+            }
+            if (m->ide()) std::cout << m->IdeInfo() << std::endl;
+            if (std::getenv("FWMSX_DEBUG_REGS")) {
+                const Z80State &zs = m->cpu().state();
+                char regs[160];
+                std::snprintf(regs, sizeof(regs), "PC=%04X SP=%04X AF=%04X BC=%04X DE=%04X HL=%04X IX=%04X IY=%04X", zs.pc.w, zs.sp.w, zs.af.w, zs.bc.w, zs.de.w, zs.hl.w, zs.ix.w, zs.iy.w);
+                std::cout << regs << std::endl;
             }
         }
         if (shot_path.empty()) return 0;

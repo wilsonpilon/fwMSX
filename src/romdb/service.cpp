@@ -65,6 +65,24 @@ std::string FindMsxDos2Rom(const RomPaths &paths, std::string &error) {
     return "";
 }
 
+std::string FindNextorRom(const RomPaths &paths, std::string &error) {
+    RomDb db;
+    if (!OpenRomDb(paths, db, error)) return "";
+    // Nextor 2.1.1, 2.1.0, 2.1.0 (versao "emulators"), 2.0.1 e 2.0 para a Sunrise IDE, nessa ordem
+    static const char *const kKnown[] = {"dca824d7b0ddf25c6e87a8098e97ab7489725f57", "d3a4375ff5f58cf59cc609dd41c90af285f033c2",
+                                         "97094d5ed206088c8f455801b7609e614c243562", "61cba1680ac6cb448dc3e8c710a43f4e7ab49457",
+                                         "ab1d6dc0cb851c0ca15b260674ad884d0b8d85fb"};
+    for (const char *sha : kKnown) {
+        RomRecord r;
+        if (!db.FindBySha1(sha, r)) continue;
+        const fs::path p = fs::path(r.path).is_absolute() ? fs::path(r.path) : fs::path(paths.root) / r.path;
+        std::error_code ec;
+        if (fs::is_regular_file(p, ec)) return p.string();
+    }
+    error = "nao achei a ROM do Nextor (Sunrise IDE) no banco de ROMs: baixe o Full Set System ROMs (janela Downloads ou `romdb filehunter-full`) ou use `ide ... <nextor.rom>`";
+    return "";
+}
+
 namespace {
 
 // Copia para a pasta do tipo e registra no banco.

@@ -186,6 +186,23 @@ public:
     std::string FindDos2Rom(std::string &error) override {
         return romdb::FindMsxDos2Rom(romdb::DefaultRomPaths((std::filesystem::path(opts_.exe_dir) / "fwMSX").string()), error);
     }
+    std::string FindNextorRom(std::string &error) override {
+        return romdb::FindNextorRom(romdb::DefaultRomPaths((std::filesystem::path(opts_.exe_dir) / "fwMSX").string()), error);
+    }
+    bool BootIde(const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) override {
+        MachineConfig next = config_;
+        next.disk_a = machine_->disk(0).loaded() ? machine_->disk(0).path() : std::string();
+        next.disk_b = machine_->disk(1).loaded() ? machine_->disk(1).path() : std::string();
+        if (!machine::SetIde(next, nextor, master, slave, error)) return false;
+        std::string sram_error;
+        machine_->SaveSram(sram_error);
+        std::unique_ptr<Machine> fresh = Machine::Create(next, error);
+        if (!fresh) return false;
+        machine_ = std::move(fresh);
+        config_ = next;
+        machine_->EnableLiveAudio(audio_ok_);
+        return true;
+    }
     bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) override {
         MachineConfig next = config_;
         next.disk_a = machine_->disk(0).loaded() ? machine_->disk(0).path() : std::string();

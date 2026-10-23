@@ -59,6 +59,7 @@ void TypeChar(machine::Machine &m, char c) {
         case ')': key = "0"; shift = true; break;
         case ':': key = ";"; shift = true; break;
         case '$': key = "4"; shift = true; break;
+        case '#': key = "3"; shift = true; break;
         case '"': key = "'"; shift = true; break;
         default: std::printf("caractere sem tecla: %c\n", c); return;
         }
@@ -406,6 +407,40 @@ int main() {
                 check(VramHas(*dm, "SUB") && VramHas(*dm, "<dir>"), "mkdir/dir: subdiretorios (so' o MSX-DOS 2 tem) gravados e listados");
             }
             fsys::remove(tmp, ec);
+        }
+    }
+
+    // --- 8c. Disco rigido: Sunrise IDE + Nextor sobre uma imagem criada pelo fwMSX (MBR + FAT16) --------------------------------------------
+    // A ROM do Nextor vem do Full Set System ROMs (nao fica no repositorio); sem ela o bloco e' pulado.
+    {
+        namespace fsys = std::filesystem;
+        const fsys::path nextor = fsys::path(FWMSX_SOURCE_DIR) / "dist/roms/filehunter/15-08-2026/extensions/Nextor-2.1.1.SunriseIDE.ROM";
+        std::error_code ec;
+        if (!fsys::is_regular_file(nextor, ec)) {
+            std::printf("[SKIP] Nextor: Nextor-2.1.1.SunriseIDE.ROM nao encontrada\n");
+        } else {
+            const fsys::path img = fsys::temp_directory_path() / "fwmsx_msx2_nextor.hdd";
+            std::string herr;
+            check(hd::CreateHdImage(img.string(), {16, 16}, herr), "Nextor: imagem de HD criada (" + herr + ")");
+            machine::MachineConfig hc = config;
+            hc.ide_master = img.string();
+            hc.nextor_rom = nextor.string();
+            hc.mapper_kb = 512;
+            std::unique_ptr<machine::Machine> hm = machine::Machine::Create(hc, herr);
+            check(hm != nullptr && hm->ide() != nullptr, "Nextor: Create() com a Sunrise IDE em 3:0 (" + herr + ")");
+            if (hm) {
+                Frames(*hm, 900);
+                check(VramHas(*hm, "Nextor BASIC version 2."), "Nextor: o kernel sobe e o BASIC mostra 'Nextor BASIC version 2.xx'");
+                check(hm->ide()->disk(0).sectors_read() >= 3, "Nextor: leu a tabela de particoes e o setor de boot do HD (" + std::to_string(hm->ide()->disk(0).sectors_read()) + " setores)");
+                Type(*hm, "open \"a:ola.txt\" for output as #1:print #1,\"oi\":close #1|");
+                Frames(*hm, 900);
+                check(hm->ide()->disk(0).sectors_written() >= 2, "Nextor: gravou arquivo na particao A: (" + std::to_string(hm->ide()->disk(0).sectors_written()) + " setores gravados)");
+                std::ifstream f(img, std::ios::binary);
+                std::vector<char> data((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+                const std::string needle = "OLA     TXT";
+                check(std::search(data.begin(), data.end(), needle.begin(), needle.end()) != data.end(), "Nextor: o diretorio do arquivo .hdd tem OLA.TXT");
+            }
+            fsys::remove(img, ec);
         }
     }
 

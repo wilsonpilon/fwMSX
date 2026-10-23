@@ -82,6 +82,7 @@
 
 #include "msxdisk/entry.h"
 #include "diskfmt/cpp/cli.h"
+#include "hd/cpp/cli.h"
 #include "repl/repl.h"
 #include "asm/cpp/cli.h"
 #include "badig/cpp/badig.h"
@@ -282,6 +283,10 @@ int main(int argc, char* argv[]) {
     if (argc > 1 && std::string(argv[1]) == "--disknew") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);
         return diskfmt::RunDiskNewCommand(tokens);
+    }
+    if (argc > 1 && std::string(argv[1]) == "--hdnew") { // imagem de disco rigido/cartao SD para o Nextor (MBR + FAT16)
+        const std::vector<std::string> tokens(argv + 2, argv + argc);
+        return hd::RunHdNewCommand(tokens);
     }
     if (argc > 1 && std::string(argv[1]) == "--cas") {
         const std::vector<std::string> tokens(argv + 2, argv + argc);

@@ -17,6 +17,16 @@ especificacao completa e historico de fases em [SPEC.md](SPEC.md).
 
 ---
 
+## v1.43.23 -- "Yie Ar Kung-Fu: Disco rigido" (Konami) (2026-10-24)
+
+**Pedido do usuario**: HD, "com suporte para IDE e SCSI se voce puder, inclusive suportando ROMs da Sunrise com o kernel do Nextor"; imagens de 2, 4 ou 8 GB (o Nextor so' le particoes de ate' 2 GB); SD pelo Nextor/Sunrise ou OCM/SCSI; criar disco pela CLI/parametros como o openMSX, e na TUI e na GUI. **Respostas**: IDE primeiro e SCSI depois (nao ha' ROM de driver de SCSI no banco: a MEGA-SCSI nao tem ROM propria); imagem ate' 4 GB com particoes de 2 GB; ROM do Nextor escolhida por opcao ou, sem ela, a do banco.
+- **Achados na pesquisa**: (1) o banco de ROMs tem 5 Nextor SunriseIDE (2.0 a 2.1.1, 128 KB, 8 bancos); (2) a interface Sunrise e' pequena (registrador de controle em 4104h, dados em 7C00h, ATA em 7E00h) e o disco ATA so' precisa de IDENTIFY/READ/WRITE em PIO; (3) o `SlotMemoryBus` so' aceitava um `SlotCartIo` (o SCC), que sobrescrevia o IDE: virou uma tabela por slot; (4) **uma celula 2:1 e' impossivel** na MSX2 (os slots 1 e 2 sao de cartucho, sem subslot, e a BIOS nao os enxerga expandidos): ficou em **3:0**; (5) o Nextor travava em "Initializing :" por causa do temporizador do turbo R em E6h/E7h; portas sem dispositivo agora leem FFh.
+- **Feito**: `src/hd` (C, Fortran, Assembly, C++), `SlotKind::Ide`, `MachineConfig::ide_*`/`nextor_rom`, `SetIde`, `romdb::FindNextorRom`, `--ide/--ide-slave/--nextor/--ide-slot`, `--hdnew`, comandos `ide`/`newhd`, menu da janela (com a janela de novo disco) e do TUI, `Machine::IdeInfo`.
+- **Testes**: `hdtest` (novo), `msx2test` 8c (boot real do Nextor 2.1.1 sobre uma imagem do fwMSX; pulado sem a ROM), `controltest` (`ide`/`newhd`); o teste do `CompositeBus` passou a esperar FFh.
+- **Nao feito**: SCSI e o SD do OCM/MegaSD (precisam do driver), copiar o MSX-DOS para dentro do HD pelo `msxdisk`, estado salvo da interface IDE, o `MAPDRV` do Nextor (a 2a particao nao ganha letra sozinha).
+- **Nao verificado**: o menu e a janela de novo disco na janela grafica (so' compilam); o TUI; o boot do MSX-DOS 2 a partir do HD (precisa dos arquivos do sistema na particao).
+- Validado: Windows e Linux, `ctest` 100% (35).
+
 ## v1.43.22 -- "Yie Ar Kung-Fu: Mapper de RAM" (Konami) (2026-10-23)
 
 **Pedido do usuario**: o proximo passo do MSX-DOS 2 e' a RAM - opcoes de mapper de 128 a 4096 KB para a MSX2/2+, e, se possivel, **um mapper interno e outro externo** (p. ex. 512 KB + 1024 KB): ha' programas que so' identificam o interno, outros so' o maior e alguns os dois, e a separacao ajuda a depurar e corrigir.

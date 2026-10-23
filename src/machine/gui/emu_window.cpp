@@ -28,6 +28,7 @@
 #include "../../control/command.h"
 #include "../../control/server.h"
 #include "../../diskfmt/cpp/disk_creator.h"
+#include "../../hd/cpp/hd_image.h"
 #include "../../msxdisk/gui/file_dialog.h"
 #include "../../msxdisk/gui/style.h"
 #include "video_filters.h"
@@ -147,6 +148,8 @@ struct WindowControlHost : control::Host {
     std::function<bool(const std::string &, std::string &)> do_shot;
     std::function<std::string(std::string &)> find_dos2;
     std::function<bool(const std::string &, const std::string &, std::string &)> do_dos2;
+    std::function<std::string(std::string &)> find_nextor;
+    std::function<bool(const std::string &, const std::string &, const std::string &, std::string &)> do_ide;
 
     Machine &machine() override { return get_machine(); }
     bool paused() const override { return get_paused(); }
@@ -158,6 +161,10 @@ struct WindowControlHost : control::Host {
     bool SaveScreenshot(const std::string &path, std::string &error) override { return do_shot(path, error); }
     std::string FindDos2Rom(std::string &error) override { return find_dos2(error); }
     bool BootDos2(const std::string &rom, const std::string &disk, std::string &error) override { return do_dos2(rom, disk, error); }
+    std::string FindNextorRom(std::string &error) override { return find_nextor(error); }
+    bool BootIde(const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) override {
+        return do_ide(nextor, master, slave, error);
+    }
 };
 
 // Estado compartilhado com os callbacks do GLFW (que nao carregam ponteiro
@@ -479,6 +486,13 @@ int RunEmulatorWindow(const WindowOptions &options) {
     RomManager rom_manager(options.rom_root);
     // Configuracao de slots (menu Maquina): o layout em edicao e a mensagem de erro dele.
     bool show_slots = false;
+    // Novo disco rigido / cartao SD (menu Midia > Disco rigido): arquivo, quantas particoes e o tamanho de cada uma.
+    bool show_newhd = false;
+    char newhd_path[512] = "novo.hdd";
+    int newhd_parts = 1;
+    int newhd_size_idx[4] = {6, 6, 6, 6};  // indice em kHdSizesMb
+    bool newhd_attach = true;
+    std::string newhd_message;
     // Configuracao de disco (menu Maquina): acesso, tipo de drive, faces, densidade.
     bool show_disk_cfg = false;
     int disk_access_sel = 0;  // 0 = memoria (DISK.ROM), 1 = portas
@@ -592,6 +606,16 @@ int RunEmulatorWindow(const WindowOptions &options) {
             return false;
         }
         cart_mapper_choice = rom.empty() ? MEMMAP_MAPPER_NONE : MEMMAP_MAPPER_MSXDOS2;
+        return true;
+    };
+    ctl_host.find_nextor = [&](std::string &error) { return romdb::FindNextorRom(romdb::RomPaths{options.rom_root}, error); };
+    ctl_host.do_ide = [&](const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) {
+        MachineConfig next = snapshot();
+        if (!SetIde(next, nextor, master, slave, error)) return false;
+        if (!reboot(next)) {
+            error = disk_message;
+            return false;
+        }
         return true;
     };
     ctl_host.do_shot = [&](const std::string &path, std::string &error) {
@@ -1191,6 +1215,50 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     }
                     ImGui::EndMenu();
                 }
+                if (ImGui::BeginMenu("Disco rigido (IDE)")) {
+                    // Sunrise ATA-IDE + Nextor (src/hd): imagens .hdd com MBR e particoes FAT16 (ate' 4 de 2 GB, 4 GB ao todo). Ver doc/hd-spec.md.
+                    const std::string ide_info = machine->IdeInfo();
+                    if (ide_info.empty()) ImGui::TextDisabled("Sem interface IDE.");
+                    else ImGui::TextUnformatted(ide_info.c_str());
+                    ImGui::Separator();
+                    const std::string cur_master = IdeImagePath(current, 0);
+                    const std::string cur_slave = IdeImagePath(current, 1);
+                    if (ImGui::MenuItem("Ligar imagem como mestre...")) {
+                        if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Imagem de disco rigido", "Disco rigido", "*.hdd;*.img;*.hdi;*.dsk")) {
+                            MachineConfig next = snapshot();
+                            std::string ide_error;
+                            std::string nextor = IdeRomPath(current).empty() ? current.nextor_rom : IdeRomPath(current);
+                            if (nextor.empty()) nextor = romdb::FindNextorRom(romdb::RomPaths{options.rom_root}, ide_error);
+                            if (nextor.empty()) disk_message = ide_error;
+                            else if (!SetIde(next, nextor, *chosen, cur_slave, ide_error)) disk_message = ide_error;
+                            else reboot(next);
+                        }
+                    }
+                    if (ImGui::MenuItem("Ligar imagem como escravo...", nullptr, false, !cur_master.empty())) {
+                        if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(window, "Imagem de disco rigido (escravo)", "Disco rigido", "*.hdd;*.img;*.hdi;*.dsk")) {
+                            MachineConfig next = snapshot();
+                            std::string ide_error;
+                            if (!SetIde(next, std::string(), cur_master, *chosen, ide_error)) disk_message = ide_error;
+                            else reboot(next);
+                        }
+                    }
+                    if (ImGui::MenuItem("Desligar o disco rigido", nullptr, false, !cur_master.empty() || !cur_slave.empty())) {
+                        MachineConfig next = snapshot();
+                        std::string ide_error;
+                        if (SetIde(next, std::string(), std::string(), std::string(), ide_error)) reboot(next);
+                    }
+                    ImGui::Separator();
+                    if (ImGui::MenuItem("Novo disco rigido / cartao SD...")) {
+                        show_newhd = true;
+                        newhd_message.clear();
+                    }
+                    if (!disk_message.empty()) {
+                        ImGui::Separator();
+                        ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", disk_message.c_str());
+                    }
+                    ImGui::TextDisabled("Precisa da ROM do Nextor (Full Set System ROMs, janela Downloads).");
+                    ImGui::EndMenu();
+                }
                 if (ImGui::BeginMenu("Fita")) {
                     // Ver doc/tape-spec.md: carregamento rapido (gancho de BIOS, sem
                     // som) ou normal (pulsos de verdade, com o barulho do gravador).
@@ -1469,6 +1537,59 @@ int RunEmulatorWindow(const WindowOptions &options) {
         ImGui::PopStyleVar(2);
 
         rom_manager.DrawWindows(window);
+        if (show_newhd) {
+            static const unsigned kHdSizesMb[] = {8, 16, 32, 64, 128, 256, 512, 1024, 2048};
+            static const char *const kHdSizeNames[] = {"8 MB", "16 MB", "32 MB", "64 MB", "128 MB", "256 MB", "512 MB", "1 GB", "2 GB"};
+            if (ImGui::Begin("Novo disco rigido / cartao SD", &show_newhd, ImGuiWindowFlags_AlwaysAutoResize)) {
+                ImGui::TextWrapped("Cria uma imagem com a tabela de particoes que o Nextor le e uma particao FAT16 vazia para cada tamanho (cada uma de 8 MB a 2 GB; ate' 4 particoes e 4 GB ao todo).");
+                ImGui::InputText("Arquivo", newhd_path, sizeof newhd_path);
+                ImGui::SameLine();
+                if (ImGui::Button("Escolher...")) {
+                    if (const auto chosen = msxdisk::gui::ShowSaveFileDialog(window, "Novo disco rigido", "Disco rigido", "*.hdd", "hdd", "")) {
+                        std::snprintf(newhd_path, sizeof newhd_path, "%s", chosen->c_str());
+                    }
+                }
+                ImGui::SetNextItemWidth(80);
+                ImGui::SliderInt("Particoes", &newhd_parts, 1, 4);
+                uint32_t total_mb = 0;
+                for (int i = 0; i < newhd_parts; ++i) {
+                    ImGui::PushID(i);
+                    ImGui::SetNextItemWidth(120);
+                    const std::string label = "Particao " + std::to_string(i + 1);
+                    ImGui::Combo(label.c_str(), &newhd_size_idx[i], kHdSizeNames, 9);
+                    ImGui::PopID();
+                    total_mb += kHdSizesMb[newhd_size_idx[i]];
+                }
+                ImGui::Text("Total: %u MB", total_mb);
+                ImGui::Checkbox("Ligar como disco mestre depois de criar", &newhd_attach);
+                std::vector<uint32_t> sizes;
+                for (int i = 0; i < newhd_parts; ++i) sizes.push_back(kHdSizesMb[newhd_size_idx[i]]);
+                std::string size_error;
+                const bool sizes_ok = hd::ValidatePartitionSizes(sizes, size_error);
+                if (!sizes_ok) ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "%s", size_error.c_str());
+                if (ImGui::Button("Criar") && sizes_ok) {
+                    std::string create_error;
+                    if (!hd::CreateHdImage(newhd_path, sizes, create_error)) {
+                        newhd_message = create_error;
+                    } else if (newhd_attach) {
+                        MachineConfig next = snapshot();
+                        std::string nextor = IdeRomPath(next).empty() ? next.nextor_rom : IdeRomPath(next);
+                        if (nextor.empty()) nextor = romdb::FindNextorRom(romdb::RomPaths{options.rom_root}, create_error);
+                        if (nextor.empty()) newhd_message = "Imagem criada, mas nao liguei: " + create_error;
+                        else if (!SetIde(next, nextor, newhd_path, IdeImagePath(next, 1), create_error)) newhd_message = create_error;
+                        else if (!reboot(next)) newhd_message = disk_message;
+                        else {
+                            newhd_message = "Imagem criada e ligada como disco mestre.";
+                            show_newhd = false;
+                        }
+                    } else {
+                        newhd_message = "Imagem criada.";
+                    }
+                }
+                if (!newhd_message.empty()) ImGui::TextWrapped("%s", newhd_message.c_str());
+            }
+            ImGui::End();
+        }
         if (show_disk_cfg) {
             ImGui::SetNextWindowSize(ImVec2(600, 0), ImGuiCond_FirstUseEver);
             if (ImGui::Begin("Configuracao de disco", &show_disk_cfg)) {
@@ -1647,7 +1768,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
                     "um arquivo de 32KB ocupa a pagina 0 (BIOS, 16KB) e a pagina 1 (BASIC, 16KB); ou dois "
                     "arquivos de 16KB, um para cada pagina (use o botao BASIC). Aplicar reinicia a maquina.");
                 const char *kind_names[] = {"Vazio", "ROM (BIOS, BASIC ou cartucho)", "Sub-ROM MSX2 (16KB)",
-                                            "RAM", "RAM mapeada (mapper)", "Disco (DISK.ROM)", "FM-PAC"};
+                                            "RAM", "RAM mapeada (mapper)", "Disco (DISK.ROM)", "FM-PAC", "IDE (Sunrise + Nextor)"};
                 if (ImGui::BeginTable("##slots", 5, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_SizingStretchProp)) {
                     ImGui::TableSetupColumn("Slot", ImGuiTableColumnFlags_WidthFixed, 48.0f);
                     ImGui::TableSetupColumn("Conteudo", ImGuiTableColumnFlags_WidthFixed, 230.0f);
@@ -1665,7 +1786,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
                             ImGui::TableSetColumnIndex(1);
                             ImGui::SetNextItemWidth(-FLT_MIN);
                             int kind = static_cast<int>(it.kind);
-                            if (ImGui::Combo("##kind", &kind, kind_names, 7)) {
+                            if (ImGui::Combo("##kind", &kind, kind_names, 8)) {
                                 it = SlotItem{};
                                 it.kind = static_cast<SlotKind>(kind);
                                 if (it.kind == SlotKind::Rom) it.page = (p == 0 && sec == 0) ? 0 : 1;
@@ -1674,7 +1795,7 @@ int RunEmulatorWindow(const WindowOptions &options) {
                             }
                             ImGui::TableSetColumnIndex(2);
                             const bool has_file = it.kind == SlotKind::Rom || it.kind == SlotKind::SubRom ||
-                                                  it.kind == SlotKind::Disk || it.kind == SlotKind::FmPac;
+                                                  it.kind == SlotKind::Disk || it.kind == SlotKind::FmPac || it.kind == SlotKind::Ide;
                             if (has_file) {
                                 ImGui::TextDisabled("%s", it.path.empty() ? "(nenhum)" : it.path.c_str());
                                 if (ImGui::SmallButton("Procurar...")) {
@@ -1685,12 +1806,12 @@ int RunEmulatorWindow(const WindowOptions &options) {
                                 }
                             }
                             ImGui::TableSetColumnIndex(3);
-                            const bool second = (it.kind == SlotKind::Rom && p == 0 && sec == 0) || it.kind == SlotKind::Disk;
+                            const bool second = (it.kind == SlotKind::Rom && p == 0 && sec == 0) || it.kind == SlotKind::Disk || it.kind == SlotKind::Ide;
                             if (second) {
                                 ImGui::TextDisabled("%s", it.path2.empty() ? "(nenhum)" : it.path2.c_str());
-                                if (ImGui::SmallButton(it.kind == SlotKind::Disk ? "Sub-ROM MSX2..." : "BASIC...")) {
+                                if (ImGui::SmallButton(it.kind == SlotKind::Disk ? "Sub-ROM MSX2..." : it.kind == SlotKind::Ide ? "Disco mestre..." : "BASIC...")) {
                                     if (const auto chosen = msxdisk::gui::ShowOpenFileDialog(
-                                            window, "Escolher ROM", "ROMs MSX", "*.rom;*.bin;*.mx1;*.mx2;*.dat")) {
+                                            window, "Escolher arquivo", "ROMs e discos", "*.rom;*.bin;*.mx1;*.mx2;*.dat;*.hdd;*.img;*.hdi")) {
                                         it.path2 = *chosen;
                                     }
                                 }

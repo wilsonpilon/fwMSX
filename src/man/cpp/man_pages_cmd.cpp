@@ -276,6 +276,51 @@ EXEMPLOS
 VER TAMBEM
   romdb, reset)MAN");
 
+    add("ide", "", "Midia e estado", "ide [mestre.hdd] [escravo.hdd] [nextor.rom] | ide off", "liga o disco rigido (Sunrise IDE + Nextor)",
+        R"MAN(DESCRICAO
+  Liga a interface Sunrise ATA-IDE com o Nextor (o MSX-DOS 2 novo do Konamiman) e as imagens de disco
+  rigido ou cartao SD dadas: a primeira e' o disco mestre, a segunda o escravo. A ROM do Nextor (128 KB) e'
+  a do banco de ROMs (Full Set System ROMs: Nextor 2.1.1, 2.1.0, 2.0.1...) ou a "nextor.rom" dada. A
+  interface fica no slot 3:0 (o slot 3 e' o expandido da MSX2; os slots 1 e 2 de cartucho a BIOS nao
+  enxerga expandidos) e reinicia a maquina. "ide" sem argumentos mostra o estado (banco da ROM, discos,
+  setores lidos e gravados); "ide off" tira a interface.
+
+  Crie a imagem com "newhd". O Nextor numera os drives na ordem em que acha os dispositivos: com o HD,
+  a 1a particao vira A: e os disquetes passam a B:. Ele so' inicia o MSX-DOS se achar COMMAND2.COM em A:
+  (copie os arquivos do sistema para o HD); senao cai no BASIC ("Nextor BASIC version 2.10"). As gravacoes
+  vao direto para o arquivo da imagem. Um cartao SD entra do mesmo jeito: e' so' outra imagem.
+
+  Na linha de comando: fwmsx --msx --msx2 --ide disco.hdd [--ide-slave outro.hdd] [--nextor rom] [--ide-slot P:S]
+  Na janela: Midia > Disco rigido (IDE). No TUI: Midia > Ligar disco rigido.
+
+EXEMPLOS
+  newhd disco.hdd 512M
+  ide disco.hdd
+  ide disco.hdd dados.hdd
+  ide off
+
+VER TAMBEM
+  newhd, dos2, mapper, disk)MAN");
+
+    add("newhd", "", "Midia e estado", "newhd <arquivo.hdd> <tamanho> [tamanho...]", "cria uma imagem de disco rigido ou cartao SD para o Nextor",
+        R"MAN(DESCRICAO
+  Cria a imagem com a tabela de particoes (MBR) que o Nextor le e uma particao FAT16 vazia para cada
+  tamanho. Tamanhos: 512 ou 512M (megabytes), 2G (gigabytes). Cada particao tem de 8 MB a 2 GB (o
+  limite do FAT16 com clusters de 32 KB e o teto do Nextor); ate' 4 particoes, no maximo 4 GB ao todo.
+  A primeira particao comeca em 1 MiB; o arquivo e' esparso quando o sistema deixa.
+
+  Fora do emulador: fwmsx --hdnew <arquivo> <tamanho>...  |  --hdnew --split <total> <n> <arquivo>  |
+  --hdnew --info <arquivo> (lista as particoes). Na janela: Midia > Disco rigido (IDE) > Novo disco
+  rigido / cartao SD. No TUI: Midia > Novo disco rigido.
+
+EXEMPLOS
+  newhd sd.hdd 2G 2G            4 GB em 2 particoes de 2 GB
+  newhd disco.hdd 100M          um disco de 100 MB
+  fwmsx --hdnew --split 4G 2 sd.hdd
+
+VER TAMBEM
+  ide, newdisk)MAN");
+
     add("dos2", "", "Midia e estado", "dos2 [rom.rom] [disco.dsk] | dos2 off", "liga o MSX-DOS 2: o kernel no slot 1 e o disco em A:",
         R"MAN(DESCRICAO
   O MSX-DOS 2 tem o kernel numa ROM de 64 KB (cartucho generico, mapper msxdos2) e no disco so' os

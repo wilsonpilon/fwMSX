@@ -78,9 +78,11 @@ public:
             uint8_t value;
             if (mmio_->MmioRead(addr, value)) return value;
         }
-        if (cart_io_ && CartVisible(addr)) {
-            uint8_t value;
-            if (cart_io_->CartRead(addr, CartMapper(), value)) return value;
+        if (cart_count_ != 0) {
+            if (SlotCartIo *cio = CartAt(addr)) {
+                uint8_t value;
+                if (cio->CartRead(addr, CartMapper(addr), value)) return value;
+            }
         }
         return memmap_read(&memory_.state(), addr);
     }
@@ -91,7 +93,11 @@ public:
             return;
         }
         if (mmio_ && (addr & 0x3F80) == 0x3F80 && MmioVisible(addr) && mmio_->MmioWrite(addr, value)) return;
-        if (cart_io_ && CartVisible(addr) && cart_io_->CartWrite(addr, value, CartMapper())) return;
+        if (cart_count_ != 0) {
+            if (SlotCartIo *cio = CartAt(addr)) {
+                if (cio->CartWrite(addr, value, CartMapper(addr))) return;
+            }
+        }
         memmap_write(&memory_.state(), addr, value);
     }
 
@@ -103,12 +109,13 @@ public:
         mmio_secondary_ = secondary;
     }
 
-    // Liga um dispositivo de slot de cartucho (SlotCartIo, ex.: SCC) ao slot
-    // (primary, secondary). nullptr desliga.
+    // Liga um dispositivo de slot de cartucho (SlotCartIo, ex.: SCC, ou a interface IDE) ao slot (primary, secondary): um por slot, varios slots
+    // ao mesmo tempo. nullptr desliga.
     void AttachCart(int primary, int secondary, SlotCartIo *device) {
-        cart_io_ = device;
-        cart_primary_ = primary;
-        cart_secondary_ = secondary;
+        if (primary < 0 || primary > 3 || secondary < 0 || secondary > 3) return;
+        if (cart_[primary][secondary] && !device) --cart_count_;
+        if (!cart_[primary][secondary] && device) ++cart_count_;
+        cart_[primary][secondary] = device;
     }
 
     // Liga o gancho de BIOS da fita (nullptr desliga -- ver TapeBiosHook acima).
@@ -184,26 +191,26 @@ private:
         return s.psl[page] == mmio_primary_ && s.ssl[page] == mmio_secondary_;
     }
 
-    // O slot de cartucho esta visivel na pagina de `addr` agora? So' a janela
-    // 4000h-BFFFh (paginas trocaveis) interessa aos dispositivos de cartucho.
-    bool CartVisible(uint16_t addr) const {
-        if (addr < 0x4000 || addr > 0xBFFF) return false;
+    // O dispositivo de cartucho do slot visivel na pagina de `addr` agora, ou nullptr. So' a janela 4000h-BFFFh (paginas trocaveis) interessa.
+    SlotCartIo *CartAt(uint16_t addr) const {
+        if (addr < 0x4000 || addr > 0xBFFF) return nullptr;
         const SlotState &s = memory_.state();
         const int page = addr >> 14;
-        return s.psl[page] == cart_primary_ && s.ssl[page] == cart_secondary_;
+        return cart_[s.psl[page]][s.ssl[page]];
     }
 
-    MemMapMapperType CartMapper() const {
-        return memory_.state().slot_mapper[cart_primary_][cart_secondary_];
+    MemMapMapperType CartMapper(uint16_t addr) const {
+        const SlotState &s = memory_.state();
+        const int page = addr >> 14;
+        return s.slot_mapper[s.psl[page]][s.ssl[page]];
     }
 
     MemorySystem &memory_;
     SlotMmio *mmio_ = nullptr;
     int mmio_primary_ = 0;
     int mmio_secondary_ = 0;
-    SlotCartIo *cart_io_ = nullptr;
-    int cart_primary_ = 0;
-    int cart_secondary_ = 0;
+    SlotCartIo *cart_[4][4] = {};
+    int cart_count_ = 0;
     TapeBiosHook *tape_hook_ = nullptr;
 };
 

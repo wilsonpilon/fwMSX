@@ -48,6 +48,8 @@ bool DownloadFileHunterEntry(const RomPaths &paths, RomDb &db, const std::string
 // `identify`), depois qualquer ROM de 64KB com o papel "MSX-DOS 2", depois as variantes conhecidas. Devolve o caminho completo ou "" (e `error` diz
 // o que fazer). Nao baixa nada.
 std::string FindMsxDos2Rom(const RomPaths &paths, std::string &error);
+// A ROM do Nextor para a interface Sunrise IDE (128 KB) que o banco ja' tem no disco: a mais nova que existir (2.1.1, 2.1.0, 2.0.1, 2.0).
+std::string FindNextorRom(const RomPaths &paths, std::string &error);
 
 // Assinaturas das ROMs de sistema do openMSX (nome oficial, papel, hardware): baixa os XML de share/machines e share/extensions do GitHub (um unico curl,
 // ~350 arquivos pequenos), le, grava na tabela `signatures` e identifica as ROMs do banco. `sigs` = quantas ROMs distintas o openMSX reconhece.

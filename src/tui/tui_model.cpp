@@ -47,6 +47,7 @@ const std::vector<std::string> kWords = {
 
 const std::vector<std::string> kRomExts = {"rom", "mx1", "mx2", "bin"};
 const std::vector<std::string> kDskExts = {"dsk"};
+const std::vector<std::string> kHddExts = {"hdd", "img", "hdi", "dsk"};
 const std::vector<std::string> kAsmExts = {"asm", "z80", "s"};
 const std::vector<std::string> kSymExts = {"sym"};
 const std::vector<std::string> kTapeExts = {"cas", "tsx", "tzx", "wav"};
@@ -191,7 +192,14 @@ std::vector<TuiModel::MenuDef> TuiModel::BuildMenus() const {
                   {"Fita: carregamento rapido (BIOS)", cmd("tape mode fast")},
                   {"Fita: carregamento normal (pulsos)", cmd("tape mode normal")},
                   {"Fita: gravar uma copia...", wiz("Copiar fita", {{"Arquivo .cas/.tsx/.wav de destino", "copia.tsx", false, {}}},
-                                                    [](const std::vector<std::string> &v) { return "tape save " + Quote(v[0]); })}}});
+                                                    [](const std::vector<std::string> &v) { return "tape save " + Quote(v[0]); })},
+                  sep(),
+                  {"Novo disco rigido / cartao SD...", wiz("Novo disco rigido", {{"Arquivo .hdd a criar", "novo.hdd", false, {}}, {"Tamanhos das particoes (ex.: 512M ou 2G 2G; ate 4 de 2G, 4G ao todo)", "512M", false, {}}},
+                                                           [](const std::vector<std::string> &v) { return "newhd " + Quote(v[0]) + " " + v[1]; })},
+                  {"Ligar disco rigido (IDE + Nextor)...", wiz("Disco rigido IDE", {{"Imagem .hdd (mestre)", "", true, kHddExts}, {"Imagem do escravo (opcional)", "", true, kHddExts}},
+                                                               [](const std::vector<std::string> &v) { return "ide " + Quote(v[0]) + (v[1].empty() ? std::string() : " " + Quote(v[1])); })},
+                  {"Disco rigido: estado", cmd("ide")},
+                  {"Desligar o disco rigido", cmd("ide off")}}});
 
     m.push_back({"Ferramentas",
                  {{"Banco de ROMs: buscar...", wiz("Buscar ROM", {{"Termo", "", false, {}}},

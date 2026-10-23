@@ -12,7 +12,8 @@ o padrao reproduz exatamente o que a maquina ja fazia.
 
 `src/machine/machine.h`:
 
-- `SlotKind`: `Empty`, `Rom`, `SubRom`, `Ram`, `Mapper`, `Disk`, `FmPac`.
+- `SlotKind`: `Empty`, `Rom`, `SubRom`, `Ram`, `Mapper`, `Disk`, `FmPac`, `Ide` (1.43.23: Sunrise ATA-IDE; `path` = ROM do Nextor, `path2`/`path3` = imagens mestre/escravo; ver `hd-spec.md`).
+- Regra da MSX2: os slots 1 e 2 (cartucho) nao tem subslot, so' o 0 e o 3 sao expandidos; por isso a IDE fica em 3:0.
 - `SlotItem` (uma celula):
   - `path`: ROM principal (BIOS, BASIC, cartucho), DISK.ROM ou FMPAC.ROM.
   - `path2`: segunda ROM de 16KB que vai para a pagina 1 (ex.: BASIC, com a BIOS na

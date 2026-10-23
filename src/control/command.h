@@ -76,6 +76,20 @@ public:
         error = "o MSX-DOS 2 nao esta' disponivel neste modo";
         return false;
     }
+    // A ROM do Nextor (Sunrise IDE) do banco de ROMs; "" = nao achou (e `error` diz o que fazer).
+    virtual std::string FindNextorRom(std::string &error) {
+        error = "o disco rigido nao esta' disponivel neste modo";
+        return "";
+    }
+    // Reinicia a maquina com a interface Sunrise IDE (Nextor) e as imagens de disco rigido `master`/`slave` (vazias = sem); as duas vazias
+    // tiram a interface. Mantem o resto da configuracao (discos, fita, cartucho).
+    virtual bool BootIde(const std::string &nextor, const std::string &master, const std::string &slave, std::string &error) {
+        (void)nextor;
+        (void)master;
+        (void)slave;
+        error = "o disco rigido nao esta' disponivel neste modo";
+        return false;
+    }
     // Grava a tela em `path` (PNG na janela; o formato e' do host).
     virtual bool SaveScreenshot(const std::string &path, std::string &error) = 0;
 };

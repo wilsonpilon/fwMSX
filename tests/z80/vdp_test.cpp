@@ -388,7 +388,7 @@ int main() {
 
         dev_b.response = 0xEE;
         check(bus.in(0x9A) == 0xEE, "CompositeBus::in(0x9A) devolve o valor do dispositivo registrado");
-        check(bus.in(0x50) == 0, "CompositeBus::in numa porta sem dispositivo registrado devolve 0");
+        check(bus.in(0x50) == 0xFF, "CompositeBus::in numa porta sem dispositivo registrado devolve FFh (barramento flutuando)");
 
         bus.write(0x1234, 0x99);
         check(mem.last_out_port == -1, "CompositeBus::write() nunca passa pelo mapa de porta (so' pelo dispositivo de memoria)");

@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.23] - 2026-10-24 - "Yie Ar Kung-Fu: Disco rigido" (Konami)
+
+### Adicionado -- disco rigido IDE com o Nextor
+- **Sunrise ATA-IDE + Nextor** (o MSX-DOS 2 novo do Konamiman): a ROM do Nextor (128 KB, a do banco de ROMs) e imagens de HD/SD de ate' 4 GB como disco mestre e escravo. O kernel **sobe de verdade** ("Nextor BASIC version 2.10"), le a tabela de particoes e grava arquivos na particao A: (testado no emulador). `--ide <img>`, `--ide-slave`, `--nextor`, `--ide-slot`; comando `ide [mestre] [escravo] [rom] | off`; menu *Midia > Disco rigido (IDE)* na janela e no TUI. Fica no slot 3:0.
+- **Criar imagens**: `fwmsx --hdnew <arq> <tamanho>...` (e `--split`, `--info`), comando `newhd` no console/TUI, e a janela *Novo disco rigido / cartao SD* (1 a 4 particoes FAT16 de 8 MB a 2 GB, ate' 4 GB ao todo, MBR que o Nextor le). SD = outra imagem na mesma interface.
+- Modulo novo `src/hd` nas 4 linguagens: formato MBR/FAT16 em C, conta da FAT em Fortran, preenchimento e troca de bytes das strings do IDENTIFY em Assembly, disco ATA e interface Sunrise em C++. `doc/hd-spec.md`; `man ide`, `man newhd`.
+- `SlotMemoryBus::AttachCart` passou a ser **um dispositivo por slot** (antes um so' no barramento inteiro): o SCC e o IDE convivem.
+
+### Corrigido
+- Porta de E/S sem dispositivo agora le **FFh** (barramento flutuando), nao 0. O Nextor usa o temporizador do MSX turbo R (portas E6h/E7h) para esperar e ficava para sempre em "Initializing :" numa MSX2.
+
 ## [1.43.22] - 2026-10-23 - "Yie Ar Kung-Fu: Mapper de RAM" (Konami)
 
 ### Adicionado -- RAM mapeada de 64 a 4096 KB e dois mappers

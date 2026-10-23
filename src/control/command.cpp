@@ -18,6 +18,7 @@
 #include "../mamute/cpp/mamute_monitor.h"
 #include "../mamute/cpp/mamute_online.h"
 #include "../msxdisk/core/disk_image.h"
+#include "../hd/cpp/hd_image.h"
 #include "../project/cpp/project.h"
 #include "../script/script_engine.h"
 #include "../tape/cpp/cas_format.h"
@@ -53,7 +54,7 @@ int DriveIndex(const std::string &s) {
 
 const char *kHelp =
     "comandos: help version status reset pause resume step [n] type <texto|{tecla}> peek <end> [n] screen [info] (texto da tela / modo e tabelas) vdp [pal|n [v]] vdpbios n v (registradores do VDP) "
-    "poke <end> <v>... regs cart <arq|-> [mapper] dos2 [rom] [disco]|off (MSX-DOS 2) mapper (RAM mapeada) disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
+    "poke <end> <v>... regs cart <arq|-> [mapper] dos2 [rom] [disco]|off (MSX-DOS 2) newhd <arq> <tam>... ide [mestre] [escravo] [nextor.rom]|off (disco rigido) mapper (RAM mapeada) disk <A|B> <arq> eject <A|B> tape <arq|eject|rewind|new|list|seek|protect|write|mode|save|put|load> "
     "state <save|load> <arq> screenshot <arq> quit | depurador: dbg break <end> unbreak <end|all> breaks "
     "watch <end> [tam] [r|w|rw] unwatch <end|all> watches stepi [n] next until <end> go [end] stop jump <end> "
     "dis [end] [n] mem <end> [n] stack [n] reg [nome valor] slots events <on|off> dbgui <open|show|key|char> (ver doc/debug-spec.md) | "
@@ -685,6 +686,48 @@ Result Commander::Execute(const std::string &line) {
         const Z80State &s = m.cpu().state();
         return Ok("AF=" + Hex(s.af.w, 4) + " BC=" + Hex(s.bc.w, 4) + " DE=" + Hex(s.de.w, 4) + " HL=" + Hex(s.hl.w, 4) +
                   " IX=" + Hex(s.ix.w, 4) + " IY=" + Hex(s.iy.w, 4) + " SP=" + Hex(s.sp.w, 4) + " PC=" + Hex(s.pc.w, 4));
+    }
+
+    if (cmd == "newhd") {
+        // newhd <arquivo> <tamanho> [tamanho...]: 1 a 4 particoes FAT16 (8 MB a 2 GB cada, soma ate' 4 GB), MBR do Nextor
+        if (t.size() < 3) return Err("newhd: use newhd <arquivo.hdd> <tamanho> [tamanho...]  (tamanhos como 512, 512M ou 2G; ate' 4 particoes de 2G, no maximo 4G ao todo)");
+        std::vector<uint32_t> sizes;
+        std::string error;
+        for (size_t i = 2; i < t.size(); ++i) {
+            uint32_t mb = 0;
+            if (!hd::ParseSize(t[i], mb, error)) return Err("newhd: " + error);
+            sizes.push_back(mb);
+        }
+        if (!hd::CreateHdImage(t[1], sizes, error)) return Err("newhd: " + error);
+        uint32_t total = 0;
+        for (const uint32_t s : sizes) total += s;
+        return Ok(t[1] + ": " + std::to_string(sizes.size()) + " particao(oes) FAT16, " + std::to_string(total) + " MB. Use `ide " + t[1] + "` para ligar.");
+    }
+
+    if (cmd == "ide") {
+        // ide | ide off | ide [mestre.hdd] [escravo.hdd] [nextor.rom]: a Sunrise IDE com o Nextor; sem argumentos mostra o estado
+        if (t.size() == 1) {
+            const std::string info = m.IdeInfo();
+            return Ok(info.empty() ? std::string("sem interface IDE (use ide <imagem.hdd>)") : info);
+        }
+        std::string nextor, master, slave, error;
+        if (t.size() == 2 && t[1] == "off") {
+            if (!host_.BootIde(std::string(), std::string(), std::string(), error)) return Err("ide: " + error);
+            return Ok("IDE desligada; maquina reiniciada");
+        }
+        for (size_t i = 1; i < t.size(); ++i) {
+            std::string ext = std::filesystem::path(t[i]).extension().string();
+            for (char &c : ext) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+            if (ext == ".rom" || ext == ".bin") nextor = t[i];
+            else if (master.empty()) master = t[i];
+            else if (slave.empty()) slave = t[i];
+            else return Err("ide: use ide [mestre.hdd] [escravo.hdd] [nextor.rom] | ide off");
+        }
+        if (master.empty() && slave.empty()) return Err("ide: faltou a imagem do disco (crie uma com newhd)");
+        if (nextor.empty()) nextor = host_.FindNextorRom(error);
+        if (nextor.empty()) return Err("ide: " + error);
+        if (!host_.BootIde(nextor, master, slave, error)) return Err("ide: " + error);
+        return Ok("IDE Sunrise + Nextor (" + nextor + ") no slot 3:0; mestre " + (master.empty() ? std::string("-") : master) + (slave.empty() ? std::string() : "; escravo " + slave) + "; maquina reiniciada");
     }
 
     if (cmd == "dos2") {

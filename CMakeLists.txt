@@ -579,6 +579,17 @@ set(SPLASH_LIB_SOURCES
         src/common/settings.cpp
 )
 
+# --- Disco rigido IDE (Sunrise + Nextor) e imagens de HD/SD (C + Fortran + Assembly + C++) -- ver doc/hd-spec.md.
+set(HD_LIB_SOURCES
+        src/hd/core/hd_format.c
+        src/hd/fortran/hd_geometry.f90
+        src/hd/asm/hd_fill.asm
+        src/hd/cpp/hd_image.cpp
+        src/hd/cpp/ide_disk.cpp
+        src/hd/cpp/sunrise_ide.cpp
+        src/hd/cpp/cli.cpp
+)
+
 set(MACHINE_LIB_SOURCES
         src/machine/machine.cpp
         src/debug/cpp/debugger.cpp
@@ -587,6 +598,7 @@ set(MACHINE_LIB_SOURCES
         src/debug/c/dbg_flow.c
         src/debug/fortran/dbg_fmt.f90
         src/debug/asm/dbg_range.asm
+        ${HD_LIB_SOURCES}
 )
 
 enable_testing()
@@ -864,6 +876,15 @@ if (MINGW)
     target_link_options(diskfmttest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME diskfmt COMMAND diskfmttest)
+
+# hdtest: disco rigido (MBR + FAT16 em C/Fortran/Assembly), disco ATA e interface Sunrise IDE -- doc/hd-spec.md.
+add_executable(hdtest tests/hd/hd_test.cpp ${HD_LIB_SOURCES})
+target_include_directories(hdtest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+set_target_properties(hdtest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/hdtest)
+if (MINGW)
+    target_link_options(hdtest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME hd COMMAND hdtest)
 
 # fdctest: controladora de disquete WD2793 -- ver doc/fdc-spec.md.
 add_executable(fdctest tests/z80/fdc_test.cpp ${MEMMAP_LIB_SOURCES} ${FDC_LIB_SOURCES})

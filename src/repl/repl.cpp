@@ -21,6 +21,7 @@
 
 #include "../asm/cpp/cli.h"
 #include "../diskfmt/cpp/cli.h"
+#include "../hd/cpp/cli.h"
 #include "../msxdisk/entry.h"
 #include "../romdb/cli.h"
 #include "../tape/cli/cas_tool.h"
@@ -44,7 +45,7 @@ std::string HistoryFilePath() {
 
 // Comandos conhecidos, para o TAB (locais + os da ponte de controle).
 const std::vector<std::string> kCompletions = {
-    "help", "exit", "quit", "emu start", "emu attach", "emu detach", "emu stop", "emu status", "newdisk", "romdb", "cas",
+    "help", "exit", "quit", "emu start", "emu attach", "emu detach", "emu stop", "emu status", "newdisk", "newhd", "ide", "dos2", "mapper", "romdb", "cas",
     "fitadb", "msxdisk", "version", "status", "reset", "pause", "resume", "step", "type", "peek", "poke", "regs", "cart",
     "disk", "eject", "tape", "state save", "state load", "screenshot", "man", "break", "unbreak", "breaks", "watch", "unwatch",
     "watches", "stepi", "next", "until", "go", "stop", "jump", "dis", "mem", "stack", "reg", "slots", "events", "dbgui", "wait", "asm", "asmrun", "sym", "src", "markers", "mon", "mamute"};
@@ -153,6 +154,8 @@ std::unique_ptr<ReplSession> BuildSession(const std::string &argv0) {
     // As ferramentas que ja' existiam como opcoes soltas viram comandos do console.
     session->AddTool("newdisk", [](const std::vector<std::string> &a) { return diskfmt::RunDiskNewCommand(a); },
                      "cria um disquete novo e formatado: newdisk <arq.dsk> <ss525|ds525|ss35|ds35>");
+    session->AddTool("newhd", [](const std::vector<std::string> &a) { return hd::RunHdNewCommand(a); },
+                     "cria uma imagem de disco rigido para o Nextor: newhd <arq.hdd> <tamanho>... | newhd --split <total> <n> <arq> | newhd --info <arq>");
     session->AddTool("asm", [](const std::vector<std::string> &a) { return fwasm::RunAsmCommand(a); },
                      "montador Z80 (o fwmsx --asm): asm [-z] [-s] [-vv] [-o <base>] <arq.asm>");
     session->AddTool("romdb", [argv0](const std::vector<std::string> &a) { return romdb::RunRomDbCommand(a, argv0); },

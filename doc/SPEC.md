@@ -192,7 +192,7 @@ acompanhamento manual do autor a cada build):
   funciona e o que falta. O mapa de memoria ja tem o FM-PAC, a SRAM e o MSX-DOS 2; falta o
   GameMaster2 (`doc/memory-map-spec.md`, secao 6).
 
-### 5.0 Estado atual e proximos passos (atualizado em 2026-10-23, depois da v1.43.22)
+### 5.0 Estado atual e proximos passos (atualizado em 2026-10-24, depois da v1.43.23)
 
 Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 [CHANGELOG.md](CHANGELOG.md) e [RELEASE.md](RELEASE.md).
@@ -200,7 +200,8 @@ Esta secao e' o "onde paramos" oficial. O historico de cada versao esta em
 **Visoes registradas (so' estudo, nada implementado; 2026-10-19):** a secao 5.3 (o IDE do fwMSX: editor de textos em TUI/GUI, executar BASIC/Dignified/Assembly no MSX embutido, Markdown/ASCII/PDF, projetos com `Obifile` do Kizuna e as linguagens do Kizuna)
 e a secao 5.4 (os editores e utilitarios do msxIDE e do PaleoBasic sob o mesmo teto: fontes, sprites, telas, som, tracker, MML, hexadecimal...). Cada uma tem subtopicos "a detalhar" para as proximas conversas.
 
-**Funcionando (v1.43.22, publicada em `main`):**
+**Funcionando (v1.43.23, publicada em `main`):**
+- [x] **Disco rigido IDE + Nextor** (1.43.23): `src/hd` (C/Fortran/ASM/C++), Sunrise ATA-IDE em 3:0 com a ROM do Nextor (banco de ROMs), imagens de HD/SD com MBR + FAT16 (particoes de 8 MB a 2 GB, 4 GB ao todo), `--ide`/`--hdnew`, comandos `ide`/`newhd`, menus da janela e do TUI; o Nextor 2.1.1 sobe e grava na particao A:; portas sem dispositivo leem FFh; `SlotMemoryBus` com um `SlotCartIo` por slot. Falta: SCSI/SD do OCM (sem ROM de driver), copiar o DOS para o HD pelo `msxdisk`, estado salvo da IDE, `MAPDRV`. Ver `doc/hd-spec.md`.
 - [x] **RAM mapeada 64-4096 KB e dois mappers** (1.43.22): `MachineConfig::mapper_kb/mapper2_kb/mapper2_slot`, `--ram`/`--ram2`/`--ram2-slot`, menu *Maquina > RAM mapeada*, comando `mapper`, `SetMapperRam`; `LoadState` refaz o registrador do mapper. Falta: o MSX-DOS 2 so' foi visto bootando com 512+1024 KB, nao exercitado; HD.
 - [x] **MSX-DOS 2** (1.43.21): `msxdos22.rom` (64 KB, mapper `msxdos2`) no slot 1 + interface de disquete + disco com `MSXDOS2.SYS`/`COMMAND2.COM` boota (kernel 2.20, COMMAND2 2.44, subdiretorios, gravacao); `dos2 [rom] [disco]`/`dos2 off`, `--dos2`, menu, `romdb::FindMsxDos2Rom`, `dos: 2` do Obifile no `obirun`. Falta: HD (IDE/SCSI), `asmrun` de `.com` com o DOS 2, mapper de RAM > 128 KB.
 - [x] **Download com barra e identificacao pelo openMSX** (1.43.20): curl escondido (sem janela de console) + `romdb::CurrentProgress`/barra ImGui; `romdb sig download|import|show|stats`, `identify` (nome oficial, papel, familia, hardware, categoria), tabela `signatures`, leitor de XML em C. Proximo: MSX-DOS 2 no emulador com o `MSXDOS22.ROM` identificado.

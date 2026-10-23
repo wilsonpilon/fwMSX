@@ -41,6 +41,8 @@ Em vez do XML do openMSX, um **protocolo de texto de uma linha por comando**, so
 | `peek <end> [n]` | le n bytes (1-4096) como o Z80 enxerga agora; `ok 41 42 ...` |
 | `poke <end> <v>...` | grava bytes (ROM nao e' alterada) |
 | `regs` | registradores do Z80 |
+| `ide [mestre.hdd] [escravo.hdd] [nextor.rom]` \| `ide off` | liga a Sunrise IDE + Nextor (ROM do banco de ROMs se nao der) no slot 3:0 com as imagens; sem argumentos mostra o estado (banco, discos, setores); `off` tira |
+| `newhd <arq> <tam>...` | cria uma imagem de HD/SD (MBR + particoes FAT16 de 8 MB a 2 GB, ate' 4 GB); tamanhos `512`, `512M`, `2G`; `--split <total> <n> <arq>`, `--info <arq>` |
 | `mapper` | os mappers de RAM: slot, tamanho, segmentos e o segmento de cada pagina |
 | `dos2 [rom.rom] [disco.dsk]` \| `dos2 off` | liga o MSX-DOS 2: o kernel (64 KB, mapper msxdos2; sem `rom.rom`, o do banco de ROMs) no slot 1, interface de disquete, `disco.dsk` em A:; reinicia. `off` tira o cartucho |
 | `cart <arq\|-> [mapper]` | troca o cartucho (reinicia); `-` retira; mapper: auto, gen8, gen16, konami5, konami4, ascii8, ascii16, msxdos2 |
