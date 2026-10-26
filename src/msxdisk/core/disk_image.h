@@ -120,6 +120,19 @@ private:
     const uint8_t *FatPtr() const;
     void SyncFatCopies();
 
+    // Despacham para fat12_c ou fat16_c conforme geometry_.fat_bits -- todo
+    // acesso a entrada da FAT (em qualquer metodo) passa por aqui, nunca
+    // chama msxdisk_fat12_get/set ou msxdisk_fat16_get/set direto.
+    uint16_t FatGet(uint16_t cluster) const;
+    void FatSet(uint16_t cluster, uint16_t value);
+
+    // Valor gravado numa entrada para marcar fim de cadeia (0x0FFF na
+    // FAT12, 0xFFFF na FAT16) e o teste correspondente (>= 0x0FF8 /
+    // >= 0xFFF8 -- a FAT12 reserva varios valores de FFxh para isso, a
+    // FAT16 reserva FFF8h-FFFFh).
+    uint16_t FatEofValue() const;
+    bool FatIsEof(uint16_t value) const;
+
     RawDirEntry *RootDirBegin();
     const RawDirEntry *RootDirBegin() const;
 

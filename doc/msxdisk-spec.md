@@ -573,6 +573,83 @@ guardados num banco SQLite (não em INI/JSON solto).
       emulador (esses exemplos da regra são sobre o emulador em si, não
       sobre utilitários como o `msxdisk`).
 
+### Fase 6 — FAT16 e partições de HD/SD (1.43.27)
+
+Pendência registrada em `resume.txt`/`OUTLINE.md`/`doc/hd-spec.md` (seção 8): para um HD/SD
+(`.hdd`, `hd::CreateHdImage`/`fwmsx --hdnew`) **iniciar sozinho no MSX-DOS 2** (o Nextor achando
+`COMMAND2.COM` em A: e pulando direto pro prompt do DOS, em vez de cair no Nextor BASIC), era
+preciso copiar os arquivos de sistema **de dentro do próprio emulador**, no BASIC do Nextor,
+comando a comando (`copy "b:command2.com" to "a:cmd2.com"`). O `msxdisk` não ajudava porque só
+entendia **FAT12 de disquete 720KB sem partições** — as imagens de HD usam **FAT16 particionado
+(MBR)**, formato que o núcleo nunca tinha visto.
+
+Pesquisa feita antes de implementar (regra do `CLAUDE.md`): o boot sector de uma partição FAT16
+do Nextor **não** tem bootstrap executável (só BPB) — o Nextor é um DOS em ROM, não em disco; ele
+só precisa achar `COMMAND2.COM` lendo o sistema de arquivos. Ou seja, o único problema real era
+"o `msxdisk` consegue escrever um arquivo numa partição FAT16 de um `.hdd`?", nada relacionado a
+bootstrap/MBR executável.
+
+Pergunta feita ao usuário (`AskUserQuestion`): generalizar o núcleo do `msxdisk` para FAT16
+(reaproveitando `list`/`add`/`extract`/`delete`/`rename`/`mkdir`/`rmdir`/`info` em qualquer
+partição) vs. um comando isolado só de "injetar arquivo". **Usuário escolheu generalizar o
+núcleo.**
+
+- [x] **6a** — **Descoberta que simplificou a entrega**: todos os pontos de entrada (CLI
+      one-shot, shell replxx, TUI FTXUI, GUI ImGui) chamam exatamente dois pontos:
+      `DiskImage::Load(path, &error)` e `image.Save(path, &error)`. Ensinando só esses dois
+      métodos a reconhecer um sufixo **`caminho.hdd:N`** (N = número da partição, 1-based) no
+      próprio `disk_image.cpp`, todos os comandos existentes passaram a funcionar em partições de
+      HD "de graça", sem tocar em `cli/app.cpp`, `cli/commands.cpp`, `shell/session.cpp`,
+      `tui/app.cpp` nem `gui/app.cpp`. Só `create`/`copy` continuam exclusivos de disquete FAT12
+      (criar/clonar partição não é o pedido; partições já nascem formatadas por
+      `hd::CreateHdImage`).
+    - **Cuidado de Windows**: a separação sufixo/caminho acontece ANTES de qualquer E/S
+      (`SplitPartitionSuffix`, só examina a `std::string`) — o NTFS interpreta `:` como separador
+      de Alternate Data Stream se a string combinada (`"disco.hdd:1"`) chegar a uma API de
+      arquivo (`ifstream`/`fopen`). Só o caminho sem sufixo (`base`) toca o sistema de arquivos.
+    - Sem `:` no caminho, ou quando o único `:` é a letra de unidade do Windows (`"C:\..."`),
+      `SplitPartitionSuffix` devolve `false` e o comportamento é 100% igual ao de antes (disquete
+      FAT12 inteiro) — sem regressão.
+    - **`src/msxdisk/fat16_c/fat16.{h,c}`** (novo módulo C, espelha `fat12_c/fat12.c`):
+      `msxdisk_fat16_get`/`msxdisk_fat16_set` — entradas de 16 bits planas (little-endian, sem o
+      empacotamento de bits da FAT12).
+    - **`geometry.h`/`geometry.cpp`**: campo `fat_bits` (12 ou 16); `total_sectors` virou
+      `uint32_t` (uma partição de HD chega a 2048 MB = ~4,19M setores, não cabe em 16 bits);
+      `ParseFromBootSector` detecta FAT16 pelo rótulo `"FAT16"` no byte 0x36 do BPB (o mesmo que
+      `hd_fat16_boot_sector`, em `src/hd/core/hd_format.c`, já grava) e lê o campo estendido de 32
+      bits em 0x20 quando o campo clássico de 16 bits em 0x13 vem zerado. `WriteBootSector`/
+      `CreateBlank` continuam só FAT12/720KB — partições de HD **sempre** nascem formatadas por
+      `hd::CreateHdImage`, nunca pelo `DiskImage`.
+    - **`disk_image.cpp`**: `FatGet`/`FatSet`/`FatEofValue`/`FatIsEof` (métodos privados) passam a
+      ser o único jeito de acessar uma entrada da FAT dentro da classe — despacham para `fat12_c`
+      ou `fat16_c` conforme `geometry_.fat_bits` (FAT16: EOF `0xFFFF`, fim de cadeia `>= 0xFFF8`;
+      FAT12 continua `0x0FFF`/`>= 0x0FF8`).
+    - **Isolamento de build de propósito**: o parsing do MBR (`ReadMbrPartitionLba`, formato
+      público — assinatura 55AAh, 4 entradas de 16 bytes a partir de 446h) foi **duplicado**
+      dentro do próprio `disk_image.cpp`, em vez de reusar `hd::ReadPartitions`
+      (`src/hd/cpp/hd_image.cpp`). Motivo: `MSXDISK_CORE_SOURCES`/`MSXDISK_LIB_SOURCES` (que
+      incluem `disk_image.cpp`) são linkados por `msxdisk.exe`, `fwMSX.exe` **e** por
+      `repltest`/`controltest`/`asme2etest`/`mamutetest`/`obitest`/`edittest` (Super-X
+      `XFS`/`XCI`/`XTP` e outros também leem imagens de disco pelo mesmo núcleo) — depender do
+      módulo `hd` ali obrigaria todos esses alvos a ganharem `hd_image.cpp`/`hd_format.c`/Fortran/
+      ASM do `hd` só por causa da linkagem, sem nenhum deles pedir isso.
+    - **Teste**: `msxdisktest` (novo, `ctest msxdisk`, `tests/z80/msxdisk_test.cpp`) — aqui SIM
+      entra `hd::CreateHdImage`/`hd::ReadPartitions`, mas só para o teste construir/inspecionar a
+      imagem de fixture; é um alvo isolado, não afeta a lista de dependências dos alvos acima.
+      Cobre: FAT16 `get`/`set` em clusters altos; `Geometry::ParseFromBootSector` detectando FAT16
+      numa partição real; round-trip `AddFile`/`Save`/`Load` numa partição; prova de que `Save`
+      numa partição 1 não altera o MBR nem uma partição 2 vizinha (compara os bytes fora da faixa
+      antes/depois); regressão do fluxo sem sufixo, inclusive caminho absoluto com letra de
+      unidade do Windows.
+      **Concluída** em 2026-10-26.
+
+**Fora de escopo nesta fase** (registrado como falta, não bloqueia): a TUI/GUI ganharem um campo
+dedicado de "número da partição" nos diálogos de Abrir/Novo — hoje funciona digitando
+`disco.hdd:1` direto no campo de texto (dialógo/shell já aceitam qualquer string); `create`/`copy`
+operando direto sobre uma partição (criar/clonar partição é papel do `hd::CreateHdImage`/
+`fwmsx --hdnew`); partições FAT16 fora do padrão que `hd::CreateHdImage` gera (partições
+estendidas, por exemplo).
+
 ## 5. Critérios de aceite
 
 - Round-trip completo (criar → add → list → extract → rename → delete →

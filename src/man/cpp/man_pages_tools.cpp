@@ -455,8 +455,15 @@ VER TAMBEM
   Locais (como um FTP): ls, cd, md, rm, pwd. "tui" / "gui" abrem a TUI / GUI
   sem sair; "help" lista tudo; "exit" ou Ctrl-D sai.
 
+  Particao de HD/SD: acrescente ":N" (N = numero da particao, 1-based) ao
+  caminho da imagem, ex. "disco.hdd:1" -- list/add/extract/delete/rename/
+  mkdir/rmdir/info/saveas passam a ler/escrever so' naquela particao (MBR
+  e as outras particoes ficam intocados). Util para colocar COMMAND2.COM/
+  MSXDOS2.SYS num .hdd (ver "ide"/"newhd") sem passar pelo BASIC do Nextor.
+  create/copy continuam so' para disquete FAT12 inteiro.
+
 VER TAMBEM
-  newdisk, disk)MAN");
+  newdisk, disk, ide, newhd)MAN");
 
     return v;
 }

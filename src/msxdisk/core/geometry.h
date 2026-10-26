@@ -7,23 +7,33 @@
 
 namespace msxdisk {
 
-// Descreve o BPB (BIOS Parameter Block) de um formato de disco MSX FAT12.
-// Por enquanto so o formato DS/DD de 720KB esta disponivel para criacao
-// (valores conferidos byte a byte contra o boot sector original do fMSX
-// em resource/DiskUtilities/Boot.h); Load() consegue ler o BPB de
-// qualquer imagem valida, mesmo com outra geometria -- ver
-// doc/msxdisk-spec.md, secao 6.
+// Descreve o BPB (BIOS Parameter Block) de um formato de disco MSX FAT12
+// ou FAT16. Por enquanto so o formato DS/DD de 720KB (FAT12) esta
+// disponivel para CRIACAO pelo proprio DiskImage (valores conferidos
+// byte a byte contra o boot sector original do fMSX em
+// resource/DiskUtilities/Boot.h); particoes FAT16 de HD/SD nascem
+// formatadas por hd::CreateHdImage (src/hd) e so' sao LIDAS aqui.
+// Load() consegue ler o BPB de qualquer imagem valida, mesmo com outra
+// geometria/largura de FAT -- ver doc/msxdisk-spec.md, secao 6.
 struct Geometry {
     uint16_t bytes_per_sector = 512;
     uint8_t sectors_per_cluster = 2;
     uint16_t reserved_sectors = 1;
     uint8_t fat_count = 2;
     uint16_t root_dir_entries = 112;
-    uint16_t total_sectors = 1440;
+    // Numero de setores do volume (particao ou disquete inteiro). Precisa
+    // ser 32 bits: uma particao de HD chega a 2048 MB (~4,19M setores),
+    // bem alem do que cabe no campo classico de 16 bits do BPB (por isso
+    // o FAT16 tem o campo estendido de 32 bits -- ver ParseFromBootSector).
+    uint32_t total_sectors = 1440;
     uint8_t media_descriptor = 0xF9;
     uint16_t sectors_per_fat = 3;
     uint16_t sectors_per_track = 9;
     uint16_t head_count = 2;
+    // 12 (disquete MSX-DOS 1/2) ou 16 (particao de HD/SD, src/hd). Decide
+    // o tamanho/empacotamento das entradas da FAT e os valores de
+    // fim-de-cadeia/livre (ver DiskImage::FatGet/FatSet/FatEofValue).
+    uint8_t fat_bits = 12;
 
     static Geometry Disk720KB();
 

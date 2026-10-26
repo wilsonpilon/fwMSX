@@ -2,3 +2,15 @@
 # core.autocrlf de quem commita no Windows -- CRLF num shebang quebra a
 # execucao no Linux ("bad interpreter"). Ver build.sh.
 *.sh text eol=lf
+
+# Basic Dignified (tests/badig/golden/**/*.err): a mensagem de erro do console e' gerada em memoria
+# com "\n" (nunca gravada em disco pelo badig de verdade) e comparada LINHA A LINHA (std::getline,
+# que preserva um \r sobrando no fim da linha); sem isto, um checkout no Windows com
+# core.autocrlf=true converte o golden para CRLF e a comparacao falha (achado: 2026-10-26, primeira
+# rodada numa maquina nova -- ver resume.txt). Os outros formatos do badig (*.dmx fonte, *.amx/*.lmx
+# intermediarios, os relatorios *_lines.txt/*_variables.txt) SAO CRLF de proposito (o badig.py
+# original os grava assim) -- NAO normalizar esses.
+tests/badig/golden/**/*.err text eol=lf
+
+# *.bmx e' o BASIC TOKENIZADO (binario, nunca texto) -- nunca normalizar fim de linha nele.
+*.bmx binary

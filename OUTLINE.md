@@ -1,7 +1,7 @@
 # OUTLINE -- fwMSX: onde paramos e o que fazer depois
 
 > Leia este arquivo primeiro. Ele foi escrito para retomar o trabalho em outro computador,
-> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-20**.
+> ou com outra IA, sem perder o contexto. Atualizado em **2026-10-26**.
 
 ## 1. O que e' o projeto
 
@@ -17,6 +17,21 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-19)
 
+- **1.43.27 "Yie Ar Kung-Fu: HD no MSX-DOS 2" (2026-10-26, PRIMEIRA RODADA NO ALIENWARE -- publicacao
+  pendente, ver secao abaixo "ACHADOS DE AMBIENTE")**: pendencia escolhida pelo usuario ("2" entre as
+  opcoes do `resume.txt`): copiar o MSX-DOS para dentro do HD pelo `msxdisk`, para o HD iniciar sozinho
+  no MSX-DOS 2. Pesquisa (regra do `CLAUDE.md`): o boot sector de uma particao FAT16 do Nextor nao tem
+  bootstrap executavel (ROM, nao disco) -- o unico problema real era o `msxdisk` so' entender FAT12 de
+  disquete, nunca particoes FAT16 de HD. Perguntado ao usuario: generalizar o nucleo do `msxdisk` para
+  FAT16 (escolhido) vs. um comando isolado. **Feito**: `src/msxdisk/fat16_c` (entradas de 16 bits
+  planas), `Geometry::fat_bits` + campo estendido de 32 bits do BPB, `DiskImage::Load`/`Save` reconhecem
+  o sufixo `caminho.hdd:N` (particao N) -- como TODOS os pontos de entrada (CLI/shell/TUI/GUI) passam so'
+  por esses dois metodos, `list`/`add`/`extract`/`delete`/`rename`/`mkdir`/`rmdir`/`info`/`saveas`
+  passaram a funcionar em qualquer particao sem tocar em mais nada. O parsing do MBR foi DUPLICADO dentro
+  do proprio `disk_image.cpp` (nao usa `hd::ReadPartitions`) de proposito, para o nucleo do `msxdisk`
+  continuar sem depender do modulo `hd` (ele e' linkado por `controltest`/`mamutetest`/`obitest`/
+  `edittest`...). Novo teste `msxdisktest` (isolado, so' ele linka `hd::CreateHdImage` para a fixture).
+  Ver `doc/msxdisk-spec.md` Fase 6 e `doc/hd-spec.md`.
 - **IDEIA (a discutir 2026-10-22): scripts no console/CLI.** O usuario acha o Tcl do openMSX chato e quer programacao na CLI sem uma linguagem pesada. Recomendacao dada: LUA embarcada (C puro, MIT, ~30 mil linhas, corrotinas para `wait_frames`, sandbox facil; escolha de FCEUX/BizHawk/MAME/Mesen), em 3 degraus: (1) `source arq.fws` rodando os comandos existentes; (2) Lua com `msx.cmd("...")`, `msx.peek/poke/regs` e ganchos `on_frame/on_break/on_write` (por endereco, desligados por padrao, nada por instrucao); (3) integrar ao editor/projeto (`.lua` como tipo, executar o buffer) e ao `man`. Clone de bash descartado (aspas/expansao sao o pior do bash); Basic Dignified como script tambem. Proximo passo sugerido: spike curto (embarcar o Lua, 3 ou 4 funcoes, testar os ganchos) antes de fechar o desenho.
 - **Sincronizacao 2026-10-24**: por decisao do usuario `dist/roms/` passou a ser versionado PROVISORIAMENTE (uns 126 MB, 889 arquivos) para trocar de PC sem rebaixar nada; lembrar de tirar do repositorio publico antes da release final. Proxima sessao: segunda, no Alienware.
 - **1.43.26 "Yie Ar Kung-Fu: Documentacao" (publicada)**: o usuario pediu para atualizar toda a documentacao e os manuais, gerar o release e mandar ao GitHub. README: splash no topo, historico das versoes em lista (uma linha cada, antes era um bloco de texto), recursos atuais, estrutura. 9 screenshots novas + 5 refeitas (`tools/assets/make_screenshots.py [extra]`). MANUAL: secao nova + opcoes da CLI. `man ocm`. **Anotado**: a abertura do Metal Gear 2 (MSX2) mostra um quadro mal desenhado em ~2600 quadros (nao investigado). **PROXIMO**: copiar o DOS para o HD (msxdisk em FAT16), `asmrun`/F5 de `.com` com o DOS 2, OCM (CPU turbo, DIP-SW, ESE-SCC), documentar como baixar o pacote do KdL e a opcao de download INTERNAL.

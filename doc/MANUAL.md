@@ -307,6 +307,20 @@ quatro modos:
 De dentro do shell interativo, os comandos `tui`/`call tui` e `gui`/
 `call gui` abrem a TUI/GUI sem sair do processo.
 
+**Particao de um HD/SD** (1.43.27): basta acrescentar `:N` (N = numero da particao, 1-based) ao
+caminho da imagem -- `list`/`add`/`extract`/`delete`/`rename`/`mkdir`/`rmdir`/`info`/`saveas`
+funcionam igual, so' que lendo/escrevendo direto na particao (MBR e as outras particoes ficam
+intocados). Util para colocar `COMMAND2.COM`/`MSXDOS2.SYS` num `.hdd` criado por `--hdnew` (ver
+"Disco rigido (IDE + Nextor)" abaixo) sem precisar copiar pelo BASIC do Nextor:
+
+```powershell
+.\dist\msxdisk.exe add disco.hdd:1 COMMAND2.COM
+.\dist\msxdisk.exe list disco.hdd:1
+```
+
+`create`/`copy` continuam so' para disquete FAT12 inteiro (a particao ja' nasce formatada por
+`--hdnew`). Ver [msxdisk-spec.md](msxdisk-spec.md) Fase 6.
+
 O mesmo utilitario tambem esta embutido no `fwMSX.exe`:
 
 ```powershell
@@ -732,6 +746,8 @@ A interface **Sunrise ATA-IDE** com o **Nextor** (o MSX-DOS 2 novo do Konamiman)
 3. **Usar**: o Nextor numera os drives na ordem em que acha os dispositivos: com o HD ligado a 1a particao vira **A:** e os disquetes passam a B:. O MSX-DOS so' inicia sozinho
    se houver `COMMAND2.COM` em A:; senao o Nextor cai no BASIC ("Nextor BASIC version 2.10"), onde `FILES`, `OPEN`, `COPY "B:..." TO "A:..."` funcionam e **as gravacoes vao
    direto para o arquivo da imagem**. So' a 1a particao de cada disco ganha letra sozinha (as outras pedem o `MAPDRV` do Nextor, nao testado aqui).
+4. **Boot direto no MSX-DOS 2, sem passar pelo Nextor BASIC**: grave `COMMAND2.COM` (e o que mais precisar) na particao **de fora**, pelo `msxdisk`
+   (`msxdisk add sd.hdd:1 COMMAND2.COM` -- ver secao "msxdisk" acima); no proximo boot o Nextor acha o arquivo em A: e pula direto para o prompt do DOS.
 
 ### Cartao SD (MegaSD)
 

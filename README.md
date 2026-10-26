@@ -33,7 +33,7 @@ codigo real em C, C++, Assembly e Fortran** -- mesmo quando minimo -- para
 forcar contato pratico com interoperabilidade entre linguagens (ABI,
 name mangling, calling conventions, linkedicao).
 
-## Estado atual (v1.43.26 "Yie Ar Kung-Fu: Documentacao", Konami)
+## Estado atual (v1.43.27 "Yie Ar Kung-Fu: HD no MSX-DOS 2", Konami)
 
 ![fwMSX em janela](images/fwMSX-01.png)
 
@@ -64,13 +64,15 @@ argumentos, `fwMSX.exe` abre a maquina MSX1 numa janela, com a BIOS real e o MSX
   <p align="center"><img src="images/fwMSX-04.png" alt="MSX BASIC 3.0 (MSX2+) no fwMSX" width="60%"><br>
   <em>MSX BASIC 3.0 (MSX2+) com a BIOS real, comandos digitados pela ponte de controle (<code>--keys</code>).</em></p>
 
-- **MSX-DOS 2 e Nextor** (1.43.21 a 1.43.25):
+- **MSX-DOS 2 e Nextor** (1.43.21 a 1.43.27):
   - o kernel do **MSX-DOS 2** (`msxdos22.rom`, 64 KB) como cartucho no slot 1, com `dos2`/`--dos2` e `dos: 2` no `Obifile`;
   - **RAM mapeada de 64 a 4096 KB** (`--ram`) e **dois mappers ao mesmo tempo**, interno e externo (`--ram2`), com o comando `mapper`;
   - **disco rigido IDE** (interface Sunrise + **Nextor**, `--ide`) e **cartao SD** (MegaSD do OCM + Nextor, `--sd`), com imagens de ate' 4 GB (MBR + particoes FAT16 de ate' 2 GB)
     criadas por `fwmsx --hdnew`, pelo comando `newhd`, pela janela e pelo TUI;
-  - a maquina **OCM** (`--ocm`): MSX2+ com o mapa de slots do OCM-PLD, ROM de Kanji, portas comutadas (ID D4h) e o Nextor do MegaSD.
-  Ver [hd-spec.md](doc/hd-spec.md) e [ocm-spec.md](doc/ocm-spec.md).
+  - a maquina **OCM** (`--ocm`): MSX2+ com o mapa de slots do OCM-PLD, ROM de Kanji, portas comutadas (ID D4h) e o Nextor do MegaSD;
+  - o `msxdisk` (abaixo) le/escreve direto numa particao do HD (`disco.hdd:1`), entao `COMMAND2.COM`/`MSXDOS2.SYS` entram pelo
+    lado de fora e o HD **inicia sozinho no MSX-DOS 2**, sem passar pelo BASIC do Nextor.
+  Ver [hd-spec.md](doc/hd-spec.md), [ocm-spec.md](doc/ocm-spec.md) e [msxdisk-spec.md](doc/msxdisk-spec.md).
 
   <p align="center">
     <img src="images/fwMSX-11.png" alt="MSX-DOS 2 (kernel 2.20) no fwMSX" width="32%">
@@ -169,6 +171,7 @@ Uma linha por versao, da mais nova para a mais antiga (o resumo de cada uma esta
 
 ### 1.43 a 1.40
 
+- **1.43.27** -- `msxdisk` aprende FAT16 e particoes de HD/SD (`disco.hdd:1`): `list`/`add`/`extract`/`delete`/`rename`/`mkdir`/`rmdir`/`info` passam a funcionar direto numa particao, entao `COMMAND2.COM`/`MSXDOS2.SYS` entram pelo lado de fora e o HD inicia sozinho no MSX-DOS 2
 - **1.43.26** -- documentacao renovada: o splash no topo do README, o historico das versoes em lista (uma linha por versao), screenshots novas (OCM, MSX-DOS 2, Nextor com IDE e SD, jogos), secao nova no MANUAL e `man ocm`
 - **1.43.25** -- maquina OCM (1chipMSX / MSX++) como quarta maquina: `--ocm`, MSX2+ com mapper de 4 MB, Kanji, portas comutadas e MegaSD + Nextor; colisao de sprites por linha
 - **1.43.24** -- cartao SD pelo MegaSD (`--sd`, comando `sd`): Nextor 2.1.4 + driver MegaSDHC do OCM sobre imagens SDSC/SDHC; ROMs do pacote do KdL em `dist/roms/ocm`

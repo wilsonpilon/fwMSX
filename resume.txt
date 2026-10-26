@@ -1,11 +1,54 @@
 Resume this session with:
-claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61     (sessao de 2026-10-20 a 24: continue ESTA; contexto na secao ONDE PARAMOS 2026-10-24)
-fwMSX -- como retomar (atualizado em 2026-10-24, ao encerrar o dia: ultima release 1.43.26 "Yie Ar Kung-Fu: Documentacao")
+Sessao NOVA no Alienware (2026-10-26) -- nao ha' claude --resume de outra maquina; contexto completo na secao ONDE PARAMOS 2026-10-26 abaixo.
+fwMSX -- como retomar (atualizado em 2026-10-26, ao encerrar o dia: ultima release 1.43.27 "Yie Ar Kung-Fu: HD no MSX-DOS 2")
 
 Este arquivo serve para continuar o trabalho em OUTRO computador ou com OUTRA IA. O "onde paramos" oficial e' o OUTLINE.md (secao 2);
 as regras fixas de release estao no CLAUDE.md; a especificacao viva em doc/SPEC.md (secao 5.0) e um doc/*-spec.md por subsistema.
 
-== ONDE PARAMOS (2026-10-24, FIM DO DIA) -- LEIA ESTA SECAO PRIMEIRO ==
+== ONDE PARAMOS (2026-10-26, FIM DO DIA) -- LEIA ESTA SECAO PRIMEIRO ==
+PRIMEIRA SESSAO NO ALIENWARE (PC novo): sem `claude --resume` de outra maquina (so' funciona na mesma maquina onde rodou). Ao abrir aqui outra
+vez, mande ler CLAUDE.md -> OUTLINE.md -> este arquivo.
+
+FEITO HOJE (pedido do usuario, opcao "2" das sugeridas no fim do dia 24/10): **1.43.27 "Yie Ar Kung-Fu: HD no MSX-DOS 2"** -- o `msxdisk`
+aprendeu FAT16 e particoes de HD/SD. Pesquisado primeiro (regra do CLAUDE.md): o boot sector FAT16 do Nextor nao tem bootstrap executavel (ROM,
+nao disco) -- o unico problema real era o `msxdisk` so' entender FAT12 de disquete. Perguntado ao usuario: generalizar o nucleo (ESCOLHIDO) vs.
+comando isolado. Achado que simplificou tudo: CLI/shell/TUI/GUI chamam so' `DiskImage::Load`/`Save`; ensinando so' esses dois a entender o
+sufixo `caminho.hdd:N` (particao N, 1-based), TODOS os comandos (list/add/extract/delete/rename/mkdir/rmdir/info/saveas) passaram a funcionar
+em particoes de HD sem tocar em mais nada. Novo `src/msxdisk/fat16_c`; `Geometry::fat_bits` + campo estendido de 32 bits do BPB; parsing do MBR
+DUPLICADO dentro do proprio `disk_image.cpp` (nao usa `hd::ReadPartitions`) de proposito, para `controltest`/`mamutetest`/`obitest`/`edittest`
+(que linkam o mesmo nucleo) nao ganharem uma dependencia nova so' por isso. Novo teste `msxdisktest` (isolado). Ver `doc/msxdisk-spec.md` Fase 6.
+
+ACHADOS DE AMBIENTE (primeira build nesta maquina -- NAO sao bugs do codigo, sao deste PC):
+ - `core.autocrlf=true` no git deste PC convertia os golden `.err` do badig (LF no repo) para CRLF no checkout; a comparacao de mensagem de
+   erro usa `std::getline` (que deixa um `\r` sobrando no fim da linha) -> 31 verificacoes falhavam. CORRIGIDO com `.gitattributes`
+   (`tests/badig/golden/**/*.err text eol=lf`, so' o `.err`: os outros formatos do badig -- `.dmx`/`.amx`/`.lmx`/os relatorios `.txt` -- SAO
+   CRLF de proposito, o badig.py original os grava assim, e o conversor replica isso; NAO normalizar esses). Also marcado `*.bmx binary`
+   (BASIC tokenizado, nunca texto). ARMADILHA ao testar isso: depois de mudar o .gitattributes, `git checkout -- <path>` NAO reescreve um
+   arquivo que o git ja considera "equivalente" ao indice (mesmo que o fim de linha mude) -- e' preciso DELETAR o arquivo e so' ENTAO fazer
+   `git checkout -- <path>` para forcar a reescrita de verdade com o filtro novo.
+ - O PATH deste PC tem `C:\dos\nim\dist\mingw64\bin` (toolchain de outro projeto, Nim) ANTES de `C:\msys64\ucrt64\bin`: ao rodar os .exe's
+   fora do `build.ps1` (que ja' antepoe o ucrt64 ao PATH so' para si mesmo), o `videofiltertest.exe` pegava uma DLL errada e morria com
+   STATUS_ENTRYPOINT_NOT_FOUND. NAO foi alterado o PATH do sistema (decisao do usuario); para rodar `ctest`/os .exe's manualmente nesta
+   maquina, antepor `C:\msys64\ucrt64\bin` ao PATH da sessao primeiro (e' so' o que o `build.ps1` ja' faz pra compilar).
+ctest 36/36 (100%) em Windows e em WSL/Linux, depois dos dois achados acima resolvidos.
+
+AINDA NAO FEITO (registrado como falta, nao bloqueia): campo dedicado de "numero da particao" nos dialogos de Abrir/Novo da TUI/GUI do msxdisk
+(hoje funciona digitando `disco.hdd:1`); `create`/`copy` direto numa particao (continuam FAT12-only).
+
+PENDENTE NESTA SESSAO: decidir commit/tag/push/release do GitHub (nada foi commitado ainda -- so' editado e testado). `dist/*test(.exe)` NOVOS
+nesta maquina (msxdisktest, hdtest, mamutetest, obitest, projecttest, editorui, edittest, mantest, badigtest, badigcli, downloadtest,
+asme2etest, syntaxtest, dist/badig/, dist/emulator/) estao SOLTOS (nao rastreados) -- NAO foram adicionados ao commit (o usuario ainda nao
+decidiu se binarios de teste em dist/ ficam no git; alguns ja' estao rastreados de sessoes antigas -- asmtest, controltest, diskfmttest,
+repltest, tuitest -- esses sim entram no commit, regenerados).
+
+PROXIMAS OPCOES (a escolha e' do usuario): 2. Copiar o MSX-DOS para dentro do HD pelo msxdisk -- FEITA hoje.   3. asmrun/F5 de .com com o DOS 2
+(hoje usa msxdos1.dsk).   4. OCM: velocidade da CPU, DIP-SW virtuais (porta 42h), ESE-SCC nos slots 1 e 2, BIOS do turbo R.
+5. MAPDRV do Nextor (a 2a particao nao ganha letra).   6. SCSI so' se aparecer um driver.   7. Campo de particao nos dialogos do msxdisk
+(TUI/GUI).   8. Itens antigos: Dignified (NestorBASIC real, Basic DignifieR), aba Documentacao na janela Downloads, saida .MOB do fwasm,
+Lua passo 3, licencas do resto de resource/, nome do projeto (adiado pelo usuario).
+
+
+== ONDE PARAMOS (2026-10-24, FIM DO DIA) -- historico ==
 SESSAO PARA CONTINUAR: claude --resume d9dae70b-ee14-4e96-ae06-287a71f6bd61   (em outro computador: abra o Claude Code na pasta, ele le o CLAUDE.md; mande ler OUTLINE.md e esta secao)
 Primeira mensagem sugerida: "voltei; leia o resume.txt, o OUTLINE.md e me diga as opcoes".
 

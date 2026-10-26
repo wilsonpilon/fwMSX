@@ -1,5 +1,7 @@
 //
-// Nucleo C++ do msxdisk (fwMSX): imagem de disco FAT12 MSX em memoria.
+// Nucleo C++ do msxdisk (fwMSX): imagem de disco MSX em memoria (FAT12 de
+// disquete inteiro, ou FAT16 de uma particao de HD/SD via "caminho:N" --
+// ver SplitPartitionSuffix/ReadMbrPartitionLba e doc/msxdisk-spec.md).
 //
 
 #include "disk_image.h"
@@ -12,6 +14,7 @@
 
 #include "../asm/name_match.h"
 #include "../fat12_c/fat12.h"
+#include "../fat16_c/fat16.h"
 #include "../fortran/geometry_calc.h"
 #include "msx_path.h"
 #include "msxdos1_boot.h"
@@ -21,7 +24,6 @@ namespace msxdisk {
 namespace {
 
 constexpr uint16_t kFatFreeCluster = 0x000;
-constexpr uint16_t kFatMinEof = 0xFF8; // valor de FAT >= isso marca fim de cadeia
 constexpr uint16_t kFirstDataCluster = 2;
 
 bool HasWildcard(const std::string &pattern) {
@@ -70,6 +72,71 @@ std::vector<std::string> AllComponents(const MsxPath &parsed) {
     return all;
 }
 
+// Separa um sufixo ":N" (N = numero de particao, 1-based) do final do
+// caminho -- convencao usada para apontar o msxdisk para dentro de uma
+// imagem de HD/SD particionada (src/hd, doc/hd-spec.md) em vez de um
+// disquete FAT12 inteiro. So examina a STRING (nunca chama nada do SO)
+// -- fundamental no Windows, onde o NTFS interpreta ':' como separador
+// de Alternate Data Stream se a string combinada chegar a uma API de
+// arquivo; por isso 'base' (sem o sufixo) e' o UNICO caminho que Load/
+// Save realmente abrem. Sem ':' no caminho, ou quando o unico ':' e' a
+// letra de unidade do Windows (ex. "C:\..."), devolve false e deixa
+// 'base' = 'path' (comportamento de sempre, disquete FAT12 inteiro).
+bool SplitPartitionSuffix(const std::filesystem::path &path, std::filesystem::path &base, int &partition) {
+    partition = 0;
+    base = path;
+    const std::string s = path.string();
+    const size_t colon = s.rfind(':');
+    if (colon == std::string::npos || colon <= 1) return false;
+
+    const std::string suffix = s.substr(colon + 1);
+    if (suffix.empty()) return false;
+    for (const char c : suffix) {
+        if (c < '0' || c > '9') return false;
+    }
+
+    const int value = std::stoi(suffix);
+    if (value < 1) return false;
+
+    partition = value;
+    base = std::filesystem::path(s.substr(0, colon));
+    return true;
+}
+
+// Le a tabela de particoes do MBR (setor 0 de 'in') e devolve o LBA/
+// numero de setores da particao 'index_1based' (1 = a primeira
+// particao valida, na ordem em que aparece na tabela). Formato
+// publico (assinatura 55AAh, 4 entradas de 16 bytes a partir de 446h,
+// LBA e tamanho em setores nos bytes 8-11/12-15, little-endian) --
+// duplicado aqui de proposito, em vez de reusar hd::ReadPartitions
+// (src/hd/cpp/hd_image.cpp): o nucleo do msxdisk e' linkado por varios
+// executaveis de teste (controltest, mamutetest...) que nao tem motivo
+// para ganhar uma dependencia nova do modulo hd so por isto -- ver
+// doc/msxdisk-spec.md.
+bool ReadMbrPartitionLba(std::istream &in, int index_1based, uint64_t &start_sector, uint64_t &sector_count) {
+    in.seekg(0);
+    uint8_t mbr[512];
+    if (!in.read(reinterpret_cast<char *>(mbr), sizeof(mbr))) return false;
+    if (mbr[510] != 0x55 || mbr[511] != 0xAA) return false;
+
+    int seen = 0;
+    for (int i = 0; i < 4; ++i) {
+        const uint8_t *e = mbr + 446 + i * 16;
+        const uint8_t type = e[4];
+        const uint32_t start = static_cast<uint32_t>(e[8]) | (static_cast<uint32_t>(e[9]) << 8) |
+                                (static_cast<uint32_t>(e[10]) << 16) | (static_cast<uint32_t>(e[11]) << 24);
+        const uint32_t sectors = static_cast<uint32_t>(e[12]) | (static_cast<uint32_t>(e[13]) << 8) |
+                                  (static_cast<uint32_t>(e[14]) << 16) | (static_cast<uint32_t>(e[15]) << 24);
+        if (type == 0 || sectors == 0) continue;
+        if (++seen == index_1based) {
+            start_sector = start;
+            sector_count = sectors;
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 DiskImage::DiskImage(Geometry geometry)
@@ -93,6 +160,27 @@ void DiskImage::SyncFatCopies() {
                              geometry_.bytes_per_sector;
         std::memcpy(copy, primary, fat_bytes);
     }
+}
+
+uint16_t DiskImage::FatGet(uint16_t cluster) const {
+    return (geometry_.fat_bits == 16) ? msxdisk_fat16_get(FatPtr(), cluster)
+                                       : msxdisk_fat12_get(FatPtr(), cluster);
+}
+
+void DiskImage::FatSet(uint16_t cluster, uint16_t value) {
+    if (geometry_.fat_bits == 16) {
+        msxdisk_fat16_set(FatPtr(), cluster, value);
+    } else {
+        msxdisk_fat12_set(FatPtr(), cluster, value);
+    }
+}
+
+uint16_t DiskImage::FatEofValue() const {
+    return (geometry_.fat_bits == 16) ? uint16_t{0xFFFF} : uint16_t{0x0FFF};
+}
+
+bool DiskImage::FatIsEof(uint16_t value) const {
+    return (geometry_.fat_bits == 16) ? (value >= 0xFFF8) : (value >= 0x0FF8);
 }
 
 RawDirEntry *DiskImage::RootDirBegin() {
@@ -143,31 +231,56 @@ DiskImage DiskImage::CreateBlank(const Geometry &geometry) {
 }
 
 std::optional<DiskImage> DiskImage::Load(const std::filesystem::path &path, DiskError *error) {
-    std::ifstream in(path, std::ios::binary | std::ios::ate);
+    std::filesystem::path base;
+    int partition = 0;
+    const bool has_partition = SplitPartitionSuffix(path, base, partition);
+
+    std::ifstream in(base, std::ios::binary | std::ios::ate);
     if (!in) {
         if (error) *error = DiskError::IoError;
         return std::nullopt;
     }
+    const uint64_t file_size = static_cast<uint64_t>(in.tellg());
 
-    const std::streamoff size = in.tellg();
-    if (size < 512) {
+    // Sem particao: 'volume' e' o arquivo inteiro (disquete FAT12), igual
+    // a sempre. Com particao: 'volume' e' a faixa de bytes dessa entrada
+    // do MBR dentro de 'base' (uma imagem de HD/SD, src/hd).
+    uint64_t volume_offset = 0;
+    uint64_t volume_bytes = file_size;
+    if (has_partition) {
+        uint64_t start_sector = 0, sector_count = 0;
+        if (file_size < 512 || !ReadMbrPartitionLba(in, partition, start_sector, sector_count)) {
+            if (error) *error = DiskError::NotAnMsxImage;
+            return std::nullopt;
+        }
+        volume_offset = start_sector * 512ull;
+        volume_bytes = sector_count * 512ull;
+        if (volume_offset + volume_bytes > file_size) {
+            if (error) *error = DiskError::NotAnMsxImage;
+            return std::nullopt;
+        }
+    } else if (file_size < 512) {
         if (error) *error = DiskError::NotAnMsxImage;
         return std::nullopt;
     }
-    in.seekg(0);
 
+    in.seekg(static_cast<std::streamoff>(volume_offset));
     uint8_t boot[512];
-    in.read(reinterpret_cast<char *>(boot), sizeof(boot));
+    if (!in.read(reinterpret_cast<char *>(boot), sizeof(boot))) {
+        if (error) *error = DiskError::NotAnMsxImage;
+        return std::nullopt;
+    }
 
     const Geometry geometry = Geometry::ParseFromBootSector(boot);
-    if (geometry.bytes_per_sector == 0 || geometry.total_sectors == 0 ||
-        static_cast<std::streamoff>(geometry.ImageSizeBytes()) != size) {
+    const uint64_t image_bytes = geometry.ImageSizeBytes();
+    const bool size_ok = has_partition ? (image_bytes <= volume_bytes) : (image_bytes == volume_bytes);
+    if (geometry.bytes_per_sector == 0 || geometry.total_sectors == 0 || !size_ok) {
         if (error) *error = DiskError::NotAnMsxImage;
         return std::nullopt;
     }
 
     DiskImage img(geometry);
-    in.seekg(0);
+    in.seekg(static_cast<std::streamoff>(volume_offset));
     in.read(reinterpret_cast<char *>(img.data_.data()), static_cast<std::streamsize>(img.data_.size()));
     if (!in) {
         if (error) *error = DiskError::IoError;
@@ -179,11 +292,46 @@ std::optional<DiskImage> DiskImage::Load(const std::filesystem::path &path, Disk
 }
 
 bool DiskImage::Save(const std::filesystem::path &path, DiskError *error) const {
-    std::ofstream out(path, std::ios::binary | std::ios::trunc);
+    std::filesystem::path base;
+    int partition = 0;
+    const bool has_partition = SplitPartitionSuffix(path, base, partition);
+
+    if (!has_partition) {
+        std::ofstream out(base, std::ios::binary | std::ios::trunc);
+        if (!out) {
+            if (error) *error = DiskError::IoError;
+            return false;
+        }
+        out.write(reinterpret_cast<const char *>(data_.data()), static_cast<std::streamsize>(data_.size()));
+        if (!out) {
+            if (error) *error = DiskError::IoError;
+            return false;
+        }
+        if (error) *error = DiskError::None;
+        return true;
+    }
+
+    // Particao: abre o arquivo INTEIRO em leitura+escrita, sem truncar, e
+    // sobrescreve so' a faixa de bytes da particao -- o MBR e as outras
+    // particoes continuam intocados (ver doc/msxdisk-spec.md).
+    std::fstream out(base, std::ios::binary | std::ios::in | std::ios::out);
     if (!out) {
         if (error) *error = DiskError::IoError;
         return false;
     }
+    uint64_t start_sector = 0, sector_count = 0;
+    if (!ReadMbrPartitionLba(out, partition, start_sector, sector_count)) {
+        if (error) *error = DiskError::NotAnMsxImage;
+        return false;
+    }
+    const uint64_t volume_offset = start_sector * 512ull;
+    const uint64_t volume_bytes = sector_count * 512ull;
+    if (data_.size() > volume_bytes) {
+        if (error) *error = DiskError::IoError;
+        return false;
+    }
+
+    out.seekp(static_cast<std::streamoff>(volume_offset));
     out.write(reinterpret_cast<const char *>(data_.data()), static_cast<std::streamsize>(data_.size()));
     if (!out) {
         if (error) *error = DiskError::IoError;
@@ -199,14 +347,13 @@ uint32_t DiskImage::DirSlotCount(const DirLocation &dir) const {
     }
 
     const uint32_t entries_per_cluster = geometry_.BytesPerCluster() / sizeof(RawDirEntry);
-    const uint8_t *fat = FatPtr();
     uint32_t count = 0;
     uint16_t cluster = dir.first_cluster;
     const uint32_t max_iters = geometry_.TotalClusters() + 2;
     for (uint32_t i = 0; i < max_iters && cluster >= kFirstDataCluster; ++i) {
         count += entries_per_cluster;
-        const uint16_t next = msxdisk_fat12_get(fat, cluster);
-        if (next >= kFatMinEof) break;
+        const uint16_t next = FatGet(cluster);
+        if (FatIsEof(next)) break;
         cluster = next;
     }
     return count;
@@ -221,10 +368,9 @@ RawDirEntry *DiskImage::DirSlot(const DirLocation &dir, uint32_t index) {
     const uint32_t cluster_steps = index / entries_per_cluster;
     const uint32_t offset_in_cluster = index % entries_per_cluster;
 
-    const uint8_t *fat = FatPtr();
     uint16_t cluster = dir.first_cluster;
     for (uint32_t i = 0; i < cluster_steps; ++i) {
-        cluster = msxdisk_fat12_get(fat, cluster);
+        cluster = FatGet(cluster);
     }
 
     RawDirEntry *base = reinterpret_cast<RawDirEntry *>(data_.data() + geometry_.ClusterOffset(cluster));
@@ -255,21 +401,19 @@ RawDirEntry *DiskImage::FindFreeSlotIn(const DirLocation &dir, DiskError *error)
     // ultimo cluster da cadeia atual e encadeia um novo cluster livre
     // manualmente (nao usa AllocateClusterChain, que comecaria uma cadeia
     // nova do zero em vez de continuar esta).
-    const uint8_t *fat_read = FatPtr();
     uint16_t last = dir.first_cluster;
     const uint32_t max_iters = geometry_.TotalClusters() + 2;
     for (uint32_t i = 0; i < max_iters; ++i) {
-        const uint16_t next = msxdisk_fat12_get(fat_read, last);
-        if (next >= kFatMinEof) break;
+        const uint16_t next = FatGet(last);
+        if (FatIsEof(next)) break;
         last = next;
     }
 
-    uint8_t *fat = FatPtr();
     uint16_t new_cluster = 0;
     const uint32_t total = geometry_.TotalClusters();
     for (uint32_t offset = 0; offset < total; ++offset) {
         const auto c = static_cast<uint16_t>(kFirstDataCluster + offset);
-        if (msxdisk_fat12_get(fat, c) == kFatFreeCluster) {
+        if (FatGet(c) == kFatFreeCluster) {
             new_cluster = c;
             break;
         }
@@ -279,8 +423,8 @@ RawDirEntry *DiskImage::FindFreeSlotIn(const DirLocation &dir, DiskError *error)
         return nullptr;
     }
 
-    msxdisk_fat12_set(fat, last, new_cluster);
-    msxdisk_fat12_set(fat, new_cluster, 0x0FFFu);
+    FatSet(last, new_cluster);
+    FatSet(new_cluster, FatEofValue());
     SyncFatCopies();
     ZeroCluster(new_cluster);
 
@@ -345,10 +489,9 @@ uint16_t DiskImage::AllocateClusterChain(uint32_t byte_length, DiskError *error)
 
     std::vector<uint16_t> free_list;
     free_list.reserve(needed);
-    uint8_t *fat = FatPtr();
     for (uint32_t offset = 0; offset < total && free_list.size() < needed; ++offset) {
         const auto cluster = static_cast<uint16_t>(kFirstDataCluster + offset);
-        if (msxdisk_fat12_get(fat, cluster) == kFatFreeCluster) {
+        if (FatGet(cluster) == kFatFreeCluster) {
             free_list.push_back(cluster);
         }
     }
@@ -359,9 +502,9 @@ uint16_t DiskImage::AllocateClusterChain(uint32_t byte_length, DiskError *error)
     }
 
     for (size_t i = 0; i + 1 < free_list.size(); ++i) {
-        msxdisk_fat12_set(fat, free_list[i], free_list[i + 1]);
+        FatSet(free_list[i], free_list[i + 1]);
     }
-    msxdisk_fat12_set(fat, free_list.back(), 0x0FFFu);
+    FatSet(free_list.back(), FatEofValue());
     SyncFatCopies();
 
     if (error) *error = DiskError::None;
@@ -371,26 +514,24 @@ uint16_t DiskImage::AllocateClusterChain(uint32_t byte_length, DiskError *error)
 void DiskImage::FreeClusterChain(uint16_t first_cluster) {
     if (first_cluster < kFirstDataCluster) return;
 
-    uint8_t *fat = FatPtr();
     uint16_t cluster = first_cluster;
     const uint32_t max_iters = geometry_.TotalClusters() + 2;
 
     for (uint32_t i = 0; i < max_iters && cluster >= kFirstDataCluster; ++i) {
-        const uint16_t next = msxdisk_fat12_get(fat, cluster);
-        msxdisk_fat12_set(fat, cluster, kFatFreeCluster);
-        if (next >= kFatMinEof || next == kFatFreeCluster) break;
+        const uint16_t next = FatGet(cluster);
+        FatSet(cluster, kFatFreeCluster);
+        if (FatIsEof(next) || next == kFatFreeCluster) break;
         cluster = next;
     }
     SyncFatCopies();
 }
 
 uint32_t DiskImage::CountUsedClusters() const {
-    const uint8_t *fat = FatPtr();
     uint32_t used = 0;
     const uint32_t total = geometry_.TotalClusters();
     for (uint32_t offset = 0; offset < total; ++offset) {
         const auto cluster = static_cast<uint16_t>(kFirstDataCluster + offset);
-        if (msxdisk_fat12_get(fat, cluster) != kFatFreeCluster) ++used;
+        if (FatGet(cluster) != kFatFreeCluster) ++used;
     }
     return used;
 }
@@ -477,7 +618,6 @@ bool DiskImage::AddFile(const std::filesystem::path &host_path, const std::strin
     }
 
     if (!content.empty()) {
-        const uint8_t *fat = FatPtr();
         const uint32_t bpc = geometry_.BytesPerCluster();
         uint16_t cluster = first_cluster;
         size_t written = 0;
@@ -487,7 +627,7 @@ bool DiskImage::AddFile(const std::filesystem::path &host_path, const std::strin
             std::memcpy(data_.data() + offset, content.data() + written, chunk);
             written += chunk;
             if (written >= content.size()) break;
-            cluster = msxdisk_fat12_get(fat, cluster);
+            cluster = FatGet(cluster);
         }
     }
 
@@ -541,7 +681,6 @@ bool DiskImage::ExtractFile(const std::string &msx_path, const std::filesystem::
 
     uint32_t remaining = entry->size;
     uint16_t cluster = entry->first_cluster;
-    const uint8_t *fat = FatPtr();
     const uint32_t bpc = geometry_.BytesPerCluster();
 
     while (remaining > 0 && cluster >= kFirstDataCluster) {
@@ -550,7 +689,7 @@ bool DiskImage::ExtractFile(const std::string &msx_path, const std::filesystem::
         out.write(reinterpret_cast<const char *>(data_.data() + offset), chunk);
         remaining -= chunk;
         if (remaining == 0) break;
-        cluster = msxdisk_fat12_get(fat, cluster);
+        cluster = FatGet(cluster);
     }
 
     if (!out) {

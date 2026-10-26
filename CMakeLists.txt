@@ -108,6 +108,7 @@ set(MSXDISK_LIB_SOURCES
         src/msxdisk/core/msxdos1_boot.cpp
         src/msxdisk/core/msx_path.cpp
         src/msxdisk/fat12_c/fat12.c
+        src/msxdisk/fat16_c/fat16.c
         src/msxdisk/asm/name_match.asm
         src/msxdisk/fortran/geometry_calc.f90
         src/msxdisk/cli/commands.cpp
@@ -403,6 +404,7 @@ set(MSXDISK_CORE_SOURCES
         src/msxdisk/core/msxdos1_boot.cpp
         src/msxdisk/core/msx_path.cpp
         src/msxdisk/fat12_c/fat12.c
+        src/msxdisk/fat16_c/fat16.c
         src/msxdisk/asm/name_match.asm
         src/msxdisk/fortran/geometry_calc.f90
 )
@@ -887,6 +889,25 @@ if (MINGW)
     target_link_options(diskfmttest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
 endif ()
 add_test(NAME diskfmt COMMAND diskfmttest)
+
+# msxdisktest: o msxdisk (src/msxdisk/core) lendo/escrevendo uma particao FAT16 de HD/SD via
+# "imagem.hdd:N" -- doc/msxdisk-spec.md (Fase 6). So' aqui o nucleo do msxdisk ganha os fontes
+# do hd (hd_format.c/hd_geometry.f90/hd_fill.asm/hd_image.cpp), e so' para a fixture de teste
+# poder chamar hd::CreateHdImage/hd::ReadPartitions -- os outros alvos que linkam
+# MSXDISK_CORE_SOURCES (controltest, mamutetest, obitest, edittest...) continuam sem essa
+# dependencia (o parsing do MBR dentro do proprio disk_image.cpp e' duplicado de proposito).
+add_executable(msxdisktest tests/z80/msxdisk_test.cpp ${MSXDISK_CORE_SOURCES}
+        src/hd/core/hd_format.c
+        src/hd/fortran/hd_geometry.f90
+        src/hd/asm/hd_fill.asm
+        src/hd/cpp/hd_image.cpp
+)
+target_include_directories(msxdisktest PRIVATE ${CMAKE_SOURCE_DIR}/src)
+set_target_properties(msxdisktest PROPERTIES Fortran_MODULE_DIRECTORY ${CMAKE_BINARY_DIR}/mod/msxdisktest)
+if (MINGW)
+    target_link_options(msxdisktest PRIVATE -static -static-libgcc -static-libstdc++ -static-libgfortran)
+endif ()
+add_test(NAME msxdisk COMMAND msxdisktest)
 
 # hdtest: disco rigido (MBR + FAT16 em C/Fortran/Assembly), disco ATA e interface Sunrise IDE -- doc/hd-spec.md.
 add_executable(hdtest tests/hd/hd_test.cpp ${HD_LIB_SOURCES})

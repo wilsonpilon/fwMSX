@@ -96,10 +96,14 @@ que e' o correto para o MSX (e o que o fMSX/openMSX fazem).
   <img> [<img2>] [<rom>]` e `ide off` no console; menu da janela e do TUI. A ROM do Nextor, quando nao
   dada, e' a mais nova do banco de ROMs (`romdb::FindNextorRom`, pelo SHA-1).
 - O Nextor numera os drives na ordem em que acha os dispositivos: com o HD ligado a 1a particao vira
-  **A:** e os disquetes passam a B:. Ele so' inicia o MSX-DOS se achar COMMAND2.COM em A: (copie os
-  arquivos do sistema para o HD); senao cai no BASIC ("Nextor BASIC version 2.10"). Visto no teste: a 2a
-  particao nao ganhou letra (`files "c:"` deu "Bad drive name"); pelo manual do Nextor ela se liga com o
-  comando `MAPDRV`, que **nao foi testado** aqui.
+  **A:** e os disquetes passam a B:. Ele so' inicia o MSX-DOS se achar COMMAND2.COM em A:; senao cai no
+  BASIC ("Nextor BASIC version 2.10"). Visto no teste: a 2a particao nao ganhou letra (`files "c:"` deu
+  "Bad drive name"); pelo manual do Nextor ela se liga com o comando `MAPDRV`, que **nao foi testado**
+  aqui.
+- **Copiar os arquivos de sistema pelo `msxdisk` (1.43.27)**, sem precisar passar pelo BASIC do Nextor:
+  `msxdisk add sd.hdd:1 COMMAND2.COM` (particao 1, 1-based; `doc/msxdisk-spec.md` Fase 6) -- `list`/
+  `extract`/`delete`/`rename`/`mkdir`/`rmdir`/`info` tambem funcionam direto numa particao dessas. Com
+  `COMMAND2.COM` na raiz da particao A:, o Nextor pula o BASIC e vai direto para o prompt do MSX-DOS 2.
 
 ## 7. Testes
 
@@ -137,10 +141,6 @@ arquivos** (`OPEN "A:OI.TXT"` ... `FILES` lista `OI.TXT`), tanto numa imagem SDS
 
 - **SCSI** (MEGA-SCSI com MB89352 e o SRAM de 1 MB, Gouda, WAVE-SCSI): continua sem driver. O pacote do KdL **nao** tem driver nem emula
   o MB89352 (no `megaram.vhd` o acesso ao SPC esta' comentado como "reservado"; so' ha' os utilitarios ESET/EP/MGLOAD, que rodam no MSX).
-- Copiar os arquivos do MSX-DOS para dentro de uma imagem de HD pelo `msxdisk` (hoje o `msxdisk` so'
-  conhece FAT12 de disquete): para um HD que **inicia sozinho** no MSX-DOS 2 hoje e' preciso copiar os
-  arquivos pelo proprio Nextor (testado: `copy "b:command2.com" to "a:cmd2.com"` no BASIC do Nextor gravou o arquivo
-  inteiro no HD).
 - Estado salvo (`state save`) nao guarda a interface IDE (os registradores do ATA); as imagens ja' estao no
   arquivo.
 - Mais de 2 GB por particao (FAT16 de 64 KB) e particoes estendidas (alem de 4 primarias).

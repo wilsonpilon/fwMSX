@@ -7,6 +7,17 @@ detalhamento completo de cada versao (nome do jogo de MSX + subtitulo,
 notas de build) veja [RELEASE.md](RELEASE.md); para a especificacao viva
 e o historico de fases, veja [SPEC.md](SPEC.md).
 
+## [1.43.27] - 2026-10-26 - "Yie Ar Kung-Fu: HD no MSX-DOS 2" (Konami)
+
+### Adicionado -- msxdisk aprende FAT16 e particoes de HD/SD
+- O `msxdisk` (core + CLI/shell/TUI/GUI) passa a entender uma **particao FAT16 dentro de uma imagem de HD/SD** (`.hdd`, `hd::CreateHdImage`): basta apontar para `caminho.hdd:N` (N = particao, 1-based) em vez de um disquete `.dsk` inteiro. `list`/`add`/`extract`/`delete`/`rename`/`mkdir`/`rmdir`/`info`/`saveas` passam a funcionar numa particao de HD sem nenhuma mudanca de CLI/shell/TUI/GUI -- so' `DiskImage::Load`/`Save` (o unico ponto por onde todos os modos entram) ganharam o reconhecimento do sufixo.
+- Novo modulo C `src/msxdisk/fat16_c` (entradas de 16 bits planas, sem o empacotamento de bits da FAT12); `Geometry` ganha `fat_bits` e le o campo estendido de 32 bits do BPB (necessario para particoes de HD, que passam dos 65535 setores do campo classico).
+- Com isso, `COMMAND2.COM`/`MSXDOS2.SYS` entram direto numa particao do `.hdd` pelo `msxdisk` (sem precisar copiar pelo BASIC do Nextor, comando a comando) e o HD passa a **iniciar sozinho no MSX-DOS 2**.
+- `create`/`copy` continuam exclusivos de disquete FAT12 (a particao nasce formatada por `hd::CreateHdImage`/`fwmsx --hdnew`).
+
+### Testes
+- `msxdisktest` (novo, `ctest msxdisk`): FAT16 get/set, deteccao do BPB, round-trip numa particao real (criada por `hd::CreateHdImage`), prova de que `Save` numa particao nao altera o MBR nem a particao vizinha, e regressao do fluxo de disquete FAT12 sem sufixo.
+
 ## [1.43.26] - 2026-10-24 - "Yie Ar Kung-Fu: Documentacao" (Konami)
 
 ### Documentacao
