@@ -35,11 +35,14 @@ ctest 36/36 (100%) em Windows e em WSL/Linux, depois dos dois achados acima reso
 AINDA NAO FEITO (registrado como falta, nao bloqueia): campo dedicado de "numero da particao" nos dialogos de Abrir/Novo da TUI/GUI do msxdisk
 (hoje funciona digitando `disco.hdd:1`); `create`/`copy` direto numa particao (continuam FAT12-only).
 
-PENDENTE NESTA SESSAO: decidir commit/tag/push/release do GitHub (nada foi commitado ainda -- so' editado e testado). `dist/*test(.exe)` NOVOS
-nesta maquina (msxdisktest, hdtest, mamutetest, obitest, projecttest, editorui, edittest, mantest, badigtest, badigcli, downloadtest,
-asme2etest, syntaxtest, dist/badig/, dist/emulator/) estao SOLTOS (nao rastreados) -- NAO foram adicionados ao commit (o usuario ainda nao
-decidiu se binarios de teste em dist/ ficam no git; alguns ja' estao rastreados de sessoes antigas -- asmtest, controltest, diskfmttest,
-repltest, tuitest -- esses sim entram no commit, regenerados).
+RESOLVIDO NA CONTINUACAO (2026-10-26, sessao retomada apos interrupcao): o commit/tag/push ja' tinham sido feitos (eb0c4b21), faltava so'
+decidir o destino dos `dist/*test(.exe)` NOVOS desta maquina (msxdisktest, hdtest, mamutetest, obitest, projecttest, editorui, edittest,
+mantest, badigtest, badigcli, downloadtest, asme2etest, syntaxtest, dist/badig/, dist/emulator/), que estavam soltos (nao rastreados).
+Usuario escolheu RASTREAR TODOS (consistencia com asmtest/controltest/diskfmttest/repltest/tuitest, ja' rastreados de sessoes antigas).
+**Atencao de licenca**: `dist/emulator/` carrega o MSX-DOS 1/2 de verdade (COMMAND.COM/MSXDOS.SYS/MSXDOS2.SYS/HELP/UTILS), que ja' ficava
+fora dos PACOTES de release por licenca (1.40.1/1.43.12) -- agora que entrou no git, precisa ir junto com `dist/roms/` para a lista de
+"remover do repositorio publico antes da release final" (ver `doc/media-review.md`). Tag `1.43.27` e branch `v1.43.27` criadas e enviadas
+ao GitHub nesta continuacao.
 
 PROXIMAS OPCOES (a escolha e' do usuario): 2. Copiar o MSX-DOS para dentro do HD pelo msxdisk -- FEITA hoje.   3. asmrun/F5 de .com com o DOS 2
 (hoje usa msxdos1.dsk).   4. OCM: velocidade da CPU, DIP-SW virtuais (porta 42h), ESE-SCC nos slots 1 e 2, BIOS do turbo R.

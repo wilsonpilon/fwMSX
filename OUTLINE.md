@@ -17,8 +17,17 @@ enquanto; antes de liberar ao publico, cada midia contestada sera removida (ver 
 
 ## 2. Onde estamos (2026-10-19)
 
-- **1.43.27 "Yie Ar Kung-Fu: HD no MSX-DOS 2" (2026-10-26, PRIMEIRA RODADA NO ALIENWARE -- publicacao
-  pendente, ver secao abaixo "ACHADOS DE AMBIENTE")**: pendencia escolhida pelo usuario ("2" entre as
+- **1.43.27 "Yie Ar Kung-Fu: HD no MSX-DOS 2" (2026-10-26, PRIMEIRA RODADA NO ALIENWARE -- publicada)**:
+  retomada de sessao interrompida (2026-10-26, continuacao): faltava decidir o destino dos executaveis de
+  teste novos nesta maquina (soltos no `dist/`, ver "ACHADOS DE AMBIENTE" no `resume.txt`) -- usuario
+  escolheu RASTREAR TODOS (`msxdisktest`, `hdtest`, `mamutetest`, `obitest`, `projecttest`, `editorui`,
+  `edittest`, `mantest`, `badigtest`, `badigcli`, `downloadtest`, `asme2etest`, `syntaxtest`, mais
+  `dist/badig/nbasic.dmx` e `dist/emulator/**`). **Atencao de licenca**: `dist/emulator/` traz o
+  MSX-DOS 1/2 de verdade (COMMAND.COM, MSXDOS.SYS, MSXDOS2.SYS, HELP/UTILS) -- ja' ficava fora dos
+  PACOTES de release por licenca (ver 1.40.1/1.43.12 abaixo); agora que entrou no git precisa ser
+  tratado junto com `dist/roms/` na lista de "remover do repositorio publico antes da release final"
+  (ver "Revisao das licencas de midia" abaixo). Tag `1.43.27`/branch `v1.43.27` e push feitos nesta
+  continuacao. Pendencia original escolhida pelo usuario ("2" entre as
   opcoes do `resume.txt`): copiar o MSX-DOS para dentro do HD pelo `msxdisk`, para o HD iniciar sozinho
   no MSX-DOS 2. Pesquisa (regra do `CLAUDE.md`): o boot sector de uma particao FAT16 do Nextor nao tem
   bootstrap executavel (ROM, nao disco) -- o unico problema real era o `msxdisk` so' entender FAT12 de
